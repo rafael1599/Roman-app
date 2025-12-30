@@ -1,0 +1,3248 @@
+[
+    {
+        "SKU": "06-4432BK",
+        "Quantity": 50,
+        "Location": "Row 1",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3970BL",
+        "Quantity": 1,
+        "Location": "Row 1",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4587RD",
+        "Quantity": 19,
+        "Location": "Row 1",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3828GY",
+        "Quantity": 1,
+        "Location": "Row 1",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4230BL",
+        "Quantity": 3,
+        "Location": "Row 1",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4207BR",
+        "Quantity": 2,
+        "Location": "Row 1",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4227BL",
+        "Quantity": 1,
+        "Location": "Row 1",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4458GN",
+        "Quantity": 2,
+        "Location": "Row 1",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4468BR",
+        "Quantity": 4,
+        "Location": "Row 1",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4462GN",
+        "Quantity": 2,
+        "Location": "Row 1",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4450BK",
+        "Quantity": 1,
+        "Location": "Row 1",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4473TL",
+        "Quantity": 66,
+        "Location": "Row 1",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3382BK",
+        "Quantity": 7,
+        "Location": "Row 1",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4456BL",
+        "Quantity": 2,
+        "Location": "Row 1",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3885BK",
+        "Quantity": 1,
+        "Location": "Row 1",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3861BK",
+        "Quantity": 1,
+        "Location": "Row 1",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4614GN",
+        "Quantity": 1,
+        "Location": "Row 1",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4615GN",
+        "Quantity": 1,
+        "Location": "Row 1",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4515GY",
+        "Quantity": 20,
+        "Location": "Row 1",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4209GY",
+        "Quantity": 1,
+        "Location": "Row 1",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3882BK",
+        "Quantity": 1,
+        "Location": "Row 1",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3895BL",
+        "Quantity": 1,
+        "Location": "Row 1",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3966BL",
+        "Quantity": 1,
+        "Location": "Row 1",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3781BL",
+        "Quantity": 1,
+        "Location": "Row 1",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4448BK",
+        "Quantity": 2,
+        "Location": "Row 1",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4457GN",
+        "Quantity": 2,
+        "Location": "Row 1",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4297RD",
+        "Quantity": 3,
+        "Location": "Row 1",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4293MG",
+        "Quantity": 1,
+        "Location": "Row 1",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "07-3529BL",
+        "Quantity": 1,
+        "Location": "Row 1",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-1293BK",
+        "Quantity": 1,
+        "Location": "Row 1",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3373CL",
+        "Quantity": 1,
+        "Location": "Row 1",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "07-3641RD",
+        "Quantity": 1,
+        "Location": "Row 1",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4296RD",
+        "Quantity": 1,
+        "Location": "Row 1",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "07-3642VL",
+        "Quantity": 3,
+        "Location": "Row 1",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "07-3639GR",
+        "Quantity": 2,
+        "Location": "Row 1",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3313GY",
+        "Quantity": 1,
+        "Location": "Row 1",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3300BL",
+        "Quantity": 1,
+        "Location": "Row 1",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4294MVC",
+        "Quantity": 1,
+        "Location": "Row 1",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4627LDV",
+        "Quantity": 1,
+        "Location": "Row 1",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4430RB",
+        "Quantity": 22,
+        "Location": "Row 2",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3492BL",
+        "Quantity": 1,
+        "Location": "Row 2",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3838BK",
+        "Quantity": 1,
+        "Location": "Row 2",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4088SL",
+        "Quantity": 1,
+        "Location": "Row 2",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3807GN",
+        "Quantity": 1,
+        "Location": "Row 2",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3789BL",
+        "Quantity": 4,
+        "Location": "Row 2",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3827BL",
+        "Quantity": 3,
+        "Location": "Row 2",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "07-3674GY",
+        "Quantity": 3,
+        "Location": "Row 2",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4449BK",
+        "Quantity": 2,
+        "Location": "Row 2",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3954GY",
+        "Quantity": 1,
+        "Location": "Row 2",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3892RD",
+        "Quantity": 2,
+        "Location": "Row 2",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4573GY",
+        "Quantity": 42,
+        "Location": "Row 2",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "06-4447BL",
+        "Quantity": 2,
+        "Location": "Row 2",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4445WH",
+        "Quantity": 6,
+        "Location": "Row 2",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3934MN",
+        "Quantity": 33,
+        "Location": "Row 2",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3027CL",
+        "Quantity": 1,
+        "Location": "Row 2",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4524KW",
+        "Quantity": 1,
+        "Location": "Row 2",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4457RD",
+        "Quantity": 3,
+        "Location": "Row 2",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4032BL",
+        "Quantity": 1,
+        "Location": "Row 2",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4611GN",
+        "Quantity": 1,
+        "Location": "Row 2",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4454BL",
+        "Quantity": 1,
+        "Location": "Row 2",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4448WH",
+        "Quantity": 1,
+        "Location": "Row 2",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4617RD",
+        "Quantity": 32,
+        "Location": "Row 2",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4460GN",
+        "Quantity": 7,
+        "Location": "Row 2",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4059PD",
+        "Quantity": 1,
+        "Location": "Row 2",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4231BL",
+        "Quantity": 2,
+        "Location": "Row 2",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4076SG",
+        "Quantity": 1,
+        "Location": "Row 2",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4616RD",
+        "Quantity": 11,
+        "Location": "Row 2",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3803BL",
+        "Quantity": 19,
+        "Location": "Row 2",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4512GY",
+        "Quantity": 34,
+        "Location": "Row 3",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3927BK",
+        "Quantity": 31,
+        "Location": "Row 3",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3977GY",
+        "Quantity": 26,
+        "Location": "Row 3",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3978BL",
+        "Quantity": 18,
+        "Location": "Row 3",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "06-4585RD",
+        "Quantity": 6,
+        "Location": "Row 3",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4044BK",
+        "Quantity": 17,
+        "Location": "Row 3",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3999PD",
+        "Quantity": 33,
+        "Location": "Row 3",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4046MN",
+        "Quantity": 2,
+        "Location": "Row 3",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4069BL",
+        "Quantity": 11,
+        "Location": "Row 3",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4536BL",
+        "Quantity": 4,
+        "Location": "Row 3",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3997PD",
+        "Quantity": 25,
+        "Location": "Row 3",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "06-4562BL",
+        "Quantity": 26,
+        "Location": "Row 4",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "06-4435BK",
+        "Quantity": 82,
+        "Location": "Row 4",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3995PD",
+        "Quantity": 3,
+        "Location": "Row 4",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4258BL",
+        "Quantity": 7,
+        "Location": "Row 4",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4572GY",
+        "Quantity": 50,
+        "Location": "Row 4",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4257BL",
+        "Quantity": 4,
+        "Location": "Row 4",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4606OR",
+        "Quantity": 52,
+        "Location": "Row 4",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4455BL",
+        "Quantity": 2,
+        "Location": "Row 4",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4590BL",
+        "Quantity": 27,
+        "Location": "Row 5",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4161BL",
+        "Quantity": 43,
+        "Location": "Row 5",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4467BR",
+        "Quantity": 6,
+        "Location": "Row 5",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3031SL",
+        "Quantity": 1,
+        "Location": "Row 5",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4455SL",
+        "Quantity": 20,
+        "Location": "Row 5",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "06-4456BL",
+        "Quantity": 23,
+        "Location": "Row 5",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4466BR",
+        "Quantity": 15,
+        "Location": "Row 5",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4450BL",
+        "Quantity": 25,
+        "Location": "Row 5",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "06-4461SL",
+        "Quantity": 4,
+        "Location": "Row 5",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4565BL",
+        "Quantity": 1,
+        "Location": "Row 5",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4057PD",
+        "Quantity": 2,
+        "Location": "Row 5",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4641BK",
+        "Quantity": 16,
+        "Location": "Row 5",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3501BL",
+        "Quantity": 2,
+        "Location": "Row 5",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3872BL",
+        "Quantity": 27,
+        "Location": "Row 5",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3908GY",
+        "Quantity": 53,
+        "Location": "Row 6",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3899BL",
+        "Quantity": 6,
+        "Location": "Row 6",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3905BL",
+        "Quantity": 6,
+        "Location": "Row 6",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4547MN",
+        "Quantity": 12,
+        "Location": "Row 6",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3746GY",
+        "Quantity": 3,
+        "Location": "Row 6",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3848BK",
+        "Quantity": 5,
+        "Location": "Row 6",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4566VL",
+        "Quantity": 10,
+        "Location": "Row 6",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4470TL",
+        "Quantity": 53,
+        "Location": "Row 6",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "06-4458SL",
+        "Quantity": 28,
+        "Location": "Row 6",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "06-4451BK",
+        "Quantity": 13,
+        "Location": "Row 6",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3517BL",
+        "Quantity": 1,
+        "Location": "Row 6",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4608MN",
+        "Quantity": 2,
+        "Location": "Row 6",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4075BL",
+        "Quantity": 1,
+        "Location": "Row 7",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4068BK",
+        "Quantity": 30,
+        "Location": "Row 7",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3993PD",
+        "Quantity": 7,
+        "Location": "Row 7",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4251BK",
+        "Quantity": 5,
+        "Location": "Row 7",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4242GY",
+        "Quantity": 3,
+        "Location": "Row 7",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4461GN",
+        "Quantity": 3,
+        "Location": "Row 7",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4070BK",
+        "Quantity": 30,
+        "Location": "Row 7",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4531GY",
+        "Quantity": 8,
+        "Location": "Row 7",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4213GY",
+        "Quantity": 6,
+        "Location": "Row 7",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4473BK",
+        "Quantity": 7,
+        "Location": "Row 7",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3744BK",
+        "Quantity": 29,
+        "Location": "Row 7",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4259BL",
+        "Quantity": 3,
+        "Location": "Row 7",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4277GN",
+        "Quantity": 2,
+        "Location": "Row 7",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4199GN",
+        "Quantity": 2,
+        "Location": "Row 7",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4427RB",
+        "Quantity": 33,
+        "Location": "Row 7",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3842BR",
+        "Quantity": 5,
+        "Location": "Row 7",
+        "Warehouse": "LUDLOW",
+        "Notes": "*"
+    },
+    {
+        "SKU": "03-3842BL",
+        "Quantity": 13,
+        "Location": "Row 7",
+        "Warehouse": "LUDLOW",
+        "Notes": "*"
+    },
+    {
+        "SKU": "03-3060CL",
+        "Quantity": 3,
+        "Location": "Row 7",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4452SL",
+        "Quantity": 28,
+        "Location": "Row 7",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "06-4607OR",
+        "Quantity": 22,
+        "Location": "Row 8",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4066BK",
+        "Quantity": 16,
+        "Location": "Row 8",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3859BL",
+        "Quantity": 10,
+        "Location": "Row 8",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4040BK",
+        "Quantity": 33,
+        "Location": "Row 8",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3767MN",
+        "Quantity": 6,
+        "Location": "Row 8",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4254BK",
+        "Quantity": 2,
+        "Location": "Row 8",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4485BL",
+        "Quantity": 39,
+        "Location": "Row 8",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "06-4563BL",
+        "Quantity": 57,
+        "Location": "Row 8",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4464BR",
+        "Quantity": 8,
+        "Location": "Row 8",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3502BL",
+        "Quantity": 3,
+        "Location": "Row 8",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3516BL",
+        "Quantity": 2,
+        "Location": "Row 8",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3062CL",
+        "Quantity": 4,
+        "Location": "Row 8",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3058CL",
+        "Quantity": 3,
+        "Location": "Row 8",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-2540WH",
+        "Quantity": 2,
+        "Location": "Row 8",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3793PD",
+        "Quantity": 22,
+        "Location": "Row 9",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3901BL",
+        "Quantity": 38,
+        "Location": "Row 9",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3960GY",
+        "Quantity": 10,
+        "Location": "Row 9",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4200GN",
+        "Quantity": 4,
+        "Location": "Row 9",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4261BR",
+        "Quantity": 7,
+        "Location": "Row 9",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3988TL",
+        "Quantity": 27,
+        "Location": "Row 9",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3992BL",
+        "Quantity": 14,
+        "Location": "Row 9",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3965BL",
+        "Quantity": 30,
+        "Location": "Row 9",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4056BL",
+        "Quantity": 3,
+        "Location": "Row 9",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4011SL",
+        "Quantity": 14,
+        "Location": "Row 9",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3985GY",
+        "Quantity": 27,
+        "Location": "Row 9",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4054BL",
+        "Quantity": 1,
+        "Location": "Row 9",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4528GY",
+        "Quantity": 24,
+        "Location": "Row 10",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4530GY",
+        "Quantity": 15,
+        "Location": "Row 10",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4529GY",
+        "Quantity": 27,
+        "Location": "Row 10",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4250BK",
+        "Quantity": 4,
+        "Location": "Row 10",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4533BL",
+        "Quantity": 16,
+        "Location": "Row 10",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3764BK",
+        "Quantity": 3,
+        "Location": "Row 10",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4253BK",
+        "Quantity": 23,
+        "Location": "Row 10",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4545MN",
+        "Quantity": 12,
+        "Location": "Row 10",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3980BL",
+        "Quantity": 20,
+        "Location": "Row 10",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3969BL",
+        "Quantity": 2,
+        "Location": "Row 10",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4052BL",
+        "Quantity": 3,
+        "Location": "Row 10",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4051PD",
+        "Quantity": 5,
+        "Location": "Row 10",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4058BL",
+        "Quantity": 14,
+        "Location": "Row 10",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4370BL",
+        "Quantity": 22,
+        "Location": "Row 10",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "06-4515BK",
+        "Quantity": 44,
+        "Location": "Row 11",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4085BK",
+        "Quantity": 35,
+        "Location": "Row 11",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "06-4586BL",
+        "Quantity": 22,
+        "Location": "Row 11",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4067BL",
+        "Quantity": 30,
+        "Location": "Row 11",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3912GY",
+        "Quantity": 29,
+        "Location": "Row 11",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4212GY",
+        "Quantity": 17,
+        "Location": "Row 11",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4023SL",
+        "Quantity": 2,
+        "Location": "Row 11",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4523BK",
+        "Quantity": 3,
+        "Location": "Row 11",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3754GY",
+        "Quantity": 4,
+        "Location": "Row 11",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3750GY",
+        "Quantity": 1,
+        "Location": "Row 11",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3846BL",
+        "Quantity": 11,
+        "Location": "Row 11",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4457BK",
+        "Quantity": 15,
+        "Location": "Row 11",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3853GY",
+        "Quantity": 22,
+        "Location": "Row 12",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "06-4588BL",
+        "Quantity": 32,
+        "Location": "Row 12",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4463BR",
+        "Quantity": 5,
+        "Location": "Row 12",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3846BR",
+        "Quantity": 5,
+        "Location": "Row 12",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3917BR",
+        "Quantity": 5,
+        "Location": "Row 12",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3817GY",
+        "Quantity": 2,
+        "Location": "Row 12",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4201GN",
+        "Quantity": 3,
+        "Location": "Row 12",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3994BL",
+        "Quantity": 16,
+        "Location": "Row 12",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3852GY",
+        "Quantity": 31,
+        "Location": "Row 12",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4203BR",
+        "Quantity": 2,
+        "Location": "Row 12",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4208GY",
+        "Quantity": 1,
+        "Location": "Row 12",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3718GY",
+        "Quantity": 1,
+        "Location": "Row 12",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3856GY",
+        "Quantity": 9,
+        "Location": "Row 12",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3855GY",
+        "Quantity": 23,
+        "Location": "Row 12",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3836BK",
+        "Quantity": 47,
+        "Location": "Row 12",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4465BR",
+        "Quantity": 114,
+        "Location": "Row 12",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3681GY",
+        "Quantity": 2,
+        "Location": "Row 12",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3719GY",
+        "Quantity": 1,
+        "Location": "Row 12",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "07-3690BL",
+        "Quantity": 96,
+        "Location": "Row 13",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4517BL",
+        "Quantity": 51,
+        "Location": "Row 14",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3779RD",
+        "Quantity": 98,
+        "Location": "Row 14",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "07-3675BK",
+        "Quantity": 1,
+        "Location": "Row 14",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4562BL",
+        "Quantity": 25,
+        "Location": "Row 15",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3857BL",
+        "Quantity": 27,
+        "Location": "Row 15",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4376GN",
+        "Quantity": 7,
+        "Location": "Row 15",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4534BL",
+        "Quantity": 7,
+        "Location": "Row 15",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3730BL",
+        "Quantity": 13,
+        "Location": "Row 15",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4375GN",
+        "Quantity": 23,
+        "Location": "Row 15",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3753BL",
+        "Quantity": 10,
+        "Location": "Row 15",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3947BL",
+        "Quantity": 3,
+        "Location": "Row 15",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4527GY",
+        "Quantity": 10,
+        "Location": "Row 15",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4546MN",
+        "Quantity": 24,
+        "Location": "Row 15",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4889GY",
+        "Quantity": 54,
+        "Location": "Row 16",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4532BL",
+        "Quantity": 6,
+        "Location": "Row 16",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4514GY",
+        "Quantity": 26,
+        "Location": "Row 16",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "07-3673BK",
+        "Quantity": 16,
+        "Location": "Row 16",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3778BK",
+        "Quantity": 27,
+        "Location": "Row 16",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3777RD",
+        "Quantity": 6,
+        "Location": "Row 16",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3919GN",
+        "Quantity": 7,
+        "Location": "Row 16",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4516KW",
+        "Quantity": 32,
+        "Location": "Row 16",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "06-4582BL",
+        "Quantity": 41,
+        "Location": "Row 17",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4241GY",
+        "Quantity": 12,
+        "Location": "Row 17",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3854GY",
+        "Quantity": 15,
+        "Location": "Row 17",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "06-4454BK",
+        "Quantity": 44,
+        "Location": "Row 17",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4564BL",
+        "Quantity": 12,
+        "Location": "Row 17",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4604OR",
+        "Quantity": 24,
+        "Location": "Row 17",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "07-3685VL",
+        "Quantity": 4,
+        "Location": "Row 18",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "06-4284TL",
+        "Quantity": 153,
+        "Location": "Row 18",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "07-3671SG",
+        "Quantity": 27,
+        "Location": "Row 19",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "07-3692BL",
+        "Quantity": 10,
+        "Location": "Row 19",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "07-3664PK",
+        "Quantity": 86,
+        "Location": "Row 19",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "07-3697BK",
+        "Quantity": 15,
+        "Location": "Row 19",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "07-3698GN",
+        "Quantity": 10,
+        "Location": "Row 19",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "07-3686BK",
+        "Quantity": 16,
+        "Location": "Row 19",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "07-3629RD",
+        "Quantity": 17,
+        "Location": "Row 19",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "07-3672SG",
+        "Quantity": 28,
+        "Location": "Row 19",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "07-3680PD",
+        "Quantity": 3,
+        "Location": "Row 19",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "07-3663BL",
+        "Quantity": 78,
+        "Location": "Row 19B",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "07-3689WH",
+        "Quantity": 70,
+        "Location": "Row 19B",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "07-3682BK",
+        "Quantity": 9,
+        "Location": "Row 19B",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "07-3684BL",
+        "Quantity": 17,
+        "Location": "Row 19B",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3928BL",
+        "Quantity": 60,
+        "Location": "Row 20",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4091SL",
+        "Quantity": 28,
+        "Location": "Row 20",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3910GY",
+        "Quantity": 47,
+        "Location": "Row 20",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4037BK",
+        "Quantity": 57,
+        "Location": "Row 20",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4094BL",
+        "Quantity": 27,
+        "Location": "Row 20",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4041BL",
+        "Quantity": 18,
+        "Location": "Row 20",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4083BK",
+        "Quantity": 60,
+        "Location": "Row 21",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3922BL",
+        "Quantity": 54,
+        "Location": "Row 21",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3924BL",
+        "Quantity": 37,
+        "Location": "Row 21",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3933BK",
+        "Quantity": 89,
+        "Location": "Row 21",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3981GY",
+        "Quantity": 16,
+        "Location": "Row 22",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4535GY",
+        "Quantity": 13,
+        "Location": "Row 22",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4083BK",
+        "Quantity": 4,
+        "Location": "Row 22",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3956GY",
+        "Quantity": 28,
+        "Location": "Row 22",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4005MN",
+        "Quantity": 2,
+        "Location": "Row 22",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3987GY",
+        "Quantity": 48,
+        "Location": "Row 22",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3964GY",
+        "Quantity": 25,
+        "Location": "Row 22",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4248GY",
+        "Quantity": 8,
+        "Location": "Row 22",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4010BK",
+        "Quantity": 2,
+        "Location": "Row 22",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4240GY",
+        "Quantity": 9,
+        "Location": "Row 22",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4372BL",
+        "Quantity": 7,
+        "Location": "Row 22",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3844BR",
+        "Quantity": 7,
+        "Location": "Row 22",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3979GY",
+        "Quantity": 20,
+        "Location": "Row 22",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4009SL",
+        "Quantity": 14,
+        "Location": "Row 22",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3760RD",
+        "Quantity": 1,
+        "Location": "Row 22",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3955GN",
+        "Quantity": 22,
+        "Location": "Row 22",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3983GY",
+        "Quantity": 25,
+        "Location": "Row 23",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3727BK",
+        "Quantity": 6,
+        "Location": "Row 23",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4001PD",
+        "Quantity": 8,
+        "Location": "Row 23",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3742BK",
+        "Quantity": 26,
+        "Location": "Row 23",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3976BL",
+        "Quantity": 28,
+        "Location": "Row 23",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4086SL",
+        "Quantity": 28,
+        "Location": "Row 23",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4544BL",
+        "Quantity": 6,
+        "Location": "Row 23",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3904GY",
+        "Quantity": 11,
+        "Location": "Row 23",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3936MN",
+        "Quantity": 26,
+        "Location": "Row 23",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3840BK",
+        "Quantity": 16,
+        "Location": "Row 23",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3937BL",
+        "Quantity": 1,
+        "Location": "Row 23",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4538BL",
+        "Quantity": 10,
+        "Location": "Row 23",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3868BL",
+        "Quantity": 61,
+        "Location": "Row 23",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4516BL",
+        "Quantity": 25,
+        "Location": "Row 24",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3805BL",
+        "Quantity": 18,
+        "Location": "Row 24",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3837BK",
+        "Quantity": 29,
+        "Location": "Row 24",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4090BL",
+        "Quantity": 12,
+        "Location": "Row 24",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4605OR",
+        "Quantity": 40,
+        "Location": "Row 24",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4028BL",
+        "Quantity": 2,
+        "Location": "Row 24",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4037BK",
+        "Quantity": 19,
+        "Location": "Row 24",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4036BR",
+        "Quantity": 7,
+        "Location": "Row 24",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3958GY",
+        "Quantity": 12,
+        "Location": "Row 24",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3843BR",
+        "Quantity": 6,
+        "Location": "Row 24",
+        "Warehouse": "LUDLOW",
+        "Notes": "*"
+    },
+    {
+        "SKU": "03-3843BL",
+        "Quantity": 10,
+        "Location": "Row 24",
+        "Warehouse": "LUDLOW",
+        "Notes": "*"
+    },
+    {
+        "SKU": "03-4093SL",
+        "Quantity": 24,
+        "Location": "Row 24",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3990TL",
+        "Quantity": 12,
+        "Location": "Row 24",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3998BL",
+        "Quantity": 18,
+        "Location": "Row 24",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3773RD",
+        "Quantity": 9,
+        "Location": "Row 25",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3903BL",
+        "Quantity": 2,
+        "Location": "Row 25",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4263BR",
+        "Quantity": 12,
+        "Location": "Row 25",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4453BL",
+        "Quantity": 25,
+        "Location": "Row 25",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4025GY",
+        "Quantity": 26,
+        "Location": "Row 25",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4541GY",
+        "Quantity": 20,
+        "Location": "Row 25",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3850BL",
+        "Quantity": 14,
+        "Location": "Row 25",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3851BL",
+        "Quantity": 7,
+        "Location": "Row 25",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4265BR",
+        "Quantity": 7,
+        "Location": "Row 25",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3971MN",
+        "Quantity": 31,
+        "Location": "Row 25",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3877GY",
+        "Quantity": 8,
+        "Location": "Row 25",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3736BK",
+        "Quantity": 18,
+        "Location": "Row 25",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3953GN",
+        "Quantity": 16,
+        "Location": "Row 25",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3930BL",
+        "Quantity": 21,
+        "Location": "Row 25",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4026BL",
+        "Quantity": 1,
+        "Location": "Row 25",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4507BK",
+        "Quantity": 24,
+        "Location": "Row 26",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3834BL",
+        "Quantity": 6,
+        "Location": "Row 26",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3848BL",
+        "Quantity": 16,
+        "Location": "Row 26",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4079BK",
+        "Quantity": 10,
+        "Location": "Row 26",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3791PD",
+        "Quantity": 7,
+        "Location": "Row 26",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4539GY",
+        "Quantity": 29,
+        "Location": "Row 26",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3825GY",
+        "Quantity": 3,
+        "Location": "Row 26",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3745GN",
+        "Quantity": 11,
+        "Location": "Row 26",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3986TL",
+        "Quantity": 25,
+        "Location": "Row 26",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4542BL",
+        "Quantity": 13,
+        "Location": "Row 26",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4519BK",
+        "Quantity": 10,
+        "Location": "Row 26",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4210GY",
+        "Quantity": 1,
+        "Location": "Row 26",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4475BL",
+        "Quantity": 4,
+        "Location": "Row 26",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4249GY",
+        "Quantity": 2,
+        "Location": "Row 26",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3911MN",
+        "Quantity": 3,
+        "Location": "Row 26",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4540BL",
+        "Quantity": 26,
+        "Location": "Row 26",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3771RD",
+        "Quantity": 40,
+        "Location": "Row 26",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4094BL",
+        "Quantity": 30,
+        "Location": "Row 27",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4080SL",
+        "Quantity": 28,
+        "Location": "Row 27",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3886RD",
+        "Quantity": 5,
+        "Location": "Row 27",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4091SL",
+        "Quantity": 13,
+        "Location": "Row 27",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4081BK",
+        "Quantity": 27,
+        "Location": "Row 27",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3925BK",
+        "Quantity": 15,
+        "Location": "Row 27",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4214BR",
+        "Quantity": 1,
+        "Location": "Row 27",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4260BR",
+        "Quantity": 11,
+        "Location": "Row 27",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3931BK",
+        "Quantity": 30,
+        "Location": "Row 27",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3916BR",
+        "Quantity": 16,
+        "Location": "Row 27",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4464BL",
+        "Quantity": 3,
+        "Location": "Row 27",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3918GN",
+        "Quantity": 11,
+        "Location": "Row 27",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4511GY",
+        "Quantity": 4,
+        "Location": "Row 27",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4371BL",
+        "Quantity": 25,
+        "Location": "Row 27",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4513GY",
+        "Quantity": 33,
+        "Location": "Row 28",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4246GY",
+        "Quantity": 4,
+        "Location": "Row 28",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3996BL",
+        "Quantity": 3,
+        "Location": "Row 28",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3913BR",
+        "Quantity": 11,
+        "Location": "Row 28",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3740BK",
+        "Quantity": 26,
+        "Location": "Row 28",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3802BL",
+        "Quantity": 14,
+        "Location": "Row 28",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3787BL",
+        "Quantity": 8,
+        "Location": "Row 28",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3743GN",
+        "Quantity": 31,
+        "Location": "Row 28",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4006BL",
+        "Quantity": 11,
+        "Location": "Row 28",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4537GY",
+        "Quantity": 28,
+        "Location": "Row 28",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3864BK",
+        "Quantity": 10,
+        "Location": "Row 28",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3845BL",
+        "Quantity": 4,
+        "Location": "Row 28",
+        "Warehouse": "LUDLOW",
+        "Notes": "*"
+    },
+    {
+        "SKU": "03-3845BR",
+        "Quantity": 5,
+        "Location": "Row 28",
+        "Warehouse": "LUDLOW",
+        "Notes": "*"
+    },
+    {
+        "SKU": "03-3755BL",
+        "Quantity": 5,
+        "Location": "Row 28",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3982BL",
+        "Quantity": 25,
+        "Location": "Row 28",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "06-4635OR",
+        "Quantity": 4,
+        "Location": "Row 28",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4612PK",
+        "Quantity": 1,
+        "Location": "Row 28",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3898GY",
+        "Quantity": 16,
+        "Location": "Row 28",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3962GY",
+        "Quantity": 27,
+        "Location": "Row 29",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3788BL",
+        "Quantity": 15,
+        "Location": "Row 29",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3923BK",
+        "Quantity": 2,
+        "Location": "Row 29",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3900GY",
+        "Quantity": 1,
+        "Location": "Row 29",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4438BK",
+        "Quantity": 38,
+        "Location": "Row 29",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3804BL",
+        "Quantity": 22,
+        "Location": "Row 29",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3787BL",
+        "Quantity": 8,
+        "Location": "Row 29",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3841BK",
+        "Quantity": 1,
+        "Location": "Row 29",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3873BL",
+        "Quantity": 13,
+        "Location": "Row 29",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3751BL",
+        "Quantity": 17,
+        "Location": "Row 29",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3752GY",
+        "Quantity": 2,
+        "Location": "Row 29",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4640GN",
+        "Quantity": 13,
+        "Location": "Row 29",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4002BL",
+        "Quantity": 17,
+        "Location": "Row 29",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3935BK",
+        "Quantity": 24,
+        "Location": "Row 29",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4543GY",
+        "Quantity": 7,
+        "Location": "Row 29",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3989GY",
+        "Quantity": 6,
+        "Location": "Row 29",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4568BK",
+        "Quantity": 3,
+        "Location": "Row 29",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4159BL",
+        "Quantity": 41,
+        "Location": "Row 29",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3770BK",
+        "Quantity": 16,
+        "Location": "Row 30",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3772BK",
+        "Quantity": 2,
+        "Location": "Row 30",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3921BK",
+        "Quantity": 32,
+        "Location": "Row 30",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4264BR",
+        "Quantity": 10,
+        "Location": "Row 30",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3932MN",
+        "Quantity": 11,
+        "Location": "Row 30",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4369BL",
+        "Quantity": 5,
+        "Location": "Row 30",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4639GN",
+        "Quantity": 19,
+        "Location": "Row 30",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "06-4637OR",
+        "Quantity": 26,
+        "Location": "Row 30",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4266BK",
+        "Quantity": 4,
+        "Location": "Row 30",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4638BK",
+        "Quantity": 47,
+        "Location": "Row 30",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "06-4636BK",
+        "Quantity": 17,
+        "Location": "Row 30",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4482BL",
+        "Quantity": 9,
+        "Location": "Row 30",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4041BL",
+        "Quantity": 30,
+        "Location": "Row 30",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3726RD",
+        "Quantity": 54,
+        "Location": "Row 31",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4038BL",
+        "Quantity": 59,
+        "Location": "Row 31",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3792RD",
+        "Quantity": 13,
+        "Location": "Row 31",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3839BK",
+        "Quantity": 11,
+        "Location": "Row 31",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3810GN",
+        "Quantity": 3,
+        "Location": "Row 31",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4229BL",
+        "Quantity": 5,
+        "Location": "Row 31",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4228BL",
+        "Quantity": 5,
+        "Location": "Row 31",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4211GY",
+        "Quantity": 10,
+        "Location": "Row 31",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4024BL",
+        "Quantity": 33,
+        "Location": "Row 31",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4003MN",
+        "Quantity": 2,
+        "Location": "Row 31",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3847BL",
+        "Quantity": 3,
+        "Location": "Row 31",
+        "Warehouse": "LUDLOW",
+        "Notes": "*"
+    },
+    {
+        "SKU": "03-3847BK",
+        "Quantity": 10,
+        "Location": "Row 31",
+        "Warehouse": "LUDLOW",
+        "Notes": "*"
+    },
+    {
+        "SKU": "03-3796RD",
+        "Quantity": 7,
+        "Location": "Row 31",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3871BL",
+        "Quantity": 48,
+        "Location": "Row 31",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3724RD",
+        "Quantity": 18,
+        "Location": "Row 32",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3875BL",
+        "Quantity": 2,
+        "Location": "Row 32",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4029GY",
+        "Quantity": 1,
+        "Location": "Row 32",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3766BK",
+        "Quantity": 8,
+        "Location": "Row 32",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3738BK",
+        "Quantity": 24,
+        "Location": "Row 32",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4034BK",
+        "Quantity": 26,
+        "Location": "Row 32",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3731GY",
+        "Quantity": 24,
+        "Location": "Row 32",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3729GY",
+        "Quantity": 27,
+        "Location": "Row 32",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3732BL",
+        "Quantity": 60,
+        "Location": "Row 32",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4039BR",
+        "Quantity": 35,
+        "Location": "Row 32",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3799PD",
+        "Quantity": 0,
+        "Location": "Row 32",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4374GN",
+        "Quantity": 18,
+        "Location": "Row 32",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3733GY",
+        "Quantity": 83,
+        "Location": "Row 33",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3957GN",
+        "Quantity": 9,
+        "Location": "Row 33",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3801PD",
+        "Quantity": 1,
+        "Location": "Row 33",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3790RD",
+        "Quantity": 3,
+        "Location": "Row 33",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3858BL",
+        "Quantity": 14,
+        "Location": "Row 33",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3795PD",
+        "Quantity": 26,
+        "Location": "Row 33",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4247GY",
+        "Quantity": 9,
+        "Location": "Row 33",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3735GY",
+        "Quantity": 40,
+        "Location": "Row 33",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3734BL",
+        "Quantity": 76,
+        "Location": "Row 33",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3747BL",
+        "Quantity": 1,
+        "Location": "Row 33",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3824GY",
+        "Quantity": 1,
+        "Location": "Row 33",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3737GN",
+        "Quantity": 1,
+        "Location": "Row 33",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3681GY",
+        "Quantity": 11,
+        "Location": "Row 34",
+        "Warehouse": "LUDLOW",
+        "Notes": "P"
+    },
+    {
+        "SKU": "03-3676BL",
+        "Quantity": 11,
+        "Location": "Row 34",
+        "Warehouse": "LUDLOW",
+        "Notes": "P"
+    },
+    {
+        "SKU": "03-3674BL",
+        "Quantity": 1,
+        "Location": "Row 34",
+        "Warehouse": "LUDLOW",
+        "Notes": "P"
+    },
+    {
+        "SKU": "03-3697BL",
+        "Quantity": 1,
+        "Location": "Row 34",
+        "Warehouse": "LUDLOW",
+        "Notes": "P"
+    },
+    {
+        "SKU": "03-3648OR",
+        "Quantity": 1,
+        "Location": "Row 34",
+        "Warehouse": "LUDLOW",
+        "Notes": "P"
+    },
+    {
+        "SKU": "03-3652GN",
+        "Quantity": 1,
+        "Location": "Row 34",
+        "Warehouse": "LUDLOW",
+        "Notes": "P"
+    },
+    {
+        "SKU": "03-3682GY",
+        "Quantity": 6,
+        "Location": "Row 34",
+        "Warehouse": "LUDLOW",
+        "Notes": "P"
+    },
+    {
+        "SKU": "03-4239GY",
+        "Quantity": 8,
+        "Location": "Row 34",
+        "Warehouse": "LUDLOW",
+        "Notes": "P"
+    },
+    {
+        "SKU": "03-3646OR",
+        "Quantity": 2,
+        "Location": "Row 34",
+        "Warehouse": "LUDLOW",
+        "Notes": "P"
+    },
+    {
+        "SKU": "03-3700BK",
+        "Quantity": 13,
+        "Location": "Row 34",
+        "Warehouse": "LUDLOW",
+        "Notes": "P"
+    },
+    {
+        "SKU": "03-3653GY",
+        "Quantity": 1,
+        "Location": "Row 34",
+        "Warehouse": "LUDLOW",
+        "Notes": "P"
+    },
+    {
+        "SKU": "03-3702BK",
+        "Quantity": 10,
+        "Location": "Row 34",
+        "Warehouse": "LUDLOW",
+        "Notes": "P"
+    },
+    {
+        "SKU": "03-3696BK",
+        "Quantity": 3,
+        "Location": "Row 34",
+        "Warehouse": "LUDLOW",
+        "Notes": "P"
+    },
+    {
+        "SKU": "03-3661BK",
+        "Quantity": 3,
+        "Location": "Row 34",
+        "Warehouse": "LUDLOW",
+        "Notes": "P"
+    },
+    {
+        "SKU": "03-3660BK",
+        "Quantity": 13,
+        "Location": "Row 34",
+        "Warehouse": "LUDLOW",
+        "Notes": "P"
+    },
+    {
+        "SKU": "03-3647OR",
+        "Quantity": 3,
+        "Location": "Row 34",
+        "Warehouse": "LUDLOW",
+        "Notes": "P"
+    },
+    {
+        "SKU": "03-3659BK",
+        "Quantity": 7,
+        "Location": "Row 34",
+        "Warehouse": "LUDLOW",
+        "Notes": "P"
+    },
+    {
+        "SKU": "03-3656GY",
+        "Quantity": 5,
+        "Location": "Row 34",
+        "Warehouse": "LUDLOW",
+        "Notes": "P"
+    },
+    {
+        "SKU": "03-3680GY",
+        "Quantity": 3,
+        "Location": "Row 34",
+        "Warehouse": "LUDLOW",
+        "Notes": "P"
+    },
+    {
+        "SKU": "03-3677BL",
+        "Quantity": 12,
+        "Location": "Row 34",
+        "Warehouse": "LUDLOW",
+        "Notes": "P"
+    },
+    {
+        "SKU": "03-3701GY",
+        "Quantity": 5,
+        "Location": "Row 34",
+        "Warehouse": "LUDLOW",
+        "Notes": "P *"
+    },
+    {
+        "SKU": "03-3701BL",
+        "Quantity": 2,
+        "Location": "Row 34",
+        "Warehouse": "LUDLOW",
+        "Notes": "P *"
+    },
+    {
+        "SKU": "03-3651GN",
+        "Quantity": 2,
+        "Location": "Row 34",
+        "Warehouse": "LUDLOW",
+        "Notes": "P"
+    },
+    {
+        "SKU": "03-3673RD",
+        "Quantity": 1,
+        "Location": "Row 34",
+        "Warehouse": "LUDLOW",
+        "Notes": "P"
+    },
+    {
+        "SKU": "03-3699GY",
+        "Quantity": 10,
+        "Location": "Row 34",
+        "Warehouse": "LUDLOW",
+        "Notes": "P *"
+    },
+    {
+        "SKU": "03-3679GY",
+        "Quantity": 1,
+        "Location": "Row 34",
+        "Warehouse": "LUDLOW",
+        "Notes": "P"
+    },
+    {
+        "SKU": "03-3699BL",
+        "Quantity": 4,
+        "Location": "Row 34",
+        "Warehouse": "LUDLOW",
+        "Notes": "P *"
+    },
+    {
+        "SKU": "03-3684BR",
+        "Quantity": 15,
+        "Location": "Row 34",
+        "Warehouse": "LUDLOW",
+        "Notes": "P"
+    },
+    {
+        "SKU": "03-3655GY",
+        "Quantity": 11,
+        "Location": "Row 34",
+        "Warehouse": "LUDLOW",
+        "Notes": "P"
+    },
+    {
+        "SKU": "03-3768BL",
+        "Quantity": 18,
+        "Location": "Row 34",
+        "Warehouse": "LUDLOW",
+        "Notes": "2P"
+    },
+    {
+        "SKU": "03-4513GY",
+        "Quantity": 18,
+        "Location": "Row 34",
+        "Warehouse": "LUDLOW",
+        "Notes": "2P"
+    },
+    {
+        "SKU": "03-3935BK",
+        "Quantity": 16,
+        "Location": "Row 34",
+        "Warehouse": "LUDLOW",
+        "Notes": "2P"
+    },
+    {
+        "SKU": "06-4588BL",
+        "Quantity": 18,
+        "Location": "Row 34",
+        "Warehouse": "LUDLOW",
+        "Notes": "2P"
+    },
+    {
+        "SKU": "03-4068BK",
+        "Quantity": 18,
+        "Location": "Row 34",
+        "Warehouse": "LUDLOW",
+        "Notes": "2P"
+    },
+    {
+        "SKU": "03-3743GN",
+        "Quantity": 18,
+        "Location": "Row 34",
+        "Warehouse": "LUDLOW",
+        "Notes": "2P"
+    },
+    {
+        "SKU": "03-3738BK",
+        "Quantity": 18,
+        "Location": "Row 34",
+        "Warehouse": "LUDLOW",
+        "Notes": "2P"
+    },
+    {
+        "SKU": "03-3935BK",
+        "Quantity": 15,
+        "Location": "Row 34",
+        "Warehouse": "LUDLOW",
+        "Notes": "2P"
+    },
+    {
+        "SKU": "03-4040BK",
+        "Quantity": 17,
+        "Location": "Row 34",
+        "Warehouse": "LUDLOW",
+        "Notes": "2P"
+    },
+    {
+        "SKU": "03-3927BK",
+        "Quantity": 17,
+        "Location": "Row 34",
+        "Warehouse": "LUDLOW",
+        "Notes": "2P"
+    },
+    {
+        "SKU": "03-3769BL",
+        "Quantity": 18,
+        "Location": "Row 34",
+        "Warehouse": "LUDLOW",
+        "Notes": "2P"
+    },
+    {
+        "SKU": "03-4890BL",
+        "Quantity": 96,
+        "Location": "Row 41",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4584BL",
+        "Quantity": 193,
+        "Location": "Row 41",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3984BL",
+        "Quantity": 90,
+        "Location": "Row 41",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3769BL",
+        "Quantity": 89,
+        "Location": "Row 41",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4894BL",
+        "Quantity": 70,
+        "Location": "Row 41",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4084SL",
+        "Quantity": 75,
+        "Location": "Row 41",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4066BK",
+        "Quantity": 78,
+        "Location": "Row 41",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4066BK",
+        "Quantity": 78,
+        "Location": "Row 41",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3768BL",
+        "Quantity": 112,
+        "Location": "Row 41",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4072BK",
+        "Quantity": 25,
+        "Location": "Row 44",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4035BL",
+        "Quantity": 27,
+        "Location": "Row 44",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "06-4652BK",
+        "Quantity": 29,
+        "Location": "Row 45",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3794RD",
+        "Quantity": 17,
+        "Location": "Row 45",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3685BR",
+        "Quantity": 9,
+        "Location": "Row 45",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3689BL",
+        "Quantity": 28,
+        "Location": "Row 45",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3688BL",
+        "Quantity": 23,
+        "Location": "Row 45",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3690BL",
+        "Quantity": 11,
+        "Location": "Row 45",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "06-4654PU",
+        "Quantity": 30,
+        "Location": "Row 46",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "06-4655YL",
+        "Quantity": 16,
+        "Location": "Row 46",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3161GY",
+        "Quantity": 1,
+        "Location": "Row 46",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3654GY",
+        "Quantity": 17,
+        "Location": "Row 47",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3698BK",
+        "Quantity": 14,
+        "Location": "Row 47",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-3929BK",
+        "Quantity": 22,
+        "Location": "Row 47",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3928BL",
+        "Quantity": 12,
+        "Location": "Row 47",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3922BL",
+        "Quantity": 19,
+        "Location": "Row 47",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-3926BL",
+        "Quantity": 45,
+        "Location": "Row 51",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4069BL",
+        "Quantity": 60,
+        "Location": "Row 51",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4071BL",
+        "Quantity": 62,
+        "Location": "Row 51",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4082SL",
+        "Quantity": 53,
+        "Location": "Row 51",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4065BL",
+        "Quantity": 64,
+        "Location": "Row 51",
+        "Warehouse": "LUDLOW",
+        "Notes": "T"
+    },
+    {
+        "SKU": "03-4158GN",
+        "Quantity": 36,
+        "Location": "Row 51",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4252BK",
+        "Quantity": 14,
+        "Location": "Row 51",
+        "Warehouse": "LUDLOW"
+    },
+    {
+        "SKU": "03-4160GN",
+        "Quantity": 45,
+        "Location": "Row 51",
+        "Warehouse": "LUDLOW"
+    }
+]
