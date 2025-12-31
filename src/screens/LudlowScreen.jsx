@@ -4,7 +4,7 @@ import { SearchInput } from '../components/ui/SearchInput';
 import { InventoryCard } from '../features/inventory/components/InventoryCard';
 import { InventoryModal } from '../features/inventory/components/InventoryModal';
 import { naturalSort } from '../utils/sortUtils';
-import { Plus } from 'lucide-react';
+import { Plus, Warehouse } from 'lucide-react';
 
 export const LudlowScreen = () => {
     const { ludlowData, updateLudlowQuantity, addItem, updateItem, deleteItem, loading } = useInventory();
@@ -75,7 +75,8 @@ export const LudlowScreen = () => {
             <div className="p-4 space-y-6">
                 {sortedLocations.map(location => (
                     <div key={location}>
-                        <h2 className="text-green-400 text-sm font-bold uppercase tracking-wider mb-2 border-b border-neutral-800 pb-1 sticky top-20 bg-neutral-950/90 py-1 z-30">
+                        <h2 className="text-white text-2xl font-black uppercase tracking-tighter mb-4 border-b-2 border-green-500/50 pb-2 sticky top-[72px] bg-neutral-950/95 py-2 z-30 flex items-center gap-2">
+                            <Warehouse className="text-green-400" size={20} />
                             {location}
                         </h2>
                         <div className="space-y-3">

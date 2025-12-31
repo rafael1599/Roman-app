@@ -4,7 +4,7 @@ import { SearchInput } from '../components/ui/SearchInput';
 import { InventoryCard } from '../features/inventory/components/InventoryCard';
 import { InventoryModal } from '../features/inventory/components/InventoryModal';
 import { naturalSort } from '../utils/sortUtils';
-import { Plus } from 'lucide-react';
+import { Plus, Warehouse } from 'lucide-react';
 
 export const AtsScreen = () => {
     const { atsData, updateAtsQuantity, addItem, updateItem, deleteItem, loading } = useInventory();
@@ -65,32 +65,48 @@ export const AtsScreen = () => {
         });
     }, [atsData, search]);
 
+    const groupedData = useMemo(() => {
+        const groups = {};
+        filteredData.forEach(item => {
+            const loc = item.Location || 'Unknown Location';
+            if (!groups[loc]) groups[loc] = [];
+            groups[loc].push(item);
+        });
+        return groups;
+    }, [filteredData]);
+
+    const sortedLocations = useMemo(() => Object.keys(groupedData).sort(naturalSort), [groupedData]);
+
     if (loading) return <div className="p-8 text-center text-neutral-500">Loading Inventory...</div>;
 
     return (
         <div className="pb-4 relative">
             <SearchInput value={search} onChange={setSearch} placeholder="Search ATS SKU, Loc, Detail..." />
 
-            <div className="p-4 space-y-3">
-                {/* ATS - requirement says "Agrupar por Location (si aplica) o mostrar lista plana optimizada" 
-            Given high density and "Location_Detail", a flat list sorted by location might be better 
-            or grouped. Let's stick to flat list for now but grouped by main location if possible.
-            Actually, let's just list them, emphasizing Location_Detail.
-        */}
-                {filteredData.map((item, idx) => (
-                    <InventoryCard
-                        key={`${item.SKU}-${idx}`}
-                        sku={item.SKU}
-                        quantity={item.Quantity}
-                        location={item.Location}
-                        detail={item.Location_Detail}
-                        onIncrement={() => updateAtsQuantity(item.SKU, 1, item.Location)}
-                        onDecrement={() => updateAtsQuantity(item.SKU, -1, item.Location)}
-                        onClick={() => handleEditItem(item)}
-                    />
+            <div className="p-4 space-y-6">
+                {sortedLocations.map(location => (
+                    <div key={location}>
+                        <h2 className="text-white text-2xl font-black uppercase tracking-tighter mb-4 border-b-2 border-blue-500/50 pb-2 sticky top-[72px] bg-neutral-950/95 py-2 z-30 flex items-center gap-2">
+                            <Warehouse className="text-blue-400" size={20} />
+                            {location}
+                        </h2>
+                        <div className="space-y-3">
+                            {groupedData[location].map((item, idx) => (
+                                <InventoryCard
+                                    key={`${item.SKU}-${idx}`}
+                                    sku={item.SKU}
+                                    quantity={item.Quantity}
+                                    onIncrement={() => updateAtsQuantity(item.SKU, 1, item.Location)}
+                                    onDecrement={() => updateAtsQuantity(item.SKU, -1, item.Location)}
+                                    detail={item.Location_Detail}
+                                    onClick={() => handleEditItem(item)}
+                                />
+                            ))}
+                        </div>
+                    </div>
                 ))}
 
-                {filteredData.length === 0 && (
+                {sortedLocations.length === 0 && (
                     <div className="text-center text-neutral-500 mt-10">No items found.</div>
                 )}
             </div>

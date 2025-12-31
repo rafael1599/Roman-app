@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Scan, Package, AlertCircle, CheckCircle, XCircle, Undo, Edit3 } from 'lucide-react';
+import { Scan, Package, AlertCircle, CheckCircle, XCircle, Undo, Edit3, Plus, Minus, Warehouse } from 'lucide-react';
 import CamScanner from '../features/smart-picking/components/CamScanner';
 import PalletVerification from '../features/smart-picking/components/PalletVerification';
 import WarehouseSelectionModal from '../features/smart-picking/components/WarehouseSelectionModal';
@@ -7,6 +7,8 @@ import SKUEditorModal from '../features/smart-picking/components/SKUEditorModal'
 import { useOrderProcessing } from '../features/smart-picking/hooks/useOrderProcessing';
 import { useInventory } from '../hooks/useInventoryData';
 import AutocompleteInput from '../components/ui/AutocompleteInput';
+
+const generateId = () => `line-${Math.random().toString(36).substr(2, 9)}`;
 
 export default function SmartPicking() {
     const [showScanner, setShowScanner] = useState(false);
@@ -19,6 +21,7 @@ export default function SmartPicking() {
     const [itemsNeedingSelection, setItemsNeedingSelection] = useState([]);
     const [itemsNotFound, setItemsNotFound] = useState([]);
     const [lastScannedItems, setLastScannedItems] = useState([]);
+    const [warehousePreferences, setWarehousePreferences] = useState({});
 
     const {
         currentOrder,
@@ -33,12 +36,19 @@ export default function SmartPicking() {
     /**
      * Handle successful scan
      */
-    const handleScanComplete = (scannedItems) => {
+    const handleScanComplete = (scannedItems, preferences = warehousePreferences) => {
         setShowScanner(false);
-        setLastScannedItems(scannedItems);
 
-        // Process the order (this will validate items)
-        const order = processOrder(scannedItems);
+        // Ensure all items have stable IDs before processing
+        const itemsWithIds = scannedItems.map(item => ({
+            ...item,
+            id: item.id || generateId()
+        }));
+
+        setLastScannedItems(itemsWithIds);
+
+        // Process the order
+        const order = processOrder(itemsWithIds, preferences);
         console.log('Order processed:', order);
 
         // Check if any items were not found
@@ -47,9 +57,7 @@ export default function SmartPicking() {
         );
 
         if (notFound.length > 0) {
-            console.log('⚠️ Items not found:', notFound);
             setItemsNotFound(notFound);
-            // Don't show the editor automatically, let user click the button
         }
 
         // Check if any items need warehouse selection
@@ -58,24 +66,9 @@ export default function SmartPicking() {
         );
 
         if (needsSelection.length > 0) {
-            console.log('⚠️ Items need warehouse selection:', needsSelection);
-
-            // Group by SKU to avoid showing same SKU twice in modal
-            const uniqueNeeds = Array.from(needsSelection.reduce((acc, item) => {
-                const existing = acc.get(item.sku);
-                if (!existing) {
-                    acc.set(item.sku, { ...item });
-                } else {
-                    // Update total quantity being requested for this SKU
-                    existing.qty += item.qty;
-                    // Update stock sufficiency check for both warehouses based on new total qty
-                    existing.ludlow.hasStock = existing.ludlow.available >= existing.qty;
-                    existing.ats.hasStock = existing.ats.available >= existing.qty;
-                }
-                return acc;
-            }, new Map()).values());
-
-            setItemsNeedingSelection(uniqueNeeds);
+            // For the modal, we can show them individually if they have different IDs
+            // This allows independent picking for multiple lines of same SKU
+            setItemsNeedingSelection(needsSelection);
             setPendingOrder(order);
             setShowWarehouseSelection(true);
         }
@@ -88,13 +81,24 @@ export default function SmartPicking() {
         console.log('✅ Applying warehouse selections:', selections);
         setShowWarehouseSelection(false);
 
-        // Reprocess the order with warehouse preferences
-        if (lastScannedItems.length > 0) {
-            // If there's an existing draft order, we should replace it
+        // Update scanned items with individual warehouse selections
+        // Selections is a map of { itemKey (id or sku): warehouse }
+        const updatedScanned = lastScannedItems.map(item => {
+            const itemKey = item.id || item.sku;
+            if (selections[itemKey]) {
+                return { ...item, warehouse: selections[itemKey] };
+            }
+            return item;
+        });
+
+        setLastScannedItems(updatedScanned);
+
+        // Reprocess the order
+        if (updatedScanned.length > 0) {
             if (currentOrder) {
                 rollbackOrder(currentOrder.id);
             }
-            processOrder(lastScannedItems, selections);
+            handleScanComplete(updatedScanned);
         }
 
         setItemsNeedingSelection([]);
@@ -145,7 +149,7 @@ export default function SmartPicking() {
      * Handle manual SKU addition
      */
     const handleAddManualSKU = (sku, qty) => {
-        const item = { sku, qty: parseInt(qty) };
+        const item = { id: generateId(), sku, qty: parseInt(qty) };
         const newScanned = [...lastScannedItems, item];
         setLastScannedItems(newScanned);
 
@@ -159,8 +163,28 @@ export default function SmartPicking() {
     /**
      * Remove item from scanned list
      */
-    const handleRemoveItem = (sku) => {
-        const newScanned = lastScannedItems.filter(item => item.sku !== sku);
+    const handleRemoveItem = (id) => {
+        const newScanned = lastScannedItems.filter(item => (item.id || item.sku) !== id);
+        setLastScannedItems(newScanned);
+
+        if (currentOrder) {
+            rollbackOrder(currentOrder.id);
+        }
+        handleScanComplete(newScanned);
+    };
+
+    /**
+     * Update item quantity in draft
+     */
+    const handleUpdateItemQty = (id, delta) => {
+        const newScanned = lastScannedItems.map(item => {
+            if ((item.id || item.sku) === id) {
+                const newQty = Math.max(1, (item.qty || 1) + delta);
+                return { ...item, qty: newQty };
+            }
+            return item;
+        });
+
         setLastScannedItems(newScanned);
 
         if (currentOrder) {
@@ -202,6 +226,7 @@ export default function SmartPicking() {
             setPickedItems(new Set());
             setItemsNotFound([]);
             setLastScannedItems([]);
+            setWarehousePreferences({});
         }
     };
 
@@ -340,37 +365,85 @@ export default function SmartPicking() {
                                         <p className="text-sm opacity-60">Use the camera or search bar above.</p>
                                     </div>
                                 ) : (
-                                    currentOrder.validatedItems.map((item, idx) => (
+                                    currentOrder.validatedItems.map((item) => (
                                         <div
-                                            key={idx}
+                                            key={item.id}
                                             className={`flex items-center justify-between p-4 rounded-xl border animate-in fade-in slide-in-from-left-2 duration-200 ${item.status === 'not_found'
                                                 ? 'bg-red-500/5 border-red-500/30'
-                                                : 'bg-gray-800/40 border-gray-700'
+                                                : item.status === 'needs_warehouse_selection'
+                                                    ? 'bg-orange-500/5 border-orange-500/20'
+                                                    : 'bg-gray-800/40 border-gray-700'
                                                 }`}
                                         >
                                             <div className="flex-1">
                                                 <div className="text-white font-mono font-bold text-lg leading-tight">{item.sku}</div>
-                                                <div className="flex items-center gap-2 mt-1">
+                                                <div className="flex flex-wrap items-center gap-2 mt-1">
                                                     {item.status === 'not_found' ? (
                                                         <span className="text-red-400 text-[10px] font-black bg-red-400/10 px-1.5 py-0.5 rounded uppercase flex items-center gap-1">
                                                             <AlertCircle size={10} /> Unknown SKU
                                                         </span>
+                                                    ) : item.status === 'needs_warehouse_selection' ? (
+                                                        <span className="text-orange-400 text-[10px] font-black bg-orange-400/10 px-2 py-0.5 rounded uppercase flex items-center gap-1 border border-orange-500/20">
+                                                            <Warehouse size={10} /> Selection Required
+                                                        </span>
                                                     ) : (
-                                                        <span className="text-green-500/60 text-[11px] font-bold">
-                                                            Loc: <span className="text-green-400">{item.location}</span>
+                                                        <span className="text-green-500/60 text-[11px] font-bold flex items-center gap-1">
+                                                            Loc: <span className="text-green-400 font-mono">{item.location}</span>
                                                         </span>
                                                     )}
-                                                    <span className="text-gray-600 text-[10px] font-mono">{item.warehouse || '...'}</span>
+
+                                                    {item.inBothWarehouses ? (
+                                                        <button
+                                                            onClick={() => {
+                                                                setItemsNeedingSelection([item]);
+                                                                setShowWarehouseSelection(true);
+                                                            }}
+                                                            className={`flex items-center gap-1.5 px-2 py-0.5 rounded transition-all text-[10px] font-bold group border ${item.status === 'needs_warehouse_selection'
+                                                                ? 'bg-orange-500 hover:bg-orange-400 text-black border-orange-400'
+                                                                : 'bg-gray-950/50 hover:bg-gray-800 text-gray-400 hover:text-orange-400 border-gray-700 hover:border-orange-500/50'
+                                                                }`}
+                                                        >
+                                                            <span className="font-mono uppercase">
+                                                                {item.warehouse || 'Choose Site'}
+                                                            </span>
+                                                            <Undo size={10} className={item.status === 'needs_warehouse_selection' ? 'rotate-90' : 'text-orange-500 rotate-90'} />
+                                                        </button>
+                                                    ) : item.warehouse ? (
+                                                        <span className="text-gray-600 text-[10px] font-mono uppercase bg-gray-950/30 px-1.5 py-0.5 rounded border border-gray-800">
+                                                            {item.warehouse}
+                                                        </span>
+                                                    ) : null}
                                                 </div>
                                             </div>
 
-                                            <div className="flex items-center gap-4">
-                                                <div className="text-yellow-400 font-bold text-2xl">x{item.qty}</div>
+                                            <div className="flex items-center gap-3">
+                                                {/* Quantity Controls */}
+                                                <div className="flex items-center bg-gray-950/50 border border-gray-700/50 rounded-xl p-1 gap-1">
+                                                    <button
+                                                        onClick={() => handleUpdateItemQty(item.id, -1)}
+                                                        disabled={item.qty <= 1}
+                                                        className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-white hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+                                                    >
+                                                        <Minus size={14} />
+                                                    </button>
+
+                                                    <div className="min-w-[40px] text-center font-black text-xl text-green-400">
+                                                        {item.qty}
+                                                    </div>
+
+                                                    <button
+                                                        onClick={() => handleUpdateItemQty(item.id, 1)}
+                                                        className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-green-400 hover:bg-gray-800 rounded-lg transition-colors"
+                                                    >
+                                                        <Plus size={14} />
+                                                    </button>
+                                                </div>
+
                                                 <button
-                                                    onClick={() => handleRemoveItem(item.sku)}
-                                                    className="p-2 bg-gray-700/50 hover:bg-red-500/20 text-gray-500 hover:text-red-400 rounded-lg transition-all"
+                                                    onClick={() => handleRemoveItem(item.id)}
+                                                    className="p-3 bg-gray-700/30 hover:bg-red-500/20 text-gray-500 hover:text-red-400 rounded-xl transition-all border border-transparent hover:border-red-500/30"
                                                 >
-                                                    <XCircle size={18} />
+                                                    <XCircle size={20} />
                                                 </button>
                                             </div>
                                         </div>
@@ -464,16 +537,20 @@ export default function SmartPicking() {
                                                             {isPicked ? <CheckCircle className="text-black" size={28} /> : <span className="text-gray-500 font-black">{idx + 1}</span>}
                                                         </div>
                                                         <div>
-                                                            <div className={`font-mono font-black text-2xl tracking-tighter transition-colors ${isPicked ? 'text-green-400' : 'text-white'}`}>
-                                                                {item.sku}
+                                                            <div className={`font-black text-5xl tracking-tighter tabular-nums leading-none transition-all ${isPicked ? 'text-green-400' : 'text-white'}`}>
+                                                                {item.location}
                                                             </div>
-                                                            <div className="flex items-center gap-2 mt-1">
-                                                                <span className="text-gray-500 text-[10px] uppercase font-black">Location:</span>
-                                                                <span className={`px-2 py-0.5 rounded text-sm font-black ${isPicked ? 'bg-green-500/20 text-green-400' : 'bg-gray-700 text-white'}`}>
-                                                                    {item.location}
-                                                                </span>
+                                                            <div className="flex items-center gap-3 mt-3">
+                                                                <div className={`font-mono font-bold text-lg tracking-tight transition-colors ${isPicked ? 'text-green-400/40' : 'text-gray-500'}`}>
+                                                                    {item.sku}
+                                                                </div>
                                                                 {item.locationDetail && (
-                                                                    <span className="text-gray-400 text-xs font-mono">[{item.locationDetail}]</span>
+                                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase border transition-all ${isPicked
+                                                                            ? 'bg-green-500/10 border-green-500/20 text-green-500/60'
+                                                                            : 'bg-yellow-500/10 border-yellow-500/30 text-yellow-500'
+                                                                        }`}>
+                                                                        {item.locationDetail}
+                                                                    </span>
                                                                 )}
                                                             </div>
                                                         </div>
@@ -558,6 +635,7 @@ export default function SmartPicking() {
                     items={itemsNeedingSelection}
                     onConfirm={handleWarehouseSelectionConfirm}
                     onCancel={handleWarehouseSelectionCancel}
+                    singleMode={itemsNeedingSelection.length === 1}
                 />
             )}
 

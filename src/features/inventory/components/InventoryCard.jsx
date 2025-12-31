@@ -7,18 +7,19 @@ export const InventoryCard = ({ sku, quantity, location, onIncrement, onDecremen
             onClick={onClick}
             className="bg-neutral-900 border border-neutral-800 rounded-lg p-4 mb-3 flex flex-col shadow-sm active:border-neutral-700 transition-colors cursor-pointer"
         >
-            <div className="flex justify-between items-start mb-3">
-                <div>
-                    {location && <div className="text-sm text-green-400 font-bold uppercase tracking-wider mb-1">{location}</div>}
-                    <div className="text-xl font-bold text-gray-100 font-mono tracking-wider">{sku}</div>
+            <div className="flex justify-between items-start mb-2">
+                <div className="flex-1">
+                    {location && <div className="text-base text-green-400 font-black uppercase tracking-widest mb-1">{location}</div>}
+                    <div className="text-2xl font-black text-white font-mono tracking-tighter leading-none mb-2">{sku}</div>
                     {detail && (
-                        <div className="mt-1 inline-block px-2 py-0.5 rounded bg-yellow-900/30 border border-yellow-800/50 text-yellow-500 text-sm font-bold animate-pulse-slow">
+                        <div className="px-2 py-1 rounded bg-yellow-400 text-black text-[10px] font-black uppercase tracking-tighter inline-flex items-center">
                             {detail}
                         </div>
                     )}
                 </div>
-                <div className="text-3xl font-bold text-green-400 tabular-nums">
-                    {quantity}
+                <div className="text-2xl font-black text-green-400 flex flex-col items-end">
+                    <span className="text-[10px] text-neutral-500 uppercase tracking-widest mb-0.5">Stock</span>
+                    <span className="tabular-nums leading-none">{quantity}</span>
                 </div>
             </div>
 

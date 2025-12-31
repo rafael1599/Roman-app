@@ -138,8 +138,8 @@ export function useOrderProcessing() {
 
             // Item found in BOTH warehouses
             if (inventoryItem.inBothWarehouses) {
-                // Check if user already made a selection for this SKU
-                const preference = warehousePreferences[orderItem.sku];
+                // Check if user already made a selection for this SKU or this specific line
+                const preference = orderItem.warehouse || warehousePreferences[orderItem.sku];
 
                 if (preference) {
                     const target = preference === 'ludlow' ? inventoryItem.ludlow : inventoryItem.ats;
@@ -307,8 +307,14 @@ export function useOrderProcessing() {
         const id = orderId || `ORD-${Date.now()}`;
         const timestamp = new Date().toISOString();
 
+        // Ensure items have unique IDs for line independence
+        const itemsWithIds = scannedItems.map(item => ({
+            ...item,
+            id: item.id || `line-${Math.random().toString(36).substr(2, 9)}`
+        }));
+
         // Validate items against inventory
-        const validatedItems = validateOrder(scannedItems, warehousePreferences);
+        const validatedItems = validateOrder(itemsWithIds, warehousePreferences);
 
         // Create pallets (without deducting inventory yet)
         const pallets = createPallets(validatedItems);
