@@ -59,7 +59,23 @@ export default function SmartPicking() {
 
         if (needsSelection.length > 0) {
             console.log('⚠️ Items need warehouse selection:', needsSelection);
-            setItemsNeedingSelection(needsSelection);
+
+            // Group by SKU to avoid showing same SKU twice in modal
+            const uniqueNeeds = Array.from(needsSelection.reduce((acc, item) => {
+                const existing = acc.get(item.sku);
+                if (!existing) {
+                    acc.set(item.sku, { ...item });
+                } else {
+                    // Update total quantity being requested for this SKU
+                    existing.qty += item.qty;
+                    // Update stock sufficiency check for both warehouses based on new total qty
+                    existing.ludlow.hasStock = existing.ludlow.available >= existing.qty;
+                    existing.ats.hasStock = existing.ats.available >= existing.qty;
+                }
+                return acc;
+            }, new Map()).values());
+
+            setItemsNeedingSelection(uniqueNeeds);
             setPendingOrder(order);
             setShowWarehouseSelection(true);
         }
@@ -69,13 +85,18 @@ export default function SmartPicking() {
      * Handle warehouse selection confirmation
      */
     const handleWarehouseSelectionConfirm = (selections) => {
-        console.log('✅ Warehouse selections:', selections);
+        console.log('✅ Applying warehouse selections:', selections);
         setShowWarehouseSelection(false);
 
-        // TODO: Apply warehouse selections to the order
-        // This will require updating the processOrder function to accept warehouse preferences
+        // Reprocess the order with warehouse preferences
+        if (lastScannedItems.length > 0) {
+            // If there's an existing draft order, we should replace it
+            if (currentOrder) {
+                rollbackOrder(currentOrder.id);
+            }
+            processOrder(lastScannedItems, selections);
+        }
 
-        // For now, just close the modal
         setItemsNeedingSelection([]);
         setPendingOrder(null);
     };

@@ -120,7 +120,7 @@ export function useOrderProcessing() {
      * Returns items with stock status and location info
      * Detects items in both warehouses and marks them for user selection
      */
-    const validateOrder = useCallback((orderItems) => {
+    const validateOrder = useCallback((orderItems, warehousePreferences = {}) => {
         return orderItems.map(orderItem => {
             const inventoryItem = findInventoryItem(orderItem.sku);
 
@@ -136,8 +136,29 @@ export function useOrderProcessing() {
                 };
             }
 
-            // Item found in BOTH warehouses - needs user selection
+            // Item found in BOTH warehouses
             if (inventoryItem.inBothWarehouses) {
+                // Check if user already made a selection for this SKU
+                const preference = warehousePreferences[orderItem.sku];
+
+                if (preference) {
+                    const target = preference === 'ludlow' ? inventoryItem.ludlow : inventoryItem.ats;
+                    const available = parseInt(target.Quantity) || 0;
+                    const hasStock = available >= orderItem.qty;
+
+                    return {
+                        ...orderItem,
+                        status: hasStock ? 'available' : 'shortage',
+                        available,
+                        location: target.Location,
+                        locationDetail: target.Location_Detail,
+                        warehouse: preference,
+                        position: getLocationPosition(target.Location),
+                        matchType: target.matchType,
+                    };
+                }
+
+                // No preference yet - needs user selection
                 const ludlowAvailable = parseInt(inventoryItem.ludlow.Quantity) || 0;
                 const atsAvailable = parseInt(inventoryItem.ats.Quantity) || 0;
 
@@ -282,12 +303,12 @@ export function useOrderProcessing() {
     /**
      * Process a new order from scanned items
      */
-    const processOrder = useCallback((scannedItems, orderId = null) => {
+    const processOrder = useCallback((scannedItems, warehousePreferences = {}, orderId = null) => {
         const id = orderId || `ORD-${Date.now()}`;
         const timestamp = new Date().toISOString();
 
         // Validate items against inventory
-        const validatedItems = validateOrder(scannedItems);
+        const validatedItems = validateOrder(scannedItems, warehousePreferences);
 
         // Create pallets (without deducting inventory yet)
         const pallets = createPallets(validatedItems);
