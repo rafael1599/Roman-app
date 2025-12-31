@@ -55,7 +55,9 @@ export const InventoryProvider = ({ children }) => {
             .subscribe();
 
         return () => {
-            supabase.removeChannel(channel);
+            if (channel) {
+                supabase.removeChannel(channel);
+            }
         };
     }, []);
 
@@ -198,6 +200,8 @@ export const InventoryProvider = ({ children }) => {
             inventoryData,
             ludlowData: inventoryData.filter(item => item.Warehouse === 'LUDLOW'),
             atsData: inventoryData.filter(item => item.Warehouse === 'ATS'),
+            ludlowInventory: inventoryData.filter(item => item.Warehouse === 'LUDLOW'),
+            atsInventory: inventoryData.filter(item => item.Warehouse === 'ATS'),
             loading,
             error,
             updateQuantity,
@@ -208,6 +212,18 @@ export const InventoryProvider = ({ children }) => {
             deleteItem,
             exportData,
             updateInventory,
+            updateLudlowInventory: (newData) => {
+                setInventoryData(prev => [
+                    ...prev.filter(i => i.Warehouse !== 'LUDLOW'),
+                    ...newData
+                ]);
+            },
+            updateAtsInventory: (newData) => {
+                setInventoryData(prev => [
+                    ...prev.filter(i => i.Warehouse !== 'ATS'),
+                    ...newData
+                ]);
+            }
         }}>
             {children}
         </InventoryContext.Provider>

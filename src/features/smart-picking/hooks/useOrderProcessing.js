@@ -226,10 +226,18 @@ export function useOrderProcessing() {
      * If an item has more than max, split it across multiple pallets
      */
     const createPallets = useCallback((validatedItems) => {
-        // Sort by position (lower position = picked first, based on warehouse map)
+        // Sort by position (based on warehouse map) or natural sort of location
         const sortedItems = [...validatedItems]
             .filter(item => item.status === 'available')
-            .sort((a, b) => a.position - b.position);
+            .sort((a, b) => {
+                if (a.position !== 999999 || b.position !== 999999) {
+                    return a.position - b.position;
+                }
+                // Fallback to natural sort of location strings
+                const locA = a.location || '';
+                const locB = b.location || '';
+                return locA.localeCompare(locB, undefined, { numeric: true, sensitivity: 'base' });
+            });
 
         const pallets = [];
         let currentPallet = [];
@@ -281,10 +289,7 @@ export function useOrderProcessing() {
         // Validate items against inventory
         const validatedItems = validateOrder(scannedItems);
 
-        // Deduct inventory for available items
-        const transactions = deductInventory(validatedItems);
-
-        // Create pallets
+        // Create pallets (without deducting inventory yet)
         const pallets = createPallets(validatedItems);
 
         // Items with shortage
@@ -299,8 +304,8 @@ export function useOrderProcessing() {
             validatedItems,
             pallets,
             shortageItems,
-            transactions,
-            status: 'in_progress',
+            transactions: [], // Empty initially
+            status: 'draft', // Change to draft
             currentPalletIndex: 0,
         };
 
@@ -309,7 +314,27 @@ export function useOrderProcessing() {
         setCurrentOrder(order);
 
         return order;
-    }, [validateOrder, deductInventory, createPallets]);
+    }, [validateOrder, createPallets]);
+
+    /**
+     * Execute inventory deduction for the current order
+     */
+    const executeDeduction = useCallback(() => {
+        if (!currentOrder || currentOrder.status !== 'draft') return;
+
+        const transactions = deductInventory(currentOrder.validatedItems);
+
+        const updatedOrder = {
+            ...currentOrder,
+            transactions,
+            status: 'in_progress'
+        };
+
+        setCurrentOrder(updatedOrder);
+        setOrders(prev => prev.map(o => o.id === updatedOrder.id ? updatedOrder : o));
+
+        return transactions;
+    }, [currentOrder, deductInventory]);
 
     /**
      * Rollback an order (restore inventory)
@@ -375,6 +400,7 @@ export function useOrderProcessing() {
         currentOrder,
         processOrder,
         rollbackOrder,
+        executeDeduction,
         completePallet,
         setCurrentOrder,
     };
