@@ -1,7 +1,15 @@
 import React from 'react';
 import { Plus, Minus } from 'lucide-react';
 
-export const InventoryCard = ({ sku, quantity, location, onIncrement, onDecrement, detail, onClick }) => {
+export const InventoryCard = ({ sku, quantity, location, onIncrement, onDecrement, detail, onClick, warehouse }) => {
+    const getWarehouseColor = (wh) => {
+        switch (wh?.toUpperCase()) {
+            case 'LUDLOW': return 'bg-green-500/20 text-green-400 border-green-500/30';
+            case 'ATS': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+            default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
+        }
+    };
+
     return (
         <div
             onClick={onClick}
@@ -10,9 +18,16 @@ export const InventoryCard = ({ sku, quantity, location, onIncrement, onDecremen
             <div className="flex justify-between items-start mb-2">
                 <div className="flex-1">
                     {location && <div className="text-base text-green-400 font-black uppercase tracking-widest mb-1">{location}</div>}
-                    <div className="text-2xl font-black text-white font-mono tracking-tighter leading-none mb-2">{sku}</div>
+                    <div className="flex items-center gap-2 mb-2">
+                        <div className="text-2xl font-black text-white font-mono tracking-tighter leading-none">{sku}</div>
+                        {warehouse && (
+                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-black uppercase border ${getWarehouseColor(warehouse)}`}>
+                                {warehouse}
+                            </span>
+                        )}
+                    </div>
                     {detail && (
-                        <div className="px-2 py-1 rounded bg-yellow-400 text-black text-[10px] font-black uppercase tracking-tighter inline-flex items-center">
+                        <div className="px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-500 text-[9px] font-bold uppercase tracking-tight inline-flex items-center border border-neutral-700/50">
                             {detail}
                         </div>
                     )}

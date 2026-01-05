@@ -545,9 +545,9 @@ export default function SmartPicking() {
                                                                     {item.sku}
                                                                 </div>
                                                                 {item.locationDetail && (
-                                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase border transition-all ${isPicked
-                                                                            ? 'bg-green-500/10 border-green-500/20 text-green-500/60'
-                                                                            : 'bg-yellow-500/10 border-yellow-500/30 text-yellow-500'
+                                                                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase border transition-all ${isPicked
+                                                                        ? 'bg-green-500/5 border-green-500/10 text-green-500/30'
+                                                                        : 'bg-neutral-800 border-neutral-700 text-neutral-500'
                                                                         }`}>
                                                                         {item.locationDetail}
                                                                     </span>

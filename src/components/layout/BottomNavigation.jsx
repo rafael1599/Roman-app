@@ -20,8 +20,7 @@ const NavItem = ({ to, icon: Icon, label }) => (
 export const BottomNavigation = () => {
     return (
         <div className="fixed bottom-0 left-0 right-0 h-16 bg-neutral-950 border-t border-neutral-800 flex items-center justify-around z-50 pb-safe">
-            <NavItem to="/" icon={Box} label="LUDLOW" />
-            <NavItem to="/ats" icon={Layers} label="ATS" />
+            <NavItem to="/" icon={Box} label="STOCK" />
             <NavItem to="/picking" icon={Scan} label="PICKING" />
         </div>
     );

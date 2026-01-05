@@ -2,8 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { InventoryProvider, useInventory } from './hooks/useInventoryData';
 import { LayoutMain } from './components/layout/LayoutMain';
-import { LudlowScreen } from './screens/LudlowScreen';
-import { AtsScreen } from './screens/AtsScreen';
+import { InventoryScreen } from './screens/InventoryScreen';
 import SmartPicking from './screens/SmartPicking';
 import Settings from './screens/Settings';
 
@@ -14,8 +13,7 @@ const AppContent = () => {
   return (
     <LayoutMain onExport={exportData}>
       <Routes>
-        <Route path="/" element={<LudlowScreen />} />
-        <Route path="/ats" element={<AtsScreen />} />
+        <Route path="/" element={<InventoryScreen />} />
         <Route path="/picking" element={<SmartPicking />} />
         <Route path="/settings" element={<Settings />} />
       </Routes>
