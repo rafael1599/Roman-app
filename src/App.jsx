@@ -3,21 +3,24 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { InventoryProvider, useInventory } from './hooks/useInventoryData';
 import { LayoutMain } from './components/layout/LayoutMain';
 import { InventoryScreen } from './screens/InventoryScreen';
-import SmartPicking from './screens/SmartPicking';
+import { HistoryScreen } from './screens/HistoryScreen';
 import Settings from './screens/Settings';
+import { ViewModeProvider } from './context/ViewModeContext';
 
 // Wrapper to provide context to LayoutMain for export button
 const AppContent = () => {
   const { exportData } = useInventory();
 
   return (
-    <LayoutMain onExport={exportData}>
-      <Routes>
-        <Route path="/" element={<InventoryScreen />} />
-        <Route path="/picking" element={<SmartPicking />} />
-        <Route path="/settings" element={<Settings />} />
-      </Routes>
-    </LayoutMain>
+    <ViewModeProvider>
+      <LayoutMain onExport={exportData}>
+        <Routes>
+          <Route path="/" element={<InventoryScreen />} />
+          <Route path="/history" element={<HistoryScreen />} />
+          <Route path="/settings" element={<Settings />} />
+        </Routes>
+      </LayoutMain>
+    </ViewModeProvider>
   );
 };
 

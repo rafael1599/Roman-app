@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Save, Trash2 } from 'lucide-react';
+import { X, Save, Trash2, Plus } from 'lucide-react';
 import { useInventory } from '../../../hooks/useInventoryData';
 import AutocompleteInput from '../../../components/ui/AutocompleteInput';
 
@@ -10,12 +10,13 @@ export const InventoryModal = ({ isOpen, onClose, onSave, onDelete, initialData,
         Location: '',
         Quantity: 0,
         Location_Detail: '',
+        Warehouse: screenType || 'LUDLOW'
     });
 
-    // Get current inventory based on screen type
-    const currentInventory = screenType === 'ATS' ? atsData : ludlowData;
+    // Get current inventory based on the warehouse selected IN THE MODAL
+    const currentInventory = formData.Warehouse === 'ATS' ? atsData : ludlowData;
 
-    // Generate SKU suggestions with info
+    // Generate SKU suggestions based on the SELECTED warehouse
     const skuSuggestions = useMemo(() => {
         const uniqueSKUs = new Map();
         currentInventory.forEach(item => {
@@ -31,7 +32,7 @@ export const InventoryModal = ({ isOpen, onClose, onSave, onDelete, initialData,
         return Array.from(uniqueSKUs.values());
     }, [currentInventory]);
 
-    // Generate Location suggestions with info
+    // Generate Location suggestions based on the SELECTED warehouse
     const locationSuggestions = useMemo(() => {
         const locationMap = new Map();
         currentInventory.forEach(item => {
@@ -61,25 +62,30 @@ export const InventoryModal = ({ isOpen, onClose, onSave, onDelete, initialData,
                     SKU: initialData.SKU || '',
                     Location: initialData.Location || '',
                     Quantity: initialData.Quantity || 0,
-                    Location_Detail: initialData.Location_Detail || '' // Only for ATS mainly
+                    Location_Detail: initialData.Location_Detail || '',
+                    Warehouse: initialData.Warehouse || screenType || 'LUDLOW'
                 });
             } else {
-                // Reset for new item
                 setFormData({
                     SKU: '',
                     Location: '',
                     Quantity: 0,
-                    Location_Detail: ''
+                    Location_Detail: '',
+                    Warehouse: screenType || 'LUDLOW'
                 });
             }
         }
-    }, [isOpen, initialData, mode]);
+    }, [isOpen, initialData, mode, screenType]);
 
     if (!isOpen) return null;
 
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleWarehouseChange = (wh) => {
+        setFormData(prev => ({ ...prev, Warehouse: wh }));
     };
 
     const handleSubmit = (e) => {
@@ -100,10 +106,37 @@ export const InventoryModal = ({ isOpen, onClose, onSave, onDelete, initialData,
 
                 <h2 className="text-xl font-bold text-gray-100 mb-6">
                     {mode === 'edit' ? 'Edit Item' : 'Add New Item'}
-                    <span className="ml-2 text-xs text-green-400 font-mono py-1 px-2 bg-green-400/10 rounded uppercase">{screenType}</span>
                 </h2>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    {/* Warehouse Selector */}
+                    <div>
+                        <label className="block text-sm font-semibold text-green-300 mb-3 uppercase tracking-wider">Select Warehouse</label>
+                        <div className="flex flex-wrap gap-2">
+                            {['LUDLOW', 'ATS'].map((wh) => (
+                                <button
+                                    key={wh}
+                                    type="button"
+                                    onClick={() => handleWarehouseChange(wh)}
+                                    className={`px-4 py-2 rounded-lg font-bold text-xs transition-all border ${formData.Warehouse === wh
+                                        ? 'bg-green-500 text-black border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.3)]'
+                                        : 'bg-neutral-800 text-neutral-400 border-neutral-700 hover:border-neutral-500'
+                                        }`}
+                                >
+                                    {wh}
+                                </button>
+                            ))}
+                            <button
+                                type="button"
+                                onClick={() => alert('Coming Soon: You will be able to add custom warehouses here.')}
+                                className="w-9 h-9 flex items-center justify-center rounded-lg bg-neutral-900 border border-dashed border-neutral-700 text-neutral-500 hover:border-green-500/50 hover:text-green-500 transition-all"
+                                title="Add New Warehouse"
+                            >
+                                <Plus className="w-5 h-5" />
+                            </button>
+                        </div>
+                    </div>
+
                     {/* SKU with Autocomplete */}
                     <AutocompleteInput
                         label="SKU"
@@ -113,7 +146,6 @@ export const InventoryModal = ({ isOpen, onClose, onSave, onDelete, initialData,
                         placeholder="Enter SKU..."
                         minChars={2}
                         onSelect={(suggestion) => {
-                            // Auto-fill location if available
                             const item = currentInventory.find(i => i.SKU === suggestion.value);
                             if (item && mode === 'add') {
                                 setFormData(prev => ({

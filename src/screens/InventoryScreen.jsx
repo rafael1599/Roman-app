@@ -1,19 +1,34 @@
 import React, { useState, useMemo } from 'react';
 import { useInventory } from '../hooks/useInventoryData';
+import { useViewMode } from '../context/ViewModeContext';
 import { SearchInput } from '../components/ui/SearchInput';
 import { InventoryCard } from '../features/inventory/components/InventoryCard';
 import { InventoryModal } from '../features/inventory/components/InventoryModal';
+import { PickingCartDrawer } from '../features/picking/components/PickingCartDrawer';
+import CamScanner from '../features/smart-picking/components/CamScanner';
+import { useOrderProcessing } from '../features/smart-picking/hooks/useOrderProcessing';
 import { naturalSort } from '../utils/sortUtils';
-import { Plus, Warehouse } from 'lucide-react';
+import { Plus, Warehouse, ArrowRightLeft } from 'lucide-react';
+import { MovementModal } from '../features/inventory/components/MovementModal';
+import { CapacityBar } from '../components/ui/CapacityBar';
 
 export const InventoryScreen = () => {
-    const { inventoryData, updateQuantity, addItem, updateItem, deleteItem, loading } = useInventory();
+    const { inventoryData, locationCapacities, updateQuantity, addItem, updateItem, moveItem, deleteItem, loading } = useInventory();
+    const { viewMode } = useViewMode(); // 'stock' | 'picking'
+    const { processOrder, executeDeduction, currentOrder } = useOrderProcessing();
+
     const [search, setSearch] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
     const [modalMode, setModalMode] = useState('add');
     const [selectedWarehouseForAdd, setSelectedWarehouseForAdd] = useState('LUDLOW');
+    const [isMovementModalOpen, setIsMovementModalOpen] = useState(false);
 
+    // Picking Mode State
+    const [cartItems, setCartItems] = useState([]);
+    const [showScanner, setShowScanner] = useState(false);
+
+    // --- Stock Mode Handlers ---
     const handleAddItem = (warehouse = 'LUDLOW') => {
         setModalMode('add');
         setSelectedWarehouseForAdd(warehouse);
@@ -34,24 +49,146 @@ export const InventoryScreen = () => {
     };
 
     const saveItem = (formData) => {
+        const targetWarehouse = formData.Warehouse;
         if (modalMode === 'add') {
-            addItem(selectedWarehouseForAdd, formData);
+            addItem(targetWarehouse, formData);
         } else {
             updateItem(editingItem.Warehouse, editingItem.SKU, formData);
         }
     };
 
+    const handleMoveStock = (moveData) => {
+        moveItem(moveData.sourceItem, moveData.targetWarehouse, moveData.targetLocation, moveData.quantity);
+    };
+
+    const handleQuickMove = (item) => {
+        // We reuse the MovementModal but skip step 1 in the future or just pre-fill it
+        setEditingItem(item);
+        setIsMovementModalOpen(true);
+    };
+
+    // --- Picking Mode Handlers ---
+
+    const handleCardClick = (item) => {
+        if (viewMode === 'stock') {
+            handleEditItem(item);
+        } else {
+            // Picking Mode: Add to Cart
+            addToCart(item);
+        }
+    };
+
+    const addToCart = (item) => {
+        setCartItems(prev => {
+            // Check if exact item (SKU + Location + Warehouse) is already in cart
+            const existingIdx = prev.findIndex(i =>
+                i.SKU === item.SKU &&
+                i.Warehouse === item.Warehouse &&
+                i.Location === item.Location
+            );
+
+            if (existingIdx >= 0) {
+                const newCart = [...prev];
+                newCart[existingIdx] = {
+                    ...newCart[existingIdx],
+                    pickingQty: (newCart[existingIdx].pickingQty || 0) + 1
+                };
+                return newCart;
+            } else {
+                return [...prev, { ...item, pickingQty: 1 }];
+            }
+        });
+    };
+
+    const handleUpdateCartQty = (item, change) => {
+        setCartItems(prev => prev.map(i => {
+            if (i === item) {
+                const maxStock = parseInt(i.Quantity, 10) || 0;
+                // Clamp: Ensure qty is at least 1 and at most available stock (if change is positive)
+                // If maxStock is 0 (shouldn't happen for available items), allow 1 or handle gracefully? 
+                // Assuming we can't pick more than stock.
+
+                // Effective new quantity
+                const currentQty = i.pickingQty || 0;
+                const newQty = Math.max(1, Math.min(currentQty + change, maxStock));
+
+                return { ...i, pickingQty: newQty };
+            }
+            return i;
+        }));
+    };
+
+    const handleRemoveFromCart = (item) => {
+        setCartItems(prev => prev.filter(i => i !== item));
+    };
+
+    const handleScanComplete = (scannedLines) => {
+        // scannedLines is likely [{ sku, qty, ... }] (needs verification of structure)
+        // Check SmartPicking.jsx logic: it seems it just gets raw data and processes it.
+        // For now, let's assume it returns objects that we try to match against inventory.
+
+        // This is a simplified "Add to Cart" logic for scanned items
+        // We might not know location/warehouse yet if it's just a generated list.
+        // However, for Unified Screen, we ideally want to map them to real items immediately if possible,
+        // OR add them as "Pending Location Selection" items.
+        // Given the requirement is to use "Current Draft", let's map them to a generic cart item if not found?
+        // Actually, let's just create cart items with SKU and let the user resolve?
+        // Wait, the user said "same logic as interactive warehouse label".
+        // Let's create cart items. If we don't have location, we might need a way to resolve it.
+        // BUT, simplified assumption: We match to LUDLOW or first found for now, or just add as raw items.
+
+        const newItems = scannedLines.map(line => {
+            // Try to find in current filtered data or global inventory to enrich?
+            const match = inventoryData.find(i => i.SKU === line.sku);
+            return match ? { ...match, pickingQty: line.qty || 1 } : { SKU: line.sku, pickingQty: line.qty || 1, Location: 'UNKNOWN', Warehouse: 'UNKNOWN' };
+        });
+
+        setCartItems(prev => [...prev, ...newItems]);
+        setShowScanner(false);
+    };
+
+    const handleDeduct = async () => {
+        if (cartItems.length === 0) return;
+
+        const totalUnits = cartItems.reduce((acc, item) => acc + (item.pickingQty || 0), 0);
+        const confirmDeduct = window.confirm(`Confirm deduction of ${totalUnits} units across ${cartItems.length} items from inventory?`);
+        if (!confirmDeduct) return;
+
+        try {
+            // Deduct each item sequentially
+            for (const item of cartItems) {
+                const delta = -(item.pickingQty || 0);
+                await updateQuantity(item.SKU, delta, item.Warehouse, item.Location);
+            }
+
+            alert("Deduction complete! Inventory has been updated.");
+            setCartItems([]); // Clear cart after success
+        } catch (error) {
+            console.error("Deduction error:", error);
+            alert("Error during deduction. Please check your internet connection.");
+        }
+    };
+
+
+    // --- Data Processing ---
     const filteredData = useMemo(() => {
-        if (!search) return inventoryData;
         const lowerSearch = search.toLowerCase();
-        return inventoryData.filter(item =>
-            (item.SKU && item.SKU.toLowerCase().includes(lowerSearch)) ||
-            (item.Location && item.Location.toLowerCase().includes(lowerSearch)) ||
-            (item.Warehouse && item.Warehouse.toLowerCase().includes(lowerSearch))
-        );
+        return inventoryData.filter(item => {
+            const hasStock = (parseInt(item.Quantity) || 0) > 0;
+            const matchesSearch = !search ||
+                (item.SKU && item.SKU.toLowerCase().includes(lowerSearch)) ||
+                (item.Location && item.Location.toLowerCase().includes(lowerSearch)) ||
+                (item.Warehouse && item.Warehouse.toLowerCase().includes(lowerSearch));
+
+            if (search) {
+                // When searching, ONLY show items that have stock AND match
+                return hasStock && matchesSearch;
+            }
+            // When browsing, show all items (including 0 qty) so locations/headers stay
+            return matchesSearch;
+        });
     }, [inventoryData, search]);
 
-    // Grouping: Warehouse -> Location
     const groupedData = useMemo(() => {
         const groups = {};
         filteredData.forEach(item => {
@@ -79,45 +216,70 @@ export const InventoryScreen = () => {
 
     return (
         <div className="pb-4 relative">
-            <SearchInput value={search} onChange={setSearch} placeholder="Search SKU, Loc, Warehouse..." />
+            <SearchInput
+                value={search}
+                onChange={setSearch}
+                placeholder="Search SKU, Loc, Warehouse..."
+                mode={viewMode}
+                onScanClick={() => setShowScanner(true)}
+            />
 
             <div className="p-4 space-y-12">
                 {sortedWarehouses.flatMap(wh =>
                     Object.keys(groupedData[wh]).sort(naturalSort).map(location => (
                         <div key={`${wh}-${location}`} className="space-y-4">
-                            <div className="sticky top-[89px] bg-neutral-950/95 backdrop-blur-sm z-30 py-3 border-b border-neutral-800/50 flex items-center justify-between group flex-row-reverse">
-                                <div className="flex items-center gap-3">
-                                    <h3 className="text-white text-2xl font-black uppercase tracking-tighter">
-                                        {location}
-                                    </h3>
-                                    <div className={`px-2 py-0.5 rounded text-[10px] font-black uppercase border flex items-center gap-1.5 ${wh === 'LUDLOW' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
-                                        wh === 'ATS' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-orange-500/10 text-orange-400 border-orange-500/20'
-                                        }`}>
-                                        <Warehouse size={12} />
-                                        {wh}
+                            <div className="sticky top-[89px] bg-neutral-950/95 backdrop-blur-sm z-30 py-3 border-b border-neutral-800/50 group">
+                                <div className="flex items-center gap-4 px-1">
+                                    {/* Capacity Bar Side (3/4 approx) - NOW ON LEFT */}
+                                    <div className="flex-[3]">
+                                        <CapacityBar
+                                            current={locationCapacities[`${wh}-${location}`]?.current || 0}
+                                            max={locationCapacities[`${wh}-${location}`]?.max || 550}
+                                        />
                                     </div>
+
+                                    {/* Info Side (1/3 approx) - NOW ON RIGHT */}
+                                    <div className="flex-1 min-w-0">
+                                        <h3 className="text-white text-xl font-black uppercase tracking-tighter truncate" title={location}>
+                                            {location}
+                                        </h3>
+                                    </div>
+
+                                    {/* Add Button */}
+                                    {viewMode === 'stock' && (
+                                        <button
+                                            onClick={() => handleAddItem(wh)}
+                                            className="shrink-0 p-1.5 bg-neutral-900 border border-neutral-800 rounded-md text-neutral-500 hover:text-green-400 hover:border-green-500/30 transition-all opacity-0 group-hover:opacity-100"
+                                        >
+                                            <Plus size={14} />
+                                        </button>
+                                    )}
                                 </div>
-                                <button
-                                    onClick={() => handleAddItem(wh)}
-                                    className="p-1.5 bg-neutral-900 border border-neutral-800 rounded-md text-neutral-500 hover:text-green-400 hover:border-green-500/30 transition-all opacity-0 group-hover:opacity-100"
-                                >
-                                    <Plus size={16} />
-                                </button>
                             </div>
 
                             <div className="grid grid-cols-1 gap-1">
-                                {groupedData[wh][location].map((item, idx) => (
-                                    <InventoryCard
-                                        key={`${item.id || item.SKU}-${idx}`}
-                                        sku={item.SKU}
-                                        quantity={item.Quantity}
-                                        detail={item.Location_Detail}
-                                        warehouse={item.Warehouse}
-                                        onIncrement={() => updateQuantity(item.SKU, 1, item.Warehouse, item.Location)}
-                                        onDecrement={() => updateQuantity(item.SKU, -1, item.Warehouse, item.Location)}
-                                        onClick={() => handleEditItem(item)}
-                                    />
-                                ))}
+                                {groupedData[wh][location]
+                                    .filter(item => (parseInt(item.Quantity) || 0) > 0)
+                                    .map((item, idx) => {
+                                        // Check if item is in cart to highlight?
+                                        const isInCart = cartItems.some(c => c.SKU === item.SKU && c.Warehouse === item.Warehouse && c.Location === item.Location);
+
+                                        return (
+                                            <div key={`${item.id || item.SKU}-${idx}`} className={isInCart ? 'ring-1 ring-green-500 rounded-lg' : ''}>
+                                                <InventoryCard
+                                                    sku={item.SKU}
+                                                    quantity={item.Quantity}
+                                                    detail={item.Location_Detail}
+                                                    warehouse={item.Warehouse}
+                                                    onIncrement={() => updateQuantity(item.SKU, 1, item.Warehouse, item.Location)}
+                                                    onDecrement={() => updateQuantity(item.SKU, -1, item.Warehouse, item.Location)}
+                                                    onMove={() => handleQuickMove(item)}
+                                                    onClick={() => handleCardClick(item)}
+                                                    mode={viewMode}
+                                                />
+                                            </div>
+                                        );
+                                    })}
                             </div>
                         </div>
                     ))
@@ -131,14 +293,37 @@ export const InventoryScreen = () => {
                 )}
             </div>
 
-            {/* Floating Action Button */}
-            <button
-                onClick={() => handleAddItem('LUDLOW')}
-                className="fixed bottom-20 right-4 w-14 h-14 bg-green-500 hover:bg-green-400 rounded-full flex items-center justify-center shadow-2xl shadow-green-500/40 text-black z-50 active:scale-90 transition-transform"
-            >
-                <Plus className="w-8 h-8" />
-            </button>
+            {/* Floating Action Buttons (Stock Mode Only) */}
+            {viewMode === 'stock' && (
+                <div className="fixed bottom-24 right-4 flex flex-col gap-3 z-40">
+                    <button
+                        onClick={() => setIsMovementModalOpen(true)}
+                        className="w-14 h-14 bg-neutral-800 hover:bg-neutral-700 rounded-full flex items-center justify-center shadow-2xl text-green-500 active:scale-90 transition-transform border border-neutral-700"
+                        title="Relocate Stock"
+                    >
+                        <ArrowRightLeft className="w-6 h-6" />
+                    </button>
+                    <button
+                        onClick={() => handleAddItem('LUDLOW')}
+                        className="w-14 h-14 bg-green-500 hover:bg-green-400 rounded-full flex items-center justify-center shadow-2xl shadow-green-500/40 text-black active:scale-90 transition-transform"
+                        title="Add New SKU"
+                    >
+                        <Plus className="w-8 h-8" />
+                    </button>
+                </div>
+            )}
 
+            {/* Picking Cart Drawer (Picking Mode Only) */}
+            {viewMode === 'picking' && (
+                <PickingCartDrawer
+                    cartItems={cartItems}
+                    onUpdateQty={handleUpdateCartQty}
+                    onRemoveItem={handleRemoveFromCart}
+                    onDeduct={handleDeduct}
+                />
+            )}
+
+            {/* Modals */}
             <InventoryModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
@@ -147,6 +332,19 @@ export const InventoryScreen = () => {
                 initialData={editingItem}
                 mode={modalMode}
                 screenType={selectedWarehouseForAdd || (editingItem?.Warehouse)}
+            />
+
+            {showScanner && (
+                <CamScanner
+                    onScanComplete={handleScanComplete}
+                    onCancel={() => setShowScanner(false)}
+                />
+            )}
+            <MovementModal
+                isOpen={isMovementModalOpen}
+                onClose={() => setIsMovementModalOpen(false)}
+                onMove={handleMoveStock}
+                initialSourceItem={editingItem}
             />
         </div>
     );

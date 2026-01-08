@@ -56,6 +56,20 @@ async function migrate() {
                     console.error(`❌ Error in chunk ${i}-${i + chunkSize}:`, error.message);
                 } else {
                     console.log(`✅ Uploaded chunk ${Math.floor(i / chunkSize) + 1}`);
+
+                    // Log the import for traceability
+                    const logs = chunk.map(item => ({
+                        sku: item.SKU,
+                        to_warehouse: item.Warehouse,
+                        to_location: item.Location,
+                        quantity: item.Quantity,
+                        action_type: 'ADD',
+                        performed_by: 'Bulk Import',
+                        created_at: new Date().toISOString()
+                    }));
+
+                    const { error: logError } = await supabase.from('inventory_logs').insert(logs);
+                    if (logError) console.error('❌ Error creating logs:', logError.message);
                 }
             }
 

@@ -1,5 +1,5 @@
 import { Settings as SettingsIcon } from 'lucide-react';
-import MapBuilder from '../features/smart-picking/components/MapBuilder';
+import { IntegratedMapManager } from '../features/warehouse-management/components/IntegratedMapManager';
 
 export default function Settings() {
     return (
@@ -11,8 +11,8 @@ export default function Settings() {
                     <h1 className="text-2xl sm:text-3xl font-bold text-green-400">Settings</h1>
                 </div>
 
-                {/* Warehouse Map */}
-                <MapBuilder />
+                {/* Integrated Warehouse Management (Zones, Map, Reports) */}
+                <IntegratedMapManager />
             </div>
         </div>
     );

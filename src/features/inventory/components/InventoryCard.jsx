@@ -1,7 +1,6 @@
-import React from 'react';
-import { Plus, Minus } from 'lucide-react';
+import { Plus, Minus, ArrowRightLeft } from 'lucide-react';
 
-export const InventoryCard = ({ sku, quantity, location, onIncrement, onDecrement, detail, onClick, warehouse }) => {
+export const InventoryCard = ({ sku, quantity, location, onIncrement, onDecrement, onMove, detail, onClick, warehouse, mode = 'stock' }) => {
     const getWarehouseColor = (wh) => {
         switch (wh?.toUpperCase()) {
             case 'LUDLOW': return 'bg-green-500/20 text-green-400 border-green-500/30';
@@ -38,22 +37,31 @@ export const InventoryCard = ({ sku, quantity, location, onIncrement, onDecremen
                 </div>
             </div>
 
-            <div className="flex gap-3 mt-auto">
-                <button
-                    onClick={(e) => { e.stopPropagation(); onDecrement(); }}
-                    className="flex-1 h-12 bg-neutral-800 rounded-md flex items-center justify-center text-red-400 active:bg-neutral-700 active:scale-95 transition-all text-2xl font-bold touch-manipulation"
-                    aria-label="Decrease quantity"
-                >
-                    <Minus className="w-6 h-6" />
-                </button>
-                <button
-                    onClick={(e) => { e.stopPropagation(); onIncrement(); }}
-                    className="flex-1 h-12 bg-neutral-800 rounded-md flex items-center justify-center text-green-400 active:bg-neutral-700 active:scale-95 transition-all text-2xl font-bold touch-manipulation"
-                    aria-label="Increase quantity"
-                >
-                    <Plus className="w-6 h-6" />
-                </button>
-            </div>
+            {mode === 'stock' && (
+                <div className="flex gap-2 mt-auto">
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onDecrement(); }}
+                        className="flex-1 h-12 bg-neutral-800 rounded-md flex items-center justify-center text-red-400 active:bg-neutral-700 active:scale-95 transition-all text-xl font-bold touch-manipulation"
+                        aria-label="Decrease quantity"
+                    >
+                        <Minus className="w-5 h-5" />
+                    </button>
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onMove(); }}
+                        className="flex-1 h-12 bg-neutral-800 rounded-md flex items-center justify-center text-blue-400 active:bg-neutral-700 active:scale-95 transition-all text-xl font-bold touch-manipulation gap-2"
+                        aria-label="Move item"
+                    >
+                        <ArrowRightLeft className="w-5 h-5" />
+                    </button>
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onIncrement(); }}
+                        className="flex-1 h-12 bg-neutral-800 rounded-md flex items-center justify-center text-green-400 active:bg-neutral-700 active:scale-95 transition-all text-xl font-bold touch-manipulation"
+                        aria-label="Increase quantity"
+                    >
+                        <Plus className="w-5 h-5" />
+                    </button>
+                </div>
+            )}
         </div>
     );
 };

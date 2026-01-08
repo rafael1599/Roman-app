@@ -17,6 +17,7 @@ export default function AutocompleteInput({
     onSelect,
     disabled = false,
     className = '',
+    renderItem = null
 }) {
     const [inputValue, setInputValue] = useState(value || '');
     const [showSuggestions, setShowSuggestions] = useState(false);
@@ -186,9 +187,13 @@ export default function AutocompleteInput({
                             className={`w-full px-4 py-3 text-left hover:bg-gray-700 transition-colors border-b border-gray-700 last:border-b-0 ${index === selectedIndex ? 'bg-gray-700' : ''
                                 }`}
                         >
-                            <div className="font-semibold text-white">{suggestion.value}</div>
-                            {suggestion.info && (
-                                <div className="text-sm text-gray-400 mt-1">{suggestion.info}</div>
+                            {renderItem ? renderItem(suggestion) : (
+                                <>
+                                    <div className="font-semibold text-white">{suggestion.value}</div>
+                                    {suggestion.info && (
+                                        <div className="text-sm text-gray-400 mt-1">{suggestion.info}</div>
+                                    )}
+                                </>
                             )}
                         </button>
                     ))}
@@ -229,9 +234,13 @@ export default function AutocompleteInput({
                                 onClick={() => handleSelect(suggestion)}
                                 className="w-full px-4 py-4 text-left hover:bg-gray-800 active:bg-gray-700 transition-colors border-b border-gray-800 touch-manipulation"
                             >
-                                <div className="font-semibold text-white text-lg">{suggestion.value}</div>
-                                {suggestion.info && (
-                                    <div className="text-sm text-gray-400 mt-2">{suggestion.info}</div>
+                                {renderItem ? renderItem(suggestion) : (
+                                    <>
+                                        <div className="font-semibold text-white text-lg">{suggestion.value}</div>
+                                        {suggestion.info && (
+                                            <div className="text-sm text-gray-400 mt-2">{suggestion.info}</div>
+                                        )}
+                                    </>
                                 )}
                             </button>
                         ))}
