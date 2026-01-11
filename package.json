@@ -9,7 +9,8 @@
     "setup:db": "node scripts/apply-migration.js",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "update:ludlow:capacity": "node scripts/update-ludlow-capacity.js"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

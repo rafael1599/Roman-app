@@ -1,208 +1,42 @@
-import { useState, useEffect, useMemo } from 'react';
-import { X, ArrowRightLeft, Move, Search, CheckCircle, Scan, TrendingUp, Zap } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, ArrowRightLeft, Move, Scan, CheckCircle2, AlertTriangle, Zap } from 'lucide-react';
 import { useInventory } from '../../../hooks/useInventoryData';
-// Import new hooks
-import { useWarehouseZones } from '../../../hooks/useWarehouseZones';
+import { useMovementForm } from '../../../hooks/useMovementForm';
+import { useLocationSuggestions } from '../../../hooks/useLocationSuggestions';
 import AutocompleteInput from '../../../components/ui/AutocompleteInput';
 import { CapacityBar } from '../../../components/ui/CapacityBar';
-// Import logic functions
-import {
-    calculateConsolidationPriority,
-    calculateSkuVelocity,
-    calculateHybridLocationScore,
-    sortLocationsByConsolidation
-} from '../../../utils/capacityUtils';
-import { SLOTTING_CONFIG } from '../../../config/slotting';
 
-export const MovementModal = ({ isOpen, onClose, onMove, initialSourceItem = null }) => {
-    // 1. Context Hooks
-    const { inventoryData, ludlowData, atsData, locationCapacities, fetchLogs } = useInventory();
-    const { zones, getZone } = useWarehouseZones(); // Need zones to visualize or calculate score context
+export const MovementModal = ({ isOpen, onClose, onMove, initialSourceItem }) => {
+    // Hooks
+    const { formData, setField, validate, setFormData } = useMovementForm(initialSourceItem);
 
-    // 2. Local State
-    const [step, setStep] = useState(1); // 1: Select SKU/Source, 2: Destination, 3: Scan
-    const [scanValue, setScanValue] = useState('');
-    const [formData, setFormData] = useState({
-        SKU: '',
-        sourceItem: null,
-        targetWarehouse: 'LUDLOW', // Default, should be dynamic or based on source selection
-        targetLocation: '',
-        quantity: 0
-    });
+    const excludeLoc = (initialSourceItem?.Warehouse === formData.targetWarehouse) ? initialSourceItem?.Location : null;
+    const { suggestions, skuVelocity, mergeOpportunity } = useLocationSuggestions(
+        formData.targetLocation ? null : initialSourceItem?.SKU,
+        formData.targetWarehouse,
+        excludeLoc
+    );
 
-    // 3. Data Loading: Velocity
-    const [skuVelocity, setSkuVelocity] = useState(null);
-    const [allVelocities, setAllVelocities] = useState([]);
-    const [isLoadingVelocity, setIsLoadingVelocity] = useState(false);
+    // States
+    const [showScan, setShowScan] = useState(false);
 
-    // Reset when opening
-    useEffect(() => {
-        if (isOpen) {
-            setScanValue('');
-            // Reset velocity state
-            setSkuVelocity(null);
-
-            if (initialSourceItem) {
-                setFormData({
-                    SKU: initialSourceItem.SKU,
-                    sourceItem: initialSourceItem,
-                    targetWarehouse: initialSourceItem.Warehouse,
-                    targetLocation: '',
-                    quantity: initialSourceItem.Quantity
-                });
-                setStep(1);
-            } else {
-                setStep(1);
-                setFormData({
-                    SKU: '',
-                    sourceItem: null,
-                    targetWarehouse: 'LUDLOW',
-                    targetLocation: '',
-                    quantity: 0
-                });
-            }
-        }
-    }, [isOpen, initialSourceItem]);
-
-    // Async Effect: Fetch Logs & Calculate Velocity when SKU is selected (for optimization)
-    useEffect(() => {
-        if (formData.SKU && isOpen) {
-            const loadVelocity = async () => {
-                setIsLoadingVelocity(true);
-                try {
-                    // Fetch logs (ideally cached or optimized via Context)
-                    // We assume fetchLogs returns raw array for now
-                    const logs = await fetchLogs(); // Ensure this is exposed in context
-
-                    if (logs && logs.length > 0) {
-                        const v = calculateSkuVelocity(formData.SKU, logs);
-                        setSkuVelocity(v);
-
-                        // Also calculate all velocities for normalization (could be optimized significantly)
-                        // For MVP: Just calculate for current items in view or use a simple heuristic max
-                        // Here we take a sample to avoid blocking UI
-                        const sampleVelocities = inventoryData
-                            .slice(0, 50) // sample
-                            .map(i => calculateSkuVelocity(i.SKU, logs))
-                            .filter(val => val !== null);
-
-                        setAllVelocities(sampleVelocities);
-                    }
-                } catch (e) {
-                    console.error("Error loading velocity", e);
-                } finally {
-                    setIsLoadingVelocity(false);
-                }
-            };
-
-            loadVelocity();
-        }
-    }, [formData.SKU, isOpen, fetchLogs, inventoryData]);
-
-
-    // Suggestions for SKU
-    const skuSuggestions = useMemo(() => {
-        const uniqueSKUs = new Map();
-        inventoryData.forEach(item => {
-            if (item.SKU && !uniqueSKUs.has(item.SKU)) {
-                uniqueSKUs.set(item.SKU, {
-                    value: item.SKU,
-                    info: `${item.Quantity || 0} units`
-                });
-            }
-        });
-        return Array.from(uniqueSKUs.values());
-    }, [inventoryData]);
-
-    // Find all instances of the selected SKU
-    const sourceInstances = useMemo(() => {
-        if (!formData.SKU) return [];
-        const all = inventoryData.filter(i => i.SKU === formData.SKU && i.Quantity > 0);
-        if (formData.sourceItem) {
-            return all.filter(i => i.id === formData.sourceItem.id);
-        }
-        return all;
-    }, [formData.SKU, formData.sourceItem, inventoryData]);
-
-    // Smart Suggestion for target location (Existing location match)
-    const suggestedTarget = useMemo(() => {
-        if (!formData.SKU || !formData.targetWarehouse) return null;
-        const targetInv = formData.targetWarehouse === 'ATS' ? atsData : ludlowData;
-
-        // Is there an existing location with this SKU?
-        const matching = targetInv.find(i => i.SKU === formData.SKU);
-        return matching ? matching.Location : null;
-    }, [formData.SKU, formData.targetWarehouse, ludlowData, atsData]);
-
-    // --- NEW: INTELLIGENT LOCATION SUGGESTIONS ---
-    // Calculates score based on: Velocity + Proximity + Consolidation
-    const locationSuggestions = useMemo(() => {
-        const targetInv = formData.targetWarehouse === 'ATS' ? atsData : ludlowData;
-        const shippingArea = SLOTTING_CONFIG.SHIPPING_AREAS[formData.targetWarehouse];
-
-        const locationMap = new Map();
-
-        // 1. Gather all unique valid locations from inventory
-        targetInv.forEach(item => {
-            if (item.Location) {
-                const key = `${item.Warehouse}-${item.Location}`;
-                const capData = locationCapacities[key] || { current: 0, max: 550 };
-                const zone = getZone(item.Warehouse, item.Location);
-
-                if (!locationMap.has(item.Location)) {
-                    // Calculate Hybrid Score
-                    const score = calculateHybridLocationScore(
-                        {
-                            name: item.Location,
-                            current: capData.current,
-                            max: capData.max,
-                            zone
-                        },
-                        skuVelocity, // Calculated async
-                        shippingArea,
-                        allVelocities
-                    );
-
-                    locationMap.set(item.Location, {
-                        value: item.Location,
-                        current: capData.current,
-                        max: capData.max,
-                        zone: zone, // e.g. 'HOT', 'COLD'
-                        score: score, // 0-100
-                        priorityLabel: score > 80 ? '🔥 BEST' : score > 50 ? '✅ GOOD' : '⚠️ FAIR'
-                    });
-                }
-            }
-        });
-
-        // 2. Sort by Hybrid Score (Descending: High score is best)
-        return Array.from(locationMap.values()).sort((a, b) => b.score - a.score);
-
-    }, [formData.targetWarehouse, ludlowData, atsData, locationCapacities, skuVelocity, allVelocities, getZone]);
+    // Derived
+    const isValid = validate().isValid;
+    const isScanMatch = showScan ? formData.scanValue.toUpperCase() === formData.targetLocation.toUpperCase() : true;
 
     if (!isOpen) return null;
 
-    const handleSelectSource = (item) => {
-        setFormData(prev => ({
-            ...prev,
-            sourceItem: item,
-            quantity: item.Quantity,
-            targetWarehouse: item.Warehouse // Default target to same warehouse 
-        }));
-    };
-
-    const handleConfirmMove = () => {
-        if (formData.targetLocation) setStep(3);
-    };
-
-    const handleSubmit = (e) => {
-        if (e) e.preventDefault();
-        if (scanValue.toUpperCase() !== formData.targetLocation.toUpperCase()) {
-            alert(`Scan error: Mismatch! Expected ${formData.targetLocation}`);
+    const handleSubmit = () => {
+        if (!isValid) return;
+        if (showScan && !isScanMatch) {
+            alert('Scan verification failed!');
             return;
         }
+
         onMove({
-            ...formData,
+            sourceItem: initialSourceItem,
+            targetWarehouse: formData.targetWarehouse,
+            targetLocation: formData.targetLocation,
             quantity: parseInt(formData.quantity)
         });
         onClose();
@@ -217,210 +51,185 @@ export const MovementModal = ({ isOpen, onClose, onMove, initialSourceItem = nul
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-neutral-900 border border-neutral-800 rounded-xl w-full max-w-md shadow-2xl relative flex flex-col max-h-[90vh]">
+            <div className="bg-neutral-900 border border-neutral-800 rounded-2xl w-full max-w-md shadow-2xl relative flex flex-col max-h-[90vh]">
 
                 {/* Header */}
-                <div className="p-6 border-b border-neutral-800 flex items-center justify-between">
+                <div className="p-5 border-b border-neutral-800 flex items-start justify-between bg-neutral-900/50 rounded-t-2xl">
                     <div>
                         <h2 className="text-xl font-black text-white flex items-center gap-2 uppercase tracking-tighter">
-                            <ArrowRightLeft className="text-blue-500" />
+                            <ArrowRightLeft className="text-blue-500" size={24} />
                             Relocate Stock
                         </h2>
-                        <div className="flex items-center gap-3">
-                            <p className="text-neutral-500 text-xs uppercase font-bold tracking-widest mt-1">
-                                {step === 3 ? "VERIFICATION" : `Step ${step}/3`}
-                            </p>
-                            {/* Velocity Badge */}
-                            {skuVelocity !== null && (
+                        {skuVelocity !== null && (
+                            <div className="flex items-center gap-2 mt-2">
                                 <span className="bg-purple-500/10 text-purple-400 border border-purple-500/20 text-[10px] uppercase font-black px-2 py-0.5 rounded flex items-center gap-1">
                                     <Zap size={10} />
                                     {skuVelocity.toFixed(1)} picks/day
                                 </span>
-                            )}
-                        </div>
+                            </div>
+                        )}
                     </div>
-                    <button onClick={onClose} className="text-neutral-500 hover:text-white transition-colors">
-                        <X size={24} />
+                    <button onClick={onClose} className="p-2 -mr-2 text-neutral-500 hover:text-white transition-colors">
+                        <X size={20} />
                     </button>
                 </div>
 
-                <div className="p-6 overflow-y-auto flex-1">
-                    {step === 1 ? (
-                        <div className="space-y-6">
-                            <AutocompleteInput
-                                label="SELECT SKU"
-                                value={formData.SKU}
-                                onChange={(val) => setFormData(prev => ({ ...prev, SKU: val, sourceItem: null }))}
-                                suggestions={skuSuggestions}
-                                placeholder="Search..."
-                            />
-
-                            {sourceInstances.length > 0 && (
-                                <div className="space-y-3">
-                                    <label className="block text-xs font-black text-neutral-500 uppercase tracking-widest">Select Source</label>
-                                    <div className="space-y-2">
-                                        {sourceInstances.map((item) => (
-                                            <button
-                                                key={item.id}
-                                                onClick={() => handleSelectSource(item)}
-                                                className={`w-full p-4 rounded-xl border transition-all text-left flex items-center justify-between ${formData.sourceItem?.id === item.id
-                                                    ? 'bg-green-500/10 border-green-500'
-                                                    : 'bg-neutral-800/50 border-neutral-700 hover:border-neutral-500'
-                                                    }`}
-                                            >
-                                                <div>
-                                                    <div className="text-white font-black">{item.Location}</div>
-                                                    <div className="text-neutral-400 text-xs uppercase">{item.Warehouse}</div>
-                                                </div>
-                                                <div className="text-right">
-                                                    <div className="text-green-500 font-bold">{item.Quantity}</div>
-                                                    <div className="text-neutral-500 text-[10px] uppercase">Available</div>
-                                                </div>
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            {formData.sourceItem && (
-                                <div className="animate-in slide-in-from-top-4 duration-300">
-                                    <label className="block text-xs font-black text-neutral-500 uppercase tracking-widest mb-3 text-center">Quantity to Move</label>
-                                    <div className="flex items-center gap-4">
-                                        <input
-                                            type="number"
-                                            value={formData.quantity}
-                                            onChange={(e) => setFormData(prev => ({ ...prev, quantity: Math.min(prev.sourceItem.Quantity, parseInt(e.target.value) || 0) }))}
-                                            className="flex-1 bg-neutral-950 border-2 border-neutral-800 rounded-2xl py-4 text-center text-3xl font-black text-green-500 focus:border-green-500 outline-none"
-                                            max={formData.sourceItem.Quantity}
-                                            min={1}
-                                        />
-                                    </div>
-                                </div>
-                            )}
+                <div className="p-6 overflow-y-auto space-y-6">
+                    {/* Source Info Card */}
+                    <div className="bg-neutral-800/50 border border-neutral-700/50 rounded-xl p-4 flex justify-between items-center group relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-1 h-full bg-blue-500" />
+                        <div>
+                            <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest mb-1">Moving Source</p>
+                            <h3 className="text-lg font-black text-white">{initialSourceItem?.SKU}</h3>
+                            <p className="text-xs text-neutral-400 font-medium">
+                                From: <span className="text-white font-bold">{initialSourceItem?.Location}</span> • {initialSourceItem?.Warehouse}
+                            </p>
                         </div>
-                    ) : step === 2 ? (
-                        <div className="space-y-6">
-                            <div>
-                                <label className="block text-xs font-black text-neutral-500 uppercase tracking-widest mb-3">Target Warehouse</label>
-                                <div className="flex gap-2">
-                                    {['LUDLOW', 'ATS'].map((wh) => (
-                                        <button
-                                            key={wh}
-                                            onClick={() => setFormData(prev => ({ ...prev, targetWarehouse: wh, targetLocation: '' }))}
-                                            className={`flex-1 py-3 rounded-xl font-black text-xs transition-all border ${formData.targetWarehouse === wh
-                                                ? 'bg-green-500 text-black border-green-500 shadow-lg shadow-green-500/20'
-                                                : 'bg-neutral-800 text-neutral-400 border-neutral-700'
-                                                }`}
-                                        >
-                                            {wh}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
+                        <div className="text-right">
+                            <p className="text-2xl font-black text-white">{initialSourceItem?.Quantity}</p>
+                            <p className="text-[9px] text-neutral-500 uppercase font-black tracking-widest">Available</p>
+                        </div>
+                    </div>
 
-                            {/* Smart Suggestion - Enhanced with Score info */}
-                            {suggestedTarget && (
-                                <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <TrendingUp className="text-blue-400" size={16} />
-                                        <span className="text-blue-400 text-xs font-black uppercase tracking-wider">Merge Opportunity</span>
-                                    </div>
-                                    <p className="text-neutral-300 text-sm mb-3">
-                                        SKU already exists in <span className="font-bold text-white">{suggestedTarget}</span>.
-                                    </p>
+                    {/* Form Fields */}
+                    <div className="space-y-5">
+                        {/* Quantity */}
+                        <div>
+                            <label className="block text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-2">Quantity to Move</label>
+                            <div className="relative">
+                                <input
+                                    type="number"
+                                    value={formData.quantity}
+                                    onChange={(e) => setField('quantity', Math.min(initialSourceItem?.Quantity || 0, parseInt(e.target.value) || 0))}
+                                    className="w-full bg-neutral-950 border border-neutral-800 rounded-xl py-4 px-4 text-center text-3xl font-black text-green-500 focus:border-green-500 focus:ring-1 focus:ring-green-500/20 outline-none transition-all"
+                                />
+                                <button
+                                    onClick={() => setField('quantity', initialSourceItem?.Quantity)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black uppercase bg-neutral-800 text-neutral-400 px-2 py-1 rounded hover:bg-neutral-700 hover:text-white transition-colors"
+                                >
+                                    Max
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Separation Line */}
+                        <div className="flex items-center gap-4 text-neutral-800">
+                            <div className="h-px flex-1 bg-current" />
+                            <ArrowRightLeft size={16} />
+                            <div className="h-px flex-1 bg-current" />
+                        </div>
+
+                        {/* Warehouse Selector */}
+                        <div>
+                            <label className="block text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-2">Target Warehouse</label>
+                            <div className="flex flex-wrap gap-2">
+                                {['LUDLOW', 'ATS'].map((wh) => (
                                     <button
+                                        key={wh}
+                                        type="button"
                                         onClick={() => {
-                                            setFormData(prev => ({ ...prev, targetLocation: suggestedTarget }));
-                                            setStep(3);
+                                            setField('targetWarehouse', wh);
+                                            setField('targetLocation', ''); // Clear location on warehouse change
                                         }}
-                                        className="w-full py-2 bg-blue-500 hover:bg-blue-400 text-white rounded-lg font-black text-xs uppercase"
+                                        className={`px-4 py-2 rounded-lg font-bold text-xs transition-all border ${formData.targetWarehouse === wh
+                                            ? 'bg-green-500 text-black border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.3)]'
+                                            : 'bg-neutral-800 text-neutral-400 border-neutral-700 hover:border-neutral-500'
+                                            }`}
                                     >
-                                        Merge into {suggestedTarget}
+                                        {wh}
                                     </button>
-                                </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Target Location */}
+                        <div className="space-y-3">
+                            {mergeOpportunity && !formData.targetLocation && (
+                                <button
+                                    onClick={() => setField('targetLocation', mergeOpportunity)}
+                                    className="w-full text-left bg-blue-500/5 hover:bg-blue-500/10 border border-blue-500/20 rounded-xl p-3 flex items-start gap-3 transition-colors group"
+                                >
+                                    <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400">
+                                        <AlertTriangle size={16} />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-bold text-blue-300 group-hover:text-blue-200">Merge Opportunity</p>
+                                        <p className="text-[10px] text-blue-400/60 leading-tight mt-0.5">
+                                            Item already exists at <strong className="text-blue-300">{mergeOpportunity}</strong> in <strong className="text-blue-300">{formData.targetWarehouse}</strong>. Click to merge.
+                                        </p>
+                                    </div>
+                                </button>
                             )}
 
                             <AutocompleteInput
-                                label="TARGET LOCATION (Smart Ranked)"
+                                label="Target Location"
                                 value={formData.targetLocation}
-                                onChange={(val) => setFormData(prev => ({ ...prev, targetLocation: val }))}
-                                suggestions={locationSuggestions}
-                                placeholder="A1, Row 5..."
+                                onChange={(val) => setField('targetLocation', val)}
+                                suggestions={suggestions.filter(s => s.value !== initialSourceItem?.Location)} // Exclude current
+                                placeholder="Scan or type location..."
                                 renderItem={(suggestion) => (
-                                    <div className="py-2">
-                                        <div className="flex justify-between items-center mb-1 text-left">
+                                    <div className="py-2.5 px-1">
+                                        <div className="flex justify-between items-center mb-1.5">
                                             <div className="flex items-center gap-2">
                                                 <span className="font-black text-white">{suggestion.value}</span>
-                                                <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-white/5 ${getZoneColor(suggestion.zone)}`}>
-                                                    {suggestion.zone}
-                                                </span>
+                                                {suggestion.zone && (
+                                                    <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-white/5 ${getZoneColor(suggestion.zone)}`}>
+                                                        {suggestion.zone}
+                                                    </span>
+                                                )}
                                             </div>
-                                            <span className={`text-[9px] font-bold uppercase ${suggestion.score > 80 ? 'text-green-400' : 'text-neutral-500'
-                                                }`}>
-                                                {suggestion.priorityLabel} ({Math.round(suggestion.score)})
+                                            <span className={`text-[9px] font-black uppercase ${suggestion.score > 80 ? 'text-green-400' : suggestion.score > 50 ? 'text-yellow-400' : 'text-neutral-500'}`}>
+                                                {suggestion.priorityLabel}
                                             </span>
                                         </div>
-                                        <CapacityBar current={suggestion.current} max={suggestion.max} showText={false} />
+                                        <CapacityBar current={suggestion.current} max={suggestion.max} showText={false} size="sm" />
                                     </div>
                                 )}
                             />
                         </div>
-                    ) : (
-                        <div className="space-y-6 text-center py-4">
-                            <div className="w-20 h-20 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border-2 border-dashed border-blue-500/ animate-pulse">
-                                <Scan className="text-blue-500" size={32} />
-                            </div>
-                            <div>
-                                <h3 className="text-xl font-black text-white uppercase tracking-tighter">Scan to Verify</h3>
-                                <p className="text-neutral-500 text-sm mt-2">
-                                    Target: <span className="text-white font-bold">{formData.targetLocation}</span>
-                                </p>
-                            </div>
-                            <input
-                                autoFocus
-                                type="text"
-                                value={scanValue}
-                                onChange={(e) => setScanValue(e.target.value)}
-                                placeholder="Scan location barcode..."
-                                className="w-full bg-neutral-950 border-2 border-neutral-800 rounded-xl py-4 text-center text-xl font-mono text-white focus:border-blue-500 outline-none uppercase"
-                                onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-                            />
+
+                        {/* Scan Toggle */}
+                        <div className="flex items-center justify-between pt-2">
+                            <button
+                                onClick={() => setShowScan(!showScan)}
+                                className={`flex items-center gap-2 text-xs font-bold uppercase transition-colors ${showScan ? 'text-blue-400' : 'text-neutral-600 hover:text-neutral-400'}`}
+                            >
+                                <Scan size={16} />
+                                {showScan ? 'Scan Verification On' : 'Enable Verification?'}
+                            </button>
                         </div>
-                    )}
+
+                        {showScan && (
+                            <div className="animate-in slide-in-from-top-2">
+                                <input
+                                    autoFocus
+                                    type="text"
+                                    placeholder="SCAN TARGET BARCODE"
+                                    value={formData.scanValue}
+                                    onChange={(e) => setField('scanValue', e.target.value)}
+                                    className={`w-full bg-black/40 border-2 rounded-xl py-3 px-4 text-center font-mono uppercase tracking-widest outline-none transition-all ${formData.scanValue ? (isScanMatch ? 'border-green-500/50 text-green-400' : 'border-red-500/50 text-red-400') : 'border-neutral-800 text-white'
+                                        }`}
+                                />
+                                {formData.scanValue && (
+                                    <p className={`text-[10px] text-center font-black uppercase mt-1.5 ${isScanMatch ? 'text-green-500' : 'text-red-500'}`}>
+                                        {isScanMatch ? 'Match Confirmed' : 'Mismatch'}
+                                    </p>
+                                )}
+                            </div>
+                        )}
+                    </div>
                 </div>
 
-                <div className="p-6 border-t border-neutral-800 bg-neutral-900/50 rounded-b-xl">
-                    {step === 1 ? (
-                        <button
-                            disabled={!formData.sourceItem || formData.quantity <= 0}
-                            onClick={() => setStep(2)}
-                            className="w-full py-4 bg-white hover:bg-neutral-200 disabled:opacity-20 text-black font-black uppercase tracking-wider rounded-2xl transition-all flex items-center justify-center gap-2"
-                        >
-                            Next <Move size={20} />
-                        </button>
-                    ) : step === 2 ? (
-                        <div className="grid grid-cols-2 gap-3">
-                            <button onClick={() => setStep(1)} className="py-4 bg-neutral-800 text-white font-black uppercase rounded-2xl">Back</button>
-                            <button
-                                disabled={!formData.targetLocation}
-                                onClick={handleConfirmMove}
-                                className="py-4 bg-blue-500 text-white font-black uppercase rounded-2xl"
-                            >
-                                Confirm
-                            </button>
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-2 gap-3">
-                            <button onClick={() => setStep(2)} className="py-4 bg-neutral-800 text-white font-black uppercase rounded-2xl">Back</button>
-                            <button
-                                disabled={!scanValue}
-                                onClick={handleSubmit}
-                                className="py-4 bg-green-500 disabled:opacity-50 text-black font-black uppercase rounded-2xl"
-                            >
-                                Finalize
-                            </button>
-                        </div>
-                    )}
+                {/* Footer */}
+                <div className="p-5 border-t border-neutral-800 bg-neutral-900/50 rounded-b-2xl">
+                    <button
+                        onClick={handleSubmit}
+                        disabled={!isValid || (showScan && !isScanMatch)}
+                        className="w-full py-4 bg-white hover:bg-neutral-200 disabled:opacity-20 disabled:hover:bg-white text-black font-black uppercase tracking-wider rounded-xl transition-all shadow-lg shadow-white/5 active:scale-[0.98] flex items-center justify-center gap-2"
+                    >
+                        <CheckCircle2 size={20} />
+                        Confirm Move
+                    </button>
                 </div>
             </div>
         </div>

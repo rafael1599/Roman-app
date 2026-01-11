@@ -16,23 +16,33 @@ async function run() {
     }
 
     const sql = postgres(connectionString);
-    const migrationPath = path.resolve('supabase/migrations/20260106143500_movement_traceability.sql');
+    const migrationsDir = path.resolve('supabase/migrations');
 
-    if (!fs.existsSync(migrationPath)) {
-        console.error('❌ Error: Migration file not found at', migrationPath);
-        process.exit(1);
-    }
-
-    const migrationSql = fs.readFileSync(migrationPath, 'utf8');
-
-    console.log('🚀 Applying migration...');
     try {
-        await sql.unsafe(migrationSql);
-        console.log('✅ Migration applied successfully!');
+        const migrationFiles = fs.readdirSync(migrationsDir)
+            .filter(file => file.endsWith('.sql'))
+            .sort();
+
+        if (migrationFiles.length === 0) {
+            console.log('No migration files found.');
+            return;
+        }
+
+        console.log('🚀 Applying migrations...');
+        for (const file of migrationFiles) {
+            const migrationPath = path.join(migrationsDir, file);
+            const migrationSql = fs.readFileSync(migrationPath, 'utf8');
+            
+            console.log(`\t-> Applying ${file}`);
+            await sql.unsafe(migrationSql);
+        }
+        console.log('✅ All migrations applied successfully!');
+
     } catch (err) {
         console.error('❌ Migration failed:', err.message);
     } finally {
         await sql.end();
+        console.log('--- Migration script finished. ---');
     }
 }
 

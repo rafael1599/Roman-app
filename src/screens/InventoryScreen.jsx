@@ -57,8 +57,14 @@ export const InventoryScreen = () => {
         }
     };
 
-    const handleMoveStock = (moveData) => {
-        moveItem(moveData.sourceItem, moveData.targetWarehouse, moveData.targetLocation, moveData.quantity);
+    const handleMoveStock = async (moveData) => {
+        try {
+            await moveItem(moveData.sourceItem, moveData.targetWarehouse, moveData.targetLocation, moveData.quantity);
+            alert('Stock successfully moved!');
+        } catch (err) {
+            console.error('Error moving stock:', err);
+            alert('Move failed: ' + err.message);
+        }
     };
 
     const handleQuickMove = (item) => {
@@ -296,13 +302,6 @@ export const InventoryScreen = () => {
             {/* Floating Action Buttons (Stock Mode Only) */}
             {viewMode === 'stock' && (
                 <div className="fixed bottom-24 right-4 flex flex-col gap-3 z-40">
-                    <button
-                        onClick={() => setIsMovementModalOpen(true)}
-                        className="w-14 h-14 bg-neutral-800 hover:bg-neutral-700 rounded-full flex items-center justify-center shadow-2xl text-green-500 active:scale-90 transition-transform border border-neutral-700"
-                        title="Relocate Stock"
-                    >
-                        <ArrowRightLeft className="w-6 h-6" />
-                    </button>
                     <button
                         onClick={() => handleAddItem('LUDLOW')}
                         className="w-14 h-14 bg-green-500 hover:bg-green-400 rounded-full flex items-center justify-center shadow-2xl shadow-green-500/40 text-black active:scale-90 transition-transform"

@@ -104,7 +104,7 @@ export const InventoryProvider = ({ children }) => {
             if (!caps[key]) caps[key] = { current: 0, max: 550 };
             caps[key].current += parseInt(item.Quantity || 0);
             // We use the capacity of the first item found for simplicity, or default
-            if (item.Capacity) caps[key].max = item.Capacity;
+            if (item.capacity) caps[key].max = item.capacity;
         });
         return caps;
     }, [inventoryData]);
@@ -180,10 +180,9 @@ export const InventoryProvider = ({ children }) => {
         };
 
         try {
-            const { data, error } = await supabase
+            const { error } = await supabase
                 .from('inventory')
-                .insert([itemToInsert])
-                .select();
+                .insert([itemToInsert]);
 
             if (error) throw error;
 
@@ -243,73 +242,68 @@ export const InventoryProvider = ({ children }) => {
     };
 
     const moveItem = async (sourceItem, targetWarehouse, targetLocation, qty) => {
-        try {
-            // 0. Concurrency Pre-check (Server-side check)
-            const { data: serverItem, error: checkError } = await supabase
-                .from('inventory')
-                .select('Quantity')
-                .eq('id', sourceItem.id)
-                .single();
+        // 0. Concurrency Pre-check (Server-side check)
+        const { data: serverItem, error: checkError } = await supabase
+            .from('inventory')
+            .select('Quantity')
+            .eq('id', sourceItem.id)
+            .single();
 
-            if (checkError || !serverItem) throw new Error('Item no longer exists in source.');
-            if (serverItem.Quantity < qty) {
-                throw new Error(`Stock mismatch: Found ${serverItem.Quantity} units, but tried to move ${qty}. Use Undo or Refresh.`);
-            }
-
-            // 1. Update Source (Optimistic)
-            const remainingQty = sourceItem.Quantity - qty;
-            if (remainingQty <= 0) {
-                setInventoryData(prev => prev.map(i => i.id === sourceItem.id ? { ...i, Quantity: 0 } : i));
-                await supabase.from('inventory').update({ Quantity: 0 }).eq('id', sourceItem.id);
-            } else {
-                setInventoryData(prev => prev.map(i => i.id === sourceItem.id ? { ...i, Quantity: remainingQty } : i));
-                await supabase.from('inventory').update({ Quantity: remainingQty }).eq('id', sourceItem.id);
-            }
-
-            // 2. Update Destination
-            const existingTarget = inventoryData.find(i =>
-                i.SKU === sourceItem.SKU &&
-                i.Warehouse === targetWarehouse &&
-                i.Location === targetLocation
-            );
-
-            if (existingTarget) {
-                const newQty = (existingTarget.Quantity || 0) + qty;
-                setInventoryData(prev => prev.map(i => i.id === existingTarget.id ? { ...i, Quantity: newQty } : i));
-                await supabase.from('inventory').update({ Quantity: newQty }).eq('id', existingTarget.id);
-            } else {
-                const { data, error } = await supabase.from('inventory').insert([{
-                    SKU: sourceItem.SKU,
-                    Warehouse: targetWarehouse,
-                    Location: targetLocation,
-                    Quantity: qty,
-                    Location_Detail: sourceItem.Location_Detail,
-                    Status: sourceItem.Status || 'Active',
-                    Capacity: 550
-                }]).select();
-
-                if (data?.[0]) {
-                    setInventoryData(prev => [...prev, data[0]]);
-                }
-            }
-
-            // 3. Track Log
-            await trackLog({
-                sku: sourceItem.SKU,
-                from_warehouse: sourceItem.Warehouse,
-                from_location: sourceItem.Location,
-                to_warehouse: targetWarehouse,
-                to_location: targetLocation,
-                quantity: qty,
-                prev_quantity: sourceItem.Quantity,
-                new_quantity: remainingQty,
-                action_type: 'MOVE'
-            });
-
-        } catch (err) {
-            console.error('Movement failed:', err);
-            alert('Transfer failed. Please check your connection.');
+        if (checkError || !serverItem) throw new Error('Item no longer exists in source.');
+        if (serverItem.Quantity < qty) {
+            throw new Error(`Stock mismatch: Found ${serverItem.Quantity} units, but tried to move ${qty}. Use Undo or Refresh.`);
         }
+
+        // 1. Update Source (Optimistic)
+        const remainingQty = sourceItem.Quantity - qty;
+        if (remainingQty <= 0) {
+            setInventoryData(prev => prev.map(i => i.id === sourceItem.id ? { ...i, Quantity: 0 } : i));
+            await supabase.from('inventory').update({ Quantity: 0 }).eq('id', sourceItem.id);
+        } else {
+            setInventoryData(prev => prev.map(i => i.id === sourceItem.id ? { ...i, Quantity: remainingQty } : i));
+            await supabase.from('inventory').update({ Quantity: remainingQty }).eq('id', sourceItem.id);
+        }
+
+        // 2. Update Destination
+        const existingTarget = inventoryData.find(i =>
+            i.SKU === sourceItem.SKU &&
+            i.Warehouse === targetWarehouse &&
+            i.Location === targetLocation
+        );
+
+        if (existingTarget) {
+            const newQty = (existingTarget.Quantity || 0) + qty;
+            setInventoryData(prev => prev.map(i => i.id === existingTarget.id ? { ...i, Quantity: newQty } : i));
+            await supabase.from('inventory').update({ Quantity: newQty }).eq('id', existingTarget.id);
+        } else {
+            const { error } = await supabase.from('inventory').insert([{
+                SKU: sourceItem.SKU,
+                Warehouse: targetWarehouse,
+                Location: targetLocation,
+                Quantity: qty,
+                Location_Detail: sourceItem.Location_Detail,
+                Status: sourceItem.Status || 'Active',
+                capacity: 550
+            }]);
+
+            if (error) {
+                // The error will be caught by the outer try-catch, but good to be explicit
+                throw error;
+            }
+        }
+
+        // 3. Track Log
+        await trackLog({
+            sku: sourceItem.SKU,
+            from_warehouse: sourceItem.Warehouse,
+            from_location: sourceItem.Location,
+            to_warehouse: targetWarehouse,
+            to_location: targetLocation,
+            quantity: qty,
+            prev_quantity: sourceItem.Quantity,
+            new_quantity: remainingQty,
+            action_type: 'MOVE'
+        });
     };
 
     const deleteItem = async (warehouse, sku) => {
@@ -351,9 +345,20 @@ export const InventoryProvider = ({ children }) => {
 
             // --- Reversal Logic ---
             if (log.action_type === 'MOVE') {
-                // MOVE B->A (Return items to source)
+                const { data: itemToMoveBack, error: findError } = await supabase
+                    .from('inventory')
+                    .select('*')
+                    .eq('SKU', log.sku)
+                    .eq('Warehouse', log.to_warehouse)
+                    .eq('Location', log.to_location)
+                    .single();
+
+                if (findError || !itemToMoveBack) {
+                    throw new Error(`Cannot undo move: Item ${log.sku} not found at destination ${log.to_warehouse}-${log.to_location} in the database.`);
+                }
+                
                 await moveItem(
-                    { SKU: log.sku, Quantity: log.quantity, Warehouse: log.to_warehouse, Location: log.to_location },
+                    itemToMoveBack,
                     log.from_warehouse,
                     log.from_location,
                     log.quantity
