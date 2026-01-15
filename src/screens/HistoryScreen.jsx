@@ -14,10 +14,12 @@ import {
     AlertCircle,
     Calendar,
     Search,
-    Filter
+    Filter,
+    Mail
 } from 'lucide-react';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
+
 
 export const HistoryScreen = () => {
     const { undoAction } = useInventory();
@@ -31,11 +33,13 @@ export const HistoryScreen = () => {
         try {
             setLoading(true);
             setError(null);
+            // Fetch logs for "Today" specifically for the report, or just all recent
+            // For the screen, we limit to 100. For the report, we might need all of today.
             const { data, error: sbError } = await supabase
                 .from('inventory_logs')
                 .select('*')
                 .order('created_at', { ascending: false })
-                .limit(100);
+                .limit(200); // Increased limit slightly
 
             if (sbError) throw sbError;
             setLogs(data || []);
@@ -57,7 +61,7 @@ export const HistoryScreen = () => {
                 'postgres_changes',
                 { event: 'INSERT', schema: 'public', table: 'inventory_logs' },
                 (payload) => {
-                    setLogs(prev => [payload.new, ...prev].slice(0, 100));
+                    setLogs(prev => [payload.new, ...prev].slice(0, 200));
                 }
             )
             .on(
@@ -106,7 +110,6 @@ export const HistoryScreen = () => {
     const handleUndo = async (id) => {
         if (window.confirm('Are you sure you want to undo this action?')) {
             await undoAction(id);
-            // Real-time will handle the UI update if marks as reversed
         }
     };
 
@@ -120,6 +123,213 @@ export const HistoryScreen = () => {
         }
     };
 
+    // --- Report & Automation Logic ---
+
+    const generateDailyPDF = () => {
+        const doc = new jsPDF();
+        const todayStr = new Date().toLocaleDateString();
+
+        doc.setFontSize(20);
+        doc.text(`Daily Inventory Report - ${todayStr}`, 14, 22);
+
+        doc.setFontSize(10);
+        doc.text(`Generated at: ${new Date().toLocaleTimeString()}`, 14, 30);
+
+        // Filter valid logs for today
+        const todaysLogs = logs.filter(log => {
+            const logDate = new Date(log.created_at);
+            const today = new Date();
+            return logDate.getDate() === today.getDate() &&
+                logDate.getMonth() === today.getMonth() &&
+                logDate.getFullYear() === today.getFullYear();
+        });
+
+        const tableData = todaysLogs.map(log => {
+            let description = '';
+            switch (log.action_type) {
+                case 'MOVE':
+                    description = `Relocated from ${log.from_location} to ${log.to_location}`;
+                    break;
+                case 'ADD':
+                    description = `Restocked inventory in ${log.to_location || log.from_location || 'General'}`;
+                    break;
+                case 'DEDUCT':
+                    description = `Picked stock from ${log.from_location || 'General'}`;
+                    break;
+                case 'DELETE':
+                    description = `Removed item from ${log.from_location || 'Inventory'}`;
+                    break;
+                default:
+                    description = `Updated record for ${log.from_location || log.to_location || '-'}`;
+            }
+
+            return [
+                new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                log.sku,
+                description,
+                log.quantity
+            ];
+        });
+
+        autoTable(doc, {
+            startY: 40,
+            head: [['Time', 'SKU', 'Activity Description', 'Qty']],
+            body: tableData,
+            theme: 'grid',
+            headStyles: { fillColor: [22, 163, 74] }, // Green-600
+            columnStyles: {
+                0: { cellWidth: 25 }, // Time
+                1: { cellWidth: 35, fontStyle: 'bold' }, // SKU
+                2: { cellWidth: 'auto' }, // Description
+                3: { cellWidth: 20, halign: 'right', fontStyle: 'bold' } // Qty
+            }
+        });
+
+        return doc;
+    };
+
+    const handleDownloadReport = () => {
+        const doc = generateDailyPDF();
+        doc.save(`inventory-report-${new Date().toISOString().split('T')[0]}.pdf`);
+    };
+
+    const sendDailyEmail = async () => {
+        try {
+            console.log("Attempting to send daily email...");
+
+            // Build simple HTML summary
+            const todayStr = new Date().toLocaleDateString();
+            const todaysLogs = logs.filter(log => {
+                const logDate = new Date(log.created_at);
+                const today = new Date();
+                return logDate.toDateString() === today.toDateString();
+            });
+
+            const moveCount = todaysLogs.filter(l => l.action_type === 'MOVE').length;
+            const pickCount = todaysLogs.filter(l => l.action_type === 'DEDUCT').length;
+            const addCount = todaysLogs.filter(l => l.action_type === 'ADD').length;
+
+            const htmlContent = `
+                <h1>Daily Inventory Summary - ${todayStr}</h1>
+                <p><strong>Total Actions:</strong> ${todaysLogs.length}</p>
+                <ul>
+                    <li>Moves: ${moveCount}</li>
+                    <li>Picks: ${pickCount}</li>
+                    <li>Restocks: ${addCount}</li>
+                </ul>
+                
+                <h2>Activity Details</h2>
+                <table style="width: 100%; border-collapse: collapse; text-align: left; font-family: sans-serif;">
+                    <thead>
+                        <tr style="background-color: #f3f4f6; color: #374151;">
+                            <th style="padding: 12px; border-bottom: 2px solid #e5e7eb; width: 80px;">Time</th>
+                            <th style="padding: 12px; border-bottom: 2px solid #e5e7eb; width: 120px;">SKU</th>
+                            <th style="padding: 12px; border-bottom: 2px solid #e5e7eb;">Activity Description</th>
+                            <th style="padding: 12px; border-bottom: 2px solid #e5e7eb; text-align: right; width: 60px;">Qty</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${todaysLogs.map(log => {
+                let description = '';
+                const locationStyle = 'font-weight: 600; color: #111827;';
+                const secondaryColor = '#6b7280';
+
+                switch (log.action_type) {
+                    case 'MOVE':
+                        description = `Relocated from <span style="color:${secondaryColor}">${log.from_location}</span> to <span style="${locationStyle}">${log.to_location}</span>`;
+                        break;
+                    case 'ADD':
+                        description = `Restocked inventory in <span style="${locationStyle}">${log.to_location || log.from_location || 'General'}</span>`;
+                        break;
+                    case 'DEDUCT':
+                        description = `Picked stock from <span style="${locationStyle}">${log.from_location || 'General'}</span>`;
+                        break;
+                    case 'DELETE':
+                        description = `Removed item from <span style="${locationStyle}">${log.from_location || 'Inventory'}</span>`;
+                        break;
+                    default:
+                        description = `Updated record for <span style="${locationStyle}">${log.from_location || log.to_location || '-'}</span>`;
+                }
+
+                return `
+                                <tr style="border-bottom: 1px solid #f3f4f6;">
+                                    <td style="padding: 12px; color: #6b7280; font-size: 0.9em;">
+                                        ${new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </td>
+                                    <td style="padding: 12px; font-weight: bold; color: #111827;">
+                                        ${log.sku}
+                                    </td>
+                                    <td style="padding: 12px; color: #374151;">
+                                        ${description}
+                                    </td>
+                                    <td style="padding: 12px; text-align: right; font-weight: bold;">
+                                        ${log.quantity}
+                                    </td>
+                                </tr>
+                            `;
+            }).join('')}
+                    </tbody>
+                </table>
+                
+                <p style="margin-top: 30px; font-size: 11px; color: #9ca3af; text-align: center;">
+                    Automated report generated by Roman App • ${new Date().toLocaleString()}
+                </p>
+            `;
+
+            // Call Supabase Edge Function
+            const { data, error } = await supabase.functions.invoke('send-daily-report', {
+                body: {
+                    to: 'rafaelukf@gmail.com',
+                    subject: `Daily Inventory Report - ${todayStr}`,
+                    html: htmlContent
+                }
+            });
+
+            if (error) {
+                console.error("Edge Function Invocation Error:", error);
+                throw error;
+            }
+
+            // Check for functional error returned in body (status 200)
+            if (data?.error) {
+                console.error("Email Sending Error:", data.error);
+                alert(`Error sending email: ${JSON.stringify(data.error)}`);
+                return;
+            }
+
+            console.log("Email sent successfully:", data);
+            localStorage.setItem(`email_sent_${new Date().toDateString()}`, 'true');
+            alert(`Daily report sent to rafaelukf@gmail.com`);
+
+        } catch (err) {
+            console.error("Failed to send email:", err);
+            // Optionally alert user or just log
+            alert("Failed to send daily email via Edge Function.");
+        }
+    };
+
+    // Automated 6 PM Check
+    useEffect(() => {
+        const checkTime = () => {
+            const now = new Date();
+            const is6PM = now.getHours() === 18 && now.getMinutes() === 0; // 18:00
+
+            if (is6PM) {
+                const sentKey = `email_sent_${now.toDateString()}`;
+                const alreadySent = localStorage.getItem(sentKey);
+
+                if (!alreadySent) {
+                    sendDailyEmail();
+                }
+            }
+        };
+
+        const interval = setInterval(checkTime, 60000); // Check every minute
+        checkTime(); // Initial check
+
+        return () => clearInterval(interval);
+    }, [logs]); // Dependency on logs so we have data to send
+
     return (
         <div className="flex flex-col h-full bg-black text-white p-4 max-w-2xl mx-auto w-full">
             <header className="flex justify-between items-end mb-8 pt-6">
@@ -129,12 +339,15 @@ export const HistoryScreen = () => {
                         <Clock size={10} /> Live Activity Log
                     </p>
                 </div>
-                <button
-                    onClick={fetchLogs}
-                    className="p-3 bg-neutral-900 border border-neutral-800 rounded-2xl hover:bg-neutral-800 transition-all"
-                >
-                    <RotateCcw className={loading ? 'animate-spin' : ''} size={20} />
-                </button>
+                <div className="flex gap-2">
+                    <button
+                        onClick={fetchLogs}
+                        className="p-3 bg-neutral-900 border border-neutral-800 rounded-2xl hover:bg-neutral-800 transition-all"
+                        title="Refresh Logs"
+                    >
+                        <RotateCcw className={loading ? 'animate-spin' : ''} size={20} />
+                    </button>
+                </div>
             </header>
 
             {/* Search and Filters */}
@@ -279,10 +492,20 @@ export const HistoryScreen = () => {
             </div>
 
             {/* Header Floating Action (Export) */}
-            <div className="fixed bottom-24 right-4 z-50">
+            <div className="fixed bottom-24 right-4 z-50 flex flex-col gap-3">
+                {/* Email Test Button (Optional for manual trigger) */}
                 <button
-                    onClick={() => { }} // Placeholder for pdf export
+                    onClick={sendDailyEmail}
+                    className="w-14 h-14 bg-neutral-800 text-neutral-400 border border-neutral-700 rounded-full flex items-center justify-center shadow-2xl active:scale-90 transition-all hover:bg-neutral-700 hover:text-white"
+                    title="Send Daily Email Now"
+                >
+                    <Mail size={24} />
+                </button>
+
+                <button
+                    onClick={handleDownloadReport}
                     className="w-14 h-14 bg-white text-black rounded-full flex items-center justify-center shadow-2xl shadow-blue-500/20 hover:scale-110 active:scale-90 transition-all font-black"
+                    title="Download Daily Report"
                 >
                     <FileDown size={24} />
                 </button>

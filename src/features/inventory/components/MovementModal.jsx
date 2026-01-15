@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, ArrowRightLeft, Move, Scan, CheckCircle2, AlertTriangle, Zap } from 'lucide-react';
+import { X, ArrowRightLeft, Move, CheckCircle2, AlertTriangle, Zap } from 'lucide-react';
 import { useInventory } from '../../../hooks/useInventoryData';
 import { useMovementForm } from '../../../hooks/useMovementForm';
 import { useLocationSuggestions } from '../../../hooks/useLocationSuggestions';
@@ -17,21 +17,13 @@ export const MovementModal = ({ isOpen, onClose, onMove, initialSourceItem }) =>
         excludeLoc
     );
 
-    // States
-    const [showScan, setShowScan] = useState(false);
-
     // Derived
     const isValid = validate().isValid;
-    const isScanMatch = showScan ? formData.scanValue.toUpperCase() === formData.targetLocation.toUpperCase() : true;
 
     if (!isOpen) return null;
 
     const handleSubmit = () => {
         if (!isValid) return;
-        if (showScan && !isScanMatch) {
-            alert('Scan verification failed!');
-            return;
-        }
 
         onMove({
             sourceItem: initialSourceItem,
@@ -79,9 +71,11 @@ export const MovementModal = ({ isOpen, onClose, onMove, initialSourceItem }) =>
                     <div className="bg-neutral-800/50 border border-neutral-700/50 rounded-xl p-4 flex justify-between items-center group relative overflow-hidden">
                         <div className="absolute top-0 left-0 w-1 h-full bg-blue-500" />
                         <div>
-                            <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest mb-1">Moving Source</p>
-                            <h3 className="text-lg font-black text-white">{initialSourceItem?.SKU}</h3>
-                            <p className="text-xs text-neutral-400 font-medium">
+                            <h3 className="text-lg font-black text-white flex gap-2">
+                                <span className="text-neutral-500 font-bold uppercase tracking-widest text-[10px] self-center">Moving</span>
+                                {initialSourceItem?.SKU}
+                            </h3>
+                            <p className="text-xs text-neutral-400 font-medium mt-0.5">
                                 From: <span className="text-white font-bold">{initialSourceItem?.Location}</span> • {initialSourceItem?.Warehouse}
                             </p>
                         </div>
@@ -188,35 +182,7 @@ export const MovementModal = ({ isOpen, onClose, onMove, initialSourceItem }) =>
                             />
                         </div>
 
-                        {/* Scan Toggle */}
-                        <div className="flex items-center justify-between pt-2">
-                            <button
-                                onClick={() => setShowScan(!showScan)}
-                                className={`flex items-center gap-2 text-xs font-bold uppercase transition-colors ${showScan ? 'text-blue-400' : 'text-neutral-600 hover:text-neutral-400'}`}
-                            >
-                                <Scan size={16} />
-                                {showScan ? 'Scan Verification On' : 'Enable Verification?'}
-                            </button>
-                        </div>
 
-                        {showScan && (
-                            <div className="animate-in slide-in-from-top-2">
-                                <input
-                                    autoFocus
-                                    type="text"
-                                    placeholder="SCAN TARGET BARCODE"
-                                    value={formData.scanValue}
-                                    onChange={(e) => setField('scanValue', e.target.value)}
-                                    className={`w-full bg-black/40 border-2 rounded-xl py-3 px-4 text-center font-mono uppercase tracking-widest outline-none transition-all ${formData.scanValue ? (isScanMatch ? 'border-green-500/50 text-green-400' : 'border-red-500/50 text-red-400') : 'border-neutral-800 text-white'
-                                        }`}
-                                />
-                                {formData.scanValue && (
-                                    <p className={`text-[10px] text-center font-black uppercase mt-1.5 ${isScanMatch ? 'text-green-500' : 'text-red-500'}`}>
-                                        {isScanMatch ? 'Match Confirmed' : 'Mismatch'}
-                                    </p>
-                                )}
-                            </div>
-                        )}
                     </div>
                 </div>
 
@@ -224,7 +190,7 @@ export const MovementModal = ({ isOpen, onClose, onMove, initialSourceItem }) =>
                 <div className="p-5 border-t border-neutral-800 bg-neutral-900/50 rounded-b-2xl">
                     <button
                         onClick={handleSubmit}
-                        disabled={!isValid || (showScan && !isScanMatch)}
+                        disabled={!isValid}
                         className="w-full py-4 bg-white hover:bg-neutral-200 disabled:opacity-20 disabled:hover:bg-white text-black font-black uppercase tracking-wider rounded-xl transition-all shadow-lg shadow-white/5 active:scale-[0.98] flex items-center justify-center gap-2"
                     >
                         <CheckCircle2 size={20} />
