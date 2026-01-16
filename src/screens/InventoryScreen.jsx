@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useInventory } from '../hooks/useInventoryData';
 import { useViewMode } from '../context/ViewModeContext';
 import { SearchInput } from '../components/ui/SearchInput';
@@ -13,6 +13,9 @@ import { MovementModal } from '../features/inventory/components/MovementModal';
 import { CapacityBar } from '../components/ui/CapacityBar';
 
 import { usePickingSession } from '../hooks/usePickingSession';
+import { useAuth } from '../context/AuthContext';
+import { useLocationManagement } from '../hooks/useLocationManagement';
+import LocationEditorModal from '../features/warehouse-management/components/LocationEditorModal';
 
 export const InventoryScreen = () => {
     const { inventoryData, locationCapacities, updateQuantity, addItem, updateItem, moveItem, deleteItem, loading } = useInventory();
@@ -20,11 +23,19 @@ export const InventoryScreen = () => {
     const { processOrder, executeDeduction, currentOrder } = useOrderProcessing();
 
     const [search, setSearch] = useState('');
+    useEffect(() => {
+        setVisibleGroups(20);
+    }, [search]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
     const [modalMode, setModalMode] = useState('add');
+    const [visibleGroups, setVisibleGroups] = useState(20);
     const [selectedWarehouseForAdd, setSelectedWarehouseForAdd] = useState('LUDLOW');
     const [isMovementModalOpen, setIsMovementModalOpen] = useState(false);
+    const [locationBeingEdited, setLocationBeingEdited] = useState(null);
+
+    const { isAdmin } = useAuth();
+    const { updateLocation, deactivateLocation, refresh: refreshLocations } = useLocationManagement();
 
     // Picking Mode State (Now Server-Side)
     const {
@@ -81,6 +92,98 @@ export const InventoryScreen = () => {
         // We reuse the MovementModal but skip step 1 in the future or just pre-fill it
         setEditingItem(item);
         setIsMovementModalOpen(true);
+    };
+
+    const { locations: allMappedLocations } = useLocationManagement();
+
+    const handleOpenLocationEditor = (warehouse, locationName, locationId) => {
+        if (!isAdmin || viewMode !== 'stock') return;
+
+        // 1. Prioridad: Intento de coincidencia por ID exacto de la base de datos
+        // (Esto resuelve problemas de duplicados como "9" vs "Row 9")
+        let loc = null;
+        if (locationId) {
+            loc = allMappedLocations.find(l => l.id === locationId);
+        }
+
+        // 2. Coincidencia por Nombre Exacto
+        if (!loc) {
+            loc = allMappedLocations.find(l =>
+                l.warehouse === warehouse &&
+                l.location.toLowerCase() === locationName.toLowerCase()
+            );
+        }
+
+        if (loc) {
+            setLocationBeingEdited(loc);
+        } else {
+            // 3. Fallback: Si no existe en la base de datos de configuraciones, 
+            // permitimos crearla al vuelo usando los datos del inventario como base.
+            console.warn(`No DB record found for location "${locationName}" (Warehouse: ${warehouse}).`);
+
+            setLocationBeingEdited({
+                warehouse,
+                location: locationName,
+                max_capacity: 550,
+                zone: 'UNASSIGNED',
+                picking_order: 999,
+                isNew: true
+            });
+        }
+    };
+
+    const handleSaveLocation = async (formData) => {
+        let result;
+        if (locationBeingEdited.isNew) {
+            // Crear nueva ubicación
+            const { isNew, ...dataToCreate } = formData;
+            result = await createLocation(dataToCreate);
+        } else {
+            // Actualizar existente
+            result = await updateLocation(locationBeingEdited.id, formData);
+        }
+
+        if (result.success) {
+            setLocationBeingEdited(null);
+            window.location.reload();
+        } else {
+            alert(`Error al guardar: ${result.error}`);
+        }
+    };
+
+    const handleDeleteLocation = async (id) => {
+        if (locationBeingEdited.isNew) {
+            // Caso especial: La ubicación no existe en la DB de configuraciones, 
+            // pero el usuario quiere "eliminarla" de la vista de inventario.
+            // Esto implica borrar o mover todos los SKUs que tengan ese string.
+            const totalUnits = inventoryData
+                .filter(i => i.Warehouse === locationBeingEdited.warehouse && i.Location === locationBeingEdited.location)
+                .reduce((sum, i) => sum + (i.Quantity || 0), 0);
+
+            const confirmMsg = `Esta es una ubicación "fantasma" (solo existe como texto en ${totalUnits} unidades de inventario). 
+¿Deseas ELIMINAR permanentemente todos estos productos para que la ubicación desaparezca?`;
+
+            if (window.confirm(confirmMsg)) {
+                const itemsToDelete = inventoryData.filter(i =>
+                    i.Warehouse === locationBeingEdited.warehouse &&
+                    i.Location === locationBeingEdited.location
+                );
+
+                for (const item of itemsToDelete) {
+                    await deleteItem(item.Warehouse, item.SKU);
+                }
+
+                setLocationBeingEdited(null);
+                window.location.reload();
+            }
+            return;
+        }
+
+        const result = await deactivateLocation(id);
+        if (result.success) {
+            setLocationBeingEdited(null);
+            window.location.reload();
+        }
     };
 
     // --- Picking Mode Handlers ---
@@ -169,12 +272,21 @@ export const InventoryScreen = () => {
         const groups = {};
         filteredData.forEach(item => {
             const wh = item.Warehouse || 'UNKNOWN';
-            const loc = item.Location || 'Unknown Location';
+            const locName = item.Location || 'Unknown Location';
 
             if (!groups[wh]) groups[wh] = {};
-            if (!groups[wh][loc]) groups[wh][loc] = [];
+            if (!groups[wh][locName]) {
+                groups[wh][locName] = {
+                    items: [],
+                    locationId: item.location_id
+                };
+            }
 
-            groups[wh][loc].push(item);
+            groups[wh][locName].items.push(item);
+            // Prefer items that have a location_id to define the block's ID
+            if (item.location_id && !groups[wh][locName].locationId) {
+                groups[wh][locName].locationId = item.location_id;
+            }
         });
         return groups;
     }, [filteredData]);
@@ -187,6 +299,22 @@ export const InventoryScreen = () => {
             return a.localeCompare(b);
         });
     }, [groupedData]);
+
+    // --- Pagination Logic ---
+    const allLocationBlocks = useMemo(() => {
+        return sortedWarehouses.flatMap(wh =>
+            Object.keys(groupedData[wh]).sort(naturalSort).map(location => ({
+                wh,
+                location,
+                items: groupedData[wh][location].items,
+                locationId: groupedData[wh][location].locationId
+            }))
+        );
+    }, [sortedWarehouses, groupedData]);
+
+    const paginatedBlocks = useMemo(() => {
+        return allLocationBlocks.slice(0, visibleGroups);
+    }, [allLocationBlocks, visibleGroups]);
 
     if (loading) return <div className="p-8 text-center text-muted font-bold uppercase tracking-widest animate-pulse">Loading Global Inventory...</div>;
 
@@ -201,55 +329,63 @@ export const InventoryScreen = () => {
             />
 
             <div className="p-4 space-y-12">
-                {sortedWarehouses.flatMap(wh =>
-                    Object.keys(groupedData[wh]).sort(naturalSort).map(location => (
-                        <div key={`${wh}-${location}`} className="space-y-4">
-                            <div className="sticky top-[89px] bg-main/95 backdrop-blur-sm z-30 py-3 border-b border-subtle group">
-                                <div className="flex items-center gap-4 px-1">
-                                    {/* Capacity Bar Side (3/4 approx) - NOW ON LEFT */}
-                                    <div className="flex-[3]">
-                                        <CapacityBar
-                                            current={locationCapacities[`${wh}-${location}`]?.current || 0}
-                                            max={locationCapacities[`${wh}-${location}`]?.max || 550}
-                                        />
-                                    </div>
+                {paginatedBlocks.map(({ wh, location, items, locationId }) => (
+                    <div key={`${wh}-${location}`} className="space-y-4">
+                        <div className="sticky top-[84px] bg-main/95 backdrop-blur-sm z-30 py-3 border-b border-subtle group">
+                            <div className="flex items-center gap-4 px-1">
+                                <div className="flex-[3]">
+                                    <CapacityBar
+                                        current={locationCapacities[`${wh}-${location}`]?.current || 0}
+                                        max={locationCapacities[`${wh}-${location}`]?.max || 550}
+                                    />
+                                </div>
 
-                                    {/* Info Side (1/3 approx) - NOW ON RIGHT */}
-                                    <div className="flex-1 min-w-0">
-                                        <h3 className="text-content text-xl font-black uppercase tracking-tighter truncate" title={location}>
-                                            {location}
-                                        </h3>
-                                    </div>
-
+                                <div className="flex-1 min-w-0">
+                                    <h3
+                                        className={`text-content text-xl font-black uppercase tracking-tighter truncate ${isAdmin && viewMode === 'stock' ? 'cursor-pointer hover:text-accent transition-colors' : ''}`}
+                                        title={isAdmin && viewMode === 'stock' ? 'Click to edit location' : location}
+                                        onClick={() => handleOpenLocationEditor(wh, location, locationId)}
+                                    >
+                                        {location}
+                                    </h3>
                                 </div>
                             </div>
-
-                            <div className="grid grid-cols-1 gap-1">
-                                {groupedData[wh][location]
-                                    .filter(item => (parseInt(item.Quantity) || 0) > 0)
-                                    .map((item, idx) => {
-                                        // Check if item is in cart to highlight?
-                                        const isInCart = cartItems.some(c => c.SKU === item.SKU && c.Warehouse === item.Warehouse && c.Location === item.Location);
-
-                                        return (
-                                            <div key={`${item.id || item.SKU}-${idx}`} className={isInCart ? 'ring-1 ring-accent rounded-lg' : ''}>
-                                                <InventoryCard
-                                                    sku={item.SKU}
-                                                    quantity={item.Quantity}
-                                                    detail={item.Location_Detail}
-                                                    warehouse={item.Warehouse}
-                                                    onIncrement={() => updateQuantity(item.SKU, 1, item.Warehouse, item.Location)}
-                                                    onDecrement={() => updateQuantity(item.SKU, -1, item.Warehouse, item.Location)}
-                                                    onMove={() => handleQuickMove(item)}
-                                                    onClick={() => handleCardClick(item)}
-                                                    mode={viewMode}
-                                                />
-                                            </div>
-                                        );
-                                    })}
-                            </div>
                         </div>
-                    ))
+
+                        <div className="grid grid-cols-1 gap-1">
+                            {items
+                                .filter(item => (parseInt(item.Quantity) || 0) > 0)
+                                .map((item, idx) => {
+                                    const isInCart = cartItems.some(c => c.SKU === item.SKU && c.Warehouse === item.Warehouse && c.Location === item.Location);
+                                    return (
+                                        <div key={`${item.id || item.SKU}-${idx}`} className={isInCart ? 'ring-1 ring-accent rounded-lg' : ''}>
+                                            <InventoryCard
+                                                sku={item.SKU}
+                                                quantity={item.Quantity}
+                                                detail={item.Location_Detail}
+                                                warehouse={item.Warehouse}
+                                                onIncrement={() => updateQuantity(item.SKU, 1, item.Warehouse, item.Location)}
+                                                onDecrement={() => updateQuantity(item.SKU, -1, item.Warehouse, item.Location)}
+                                                onMove={() => handleQuickMove(item)}
+                                                onClick={() => handleCardClick(item)}
+                                                mode={viewMode}
+                                            />
+                                        </div>
+                                    );
+                                })}
+                        </div>
+                    </div>
+                ))}
+
+                {allLocationBlocks.length > visibleGroups && (
+                    <div className="flex justify-center py-8">
+                        <button
+                            onClick={() => setVisibleGroups(prev => prev + 20)}
+                            className="px-8 py-4 bg-subtle text-accent font-black uppercase tracking-widest rounded-2xl hover:bg-accent hover:text-white transition-all active:scale-95 shadow-lg"
+                        >
+                            Load More Locations ({allLocationBlocks.length - visibleGroups} remaining)
+                        </button>
+                    </div>
                 )}
 
                 {sortedWarehouses.length === 0 && (
@@ -306,6 +442,15 @@ export const InventoryScreen = () => {
                 onMove={handleMoveStock}
                 initialSourceItem={editingItem}
             />
+
+            {locationBeingEdited && (
+                <LocationEditorModal
+                    location={locationBeingEdited}
+                    onSave={handleSaveLocation}
+                    onDelete={handleDeleteLocation}
+                    onCancel={() => setLocationBeingEdited(null)}
+                />
+            )}
         </div>
     );
 };

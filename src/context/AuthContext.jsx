@@ -7,6 +7,10 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [role, setRole] = useState(null); // 'admin' | 'staff'
     const [loading, setLoading] = useState(true);
+    const [viewAsUser, setViewAsUser] = useState(() => {
+        // Persist view preference
+        return localStorage.getItem('view_as_user') === 'true';
+    });
 
     useEffect(() => {
         let mounted = true;
@@ -154,14 +158,25 @@ export const AuthProvider = ({ children }) => {
         setLoading(false);
     };
 
+    const toggleAdminView = () => {
+        setViewAsUser(prev => {
+            const newValue = !prev;
+            localStorage.setItem('view_as_user', String(newValue));
+            return newValue;
+        });
+    };
+
     const value = {
         user,
         role,
         profile,
-        isAdmin: role === 'admin',
+        isAdmin: role === 'admin' && !viewAsUser,
+        isSystemAdmin: role === 'admin', // For internal checks if needed
+        viewAsUser,
         loading,
         signOut,
-        updateProfileName
+        updateProfileName,
+        toggleAdminView
     };
 
     return (

@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { createPortal } from 'react-dom';
 import { useTheme } from '../../context/ThemeContext';
-import { LogOut, X, Check, Sun, Moon } from 'lucide-react';
+import { LogOut, X, Check, Sun, Moon, Save, RefreshCw, Eye, ShieldCheck } from 'lucide-react';
 
-export const UserMenu = ({ isOpen, onClose }) => {
-    const { profile, signOut, updateProfileName } = useAuth();
+export const UserMenu = ({ isOpen, onClose, onExport, onSync }) => {
+    const { profile, signOut, updateProfileName, isSystemAdmin, viewAsUser, toggleAdminView } = useAuth();
     const { theme, toggleTheme } = useTheme();
     const [newName, setNewName] = useState(profile?.full_name || '');
     const [isEditing, setIsEditing] = useState(false);
@@ -102,6 +102,51 @@ export const UserMenu = ({ isOpen, onClose }) => {
 
                         {/* Actions */}
                         <div className="space-y-2">
+                            {onExport && (
+                                <button
+                                    onClick={() => {
+                                        onExport();
+                                        onClose();
+                                    }}
+                                    className="ios-btn w-full h-14 bg-accent/10 hover:bg-accent/20 border border-accent/10 text-accent transition-all font-black uppercase tracking-[0.2em] text-[10px]"
+                                >
+                                    <Save size={16} />
+                                    Export Inventory (CSV)
+                                </button>
+                            )}
+
+                            {onSync && profile?.role === 'admin' && (
+                                <button
+                                    onClick={async () => {
+                                        if (window.confirm('This will link legacy inventory items to their database IDs. Proceed?')) {
+                                            const res = await onSync();
+                                            alert(`Sync Complete: ${res.successCount} items repaired.`);
+                                            onClose();
+                                        }
+                                    }}
+                                    className="ios-btn w-full h-14 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/10 text-blue-400 transition-all font-black uppercase tracking-[0.2em] text-[10px]"
+                                >
+                                    <RefreshCw size={16} />
+                                    Repair Database Links
+                                </button>
+                            )}
+
+                            {isSystemAdmin && (
+                                <button
+                                    onClick={() => {
+                                        toggleAdminView();
+                                        onClose();
+                                    }}
+                                    className={`ios-btn w-full h-14 border transition-all font-black uppercase tracking-[0.2em] text-[10px] ${viewAsUser
+                                            ? 'bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/10 text-emerald-500'
+                                            : 'bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/10 text-amber-500'
+                                        }`}
+                                >
+                                    {viewAsUser ? <ShieldCheck size={16} /> : <Eye size={16} />}
+                                    {viewAsUser ? 'Switch to Admin View' : 'View as Normal User'}
+                                </button>
+                            )}
+
                             <button
                                 onClick={signOut}
                                 className="ios-btn w-full h-14 bg-red-500/10 hover:bg-red-500/20 border border-red-500/10 text-red-500 transition-all font-black uppercase tracking-[0.2em] text-[10px]"

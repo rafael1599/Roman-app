@@ -7,7 +7,7 @@
  * Valida que la capacidad propuesta sea válida para el inventario actual
  * Retorna warnings que pueden ser overridden por el usuario
  */
-export const validateCapacityChange = (newCapacity, currentInventory) => {
+export const validateCapacityChange = (newCapacity, currentInventory, originalCapacity = null) => {
     const totalUnits = currentInventory.reduce((sum, item) =>
         sum + (parseInt(item.Quantity) || 0), 0
     );
@@ -25,6 +25,18 @@ export const validateCapacityChange = (newCapacity, currentInventory) => {
         errors.push('La capacidad máxima permitida es 10,000 unidades');
     }
 
+    // Si la capacidad NO ha cambiado, no mostramos warnings (solo errores si los hubiera)
+    const capacityHasChanged = originalCapacity !== null && parseInt(newCapacity) !== parseInt(originalCapacity);
+
+    if (originalCapacity !== null && !capacityHasChanged) {
+        return {
+            isValid: errors.length === 0,
+            errors,
+            warnings: [],
+            canProceedWithOverride: false
+        };
+    }
+
     // WARNING: Capacidad menor que inventario actual (CON OVERRIDE)
     if (newCapacity < totalUnits) {
         warnings.push({
@@ -36,18 +48,19 @@ export const validateCapacityChange = (newCapacity, currentInventory) => {
         });
     }
 
-    // WARNING: Cambio drástico de capacidad (CON OVERRIDE)
-    const currentCapacity = currentInventory[0]?.max_capacity || 550;
-    const percentChange = Math.abs((newCapacity - currentCapacity) / currentCapacity * 100);
+    // WARNING: Cambio drástico de capacidad (CON OVERRIDE) - Solo si hay una base de comparación real
+    if (originalCapacity !== null && capacityHasChanged) {
+        const percentChange = Math.abs((newCapacity - originalCapacity) / originalCapacity * 100);
 
-    if (percentChange > 50) {
-        warnings.push({
-            type: 'DRASTIC_CHANGE',
-            severity: 'medium',
-            message: `Cambio significativo de capacidad: ${percentChange.toFixed(0)}%`,
-            recommendation: 'Verifica que sea intencional.',
-            canOverride: true
-        });
+        if (percentChange > 50) {
+            warnings.push({
+                type: 'DRASTIC_CHANGE',
+                severity: 'medium',
+                message: `Cambio significativo de capacidad: ${percentChange.toFixed(0)}%`,
+                recommendation: 'Verifica que sea intencional.',
+                canOverride: true
+            });
+        }
     }
 
     return {

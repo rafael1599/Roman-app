@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Edit3, Save, X, AlertTriangle, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useInventory } from '../../../hooks/useInventoryData';
@@ -10,7 +10,7 @@ import {
 } from '../../../utils/locationValidations';
 import { DEFAULT_MAX_CAPACITY } from '../../../utils/capacityUtils';
 
-export default function LocationEditorModal({ location, onSave, onCancel }) {
+export default function LocationEditorModal({ location, onSave, onCancel, onDelete }) {
     const { ludlowData, atsData } = useInventory();
     const { allReports } = useOptimizationReports();
     const [formData, setFormData] = useState({
@@ -24,6 +24,7 @@ export default function LocationEditorModal({ location, onSave, onCancel }) {
     const [showImpact, setShowImpact] = useState(false);
     const [impact, setImpact] = useState(null);
     const [overrideWarnings, setOverrideWarnings] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     // Obtener inventario de esta ubicación (Prefer ID match, fallback to name match)
     const inventory = location?.warehouse === 'ATS' ? atsData : ludlowData;
@@ -35,25 +36,38 @@ export default function LocationEditorModal({ location, onSave, onCancel }) {
     });
 
     const hasInventory = locationInventory.length > 0;
+    const totalUnits = locationInventory.reduce((sum, i) => sum + (i.Quantity || 0), 0);
+    const hasUnits = totalUnits > 0;
 
     // Check if inventory is linked by ID (safe to rename) or just by name (legacy/unsafe)
     const isLinkedById = locationInventory.every(item => item.location_id === location.id);
 
     const handleCapacityChange = (newCapacity) => {
-        const newValidation = validateCapacityChange(newCapacity, locationInventory);
+        const newValidation = validateCapacityChange(newCapacity, locationInventory, location?.max_capacity);
         setValidation(newValidation);
-        setFormData(prev => ({ ...prev, max_capacity: parseInt(newCapacity) }));
-
-        // Recalcular impacto
-        updateImpactAnalysis({ max_capacity: parseInt(newCapacity) });
+        setFormData(prev => ({ ...prev, max_capacity: parseInt(newCapacity) || 0 }));
     };
 
     const handleZoneChange = (newZone) => {
         setFormData(prev => ({ ...prev, zone: newZone }));
-        updateImpactAnalysis({ zone: newZone });
     };
 
-    const updateImpactAnalysis = (changes) => {
+    // Efecto para calcular el impacto de todos los cambios realizados
+    useEffect(() => {
+        const changes = {};
+        if (parseInt(formData.max_capacity) !== parseInt(location?.max_capacity)) {
+            changes.max_capacity = parseInt(formData.max_capacity);
+        }
+        if (formData.zone !== location?.zone) {
+            changes.zone = formData.zone;
+        }
+        if (parseInt(formData.picking_order) !== parseInt(location?.picking_order)) {
+            changes.picking_order = parseInt(formData.picking_order);
+        }
+        if (formData.location !== location?.location) {
+            changes.location = formData.location;
+        }
+
         const newImpact = calculateLocationChangeImpact(
             location?.warehouse,
             location?.location,
@@ -61,19 +75,20 @@ export default function LocationEditorModal({ location, onSave, onCancel }) {
             inventory,
             allReports || []
         );
+
         setImpact(newImpact);
 
-        // Auto-expandir si hay impactos
-        if (newImpact.impacts.length > 0) {
+        // Auto-expandir solo la primera vez que se detectan impactos
+        if (newImpact.impacts.length > 0 && !showImpact) {
             setShowImpact(true);
         }
-    };
+    }, [formData, location, inventory, allReports]);
 
     const handleSubmit = (e) => {
         e.preventDefault();
 
         // Validar
-        const currentValidation = validateCapacityChange(formData.max_capacity, locationInventory);
+        const currentValidation = validateCapacityChange(formData.max_capacity, locationInventory, location?.max_capacity);
 
         // Si hay errores críticos, bloquear
         if (!currentValidation.isValid) {
@@ -98,6 +113,21 @@ export default function LocationEditorModal({ location, onSave, onCancel }) {
         onSave(dataToSave);
     };
 
+    const handleDeleteClick = () => {
+        if (hasUnits) {
+            alert(`No puedes eliminar una ubicación con inventario activo (${totalUnits} unidades). Primero debes mover los productos.`);
+            return;
+        }
+
+        const confirmMessage = hasInventory
+            ? `Esta ubicación tiene ${locationInventory.length} SKU(s) registrados (0 unidades). ¿Estás seguro de que deseas eliminarla?`
+            : `¿Estás seguro de que deseas eliminar la ubicación ${location?.location}?`;
+
+        if (window.confirm(confirmMessage)) {
+            onDelete(location.id);
+        }
+    };
+
     return createPortal(
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="bg-card border-2 border-accent rounded-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
@@ -112,9 +142,20 @@ export default function LocationEditorModal({ location, onSave, onCancel }) {
                             {location?.warehouse} • {location?.location}
                         </p>
                     </div>
-                    <button onClick={onCancel} className="text-muted hover:text-content">
-                        <X size={24} />
-                    </button>
+                    <div className="flex items-center gap-2">
+                        {onDelete && (
+                            <button
+                                onClick={handleDeleteClick}
+                                className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                                title="Eliminar ubicación"
+                            >
+                                <X size={20} className="rotate-45" />
+                            </button>
+                        )}
+                        <button onClick={onCancel} className="text-muted hover:text-content p-2">
+                            <X size={24} />
+                        </button>
+                    </div>
                 </div>
 
                 {/* Errores Críticos */}
@@ -224,7 +265,7 @@ export default function LocationEditorModal({ location, onSave, onCancel }) {
                     <div className="mx-6 mt-6 p-3 bg-gray-800/50 border border-gray-700/50 rounded-lg flex items-start gap-3">
                         <AlertTriangle className="text-gray-400 flex-shrink-0 mt-0.5" size={16} />
                         <p className="text-gray-400 text-xs">
-                            Esta ubicación tiene {locationInventory.length} SKU(s) con {locationInventory.reduce((sum, i) => sum + (i.Quantity || 0), 0)} unidades totales
+                            Esta ubicación tiene {locationInventory.length} SKU(s) con {totalUnits} unidades totales
                         </p>
                     </div>
                 )}
