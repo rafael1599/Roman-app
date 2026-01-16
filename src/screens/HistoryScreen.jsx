@@ -126,41 +126,47 @@ export const HistoryScreen = () => {
     // --- Report & Automation Logic ---
 
     const generateDailyPDF = () => {
-        const doc = new jsPDF();
+        // 'l' for landscape orientation
+        const doc = new jsPDF('l', 'mm', 'a4');
         const todayStr = new Date().toLocaleDateString();
 
-        doc.setFontSize(20);
+        doc.setFontSize(28); // Much larger text
         doc.text(`Daily Inventory Report - ${todayStr}`, 14, 22);
 
-        doc.setFontSize(10);
-        doc.text(`Generated at: ${new Date().toLocaleTimeString()}`, 14, 30);
+        doc.setFontSize(14); // Larger metadata
+        doc.text(`Generated at: ${new Date().toLocaleTimeString()}`, 14, 32);
 
-        // Filter valid logs for today
+        // Filter valid logs for today strictly using local date strings
+        const now = new Date();
+        const todayStrComp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
         const todaysLogs = logs.filter(log => {
+            if (!log.created_at) return false;
             const logDate = new Date(log.created_at);
-            const today = new Date();
-            return logDate.getDate() === today.getDate() &&
-                logDate.getMonth() === today.getMonth() &&
-                logDate.getFullYear() === today.getFullYear();
+            const logDateStr = `${logDate.getFullYear()}-${String(logDate.getMonth() + 1).padStart(2, '0')}-${String(logDate.getDate()).padStart(2, '0')}`;
+            return logDateStr === todayStrComp;
         });
 
         const tableData = todaysLogs.map(log => {
             let description = '';
+            const fromLoc = log.from_location ? `${log.from_location} (${log.from_warehouse || 'N/A'})` : '';
+            const toLoc = log.to_location ? `${log.to_location} (${log.to_warehouse || 'N/A'})` : '';
+
             switch (log.action_type) {
                 case 'MOVE':
-                    description = `Relocated from ${log.from_location} to ${log.to_location}`;
+                    description = `Relocated from ${fromLoc} to ${toLoc}`;
                     break;
                 case 'ADD':
-                    description = `Restocked inventory in ${log.to_location || log.from_location || 'General'}`;
+                    description = `Restocked inventory in ${toLoc || fromLoc || 'General'}`;
                     break;
                 case 'DEDUCT':
-                    description = `Picked stock from ${log.from_location || 'General'}`;
+                    description = `Picked stock from ${fromLoc || 'General'}`;
                     break;
                 case 'DELETE':
-                    description = `Removed item from ${log.from_location || 'Inventory'}`;
+                    description = `Removed item from ${fromLoc || 'Inventory'}`;
                     break;
                 default:
-                    description = `Updated record for ${log.from_location || log.to_location || '-'}`;
+                    description = `Updated record for ${fromLoc || toLoc || '-'}`;
             }
 
             return [
@@ -172,16 +178,23 @@ export const HistoryScreen = () => {
         });
 
         autoTable(doc, {
-            startY: 40,
+            startY: 45,
             head: [['Time', 'SKU', 'Activity Description', 'Qty']],
             body: tableData,
             theme: 'grid',
-            headStyles: { fillColor: [22, 163, 74] }, // Green-600
+            headStyles: {
+                fillColor: [22, 163, 74],
+                fontSize: 16 // Much larger headers
+            },
+            styles: {
+                fontSize: 14, // Much larger body text
+                cellPadding: 5
+            },
             columnStyles: {
-                0: { cellWidth: 25 }, // Time
-                1: { cellWidth: 35, fontStyle: 'bold' }, // SKU
-                2: { cellWidth: 'auto' }, // Description
-                3: { cellWidth: 20, halign: 'right', fontStyle: 'bold' } // Qty
+                0: { cellWidth: 40 }, // Expanded for larger text
+                1: { cellWidth: 60, fontStyle: 'bold' },
+                2: { cellWidth: 'auto' },
+                3: { cellWidth: 30, halign: 'right', fontStyle: 'bold' }
             }
         });
 
@@ -199,10 +212,14 @@ export const HistoryScreen = () => {
 
             // Build simple HTML summary
             const todayStr = new Date().toLocaleDateString();
+            const now = new Date();
+            const todayStrComp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
             const todaysLogs = logs.filter(log => {
+                if (!log.created_at) return false;
                 const logDate = new Date(log.created_at);
-                const today = new Date();
-                return logDate.toDateString() === today.toDateString();
+                const logDateStr = `${logDate.getFullYear()}-${String(logDate.getMonth() + 1).padStart(2, '0')}-${String(logDate.getDate()).padStart(2, '0')}`;
+                return logDateStr === todayStrComp;
             });
 
             const moveCount = todaysLogs.filter(l => l.action_type === 'MOVE').length;
@@ -230,25 +247,28 @@ export const HistoryScreen = () => {
                     </thead>
                     <tbody>
                         ${todaysLogs.map(log => {
-                let description = '';
                 const locationStyle = 'font-weight: 600; color: #111827;';
                 const secondaryColor = '#6b7280';
 
+                const fromLoc = log.from_location ? `<span style="${locationStyle}">${log.from_location}</span> <span style="color:${secondaryColor}; font-size: 0.8em;">(${log.from_warehouse || 'N/A'})</span>` : '';
+                const toLoc = log.to_location ? `<span style="${locationStyle}">${log.to_location}</span> <span style="color:${secondaryColor}; font-size: 0.8em;">(${log.to_warehouse || 'N/A'})</span>` : '';
+
+                let description = '';
                 switch (log.action_type) {
                     case 'MOVE':
-                        description = `Relocated from <span style="color:${secondaryColor}">${log.from_location}</span> to <span style="${locationStyle}">${log.to_location}</span>`;
+                        description = `Relocated from ${fromLoc} to ${toLoc}`;
                         break;
                     case 'ADD':
-                        description = `Restocked inventory in <span style="${locationStyle}">${log.to_location || log.from_location || 'General'}</span>`;
+                        description = `Restocked inventory in ${toLoc || fromLoc || 'General'}`;
                         break;
                     case 'DEDUCT':
-                        description = `Picked stock from <span style="${locationStyle}">${log.from_location || 'General'}</span>`;
+                        description = `Picked stock from ${fromLoc || 'General'}`;
                         break;
                     case 'DELETE':
-                        description = `Removed item from <span style="${locationStyle}">${log.from_location || 'Inventory'}</span>`;
+                        description = `Removed item from ${fromLoc || 'Inventory'}`;
                         break;
                     default:
-                        description = `Updated record for <span style="${locationStyle}">${log.from_location || log.to_location || '-'}</span>`;
+                        description = `Updated record for ${fromLoc || toLoc || '-'}`;
                 }
 
                 return `
