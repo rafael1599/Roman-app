@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useInventory } from './useInventoryData';
 import { useWarehouseZones } from './useWarehouseZones';
+import { useLocationManagement } from './useLocationManagement';
 import {
     calculateSkuVelocity,
     calculateHybridLocationScore
@@ -9,6 +10,7 @@ import { SLOTTING_CONFIG } from '../config/slotting';
 
 export const useLocationSuggestions = (sku, targetWarehouse, excludeLocation = null) => {
     const { inventoryData, ludlowData, atsData, locationCapacities, fetchLogs } = useInventory();
+    const { locations } = useLocationManagement();
     const { getZone } = useWarehouseZones();
 
     const [skuVelocity, setSkuVelocity] = useState(null);
@@ -62,7 +64,18 @@ export const useLocationSuggestions = (sku, targetWarehouse, excludeLocation = n
         targetInv.forEach(item => {
             if (item.Location) {
                 const key = `${item.Warehouse}-${item.Location}`;
-                const capData = locationCapacities[key] || { current: 0, max: 550 };
+
+                // Find config in locations table
+                const locConfig = locations.find(l =>
+                    l.warehouse === item.Warehouse &&
+                    l.location === item.Location
+                );
+                const maxCapacity = locConfig?.max_capacity || 550;
+
+                const capData = locationCapacities[key] || { current: 0 };
+                // Override max with DB value
+                capData.max = maxCapacity;
+
                 const zone = getZone(item.Warehouse, item.Location);
 
                 if (!locationMap.has(item.Location)) {

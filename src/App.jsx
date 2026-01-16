@@ -6,9 +6,12 @@ import { InventoryScreen } from './screens/InventoryScreen';
 import { HistoryScreen } from './screens/HistoryScreen';
 import Settings from './screens/Settings';
 import { ViewModeProvider } from './context/ViewModeContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { LoginScreen } from './screens/LoginScreen';
+import { Loader2 } from 'lucide-react';
 
-// Wrapper to provide context to LayoutMain for export button
-const AppContent = () => {
+// Content accesible solo tras login
+const AuthenticatedContent = () => {
   const { exportData } = useInventory();
 
   return (
@@ -24,13 +27,37 @@ const AppContent = () => {
   );
 };
 
-function App() {
+// Maneja estado de sesión y loader
+const AuthGuard = () => {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <Loader2 className="animate-spin text-green-500 w-10 h-10" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LoginScreen />;
+  }
+
+  // Solo cargar datos si hay usuario
   return (
     <InventoryProvider>
-      <BrowserRouter>
-        <AppContent />
-      </BrowserRouter>
+      <AuthenticatedContent />
     </InventoryProvider>
+  );
+};
+
+function App() {
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <AuthGuard />
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
 

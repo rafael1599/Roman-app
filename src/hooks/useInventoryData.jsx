@@ -5,6 +5,7 @@ const InventoryContext = createContext();
 
 export const InventoryProvider = ({ children }) => {
     const [inventoryData, setInventoryData] = useState([]);
+    const [locations, setLocations] = useState([]);
     const [loading, setLoading] = useState(true);
 
     const trackLog = async (logData) => {
@@ -43,20 +44,29 @@ export const InventoryProvider = ({ children }) => {
     };
     const [error, setError] = useState(null);
 
+    // Ref to access latest state in async handlers
+    const inventoryDataRef = useRef(inventoryData);
+    useEffect(() => {
+        inventoryDataRef.current = inventoryData;
+    }, [inventoryData]);
+
     // 1. Initial Load
     useEffect(() => {
         const loadInitialData = async () => {
             try {
                 setLoading(true);
-                const { data, error } = await supabase
-                    .from('inventory')
-                    .select('*')
-                    .order('created_at', { ascending: false });
+                const [invRes, locRes] = await Promise.all([
+                    supabase.from('inventory').select('*').order('created_at', { ascending: false }),
+                    supabase.from('locations').select('*')
+                ]);
 
-                if (error) throw error;
-                setInventoryData(data || []);
+                if (invRes.error) throw invRes.error;
+                if (locRes.error) throw locRes.error;
+
+                setInventoryData(invRes.data || []);
+                setLocations(locRes.data || []);
             } catch (err) {
-                console.error('Error loading inventory from Supabase:', err);
+                console.error('Error loading data from Supabase:', err);
                 setError(err.message);
             } finally {
                 setLoading(false);
@@ -99,19 +109,31 @@ export const InventoryProvider = ({ children }) => {
     // 3. Aggregate capacity per location
     const locationCapacities = useMemo(() => {
         const caps = {};
+
+        // Initialize from locations table first to get correct Max Capacity
+        locations.forEach(loc => {
+            const key = `${loc.warehouse}-${loc.location}`;
+            caps[key] = {
+                current: 0,
+                max: loc.max_capacity || 550 // Fallback only if null in DB
+            };
+        });
+
+        // Sum current inventory
         inventoryData.forEach(item => {
             const key = `${item.Warehouse}-${item.Location}`;
-            if (!caps[key]) caps[key] = { current: 0, max: 550 };
+            if (!caps[key]) {
+                // Item in location not found in locations table (legacy or error)
+                caps[key] = { current: 0, max: 550 };
+            }
             caps[key].current += parseInt(item.Quantity || 0);
-            // We use the capacity of the first item found for simplicity, or default
-            if (item.capacity) caps[key].max = item.capacity;
         });
         return caps;
-    }, [inventoryData]);
+    }, [inventoryData, locations]);
 
-    // Helper to find local item by composite key (for quantity updates with no ID yet)
+    // Helper using REF to find item synchronously with latest state
     const findItem = (sku, warehouse, location) => {
-        return inventoryData.find(item =>
+        return inventoryDataRef.current.find(item =>
             item.SKU === sku &&
             item.Warehouse === warehouse &&
             item.Location === location
@@ -122,7 +144,18 @@ export const InventoryProvider = ({ children }) => {
         const item = findItem(sku, warehouse, location);
         if (!item) return;
 
-        const newQty = Math.max(0, parseInt(item.Quantity || 0) + delta);
+        const currentQty = parseInt(item.Quantity || 0);
+
+        // Validation Guard: Prevent going below zero
+        if (delta < 0 && currentQty <= 0) {
+            console.warn('Blocked: Cannot decrement below 0');
+            return;
+        }
+
+        const newQty = Math.max(0, currentQty + delta);
+
+        // Validation Guard: Prevent no-op updates (logging nothing)
+        if (newQty === currentQty) return;
 
         // Optimistic update
         if (newQty === 0) {
@@ -170,10 +203,54 @@ export const InventoryProvider = ({ children }) => {
     const updateAtsQuantity = (sku, delta, location = null) => updateQuantity(sku, delta, 'ATS', location);
 
     const addItem = async (warehouse, newItem) => {
+        const qty = parseInt(newItem.Quantity) || 0;
+        const targetLocation = newItem.Location || '';
+
+        // 1. Check if item already exists in this specific location
+        const existingItem = findItem(newItem.SKU, warehouse, targetLocation);
+
+        if (existingItem) {
+            // UPDATE existing item
+            const newTotal = (parseInt(existingItem.Quantity) || 0) + qty;
+
+            // Optimistic Update
+            setInventoryData(prev => prev.map(i =>
+                i.id === existingItem.id ? { ...i, Quantity: newTotal } : i
+            ));
+
+            try {
+                const { error } = await supabase
+                    .from('inventory')
+                    .update({ Quantity: newTotal })
+                    .eq('id', existingItem.id);
+
+                if (error) throw error;
+
+                await trackLog({
+                    sku: newItem.SKU || '',
+                    to_warehouse: warehouse,
+                    to_location: targetLocation,
+                    quantity: qty,
+                    prev_quantity: existingItem.Quantity,
+                    new_quantity: newTotal,
+                    action_type: 'ADD' // Keep as ADD (Restock)
+                });
+            } catch (err) {
+                console.error('Error updating existing item (add):', err);
+                alert('Error restocking item: ' + err.message);
+                // Rollback
+                setInventoryData(prev => prev.map(i =>
+                    i.id === existingItem.id ? existingItem : i
+                ));
+            }
+            return;
+        }
+
+        // 2. INSERT new item (if not exists)
         const itemToInsert = {
             SKU: newItem.SKU || '',
-            Location: newItem.Location || '',
-            Quantity: parseInt(newItem.Quantity) || 0,
+            Location: targetLocation,
+            Quantity: qty,
             Location_Detail: newItem.Location_Detail || '',
             Warehouse: warehouse,
             Status: newItem.Status || 'Active'
@@ -189,10 +266,10 @@ export const InventoryProvider = ({ children }) => {
             await trackLog({
                 sku: newItem.SKU || '',
                 to_warehouse: warehouse,
-                to_location: newItem.Location || '',
-                quantity: parseInt(newItem.Quantity) || 0,
+                to_location: targetLocation,
+                quantity: qty,
                 prev_quantity: 0,
-                new_quantity: parseInt(newItem.Quantity) || 0,
+                new_quantity: qty,
                 action_type: 'ADD'
             });
         } catch (err) {
@@ -356,7 +433,7 @@ export const InventoryProvider = ({ children }) => {
                 if (findError || !itemToMoveBack) {
                     throw new Error(`Cannot undo move: Item ${log.sku} not found at destination ${log.to_warehouse}-${log.to_location} in the database.`);
                 }
-                
+
                 await moveItem(
                     itemToMoveBack,
                     log.from_warehouse,

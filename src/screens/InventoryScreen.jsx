@@ -12,7 +12,7 @@ import { Plus, Warehouse, ArrowRightLeft } from 'lucide-react';
 import { MovementModal } from '../features/inventory/components/MovementModal';
 import { CapacityBar } from '../components/ui/CapacityBar';
 
-import { useLocalStorage } from '../hooks/useLocalStorage';
+import { usePickingSession } from '../hooks/usePickingSession';
 
 export const InventoryScreen = () => {
     const { inventoryData, locationCapacities, updateQuantity, addItem, updateItem, moveItem, deleteItem, loading } = useInventory();
@@ -26,8 +26,16 @@ export const InventoryScreen = () => {
     const [selectedWarehouseForAdd, setSelectedWarehouseForAdd] = useState('LUDLOW');
     const [isMovementModalOpen, setIsMovementModalOpen] = useState(false);
 
-    // Picking Mode State
-    const [cartItems, setCartItems] = useLocalStorage('picking_cart_items', []);
+    // Picking Mode State (Now Server-Side)
+    const {
+        cartItems,
+        setCartItems, // Exposed for scanner
+        addToCart,
+        updateCartQty,
+        removeFromCart,
+        isSaving
+    } = usePickingSession();
+
     const [showScanner, setShowScanner] = useState(false);
 
     // --- Stock Mode Handlers ---
@@ -86,49 +94,9 @@ export const InventoryScreen = () => {
         }
     };
 
-    const addToCart = (item) => {
-        setCartItems(prev => {
-            // Check if exact item (SKU + Location + Warehouse) is already in cart
-            const existingIdx = prev.findIndex(i =>
-                i.SKU === item.SKU &&
-                i.Warehouse === item.Warehouse &&
-                i.Location === item.Location
-            );
+    // Note: addToCart, updateCartQty, removeFromCart are now imported from hook
+    // We removed the local implementations.
 
-            if (existingIdx >= 0) {
-                const newCart = [...prev];
-                newCart[existingIdx] = {
-                    ...newCart[existingIdx],
-                    pickingQty: (newCart[existingIdx].pickingQty || 0) + 1
-                };
-                return newCart;
-            } else {
-                return [...prev, { ...item, pickingQty: 1 }];
-            }
-        });
-    };
-
-    const handleUpdateCartQty = (item, change) => {
-        setCartItems(prev => prev.map(i => {
-            if (i === item) {
-                const maxStock = parseInt(i.Quantity, 10) || 0;
-                // Clamp: Ensure qty is at least 1 and at most available stock (if change is positive)
-                // If maxStock is 0 (shouldn't happen for available items), allow 1 or handle gracefully? 
-                // Assuming we can't pick more than stock.
-
-                // Effective new quantity
-                const currentQty = i.pickingQty || 0;
-                const newQty = Math.max(1, Math.min(currentQty + change, maxStock));
-
-                return { ...i, pickingQty: newQty };
-            }
-            return i;
-        }));
-    };
-
-    const handleRemoveFromCart = (item) => {
-        setCartItems(prev => prev.filter(i => i !== item));
-    };
 
     const handleScanComplete = (scannedLines) => {
         // scannedLines is likely [{ sku, qty, ... }] (needs verification of structure)
@@ -318,8 +286,8 @@ export const InventoryScreen = () => {
             {viewMode === 'picking' && (
                 <PickingCartDrawer
                     cartItems={cartItems}
-                    onUpdateQty={handleUpdateCartQty}
-                    onRemoveItem={handleRemoveFromCart}
+                    onUpdateQty={updateCartQty}
+                    onRemoveItem={removeFromCart}
                     onDeduct={handleDeduct}
                 />
             )}
