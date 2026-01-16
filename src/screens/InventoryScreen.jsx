@@ -188,7 +188,7 @@ export const InventoryScreen = () => {
         });
     }, [groupedData]);
 
-    if (loading) return <div className="p-8 text-center text-neutral-500 font-bold uppercase tracking-widest animate-pulse">Loading Global Inventory...</div>;
+    if (loading) return <div className="p-8 text-center text-muted font-bold uppercase tracking-widest animate-pulse">Loading Global Inventory...</div>;
 
     return (
         <div className="pb-4 relative">
@@ -204,7 +204,7 @@ export const InventoryScreen = () => {
                 {sortedWarehouses.flatMap(wh =>
                     Object.keys(groupedData[wh]).sort(naturalSort).map(location => (
                         <div key={`${wh}-${location}`} className="space-y-4">
-                            <div className="sticky top-[89px] bg-neutral-950/95 backdrop-blur-sm z-30 py-3 border-b border-neutral-800/50 group">
+                            <div className="sticky top-[89px] bg-main/95 backdrop-blur-sm z-30 py-3 border-b border-subtle group">
                                 <div className="flex items-center gap-4 px-1">
                                     {/* Capacity Bar Side (3/4 approx) - NOW ON LEFT */}
                                     <div className="flex-[3]">
@@ -216,20 +216,11 @@ export const InventoryScreen = () => {
 
                                     {/* Info Side (1/3 approx) - NOW ON RIGHT */}
                                     <div className="flex-1 min-w-0">
-                                        <h3 className="text-white text-xl font-black uppercase tracking-tighter truncate" title={location}>
+                                        <h3 className="text-content text-xl font-black uppercase tracking-tighter truncate" title={location}>
                                             {location}
                                         </h3>
                                     </div>
 
-                                    {/* Add Button */}
-                                    {viewMode === 'stock' && (
-                                        <button
-                                            onClick={() => handleAddItem(wh)}
-                                            className="shrink-0 p-1.5 bg-neutral-900 border border-neutral-800 rounded-md text-neutral-500 hover:text-green-400 hover:border-green-500/30 transition-all opacity-0 group-hover:opacity-100"
-                                        >
-                                            <Plus size={14} />
-                                        </button>
-                                    )}
                                 </div>
                             </div>
 
@@ -241,7 +232,7 @@ export const InventoryScreen = () => {
                                         const isInCart = cartItems.some(c => c.SKU === item.SKU && c.Warehouse === item.Warehouse && c.Location === item.Location);
 
                                         return (
-                                            <div key={`${item.id || item.SKU}-${idx}`} className={isInCart ? 'ring-1 ring-green-500 rounded-lg' : ''}>
+                                            <div key={`${item.id || item.SKU}-${idx}`} className={isInCart ? 'ring-1 ring-accent rounded-lg' : ''}>
                                                 <InventoryCard
                                                     sku={item.SKU}
                                                     quantity={item.Quantity}
@@ -262,7 +253,7 @@ export const InventoryScreen = () => {
                 )}
 
                 {sortedWarehouses.length === 0 && (
-                    <div className="text-center text-neutral-500 mt-20 py-20 border-2 border-dashed border-neutral-800 rounded-3xl">
+                    <div className="text-center text-muted mt-20 py-20 border-2 border-dashed border-subtle rounded-3xl">
                         <Warehouse className="mx-auto mb-4 opacity-20" size={48} />
                         <p className="text-xl font-black uppercase tracking-widest opacity-30">No inventory found</p>
                     </div>
@@ -274,10 +265,10 @@ export const InventoryScreen = () => {
                 <div className="fixed bottom-24 right-4 flex flex-col gap-3 z-40">
                     <button
                         onClick={() => handleAddItem('LUDLOW')}
-                        className="w-14 h-14 bg-green-500 hover:bg-green-400 rounded-full flex items-center justify-center shadow-2xl shadow-green-500/40 text-black active:scale-90 transition-transform"
+                        className="w-16 h-16 ios-btn-primary shadow-2xl shadow-accent/40 active:scale-90 transition-transform"
                         title="Add New SKU"
                     >
-                        <Plus className="w-8 h-8" />
+                        <Plus size={32} strokeWidth={3} />
                     </button>
                 </div>
             )}

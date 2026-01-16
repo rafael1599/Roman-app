@@ -17,13 +17,13 @@ export const CapacityBar = ({ current = 0, max = 550, showText = true }) => {
         <div className="w-full">
             {showText && (
                 <div className="flex justify-start mb-1">
-                    <span className="text-[10px] font-black text-neutral-400 tabular-nums">
+                    <span className="text-[10px] font-black text-muted tabular-nums">
                         {current} / {max}
                     </span>
                 </div>
             )}
 
-            <div className="h-2 w-full bg-neutral-900 rounded-full overflow-hidden border border-neutral-800/50">
+            <div className="h-2 w-full bg-surface rounded-full overflow-hidden border border-subtle">
                 <div
                     className="h-full transition-all duration-500 ease-out"
                     style={{

@@ -107,16 +107,16 @@ export const UnifiedZoneMap = ({
             {showEditor && (
                 <>
                     {/* Toolbar */}
-                    <div className="flex flex-col gap-3 bg-neutral-900 border border-neutral-800 p-4 rounded-xl animate-in fade-in slide-in-from-top-4 duration-500">
+                    <div className="flex flex-col gap-3 bg-card border border-subtle p-4 rounded-xl animate-in fade-in slide-in-from-top-4 duration-500">
                         {/* Detailed Editor Instructions (AS REQUESTED) */}
-                        <div className="mb-2 p-3 bg-white/5 rounded-lg border border-white/10">
-                            <p className="text-[11px] text-neutral-300 leading-relaxed">
-                                <span className="text-white font-bold block mb-1">Editor Instructions:</span>
+                        <div className="mb-2 p-3 bg-surface rounded-lg border border-subtle">
+                            <p className="text-[11px] text-muted leading-relaxed">
+                                <span className="text-content font-bold block mb-1">Editor Instructions:</span>
                                 Tap any location to cycle its zone manually. Position determines color:
                                 <span className="block mt-1 font-mono">
-                                    ❄️ <span className="text-blue-400">COLD</span> (Back/First) →
-                                    ☀️ <span className="text-yellow-400">WARM</span> (Middle) →
-                                    🔥 <span className="text-red-400">HOT</span> (Shipping/Last)
+                                    ❄️ <span className="text-blue-500">COLD</span> (Back/First) →
+                                    ☀️ <span className="text-orange-500">WARM</span> (Middle) →
+                                    🔥 <span className="text-red-500">HOT</span> (Shipping/Last)
                                 </span>
                             </p>
                         </div>
@@ -142,9 +142,9 @@ export const UnifiedZoneMap = ({
                     </div>
 
                     {/* Zone Grid with DND Context */}
-                    <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4 animate-in fade-in slide-in-from-top-8 duration-700">
+                    <div className="bg-card border border-subtle rounded-2xl p-4 animate-in fade-in slide-in-from-top-8 duration-700">
                         <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-white font-bold text-sm uppercase tracking-wider">
+                            <h3 className="text-content font-bold text-sm uppercase tracking-wider">
                                 Drag to Rank • Tap to Zone • {filteredLocations.length} Locations
                             </h3>
                             {hasUnsavedChanges && (
@@ -195,7 +195,7 @@ export const UnifiedZoneMap = ({
                     <button
                         onClick={handleSave}
                         disabled={isSaving}
-                        className="w-full py-4 bg-green-500 hover:bg-green-400 text-black font-black uppercase tracking-wider rounded-xl shadow-2xl shadow-green-500/30 transition-all flex items-center justify-center gap-3"
+                        className="w-full py-4 bg-accent hover:opacity-90 text-main font-black uppercase tracking-wider rounded-xl shadow-2xl shadow-accent/30 transition-all flex items-center justify-center gap-3"
                     >
                         {isSaving ? <RotateCcw className="animate-spin" size={20} /> : <Save size={20} />}
                         {isSaving ? 'Saving...' : 'Save Zone Configuration'}

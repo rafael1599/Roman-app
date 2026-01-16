@@ -9,17 +9,17 @@ export const OptimizationReportCard = ({ report, onGenerateNew }) => {
 
     if (!report) {
         return (
-            <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-8 text-center">
-                <div className="w-16 h-16 bg-neutral-800 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <TrendingUp className="text-neutral-500" size={32} />
+            <div className="bg-card border border-subtle rounded-2xl p-8 text-center">
+                <div className="w-16 h-16 bg-surface rounded-full flex items-center justify-center mx-auto mb-4">
+                    <TrendingUp className="text-muted" size={32} />
                 </div>
-                <h3 className="text-xl font-bold text-white mb-2">No Optimization Reports Yet</h3>
-                <p className="text-neutral-400 mb-6 max-w-sm mx-auto">
+                <h3 className="text-xl font-bold text-content mb-2">No Optimization Reports Yet</h3>
+                <p className="text-muted mb-6 max-w-sm mx-auto">
                     Generate a report to analyze your inventory and get suggestions for better slotting.
                 </p>
                 <button
                     onClick={onGenerateNew}
-                    className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-6 rounded-xl transition-all"
+                    className="bg-accent hover:opacity-90 text-main font-bold py-3 px-6 rounded-xl transition-all"
                 >
                     Generate Report Now
                 </button>
@@ -77,37 +77,37 @@ export const OptimizationReportCard = ({ report, onGenerateNew }) => {
 
     return (
         <div className="space-y-6">
-            <div className="bg-gradient-to-br from-blue-900/20 to-purple-900/20 border border-blue-500/30 rounded-2xl p-6">
+            <div className="bg-accent/5 border border-accent/20 rounded-2xl p-6">
                 <div className="flex justify-between items-start mb-4">
                     <div>
-                        <h2 className="text-2xl font-black text-white uppercase tracking-tight">
+                        <h2 className="text-2xl font-black text-content uppercase tracking-tight">
                             Optimization Report
                         </h2>
-                        <div className="flex items-center gap-2 text-blue-400 text-sm font-bold mt-1">
+                        <div className="flex items-center gap-2 text-accent text-sm font-bold mt-1">
                             <Clock size={14} />
                             <span>Generated: {report.report_date}</span>
                         </div>
                     </div>
                     <button
                         onClick={onGenerateNew}
-                        className="text-xs bg-neutral-800 hover:bg-neutral-700 text-white px-3 py-1.5 rounded-lg font-bold border border-neutral-700 transition-all"
+                        className="text-xs bg-surface hover:opacity-80 text-content px-3 py-1.5 rounded-lg font-bold border border-subtle transition-all"
                     >
                         Regenerate
                     </button>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
-                    <div className="bg-black/20 rounded-xl p-4 border border-white/5">
-                        <div className="text-neutral-400 text-xs font-bold uppercase tracking-wider mb-1">Total Suggestions</div>
-                        <div className="text-2xl font-black text-white">{suggestions.length}</div>
+                    <div className="bg-main/20 rounded-xl p-4 border border-subtle">
+                        <div className="text-muted text-xs font-bold uppercase tracking-wider mb-1">Total Suggestions</div>
+                        <div className="text-2xl font-black text-content">{suggestions.length}</div>
                     </div>
-                    <div className="bg-black/20 rounded-xl p-4 border border-white/5">
-                        <div className="text-neutral-400 text-xs font-bold uppercase tracking-wider mb-1">Estimated Savings</div>
-                        <div className="text-2xl font-black text-green-400">~{suggestions.length * 12} min/week</div>
+                    <div className="bg-main/20 rounded-xl p-4 border border-subtle">
+                        <div className="text-muted text-xs font-bold uppercase tracking-wider mb-1">Estimated Savings</div>
+                        <div className="text-2xl font-black text-green-500">~{suggestions.length * 12} min/week</div>
                     </div>
-                    <div className="bg-black/20 rounded-xl p-4 border border-white/5">
-                        <div className="text-neutral-400 text-xs font-bold uppercase tracking-wider mb-1">Focus Area</div>
-                        <div className="text-xl font-black text-blue-400">Velocity Swaps</div>
+                    <div className="bg-main/20 rounded-xl p-4 border border-subtle">
+                        <div className="text-muted text-xs font-bold uppercase tracking-wider mb-1">Focus Area</div>
+                        <div className="text-xl font-black text-accent">Velocity Swaps</div>
                     </div>
                 </div>
             </div>
@@ -136,11 +136,11 @@ export const OptimizationReportCard = ({ report, onGenerateNew }) => {
 
 const SuggestionItem = ({ suggestion, onApply, onDismiss, isApplying }) => {
     return (
-        <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-5 hover:border-blue-500/50 transition-all group relative overflow-hidden">
+        <div className="bg-card border border-subtle rounded-xl p-5 hover:border-accent/50 transition-all group relative overflow-hidden">
             <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
                 <button
                     onClick={onDismiss}
-                    className="bg-neutral-800 hover:bg-red-500/20 text-neutral-400 hover:text-red-400 p-2 rounded-lg transition-colors"
+                    className="bg-surface hover:bg-red-500/20 text-muted hover:text-red-500 p-2 rounded-lg transition-colors"
                     title="Dismiss"
                 >
                     <X size={18} />
@@ -148,46 +148,46 @@ const SuggestionItem = ({ suggestion, onApply, onDismiss, isApplying }) => {
             </div>
 
             <div className="flex gap-4 items-start">
-                <div className="bg-blue-500/10 p-3 rounded-lg text-blue-400 mt-1">
+                <div className="bg-accent/10 p-3 rounded-lg text-accent mt-1">
                     <TrendingUp size={24} />
                 </div>
 
                 <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                        <span className="bg-blue-500/20 text-blue-400 text-[10px] font-black uppercase px-2 py-0.5 rounded tracking-wider">
+                        <span className="bg-accent/20 text-accent text-[10px] font-black uppercase px-2 py-0.5 rounded tracking-wider">
                             {suggestion.priority} PRIORITY
                         </span>
-                        <span className="text-white font-bold text-lg">
+                        <span className="text-content font-bold text-lg">
                             {suggestion.reason}
                         </span>
                     </div>
 
-                    <p className="text-neutral-400 text-sm mb-4 leading-relaxed">
+                    <p className="text-muted text-sm mb-4 leading-relaxed">
                         {suggestion.details}
                     </p>
 
                     {/* Visual Swap Representation */}
-                    <div className="bg-black/30 rounded-lg p-3 grid grid-cols-[1fr,auto,1fr] gap-4 items-center mb-4">
+                    <div className="bg-main/30 rounded-lg p-3 grid grid-cols-[1fr,auto,1fr] gap-4 items-center mb-4">
                         {/* PROMOTE (Fast Item) */}
                         <div className="text-center">
-                            <div className="text-green-400 font-black text-sm mb-1">{suggestion.promote.sku}</div>
-                            <div className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider">Currently</div>
-                            <div className="text-white font-bold bg-neutral-800 px-2 py-1 rounded mt-1 inline-block">
+                            <div className="text-green-500 font-black text-sm mb-1">{suggestion.promote.sku}</div>
+                            <div className="text-[10px] text-muted font-bold uppercase tracking-wider">Currently</div>
+                            <div className="text-content font-bold bg-surface px-2 py-1 rounded mt-1 inline-block">
                                 {suggestion.promote.location}
                             </div>
-                            <div className="text-[10px] text-orange-400 mt-1 font-bold">WARM ZONE</div>
+                            <div className="text-[10px] text-orange-500 mt-1 font-bold">WARM ZONE</div>
                         </div>
 
-                        <div className="text-neutral-600 flex flex-col items-center">
+                        <div className="text-muted flex flex-col items-center">
                             <ArrowRight size={20} />
                             <span className="text-[10px] font-bold uppercase mt-1">Swap</span>
                         </div>
 
                         {/* DEMOTE (Slow Item) */}
                         <div className="text-center">
-                            <div className="text-red-400 font-black text-sm mb-1">{suggestion.demote.sku}</div>
-                            <div className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider">Currently</div>
-                            <div className="text-white font-bold bg-neutral-800 px-2 py-1 rounded mt-1 inline-block">
+                            <div className="text-red-500 font-black text-sm mb-1">{suggestion.demote.sku}</div>
+                            <div className="text-[10px] text-muted font-bold uppercase tracking-wider">Currently</div>
+                            <div className="text-content font-bold bg-surface px-2 py-1 rounded mt-1 inline-block">
                                 {suggestion.demote.location}
                             </div>
                             <div className="text-[10px] text-red-500 mt-1 font-bold">HOT ZONE</div>
@@ -201,8 +201,8 @@ const SuggestionItem = ({ suggestion, onApply, onDismiss, isApplying }) => {
                             w-full py-3 rounded-xl font-black text-sm uppercase tracking-wide
                             flex items-center justify-center gap-2
                             ${isApplying
-                                ? 'bg-neutral-800 text-neutral-500 cursor-wait'
-                                : 'bg-green-600 hover:bg-green-500 text-white shadow-lg hover:shadow-green-500/20'
+                                ? 'bg-surface text-muted cursor-wait'
+                                : 'bg-accent hover:opacity-90 text-main shadow-lg shadow-accent/20'
                             }
                             transition-all
                         `}

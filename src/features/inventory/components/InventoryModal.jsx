@@ -95,23 +95,23 @@ export const InventoryModal = ({ isOpen, onClose, onSave, onDelete, initialData,
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-neutral-900 border border-neutral-800 rounded-xl w-full max-w-md shadow-2xl p-6 relative animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-card border border-subtle rounded-xl w-full max-w-md shadow-2xl p-6 relative animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
                 <button
                     onClick={onClose}
-                    className="absolute top-4 right-4 text-neutral-500 hover:text-gray-100 transition-colors z-10"
+                    className="absolute top-4 right-4 text-muted hover:text-content transition-colors z-10"
                 >
                     <X className="w-6 h-6" />
                 </button>
 
-                <h2 className="text-xl font-bold text-gray-100 mb-6">
+                <h2 className="text-xl font-bold text-content mb-6">
                     {mode === 'edit' ? 'Edit Item' : 'Add New Item'}
                 </h2>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                     {/* Warehouse Selector */}
                     <div>
-                        <label className="block text-sm font-semibold text-green-300 mb-3 uppercase tracking-wider">Select Warehouse</label>
+                        <label className="block text-sm font-semibold text-accent mb-3 uppercase tracking-wider">Select Warehouse</label>
                         <div className="flex flex-wrap gap-2">
                             {['LUDLOW', 'ATS'].map((wh) => (
                                 <button
@@ -119,8 +119,8 @@ export const InventoryModal = ({ isOpen, onClose, onSave, onDelete, initialData,
                                     type="button"
                                     onClick={() => handleWarehouseChange(wh)}
                                     className={`px-4 py-2 rounded-lg font-bold text-xs transition-all border ${formData.Warehouse === wh
-                                        ? 'bg-green-500 text-black border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.3)]'
-                                        : 'bg-neutral-800 text-neutral-400 border-neutral-700 hover:border-neutral-500'
+                                        ? 'bg-accent text-main border-accent shadow-[0_0_15px_rgba(var(--accent-rgb),0.3)]'
+                                        : 'bg-surface text-muted border-subtle hover:border-muted'
                                         }`}
                                 >
                                     {wh}
@@ -129,7 +129,7 @@ export const InventoryModal = ({ isOpen, onClose, onSave, onDelete, initialData,
                             <button
                                 type="button"
                                 onClick={() => alert('Coming Soon: You will be able to add custom warehouses here.')}
-                                className="w-9 h-9 flex items-center justify-center rounded-lg bg-neutral-900 border border-dashed border-neutral-700 text-neutral-500 hover:border-green-500/50 hover:text-green-500 transition-all"
+                                className="w-9 h-9 flex items-center justify-center rounded-lg bg-surface border border-dashed border-subtle text-muted hover:border-accent hover:text-accent transition-all"
                                 title="Add New Warehouse"
                             >
                                 <Plus className="w-5 h-5" />
@@ -172,14 +172,14 @@ export const InventoryModal = ({ isOpen, onClose, onSave, onDelete, initialData,
                         </div>
 
                         <div>
-                            <label className="block text-sm font-semibold text-green-300 mb-2">Quantity</label>
+                            <label className="block text-sm font-semibold text-accent mb-2">Quantity</label>
                             <input
                                 type="number"
                                 name="Quantity"
                                 value={formData.Quantity}
                                 onChange={(e) => setFormData(prev => ({ ...prev, Quantity: parseInt(e.target.value) || 0 }))}
                                 onFocus={(e) => e.target.select()}
-                                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:border-green-500 focus:outline-none transition-colors font-mono text-center text-lg"
+                                className="w-full bg-main border border-subtle rounded-lg px-4 py-3 text-content focus:border-accent focus:outline-none transition-colors font-mono text-center text-lg"
                                 required
                             />
                         </div>
@@ -187,15 +187,15 @@ export const InventoryModal = ({ isOpen, onClose, onSave, onDelete, initialData,
 
                     {/* Location Detail */}
                     <div>
-                        <label className="block text-sm font-semibold text-green-300 mb-2 flex justify-between">
+                        <label className="block text-sm font-semibold text-accent mb-2 flex justify-between">
                             <span>Location Detail</span>
-                            <span className="text-xs text-gray-500 uppercase">Optional</span>
+                            <span className="text-xs text-muted font-bold uppercase">Optional</span>
                         </label>
                         <input
                             name="Location_Detail"
                             value={formData.Location_Detail}
                             onChange={handleChange}
-                            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:border-green-500 focus:outline-none transition-colors font-mono text-yellow-500"
+                            className="w-full bg-main border border-subtle rounded-lg px-4 py-3 text-content focus:border-accent focus:outline-none transition-colors font-mono text-accent"
                             placeholder="e.g. A6-19..."
                         />
                     </div>
@@ -210,7 +210,7 @@ export const InventoryModal = ({ isOpen, onClose, onSave, onDelete, initialData,
                                         onClose();
                                     }
                                 }}
-                                className="flex-1 bg-red-900/30 hover:bg-red-900/50 border border-red-800 text-red-400 font-bold py-4 rounded-lg flex items-center justify-center gap-2 transition-all active:scale-95 touch-manipulation"
+                                className="flex-1 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-500 font-bold py-4 rounded-lg flex items-center justify-center gap-2 transition-all active:scale-95 touch-manipulation"
                             >
                                 <Trash2 className="w-5 h-5" />
                                 Delete
@@ -218,7 +218,7 @@ export const InventoryModal = ({ isOpen, onClose, onSave, onDelete, initialData,
                         )}
                         <button
                             type="submit"
-                            className="flex-1 bg-green-400 hover:bg-green-500 text-neutral-950 font-bold py-4 rounded-lg flex items-center justify-center gap-2 transition-transform active:scale-95 touch-manipulation"
+                            className="flex-1 bg-content hover:opacity-90 text-main font-bold py-4 rounded-lg flex items-center justify-center gap-2 transition-transform active:scale-95 touch-manipulation"
                         >
                             <Save className="w-5 h-5" />
                             Save

@@ -99,20 +99,20 @@ export default function LocationEditorModal({ location, onSave, onCancel }) {
     };
 
     return createPortal(
-        <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
-            <div className="bg-gray-900 border-2 border-blue-500 rounded-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-card border-2 border-accent rounded-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
                 {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-blue-500/30">
+                <div className="flex items-center justify-between p-6 border-b border-subtle">
                     <div>
-                        <h2 className="text-2xl font-bold text-blue-400 flex items-center gap-2">
+                        <h2 className="text-2xl font-bold text-accent flex items-center gap-2">
                             <Edit3 size={24} />
                             Edit Location
                         </h2>
-                        <p className="text-blue-300/60 text-sm mt-1">
+                        <p className="text-muted text-sm mt-1">
                             {location?.warehouse} • {location?.location}
                         </p>
                     </div>
-                    <button onClick={onCancel} className="text-blue-400 hover:text-blue-300">
+                    <button onClick={onCancel} className="text-muted hover:text-content">
                         <X size={24} />
                     </button>
                 </div>
@@ -169,36 +169,36 @@ export default function LocationEditorModal({ location, onSave, onCancel }) {
 
                 {/* Análisis de Impacto (Colapsable) */}
                 {impact && impact.impacts.length > 0 && (
-                    <div className="mx-6 mt-6 border border-blue-500/30 rounded-lg overflow-hidden">
+                    <div className="mx-6 mt-6 border border-subtle rounded-lg overflow-hidden">
                         <button
                             type="button"
                             onClick={() => setShowImpact(!showImpact)}
-                            className="w-full p-4 bg-blue-500/10 hover:bg-blue-500/15 flex items-center justify-between transition-colors"
+                            className="w-full p-4 bg-accent/10 hover:bg-accent/15 flex items-center justify-between transition-colors"
                         >
                             <div className="flex items-center gap-3">
-                                <AlertCircle className="text-blue-400" size={20} />
+                                <AlertCircle className="text-accent" size={20} />
                                 <div className="text-left">
-                                    <p className="text-blue-300 font-semibold text-sm">
+                                    <p className="text-accent font-semibold text-sm">
                                         Análisis de Impacto ({impact.impacts.length})
                                     </p>
-                                    <p className="text-blue-400/60 text-xs">
+                                    <p className="text-muted text-xs">
                                         {impact.affectedSKUs} SKU(s) afectados • {impact.totalUnits} unidades
                                     </p>
                                 </div>
                             </div>
-                            {showImpact ? <ChevronUp className="text-blue-400" size={18} /> : <ChevronDown className="text-blue-400" size={18} />}
+                            {showImpact ? <ChevronUp className="text-accent" size={18} /> : <ChevronDown className="text-accent" size={18} />}
                         </button>
 
                         {showImpact && (
-                            <div className="p-4 bg-blue-500/5 space-y-3">
+                            <div className="p-4 bg-accent/5 space-y-3">
                                 {impact.impacts.map((impactItem, idx) => (
-                                    <div key={idx} className="bg-gray-800/50 rounded-lg p-3">
-                                        <p className="text-blue-300 font-semibold text-sm mb-2">
+                                    <div key={idx} className="bg-surface rounded-lg p-3">
+                                        <p className="text-content font-semibold text-sm mb-2">
                                             {impactItem.message}
                                         </p>
                                         <ul className="space-y-1">
                                             {impactItem.details.map((detail, detailIdx) => (
-                                                <li key={detailIdx} className="text-blue-400/70 text-xs ml-4">
+                                                <li key={detailIdx} className="text-muted text-xs ml-4">
                                                     • {detail}
                                                 </li>
                                             ))}
@@ -233,14 +233,14 @@ export default function LocationEditorModal({ location, onSave, onCancel }) {
                 <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto flex-1">
                     {/* Nombre de Ubicación */}
                     <div>
-                        <label className="block text-sm font-semibold text-blue-300 mb-2">
+                        <label className="block text-sm font-semibold text-muted mb-2">
                             Location Name
                         </label>
                         <input
                             type="text"
                             value={formData.location}
                             onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
-                            className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-blue-500 focus:outline-none transition-colors"
+                            className="w-full px-4 py-3 bg-main border border-subtle rounded-lg text-content focus:border-accent focus:outline-none transition-colors"
                             placeholder="e.g. A-01-01"
                         />
                         {/* Only show warning if inventory exists AND is NOT linked by ID */}
@@ -255,18 +255,18 @@ export default function LocationEditorModal({ location, onSave, onCancel }) {
 
                     {/* Capacidad */}
                     <div>
-                        <label className="block text-sm font-semibold text-blue-300 mb-2">
+                        <label className="block text-sm font-semibold text-muted mb-2">
                             Max Capacity (units)
                         </label>
                         <input
                             type="number"
                             value={formData.max_capacity}
                             onChange={(e) => handleCapacityChange(e.target.value)}
-                            className={`w-full px-4 py-3 bg-gray-800 border rounded-lg text-white focus:outline-none transition-colors ${validation.errors.length > 0
+                            className={`w-full px-4 py-3 bg-main border rounded-lg text-content focus:outline-none transition-colors ${validation.errors.length > 0
                                 ? 'border-red-500 focus:border-red-400'
                                 : validation.warnings.length > 0
                                     ? 'border-yellow-500 focus:border-yellow-400'
-                                    : 'border-gray-700 focus:border-blue-500'
+                                    : 'border-subtle focus:border-accent'
                                 }`}
                             min="1"
                         />
@@ -274,7 +274,7 @@ export default function LocationEditorModal({ location, onSave, onCancel }) {
 
                     {/* Zona */}
                     <div>
-                        <label className="block text-sm font-semibold text-blue-300 mb-2">
+                        <label className="block text-sm font-semibold text-muted mb-2">
                             Zone
                         </label>
                         <div className="flex flex-wrap gap-2">
@@ -284,8 +284,8 @@ export default function LocationEditorModal({ location, onSave, onCancel }) {
                                     type="button"
                                     onClick={() => handleZoneChange(zone)}
                                     className={`px-4 py-2 rounded-lg font-bold text-xs transition-all border ${formData.zone === zone
-                                        ? 'bg-blue-500 text-black border-blue-500'
-                                        : 'bg-gray-800 text-gray-400 border-gray-700 hover:border-gray-500'
+                                        ? 'bg-accent text-main border-accent'
+                                        : 'bg-surface text-muted border-subtle hover:border-muted'
                                         }`}
                                 >
                                     {zone}
@@ -296,9 +296,9 @@ export default function LocationEditorModal({ location, onSave, onCancel }) {
 
                     {/* Picking Order */}
                     <div>
-                        <label className="block text-sm font-semibold text-blue-300 mb-2">
+                        <label className="block text-sm font-semibold text-muted mb-2">
                             Picking Order
-                            <span className="text-xs text-gray-500 ml-2">(menor = mayor prioridad)</span>
+                            <span className="text-xs text-muted ml-2">(menor = mayor prioridad)</span>
                         </label>
                         <input
                             type="number"
@@ -307,19 +307,19 @@ export default function LocationEditorModal({ location, onSave, onCancel }) {
                                 ...prev,
                                 picking_order: parseInt(e.target.value) || 0
                             }))}
-                            className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-blue-500 focus:outline-none transition-colors"
+                            className="w-full px-4 py-3 bg-main border border-subtle rounded-lg text-content focus:border-accent focus:outline-none transition-colors"
                         />
                     </div>
 
                     {/* Notas */}
                     <div>
-                        <label className="block text-sm font-semibold text-blue-300 mb-2">
+                        <label className="block text-sm font-semibold text-muted mb-2">
                             Notes (opcional)
                         </label>
                         <textarea
                             value={formData.notes || ''}
                             onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                            className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-blue-500 focus:outline-none transition-colors resize-none"
+                            className="w-full px-4 py-3 bg-main border border-subtle rounded-lg text-content focus:border-accent focus:outline-none transition-colors resize-none"
                             rows="3"
                             placeholder="Información adicional sobre esta ubicación..."
                         />
@@ -327,11 +327,11 @@ export default function LocationEditorModal({ location, onSave, onCancel }) {
                 </form>
 
                 {/* Footer */}
-                <div className="flex gap-3 p-6 border-t border-blue-500/30">
+                <div className="flex gap-3 p-6 border-t border-subtle">
                     <button
                         type="button"
                         onClick={onCancel}
-                        className="flex-1 px-6 py-3 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors"
+                        className="flex-1 px-6 py-3 bg-surface hover:opacity-80 text-content rounded-lg transition-colors border border-subtle"
                     >
                         Cancel
                     </button>
@@ -339,10 +339,10 @@ export default function LocationEditorModal({ location, onSave, onCancel }) {
                         onClick={handleSubmit}
                         disabled={validation.errors.length > 0 || (validation.warnings.length > 0 && !overrideWarnings)}
                         className={`flex-1 px-6 py-3 rounded-lg font-bold transition-all flex items-center justify-center gap-2 ${validation.errors.length > 0
-                            ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                            ? 'bg-surface text-muted cursor-not-allowed border border-subtle'
                             : validation.warnings.length > 0 && !overrideWarnings
-                                ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                                : 'bg-blue-500 hover:bg-blue-400 text-black'
+                                ? 'bg-surface text-muted cursor-not-allowed border border-subtle'
+                                : 'bg-accent hover:opacity-90 text-main'
                             }`}
                     >
                         <Save size={20} />

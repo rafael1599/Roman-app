@@ -19,10 +19,12 @@ import {
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { useAuth } from '../context/AuthContext';
 
 
 export const HistoryScreen = () => {
     const { undoAction } = useInventory();
+    const { isAdmin } = useAuth();
     const [logs, setLogs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('ALL');
@@ -68,7 +70,9 @@ export const HistoryScreen = () => {
                 'postgres_changes',
                 { event: 'UPDATE', schema: 'public', table: 'inventory_logs' },
                 (payload) => {
-                    setLogs(prev => prev.map(log => log.id === payload.new.id ? payload.new : log));
+                    setLogs(prev => prev.map(log =>
+                        log.id === payload.new.id ? { ...log, ...payload.new } : log
+                    ));
                 }
             )
             .subscribe();
@@ -80,13 +84,18 @@ export const HistoryScreen = () => {
         return logs
             .filter(log => filter === 'ALL' || log.action_type === filter)
             .filter(log => {
+                // If not admin, hide undone (reversed) actions
+                if (!isAdmin && log.is_reversed) return false;
+                return true;
+            })
+            .filter(log => {
                 const query = searchQuery.toLowerCase();
                 return !searchQuery ||
                     log.sku?.toLowerCase().includes(query) ||
                     log.from_location?.toLowerCase().includes(query) ||
                     log.to_location?.toLowerCase().includes(query);
             });
-    }, [logs, filter, searchQuery]);
+    }, [logs, filter, searchQuery, isAdmin]);
 
     const groupedLogs = useMemo(() => {
         const groups = {};
@@ -109,17 +118,28 @@ export const HistoryScreen = () => {
 
     const handleUndo = async (id) => {
         if (window.confirm('Are you sure you want to undo this action?')) {
-            await undoAction(id);
+            // Optimistic update: mark as reversed locally so it hides instantly for staff
+            setLogs(prev => prev.map(log =>
+                log.id === id ? { ...log, is_reversed: true } : log
+            ));
+
+            try {
+                await undoAction(id);
+            } catch (err) {
+                // Rollback on failure
+                console.error("Undo failed, rolling back state:", err);
+                fetchLogs();
+            }
         }
     };
 
     const getActionTypeInfo = (type) => {
         switch (type) {
-            case 'MOVE': return { icon: <MoveIcon size={14} />, color: 'text-blue-400', bg: 'bg-blue-500/10', label: 'Relocate' };
-            case 'ADD': return { icon: <Plus size={14} />, color: 'text-green-400', bg: 'bg-green-500/10', label: 'Restock' };
-            case 'DEDUCT': return { icon: <Minus size={14} />, color: 'text-red-400', bg: 'bg-red-500/10', label: 'Pick' };
-            case 'DELETE': return { icon: <Trash2 size={14} />, color: 'text-neutral-500', bg: 'bg-neutral-500/10', label: 'Remove' };
-            default: return { icon: <Clock size={14} />, color: 'text-neutral-400', bg: 'bg-neutral-800', label: 'Update' };
+            case 'MOVE': return { icon: <MoveIcon size={14} />, color: 'text-blue-500', bg: 'bg-blue-500/10', label: 'Relocate' };
+            case 'ADD': return { icon: <Plus size={14} />, color: 'text-green-500', bg: 'bg-green-500/10', label: 'Restock' };
+            case 'DEDUCT': return { icon: <Minus size={14} />, color: 'text-red-500', bg: 'bg-red-500/10', label: 'Pick' };
+            case 'DELETE': return { icon: <Trash2 size={14} />, color: 'text-muted', bg: 'bg-surface', label: 'Remove' };
+            default: return { icon: <Clock size={14} />, color: 'text-muted', bg: 'bg-surface', label: 'Update' };
         }
     };
 
@@ -142,6 +162,9 @@ export const HistoryScreen = () => {
 
         const todaysLogs = logs.filter(log => {
             if (!log.created_at) return false;
+            // Business rule: Exclude undone actions from reports
+            if (log.is_reversed) return false;
+
             const logDate = new Date(log.created_at);
             const logDateStr = `${logDate.getFullYear()}-${String(logDate.getMonth() + 1).padStart(2, '0')}-${String(logDate.getDate()).padStart(2, '0')}`;
             return logDateStr === todayStrComp;
@@ -183,8 +206,10 @@ export const HistoryScreen = () => {
             body: tableData,
             theme: 'grid',
             headStyles: {
-                fillColor: [22, 163, 74],
-                fontSize: 16 // Much larger headers
+                fillColor: [240, 240, 240], // Light gray for header secondary visibility
+                textColor: [0, 0, 0], // Black text
+                fontSize: 16,
+                fontStyle: 'bold'
             },
             styles: {
                 fontSize: 14, // Much larger body text
@@ -217,6 +242,9 @@ export const HistoryScreen = () => {
 
             const todaysLogs = logs.filter(log => {
                 if (!log.created_at) return false;
+                // Business rule: Exclude undone actions from email summary
+                if (log.is_reversed) return false;
+
                 const logDate = new Date(log.created_at);
                 const logDateStr = `${logDate.getFullYear()}-${String(logDate.getMonth() + 1).padStart(2, '0')}-${String(logDate.getDate()).padStart(2, '0')}`;
                 return logDateStr === todayStrComp;
@@ -351,18 +379,18 @@ export const HistoryScreen = () => {
     }, [logs]); // Dependency on logs so we have data to send
 
     return (
-        <div className="flex flex-col h-full bg-black text-white p-4 max-w-2xl mx-auto w-full">
+        <div className="flex flex-col h-full bg-main text-content p-4 max-w-2xl mx-auto w-full">
             <header className="flex justify-between items-end mb-8 pt-6">
                 <div>
                     <h1 className="text-5xl font-black uppercase tracking-tighter leading-none">History</h1>
-                    <p className="text-neutral-500 text-[10px] font-black uppercase tracking-[0.3em] mt-2 flex items-center gap-2">
+                    <p className="text-muted text-[10px] font-black uppercase tracking-[0.3em] mt-2 flex items-center gap-2">
                         <Clock size={10} /> Live Activity Log
                     </p>
                 </div>
                 <div className="flex gap-2">
                     <button
                         onClick={fetchLogs}
-                        className="p-3 bg-neutral-900 border border-neutral-800 rounded-2xl hover:bg-neutral-800 transition-all"
+                        className="p-3 bg-surface border border-subtle rounded-2xl hover:opacity-80 transition-all text-content"
                         title="Refresh Logs"
                     >
                         <RotateCcw className={loading ? 'animate-spin' : ''} size={20} />
@@ -373,13 +401,13 @@ export const HistoryScreen = () => {
             {/* Search and Filters */}
             <div className="space-y-4 mb-8">
                 <div className="relative group">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within:text-blue-500 transition-colors" size={18} />
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted group-focus-within:text-accent transition-colors" size={18} />
                     <input
                         type="text"
                         placeholder="Search SKU or Location..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full bg-neutral-900/50 border border-neutral-800/80 rounded-2xl py-4 pl-12 pr-4 text-sm font-medium focus:outline-none focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:text-neutral-700"
+                        className="w-full bg-surface/50 border border-subtle rounded-2xl py-4 pl-12 pr-4 text-sm font-medium focus:outline-none focus:border-accent/50 focus:ring-4 focus:ring-accent/10 transition-all placeholder:text-muted/50 text-content"
                     />
                 </div>
 
@@ -389,8 +417,8 @@ export const HistoryScreen = () => {
                             key={f}
                             onClick={() => setFilter(f)}
                             className={`px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border shrink-0 ${filter === f
-                                ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/20'
-                                : 'bg-neutral-900 text-neutral-500 border-neutral-800 hover:border-neutral-700'
+                                ? 'bg-accent border-accent/20 text-main shadow-lg shadow-accent/20'
+                                : 'bg-surface text-muted border-subtle hover:border-muted/30'
                                 }`}
                         >
                             {f === 'DEDUCT' ? 'Picking' : f}
@@ -414,14 +442,14 @@ export const HistoryScreen = () => {
                         <button onClick={fetchLogs} className="mt-4 text-xs font-black uppercase text-red-500 hover:underline">Retry Connection</button>
                     </div>
                 ) : filteredLogs.length === 0 ? (
-                    <div className="text-center py-24 border-2 border-dashed border-neutral-900 rounded-[2.5rem]">
+                    <div className="text-center py-24 border-2 border-dashed border-subtle rounded-[2.5rem]">
                         <Clock className="mx-auto mb-4 opacity-10" size={48} />
-                        <p className="text-xs font-black uppercase tracking-[0.2em] text-neutral-600">No matching activities</p>
+                        <p className="text-xs font-black uppercase tracking-[0.2em] text-muted">No matching activities</p>
                     </div>
                 ) : (
                     Object.entries(groupedLogs).map(([date, items]) => (
                         <div key={date} className="space-y-4">
-                            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-neutral-600 pl-1 flex items-center gap-2">
+                            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-muted pl-1 flex items-center gap-2">
                                 <Calendar size={12} /> {date}
                             </h3>
                             <div className="space-y-3">
@@ -431,8 +459,8 @@ export const HistoryScreen = () => {
                                         <div
                                             key={log.id}
                                             className={`group relative p-5 rounded-[2rem] border transition-all duration-300 hover:scale-[1.01] ${log.is_reversed
-                                                ? 'bg-neutral-950 border-neutral-900 opacity-40 grayscale pointer-events-none'
-                                                : 'bg-neutral-900/40 border-neutral-800/60 hover:border-neutral-700 hover:bg-neutral-900/60'
+                                                ? 'bg-main border-subtle opacity-40 grayscale pointer-events-none'
+                                                : 'bg-surface/40 border-subtle hover:border-accent/30 hover:bg-surface/60'
                                                 }`}
                                         >
                                             <div className="flex justify-between items-start">
@@ -447,7 +475,7 @@ export const HistoryScreen = () => {
                                                                 {info.label}
                                                             </span>
                                                         </div>
-                                                        <p className="text-[10px] text-neutral-600 font-bold uppercase tracking-wider">
+                                                        <p className="text-[10px] text-muted font-bold uppercase tracking-wider">
                                                             {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {log.performed_by || 'Unknown'}
                                                         </p>
                                                     </div>
@@ -456,7 +484,7 @@ export const HistoryScreen = () => {
                                                 {!log.is_reversed && log.action_type !== 'DELETE' && (
                                                     <button
                                                         onClick={() => handleUndo(log.id)}
-                                                        className="p-3 bg-neutral-900/50 hover:bg-white hover:text-black rounded-2xl transition-all shadow-xl"
+                                                        className="p-3 bg-surface border border-subtle hover:bg-content hover:text-main rounded-2xl transition-all shadow-xl text-content"
                                                         title="Undo Action"
                                                     >
                                                         <Undo2 size={16} />
@@ -464,7 +492,7 @@ export const HistoryScreen = () => {
                                                 )}
 
                                                 {log.is_reversed && (
-                                                    <span className="px-3 py-1 bg-neutral-900 border border-neutral-800 rounded-full text-[7px] font-black uppercase tracking-widest text-neutral-500">
+                                                    <span className="px-3 py-1 bg-main border border-subtle rounded-full text-[7px] font-black uppercase tracking-widest text-muted">
                                                         Reversed
                                                     </span>
                                                 )}
@@ -473,32 +501,32 @@ export const HistoryScreen = () => {
                                             <div className="mt-5 flex items-center gap-3">
                                                 {log.action_type === 'MOVE' ? (
                                                     <div className="flex items-center gap-2 flex-1">
-                                                        <div className="flex-1 px-3 py-2 bg-black/40 rounded-xl border border-neutral-800/50">
-                                                            <p className="text-[7px] text-neutral-600 font-black uppercase tracking-widest mb-1">From</p>
-                                                            <p className="text-[11px] font-bold text-neutral-400">{log.from_location}</p>
+                                                        <div className="flex-1 px-3 py-2 bg-main/40 rounded-xl border border-subtle">
+                                                            <p className="text-[7px] text-muted font-black uppercase tracking-widest mb-1">From</p>
+                                                            <p className="text-[11px] font-bold text-muted">{log.from_location}</p>
                                                         </div>
-                                                        <ArrowRight size={12} className="text-neutral-700" />
-                                                        <div className="flex-1 px-3 py-2 bg-blue-500/5 rounded-xl border border-blue-500/20">
-                                                            <p className="text-[7px] text-blue-500/50 font-black uppercase tracking-widest mb-1">To</p>
-                                                            <p className="text-[11px] font-black text-blue-400">{log.to_location}</p>
+                                                        <ArrowRight size={12} className="text-muted" />
+                                                        <div className="flex-1 px-3 py-2 bg-accent/5 rounded-xl border border-accent/20">
+                                                            <p className="text-[7px] text-accent/50 font-black uppercase tracking-widest mb-1">To</p>
+                                                            <p className="text-[11px] font-black text-accent">{log.to_location}</p>
                                                         </div>
                                                     </div>
                                                 ) : (
-                                                    <div className="flex-1 px-4 py-2 bg-neutral-800/30 rounded-xl border border-neutral-800/50">
-                                                        <p className="text-[7px] text-neutral-600 font-black uppercase tracking-widest mb-1">Location</p>
-                                                        <p className="text-[11px] font-black text-neutral-300">{log.from_location || log.to_location || 'N/A'}</p>
+                                                    <div className="flex-1 px-4 py-2 bg-surface/30 rounded-xl border border-subtle">
+                                                        <p className="text-[7px] text-muted font-black uppercase tracking-widest mb-1">Location</p>
+                                                        <p className="text-[11px] font-black text-content">{log.from_location || log.to_location || 'N/A'}</p>
                                                     </div>
                                                 )}
 
                                                 <div className="text-right px-4">
-                                                    <p className="text-[7px] text-neutral-600 font-black uppercase tracking-widest mb-1">Qty</p>
-                                                    <p className="text-2xl font-black leading-none">{log.quantity > 0 ? log.quantity : '??'}</p>
+                                                    <p className="text-[7px] text-muted font-black uppercase tracking-widest mb-1">Qty</p>
+                                                    <p className="text-2xl font-black leading-none text-content">{log.quantity > 0 ? log.quantity : '??'}</p>
                                                 </div>
                                             </div>
 
                                             {/* Details indicator */}
                                             {(log.prev_quantity !== null && log.new_quantity !== null) && (
-                                                <div className="mt-4 flex gap-4 text-[8px] font-black uppercase tracking-widest opacity-20 border-t border-neutral-800/50 pt-2">
+                                                <div className="mt-4 flex gap-4 text-[8px] font-black uppercase tracking-widest opacity-20 border-t border-subtle pt-2 text-muted">
                                                     <span>Stock: {log.prev_quantity} → {log.new_quantity}</span>
                                                 </div>
                                             )}
@@ -516,7 +544,7 @@ export const HistoryScreen = () => {
                 {/* Email Test Button (Optional for manual trigger) */}
                 <button
                     onClick={sendDailyEmail}
-                    className="w-14 h-14 bg-neutral-800 text-neutral-400 border border-neutral-700 rounded-full flex items-center justify-center shadow-2xl active:scale-90 transition-all hover:bg-neutral-700 hover:text-white"
+                    className="w-14 h-14 bg-surface text-muted border border-subtle rounded-full flex items-center justify-center shadow-2xl active:scale-90 transition-all hover:bg-card hover:text-content"
                     title="Send Daily Email Now"
                 >
                     <Mail size={24} />
@@ -524,7 +552,7 @@ export const HistoryScreen = () => {
 
                 <button
                     onClick={handleDownloadReport}
-                    className="w-14 h-14 bg-white text-black rounded-full flex items-center justify-center shadow-2xl shadow-blue-500/20 hover:scale-110 active:scale-90 transition-all font-black"
+                    className="w-14 h-14 bg-content text-main rounded-full flex items-center justify-center shadow-2xl shadow-accent/20 hover:scale-110 active:scale-90 transition-all font-black"
                     title="Download Daily Report"
                 >
                     <FileDown size={24} />

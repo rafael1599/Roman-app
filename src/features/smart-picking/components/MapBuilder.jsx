@@ -88,14 +88,14 @@ function LocationModal({ location, onSave, onCancel }) {
     };
 
     return (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-            <div className="bg-gray-900 border-2 border-green-500 rounded-xl p-6 max-w-md w-full">
-                <h3 className="text-xl font-bold text-green-400 mb-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-card border-2 border-accent rounded-xl p-6 max-w-md w-full">
+                <h3 className="text-xl font-bold text-accent mb-4">
                     {location ? 'Edit Location' : 'Add New Location'}
                 </h3>
                 <form onSubmit={handleSubmit}>
                     <div className="mb-4">
-                        <label className="block text-green-300 text-sm font-semibold mb-2">
+                        <label className="block text-muted text-sm font-semibold mb-2">
                             Location Name
                         </label>
                         <input
@@ -103,7 +103,7 @@ function LocationModal({ location, onSave, onCancel }) {
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             placeholder="e.g., A-01, B-15, DOCK-1"
-                            className="w-full px-4 py-3 bg-gray-800 border-2 border-green-500/30 rounded-lg text-green-300 placeholder-green-300/30 focus:border-green-500 focus:outline-none"
+                            className="w-full px-4 py-3 bg-main border-2 border-subtle rounded-lg text-content placeholder-muted/50 focus:border-accent focus:outline-none"
                             autoFocus
                         />
                     </div>
@@ -111,14 +111,14 @@ function LocationModal({ location, onSave, onCancel }) {
                         <button
                             type="button"
                             onClick={onCancel}
-                            className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors"
+                            className="flex-1 px-4 py-2 bg-surface hover:opacity-80 text-content rounded-lg transition-colors border border-subtle"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={!name.trim()}
-                            className="flex-1 px-4 py-2 bg-green-500 hover:bg-green-400 text-black font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="flex-1 px-4 py-2 bg-accent hover:opacity-90 text-main font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {location ? 'Update' : 'Add'}
                         </button>
@@ -380,10 +380,10 @@ export default function MapBuilder() {
                             onClick={saveMap}
                             disabled={isSaving || !hasChanges}
                             className={`flex-1 sm:flex-none px-4 py-3 sm:py-2 rounded-lg font-semibold transition-all text-sm sm:text-base touch-manipulation ${isSaving
-                                    ? 'bg-green-600 text-white cursor-not-allowed'
-                                    : !hasChanges
-                                        ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                                        : 'bg-green-500 hover:bg-green-400 active:bg-green-400 text-black'
+                                ? 'bg-green-600 text-white cursor-not-allowed'
+                                : !hasChanges
+                                    ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                                    : 'bg-green-500 hover:bg-green-400 active:bg-green-400 text-black'
                                 }`}
                         >
                             {isSaving ? '✓ Saved!' : 'Save Map'}

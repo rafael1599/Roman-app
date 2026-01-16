@@ -77,7 +77,7 @@ export const LocationList = () => {
     };
 
     if (loading) {
-        return <div className="p-12 text-center text-neutral-500 animate-pulse">Loading Locations...</div>;
+        return <div className="p-12 text-center text-muted animate-pulse">Loading Locations...</div>;
     }
 
     return (
@@ -90,16 +90,16 @@ export const LocationList = () => {
             )}
 
             {/* Toolbar */}
-            <div className="flex flex-col sm:flex-row gap-3 bg-neutral-900 border border-neutral-800 p-4 rounded-xl">
+            <div className="flex flex-col sm:flex-row gap-3 bg-card border border-subtle p-4 rounded-xl">
                 {/* Search */}
                 <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" size={18} />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" size={18} />
                     <input
                         type="text"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         placeholder="Buscar ubicación..."
-                        className="w-full pl-10 pr-4 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-500 focus:border-blue-500 focus:outline-none"
+                        className="w-full pl-10 pr-4 py-2 bg-surface border border-subtle rounded-lg text-content placeholder-muted focus:border-accent focus:outline-none"
                     />
                 </div>
 
@@ -110,8 +110,8 @@ export const LocationList = () => {
                             key={wh}
                             onClick={() => setSelectedWarehouse(wh)}
                             className={`px-3 py-2 rounded-lg text-xs font-bold transition-all ${selectedWarehouse === wh
-                                ? 'bg-blue-500 text-black'
-                                : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
+                                ? 'bg-accent text-main'
+                                : 'bg-surface text-muted hover:bg-main'
                                 }`}
                         >
                             {wh}
@@ -121,7 +121,7 @@ export const LocationList = () => {
             </div>
 
             {/* Stats */}
-            <div className="text-xs text-neutral-500">
+            <div className="text-xs text-muted">
                 Mostrando {filteredLocations.length} de {locations.length} ubicaciones
             </div>
 
@@ -134,17 +134,17 @@ export const LocationList = () => {
                         <button
                             key={loc.id}
                             onClick={() => setSelectedLocation(loc)}
-                            className="bg-neutral-900 border border-neutral-800 rounded-xl p-4 text-left hover:border-blue-500/50 hover:bg-neutral-800/50 transition-all group"
+                            className="bg-card border border-subtle rounded-xl p-4 text-left hover:border-accent/50 hover:bg-surface/50 transition-all group"
                         >
                             <div className="flex items-start justify-between mb-3">
                                 <div>
                                     <div className="flex items-center gap-2">
-                                        <MapPin className="text-blue-400" size={16} />
-                                        <span className="font-bold text-white">{loc.location}</span>
+                                        <MapPin className="text-accent" size={16} />
+                                        <span className="font-bold text-content">{loc.location}</span>
                                     </div>
-                                    <div className="text-xs text-neutral-500 mt-0.5">{loc.warehouse}</div>
+                                    <div className="text-xs text-muted mt-0.5">{loc.warehouse}</div>
                                 </div>
-                                <ChevronRight className="text-neutral-600 group-hover:text-blue-400 transition-colors" size={18} />
+                                <ChevronRight className="text-muted group-hover:text-accent transition-colors" size={18} />
                             </div>
 
                             <div className="flex items-center gap-2 mb-3">
@@ -160,16 +160,16 @@ export const LocationList = () => {
                             </div>
 
                             <div className="flex items-center justify-between text-xs">
-                                <div className="flex items-center gap-1 text-neutral-400">
+                                <div className="flex items-center gap-1 text-muted">
                                     <Package size={12} />
                                     <span>{invInfo.skuCount} SKUs</span>
                                 </div>
-                                <span className="text-neutral-500">{invInfo.totalQty} units</span>
+                                <span className="text-muted">{invInfo.totalQty} units</span>
                             </div>
 
                             {/* Picking Order */}
                             {loc.picking_order && loc.picking_order < 999 && (
-                                <div className="mt-2 text-[10px] text-neutral-500">
+                                <div className="mt-2 text-[10px] text-muted">
                                     Orden de picking: #{loc.picking_order}
                                 </div>
                             )}
@@ -180,7 +180,7 @@ export const LocationList = () => {
 
             {/* Empty State */}
             {filteredLocations.length === 0 && (
-                <div className="text-center py-12 text-neutral-500">
+                <div className="text-center py-12 text-muted">
                     No se encontraron ubicaciones con los filtros actuales.
                 </div>
             )}

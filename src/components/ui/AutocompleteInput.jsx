@@ -135,7 +135,7 @@ export default function AutocompleteInput({
         <div className="relative">
             {/* Label */}
             {label && (
-                <label className="block text-sm font-semibold text-green-300 mb-2">
+                <label className="block text-sm font-semibold text-accent mb-2">
                     {label}
                 </label>
             )}
@@ -155,7 +155,7 @@ export default function AutocompleteInput({
                     }}
                     placeholder={placeholder}
                     disabled={disabled}
-                    className={className || "w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-green-500 focus:outline-none transition-colors"}
+                    className={className || "w-full px-4 py-3 bg-main border border-subtle rounded-lg text-content placeholder-muted/50 focus:border-accent focus:outline-none transition-colors"}
                 />
 
                 {/* Clear button */}
@@ -170,7 +170,7 @@ export default function AutocompleteInput({
 
                 {/* Search icon when empty */}
                 {!inputValue && (
-                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-muted" size={18} />
                 )}
             </div>
 
@@ -178,20 +178,20 @@ export default function AutocompleteInput({
             {showSuggestions && !isMobile && filteredSuggestions.length > 0 && (
                 <div
                     ref={dropdownRef}
-                    className="absolute z-[60] w-full mt-2 bg-gray-800 border border-gray-700 rounded-lg shadow-xl max-h-64 overflow-y-auto"
+                    className="absolute z-[60] w-full mt-2 bg-card border border-subtle rounded-lg shadow-xl max-h-64 overflow-y-auto"
                 >
                     {filteredSuggestions.map((suggestion, index) => (
                         <button
                             key={suggestion.value}
                             onClick={() => handleSelect(suggestion)}
-                            className={`w-full px-4 py-3 text-left hover:bg-gray-700 transition-colors border-b border-gray-700 last:border-b-0 ${index === selectedIndex ? 'bg-gray-700' : ''
+                            className={`w-full px-4 py-3 text-left hover:bg-surface transition-colors border-b border-subtle last:border-b-0 ${index === selectedIndex ? 'bg-surface' : ''
                                 }`}
                         >
                             {renderItem ? renderItem(suggestion) : (
                                 <>
-                                    <div className="font-semibold text-white">{suggestion.value}</div>
+                                    <div className="font-semibold text-content">{suggestion.value}</div>
                                     {suggestion.info && (
-                                        <div className="text-sm text-gray-400 mt-1">{suggestion.info}</div>
+                                        <div className="text-sm text-muted mt-1">{suggestion.info}</div>
                                     )}
                                 </>
                             )}
@@ -204,24 +204,24 @@ export default function AutocompleteInput({
             {showSuggestions && isMobile && filteredSuggestions.length > 0 && (
                 <div className="fixed inset-0 bg-black/95 z-50 flex flex-col">
                     {/* Header */}
-                    <div className="bg-gray-900 border-b border-gray-700 p-4 flex items-center justify-between">
+                    <div className="bg-main border-b border-subtle p-4 flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                            <Search className="text-green-400" size={20} />
-                            <h3 className="text-lg font-bold text-green-400">Select {label}</h3>
+                            <Search className="text-accent" size={20} />
+                            <h3 className="text-lg font-bold text-accent">Select {label}</h3>
                         </div>
                         <button
                             onClick={() => setShowSuggestions(false)}
-                            className="text-gray-400 hover:text-white"
+                            className="text-muted hover:text-content"
                         >
                             <X size={24} />
                         </button>
                     </div>
 
                     {/* Search preview */}
-                    <div className="bg-gray-800 border-b border-gray-700 p-4">
-                        <div className="text-sm text-gray-400">Searching for:</div>
-                        <div className="text-lg font-semibold text-white mt-1">{inputValue}</div>
-                        <div className="text-sm text-green-400 mt-1">
+                    <div className="bg-card border-b border-subtle p-4">
+                        <div className="text-sm text-muted">Searching for:</div>
+                        <div className="text-lg font-semibold text-content mt-1">{inputValue}</div>
+                        <div className="text-sm text-accent mt-1">
                             {filteredSuggestions.length} result{filteredSuggestions.length !== 1 ? 's' : ''}
                         </div>
                     </div>
@@ -232,13 +232,13 @@ export default function AutocompleteInput({
                             <button
                                 key={suggestion.value}
                                 onClick={() => handleSelect(suggestion)}
-                                className="w-full px-4 py-4 text-left hover:bg-gray-800 active:bg-gray-700 transition-colors border-b border-gray-800 touch-manipulation"
+                                className="w-full px-4 py-4 text-left hover:bg-surface active:bg-surface transition-colors border-b border-subtle touch-manipulation"
                             >
                                 {renderItem ? renderItem(suggestion) : (
                                     <>
-                                        <div className="font-semibold text-white text-lg">{suggestion.value}</div>
+                                        <div className="font-semibold text-content text-lg">{suggestion.value}</div>
                                         {suggestion.info && (
-                                            <div className="text-sm text-gray-400 mt-2">{suggestion.info}</div>
+                                            <div className="text-sm text-muted mt-2">{suggestion.info}</div>
                                         )}
                                     </>
                                 )}
@@ -247,10 +247,10 @@ export default function AutocompleteInput({
                     </div>
 
                     {/* Footer */}
-                    <div className="bg-gray-900 border-t border-gray-700 p-4">
+                    <div className="bg-main border-t border-subtle p-4">
                         <button
                             onClick={() => setShowSuggestions(false)}
-                            className="w-full px-6 py-3 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg font-semibold transition-colors touch-manipulation"
+                            className="w-full px-6 py-3 bg-surface hover:opacity-80 text-content rounded-lg font-semibold transition-colors touch-manipulation"
                         >
                             Cancel
                         </button>

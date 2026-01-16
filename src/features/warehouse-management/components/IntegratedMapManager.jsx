@@ -23,13 +23,13 @@ export const IntegratedMapManager = () => {
     const [activeTab, setActiveTab] = useState('locations'); // 'locations' | 'zones' | 'reports'
 
     if (zonesLoading) {
-        return <div className="p-12 text-center text-neutral-500 animate-pulse">Loading Warehouse Data...</div>;
+        return <div className="p-12 text-center text-muted animate-pulse">Loading Warehouse Data...</div>;
     }
 
     return (
-        <div className="bg-neutral-900/50 border border-neutral-800 rounded-3xl overflow-hidden backdrop-blur-sm">
+        <div className="bg-card border border-subtle rounded-3xl overflow-hidden backdrop-blur-sm">
             {/* Header Tabs */}
-            <div className="flex border-b border-neutral-800 bg-black/20">
+            <div className="flex border-b border-subtle bg-main/20">
                 <TabButton
                     active={activeTab === 'locations'}
                     onClick={() => setActiveTab('locations')}
@@ -87,18 +87,23 @@ const TabButton = ({ active, onClick, icon: Icon, label, badge }) => (
     <button
         onClick={onClick}
         className={`
-            flex-1 py-5 px-4 flex items-center justify-center gap-2
-            font-black uppercase tracking-wider text-xs sm:text-sm transition-all relative
+            flex-1 py-4 px-2 flex flex-col items-center justify-center gap-1.5
+            font-black uppercase tracking-[0.15em] text-[10px] transition-all duration-300 relative
             ${active
-                ? 'bg-neutral-900 text-white border-b-2 border-blue-500'
-                : 'text-neutral-500 hover:text-white hover:bg-white/5 border-b-2 border-transparent'
+                ? 'text-accent'
+                : 'text-muted hover:text-content'
             }
         `}
     >
-        <Icon size={18} className={active ? 'text-blue-500' : 'opacity-50'} />
+        <div className={`p-2 rounded-xl transition-all duration-300 ${active ? 'bg-accent/10 shadow-sm' : ''}`}>
+            <Icon size={18} className={active ? 'text-accent' : 'opacity-40'} />
+        </div>
         <span className="hidden sm:inline">{label}</span>
         {badge && (
-            <span className="absolute top-2 right-2 text-orange-400 text-lg animate-pulse">{badge}</span>
+            <span className="absolute top-3 right-4 text-orange-400 text-lg animate-pulse">{badge}</span>
+        )}
+        {active && (
+            <div className="absolute bottom-0 left-1/4 right-1/4 h-0.5 bg-accent rounded-full" />
         )}
     </button>
 );

@@ -86,19 +86,19 @@ export default function SKUEditorModal({ items, inventory, onConfirm, onCancel }
     };
 
     return (
-        <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
-            <div className="bg-gray-900 border-2 border-orange-500 rounded-xl max-w-3xl w-full max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-card border-2 border-accent rounded-xl max-w-3xl w-full max-h-[90vh] flex flex-col">
                 {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-orange-500/30 flex-shrink-0">
+                <div className="flex items-center justify-between p-6 border-b border-subtle flex-shrink-0">
                     <div>
-                        <h2 className="text-2xl font-bold text-orange-400">Edit SKUs Not Found</h2>
-                        <p className="text-orange-300/60 text-sm mt-1">
+                        <h2 className="text-2xl font-bold text-accent">Edit SKUs Not Found</h2>
+                        <p className="text-muted text-sm mt-1">
                             Correct the SKUs or select from suggestions
                         </p>
                     </div>
                     <button
                         onClick={onCancel}
-                        className="text-orange-400 hover:text-orange-300 transition-colors"
+                        className="text-muted hover:text-content transition-colors"
                     >
                         <X size={24} />
                     </button>
@@ -107,19 +107,19 @@ export default function SKUEditorModal({ items, inventory, onConfirm, onCancel }
                 {/* Content - with scroll */}
                 <div className="p-6 space-y-4 overflow-y-auto flex-1">
                     {editedItems.map((item, index) => (
-                        <div key={index} className="bg-gray-800/50 border border-orange-500/30 rounded-lg p-4">
+                        <div key={index} className="bg-surface border border-subtle rounded-lg p-4">
                             <div className="flex items-start gap-3 mb-3">
-                                <Edit3 className="text-orange-400 flex-shrink-0 mt-1" size={20} />
+                                <Edit3 className="text-accent flex-shrink-0 mt-1" size={20} />
                                 <div className="flex-1">
-                                    <div className="text-orange-300 font-semibold mb-1">
+                                    <div className="text-content font-semibold mb-1">
                                         Original: <span className="font-mono">{item.original}</span>
                                     </div>
-                                    <div className="text-orange-300/60 text-sm">
+                                    <div className="text-muted text-sm">
                                         Quantity: {item.qty}
                                     </div>
                                 </div>
                                 {item.isValid && (
-                                    <Check className="text-green-400" size={20} />
+                                    <Check className="text-green-500" size={20} />
                                 )}
                             </div>
 
@@ -132,9 +132,9 @@ export default function SKUEditorModal({ items, inventory, onConfirm, onCancel }
                                     placeholder="Enter or search SKU..."
                                     label="Corrected SKU:"
                                     minChars={1}
-                                    className={`w-full px-4 py-3 bg-gray-800 border rounded-lg text-white placeholder-gray-500 focus:outline-none transition-colors ${item.isValid
-                                        ? 'border-green-500 focus:border-green-400'
-                                        : 'border-gray-700 focus:border-green-500'
+                                    className={`w-full px-4 py-3 bg-main border rounded-lg text-content placeholder-muted/50 focus:outline-none transition-colors ${item.isValid
+                                        ? 'border-green-500 focus:border-green-500'
+                                        : 'border-subtle focus:border-accent'
                                         }`}
                                 />
                                 {!item.isValid && item.edited.trim() !== '' && (
@@ -148,7 +148,7 @@ export default function SKUEditorModal({ items, inventory, onConfirm, onCancel }
                             {/* Suggestions */}
                             {item.suggestions.length > 0 && (
                                 <div>
-                                    <div className="text-orange-300/60 text-xs mb-2">
+                                    <div className="text-muted text-xs mb-2">
                                         💡 Similar SKUs (click to select):
                                     </div>
                                     <div className="flex flex-wrap gap-2">
@@ -157,8 +157,8 @@ export default function SKUEditorModal({ items, inventory, onConfirm, onCancel }
                                                 key={idx}
                                                 onClick={() => selectSuggestion(index, suggestion)}
                                                 className={`px-3 py-1 rounded-lg text-sm font-mono transition-all ${item.edited === suggestion
-                                                    ? 'bg-green-500 text-black font-bold'
-                                                    : 'bg-orange-500/20 border border-orange-500/50 text-orange-300 hover:bg-orange-500/30'
+                                                    ? 'bg-green-500 text-main font-bold'
+                                                    : 'bg-accent/10 border border-accent/20 text-accent hover:bg-accent/20'
                                                     }`}
                                             >
                                                 {suggestion}
@@ -172,10 +172,10 @@ export default function SKUEditorModal({ items, inventory, onConfirm, onCancel }
                 </div>
 
                 {/* Footer */}
-                <div className="flex items-center justify-between gap-4 p-6 border-t border-orange-500/30 flex-shrink-0">
+                <div className="flex items-center justify-between gap-4 p-6 border-t border-subtle flex-shrink-0">
                     <button
                         onClick={onCancel}
-                        className="px-6 py-3 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors"
+                        className="px-6 py-3 bg-surface hover:opacity-80 text-content rounded-lg transition-colors border border-subtle"
                     >
                         Cancel
                     </button>
@@ -183,8 +183,8 @@ export default function SKUEditorModal({ items, inventory, onConfirm, onCancel }
                         onClick={handleConfirm}
                         disabled={!allValid}
                         className={`px-6 py-3 rounded-lg font-bold transition-all ${allValid
-                            ? 'bg-green-500 hover:bg-green-400 text-black'
-                            : 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                            ? 'bg-accent text-main hover:opacity-90'
+                            : 'bg-surface text-muted cursor-not-allowed border border-subtle'
                             }`}
                     >
                         {allValid ? 'Confirm Corrections' : 'Please correct all SKUs'}

@@ -76,22 +76,22 @@ export default function PalletVerification({ expectedItems, onVerified, onCancel
         result?.extra?.length === 0;
 
     return (
-        <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
-            <div className="bg-gray-900 border-2 border-green-500 rounded-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-card border-2 border-accent rounded-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
                 {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-green-500/30">
+                <div className="flex items-center justify-between p-6 border-b border-subtle">
                     <div>
-                        <h2 className="text-2xl font-bold text-green-400">
+                        <h2 className="text-2xl font-bold text-accent">
                             Verify Pallet {palletNumber}
                         </h2>
-                        <p className="text-green-300/60 text-sm mt-1">
+                        <p className="text-muted text-sm mt-1">
                             Take a photo of the completed pallet for AI verification
                         </p>
                     </div>
                     <button
                         onClick={onCancel}
                         disabled={isVerifying}
-                        className="text-green-400 hover:text-green-300 transition-colors disabled:opacity-50"
+                        className="text-muted hover:text-content transition-colors disabled:opacity-50"
                     >
                         <X size={24} />
                     </button>
@@ -100,13 +100,13 @@ export default function PalletVerification({ expectedItems, onVerified, onCancel
                 {/* Content */}
                 <div className="p-6 space-y-6">
                     {/* Expected Items */}
-                    <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
-                        <div className="text-green-400 font-semibold mb-3">Expected Items:</div>
+                    <div className="bg-surface border border-subtle rounded-lg p-4">
+                        <div className="text-accent font-semibold mb-3">Expected Items:</div>
                         <div className="space-y-2">
                             {expectedItems.map((item, index) => (
                                 <div key={index} className="flex justify-between text-sm">
-                                    <span className="text-green-300">{item.sku}</span>
-                                    <span className="text-green-400 font-mono">{item.qty} units</span>
+                                    <span className="text-muted">{item.sku}</span>
+                                    <span className="text-accent font-mono">{item.qty} units</span>
                                 </div>
                             ))}
                         </div>
@@ -118,14 +118,14 @@ export default function PalletVerification({ expectedItems, onVerified, onCancel
                             <img
                                 src={preview}
                                 alt="Pallet preview"
-                                className="w-full rounded-lg border-2 border-green-500/30"
+                                className="w-full rounded-lg border-2 border-accent/30"
                             />
                             {isVerifying && (
-                                <div className="absolute inset-0 bg-black/70 flex items-center justify-center rounded-lg">
+                                <div className="absolute inset-0 bg-main/70 flex items-center justify-center rounded-lg">
                                     <div className="text-center">
-                                        <Loader2 className="animate-spin text-green-400 mx-auto mb-3" size={48} />
-                                        <p className="text-green-400 font-semibold">Verifying with Gemini AI...</p>
-                                        <p className="text-green-300/60 text-sm mt-1">Analyzing pallet contents</p>
+                                        <Loader2 className="animate-spin text-accent mx-auto mb-3" size={48} />
+                                        <p className="text-accent font-semibold">Verifying with Gemini AI...</p>
+                                        <p className="text-muted text-sm mt-1">Analyzing pallet contents</p>
                                     </div>
                                 </div>
                             )}
@@ -137,20 +137,20 @@ export default function PalletVerification({ expectedItems, onVerified, onCancel
                         <div className="space-y-4">
                             {/* Status Banner */}
                             <div className={`rounded-lg p-4 border-2 ${allMatched
-                                ? 'bg-green-500/10 border-green-500'
-                                : 'bg-yellow-500/10 border-yellow-500'
+                                ? 'bg-green-500/10 border-green-500/30'
+                                : 'bg-yellow-500/10 border-yellow-500/30'
                                 }`}>
                                 <div className="flex items-center gap-3">
                                     {allMatched ? (
-                                        <CheckCircle className="text-green-400" size={24} />
+                                        <CheckCircle className="text-green-500" size={24} />
                                     ) : (
-                                        <AlertTriangle className="text-yellow-400" size={24} />
+                                        <AlertTriangle className="text-yellow-500" size={24} />
                                     )}
                                     <div>
-                                        <div className={`font-bold ${allMatched ? 'text-green-400' : 'text-yellow-400'}`}>
+                                        <div className={`font-bold ${allMatched ? 'text-green-500' : 'text-yellow-600'}`}>
                                             {allMatched ? '✓ Perfect Match!' : '⚠️ Discrepancies Detected'}
                                         </div>
-                                        <div className={`text-sm mt-1 ${allMatched ? 'text-green-300/80' : 'text-yellow-300/80'}`}>
+                                        <div className={`text-sm mt-1 ${allMatched ? 'text-green-600/80' : 'text-yellow-600/80'}`}>
                                             {allMatched
                                                 ? 'All items verified successfully'
                                                 : 'Please review the differences below'}
@@ -161,20 +161,20 @@ export default function PalletVerification({ expectedItems, onVerified, onCancel
 
                             {/* Matched Items */}
                             {result.matched.length > 0 && (
-                                <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
-                                    <div className="text-green-400 font-semibold mb-3">Verified Items:</div>
+                                <div className="bg-surface border border-subtle rounded-lg p-4">
+                                    <div className="text-accent font-semibold mb-3">Verified Items:</div>
                                     <div className="space-y-2">
                                         {result.matched.map((item, index) => (
                                             <div key={index} className="flex items-center justify-between text-sm">
-                                                <span className="text-green-300">{item.sku}</span>
+                                                <span className="text-muted">{item.sku}</span>
                                                 <div className="flex items-center gap-2">
-                                                    <span className="text-green-400 font-mono">
+                                                    <span className="text-accent font-mono">
                                                         Expected: {item.expected} | Detected: {item.detected}
                                                     </span>
                                                     {item.match ? (
-                                                        <CheckCircle className="text-green-400" size={16} />
+                                                        <CheckCircle className="text-green-500" size={16} />
                                                     ) : (
-                                                        <AlertTriangle className="text-yellow-400" size={16} />
+                                                        <AlertTriangle className="text-yellow-500" size={16} />
                                                     )}
                                                 </div>
                                             </div>
@@ -239,23 +239,23 @@ export default function PalletVerification({ expectedItems, onVerified, onCancel
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <button
                                 onClick={() => cameraInputRef.current?.click()}
-                                className="flex flex-col items-center justify-center gap-4 p-8 bg-gradient-to-br from-green-500/20 to-green-600/20 border-2 border-green-500 rounded-xl hover:border-green-400 hover:shadow-lg hover:shadow-green-500/20 transition-all"
+                                className="flex flex-col items-center justify-center gap-4 p-8 bg-surface border-2 border-accent rounded-xl hover:shadow-lg hover:shadow-accent/20 transition-all"
                             >
-                                <Camera className="text-green-400" size={48} />
+                                <Camera className="text-accent" size={48} />
                                 <div className="text-center">
-                                    <div className="text-green-400 font-bold text-lg">Take Photo</div>
-                                    <div className="text-green-300/60 text-sm mt-1">Use camera</div>
+                                    <div className="text-accent font-bold text-lg">Take Photo</div>
+                                    <div className="text-muted text-sm mt-1">Use camera</div>
                                 </div>
                             </button>
 
                             <button
                                 onClick={() => fileInputRef.current?.click()}
-                                className="flex flex-col items-center justify-center gap-4 p-8 bg-gradient-to-br from-blue-500/20 to-blue-600/20 border-2 border-blue-500 rounded-xl hover:border-blue-400 hover:shadow-lg hover:shadow-blue-500/20 transition-all"
+                                className="flex flex-col items-center justify-center gap-4 p-8 bg-surface border-2 border-blue-500 rounded-xl hover:shadow-lg hover:shadow-blue-500/20 transition-all"
                             >
-                                <Upload className="text-blue-400" size={48} />
+                                <Upload className="text-blue-500" size={48} />
                                 <div className="text-center">
-                                    <div className="text-blue-400 font-bold text-lg">Upload Image</div>
-                                    <div className="text-blue-300/60 text-sm mt-1">From gallery</div>
+                                    <div className="text-blue-500 font-bold text-lg">Upload Image</div>
+                                    <div className="text-muted text-sm mt-1">From gallery</div>
                                 </div>
                             </button>
                         </div>
@@ -270,13 +270,13 @@ export default function PalletVerification({ expectedItems, onVerified, onCancel
                                     setResult(null);
                                     setError(null);
                                 }}
-                                className="flex-1 py-3 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors"
+                                className="flex-1 py-3 bg-surface hover:opacity-80 text-content rounded-lg transition-colors border border-subtle"
                             >
                                 Retake Photo
                             </button>
                             <button
                                 onClick={handleConfirm}
-                                className="flex-1 py-3 bg-green-500 hover:bg-green-400 text-black font-semibold rounded-lg transition-colors"
+                                className="flex-1 py-3 bg-accent text-main font-semibold rounded-lg transition-colors"
                             >
                                 {allMatched ? 'Confirm & Continue' : 'Accept & Continue'}
                             </button>
@@ -286,12 +286,12 @@ export default function PalletVerification({ expectedItems, onVerified, onCancel
                     {/* Manual Override - Always available */}
                     {!preview && (
                         <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
-                            <div className="text-yellow-300/80 text-sm mb-3">
+                            <div className="text-yellow-600/80 text-sm mb-3">
                                 💡 <strong>Already verified the pallet?</strong> You can skip the photo verification.
                             </div>
                             <button
                                 onClick={handleManualConfirm}
-                                className="w-full py-3 bg-yellow-600/20 border border-yellow-500/50 hover:bg-yellow-600/30 text-yellow-400 font-semibold rounded-lg transition-colors"
+                                className="w-full py-3 bg-yellow-500/10 border border-yellow-500/50 hover:bg-yellow-500/20 text-yellow-600 font-semibold rounded-lg transition-colors"
                             >
                                 Skip Photo - Confirm Manually
                             </button>
@@ -302,7 +302,7 @@ export default function PalletVerification({ expectedItems, onVerified, onCancel
                     {(error || (result && !allMatched)) && (
                         <button
                             onClick={handleManualConfirm}
-                            className="w-full py-3 bg-yellow-600/20 border border-yellow-500/50 hover:bg-yellow-600/30 text-yellow-400 rounded-lg transition-colors"
+                            className="w-full py-3 bg-yellow-500/10 border border-yellow-500/50 hover:bg-yellow-500/20 text-yellow-600 rounded-lg transition-colors"
                         >
                             Skip AI Verification (Manual Confirm)
                         </button>

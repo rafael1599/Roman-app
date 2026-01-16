@@ -158,20 +158,20 @@ export default function CamScanner({ onScanComplete, onCancel }) {
 
 
     return (
-        <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
-            <div className="bg-gray-900 border-2 border-green-500 rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-card border-2 border-accent rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
                 {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-green-500/30">
+                <div className="flex items-center justify-between p-6 border-b border-subtle">
                     <div>
-                        <h2 className="text-2xl font-bold text-green-400">Scan Order - Multi Photo</h2>
-                        <p className="text-green-300/60 text-sm mt-1">
+                        <h2 className="text-2xl font-bold text-accent">Scan Order - Multi Photo</h2>
+                        <p className="text-muted text-sm mt-1">
                             Take multiple photos, they'll be combined into one PDF for AI analysis
                         </p>
                     </div>
                     <button
                         onClick={onCancel}
                         disabled={isScanning}
-                        className="text-green-400 hover:text-green-300 transition-colors disabled:opacity-50"
+                        className="text-muted hover:text-content transition-colors disabled:opacity-50"
                     >
                         <X size={24} />
                     </button>
@@ -183,13 +183,13 @@ export default function CamScanner({ onScanComplete, onCancel }) {
                     {photos.length > 0 && (
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
-                                <div className="text-green-400 font-semibold">
+                                <div className="text-content font-semibold">
                                     📸 Photos ({photos.length})
                                 </div>
                                 {!isScanning && (
                                     <button
                                         onClick={() => setPhotos([])}
-                                        className="text-red-400 hover:text-red-300 text-sm transition-colors"
+                                        className="text-red-500 hover:text-red-400 text-sm transition-colors"
                                     >
                                         Clear All
                                     </button>
@@ -199,13 +199,13 @@ export default function CamScanner({ onScanComplete, onCancel }) {
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                                 {photos.map((photo, index) => (
                                     <div key={photo.id} className="relative group">
-                                        <div className="relative aspect-[3/4] rounded-lg overflow-hidden border-2 border-green-500/30 group-hover:border-green-500 transition-colors">
+                                        <div className="relative aspect-[3/4] rounded-lg overflow-hidden border-2 border-subtle group-hover:border-accent transition-colors">
                                             <img
                                                 src={photo.dataUrl}
                                                 alt={`Photo ${index + 1}`}
                                                 className="w-full h-full object-cover"
                                             />
-                                            <div className="absolute top-2 left-2 bg-black/70 text-green-400 text-xs font-bold px-2 py-1 rounded">
+                                            <div className="absolute top-2 left-2 bg-main/70 text-content text-xs font-bold px-2 py-1 rounded">
                                                 #{index + 1}
                                             </div>
                                             {!isScanning && (
@@ -223,16 +223,16 @@ export default function CamScanner({ onScanComplete, onCancel }) {
 
                             {/* Scanning Overlay */}
                             {isScanning && (
-                                <div className="bg-black/70 border-2 border-green-500 rounded-lg p-6">
+                                <div className="bg-main/70 border-2 border-accent rounded-lg p-6">
                                     <div className="text-center">
-                                        <Loader2 className="animate-spin text-green-400 mx-auto mb-3" size={48} />
-                                        <p className="text-green-400 font-semibold text-lg">
+                                        <Loader2 className="animate-spin text-accent mx-auto mb-3" size={48} />
+                                        <p className="text-accent font-semibold text-lg">
                                             Generating PDF and Scanning with AI...
                                         </p>
-                                        <p className="text-green-300/60 text-sm mt-2">
+                                        <p className="text-muted text-sm mt-2">
                                             Processing {photos.length} photo{photos.length > 1 ? 's' : ''}
                                         </p>
-                                        <div className="mt-4 flex items-center justify-center gap-2 text-green-300/60 text-sm">
+                                        <div className="mt-4 flex items-center justify-center gap-2 text-muted text-sm">
                                             <FileText size={16} />
                                             <span>Creating single-page PDF...</span>
                                         </div>
@@ -244,7 +244,7 @@ export default function CamScanner({ onScanComplete, onCancel }) {
                             {!isScanning && (
                                 <button
                                     onClick={processAllPhotos}
-                                    className="w-full py-4 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold text-lg rounded-lg transition-all shadow-lg shadow-green-500/20 hover:shadow-green-500/40 flex items-center justify-center gap-3"
+                                    className="w-full py-4 bg-accent hover:opacity-90 text-main font-bold text-lg rounded-lg transition-all shadow-lg shadow-accent/20 flex items-center justify-center gap-3"
                                 >
                                     <FileText size={24} />
                                     Process All Photos ({photos.length})
@@ -267,53 +267,51 @@ export default function CamScanner({ onScanComplete, onCancel }) {
                     )}
 
                     {/* Action Buttons - Show when no photos */}
-                    {photos.length === 0 && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {/* Camera Button */}
-                            <button
-                                onClick={() => cameraInputRef.current?.click()}
-                                disabled={isScanning}
-                                className="flex flex-col items-center justify-center gap-4 p-8 bg-gradient-to-br from-green-500/20 to-green-600/20 border-2 border-green-500 rounded-xl hover:border-green-400 hover:shadow-lg hover:shadow-green-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                <Camera className="text-green-400" size={48} />
-                                <div className="text-center">
-                                    <div className="text-green-400 font-bold text-lg">Take Photo</div>
-                                    <div className="text-green-300/60 text-sm mt-1">
-                                        Use your device camera
-                                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Camera Button */}
+                        <button
+                            onClick={() => cameraInputRef.current?.click()}
+                            disabled={isScanning}
+                            className="flex flex-col items-center justify-center gap-4 p-8 bg-surface border-2 border-accent rounded-xl hover:shadow-lg hover:shadow-accent/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            <Camera className="text-accent" size={48} />
+                            <div className="text-center">
+                                <div className="text-accent font-bold text-lg">Take Photo</div>
+                                <div className="text-muted text-sm mt-1">
+                                    Use your device camera
                                 </div>
-                            </button>
+                            </div>
+                        </button>
 
-                            {/* Upload Button */}
-                            <button
-                                onClick={() => fileInputRef.current?.click()}
-                                disabled={isScanning}
-                                className="flex flex-col items-center justify-center gap-4 p-8 bg-gradient-to-br from-blue-500/20 to-blue-600/20 border-2 border-blue-500 rounded-xl hover:border-blue-400 hover:shadow-lg hover:shadow-blue-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                <Upload className="text-blue-400" size={48} />
-                                <div className="text-center">
-                                    <div className="text-blue-400 font-bold text-lg">Upload Image</div>
-                                    <div className="text-blue-300/60 text-sm mt-1">
-                                        Select from gallery
-                                    </div>
+                        {/* Upload Button */}
+                        <button
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={isScanning}
+                            className="flex flex-col items-center justify-center gap-4 p-8 bg-surface border-2 border-blue-500 rounded-xl hover:shadow-lg hover:shadow-blue-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            <Upload className="text-blue-500" size={48} />
+                            <div className="text-center">
+                                <div className="text-blue-500 font-bold text-lg">Upload Image</div>
+                                <div className="text-muted text-sm mt-1">
+                                    Select from gallery
                                 </div>
-                            </button>
-                        </div>
-                    )}
+                            </div>
+                        </button>
+                    </div>
 
                     {/* Add More Photos Button - Show when photos exist */}
                     {photos.length > 0 && !isScanning && (
                         <div className="grid grid-cols-2 gap-4">
                             <button
                                 onClick={() => cameraInputRef.current?.click()}
-                                className="flex items-center justify-center gap-2 py-3 bg-gray-700 hover:bg-gray-600 text-green-400 rounded-lg transition-colors"
+                                className="flex items-center justify-center gap-2 py-3 bg-surface hover:opacity-80 text-accent rounded-lg transition-colors border border-subtle"
                             >
                                 <Plus size={20} />
                                 <span>Add Photo</span>
                             </button>
                             <button
                                 onClick={() => fileInputRef.current?.click()}
-                                className="flex items-center justify-center gap-2 py-3 bg-gray-700 hover:bg-gray-600 text-blue-400 rounded-lg transition-colors"
+                                className="flex items-center justify-center gap-2 py-3 bg-surface hover:opacity-80 text-blue-500 rounded-lg transition-colors border border-subtle"
                             >
                                 <Plus size={20} />
                                 <span>Upload Image</span>
@@ -339,9 +337,9 @@ export default function CamScanner({ onScanComplete, onCancel }) {
                     />
 
                     {/* Tips */}
-                    <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
-                        <div className="text-green-400 font-semibold mb-2">📸 Tips for best results:</div>
-                        <ul className="text-green-300/60 text-sm space-y-1 list-disc list-inside">
+                    <div className="bg-surface/50 border border-subtle rounded-lg p-4">
+                        <div className="text-accent font-semibold mb-2">📸 Tips for best results:</div>
+                        <ul className="text-muted text-sm space-y-1 list-disc list-inside">
                             <li>Take multiple photos if the order is long</li>
                             <li>Ensure good lighting for each photo</li>
                             <li>Keep each section flat and in focus</li>

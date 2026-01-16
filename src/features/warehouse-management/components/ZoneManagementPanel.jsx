@@ -41,16 +41,16 @@ export const ZoneManagementPanel = ({ locations, zones, getZone, updateZone, aut
     return (
         <div className="space-y-6">
             {/* Header / Tools */}
-            <div className="flex flex-col md:flex-row gap-4 justify-between items-end bg-neutral-900 border border-neutral-800 p-4 rounded-xl">
+            <div className="flex flex-col md:flex-row gap-4 justify-between items-end bg-card border border-subtle p-4 rounded-xl">
                 <div className="w-full md:w-auto flex-1">
                     <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" size={18} />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" size={18} />
                         <input
                             type="text"
                             placeholder="Search location..."
                             value={searchTerm}
                             onChange={e => setSearchTerm(e.target.value)}
-                            className="w-full bg-black/40 border border-neutral-700 rounded-lg pl-10 pr-4 py-2 text-white focus:border-blue-500 outline-none"
+                            className="w-full bg-main border border-subtle rounded-lg pl-10 pr-4 py-2 text-content focus:border-accent outline-none"
                         />
                     </div>
                 </div>
@@ -59,7 +59,7 @@ export const ZoneManagementPanel = ({ locations, zones, getZone, updateZone, aut
                     <select
                         value={filterZone}
                         onChange={e => setFilterZone(e.target.value)}
-                        className="bg-neutral-800 text-white border border-neutral-700 rounded-lg px-3 py-2 text-sm font-bold"
+                        className="bg-surface text-content border border-subtle rounded-lg px-3 py-2 text-sm font-bold"
                     >
                         <option value="ALL">All Zones</option>
                         <option value="HOT">🔥 Hot Zone</option>
@@ -79,8 +79,8 @@ export const ZoneManagementPanel = ({ locations, zones, getZone, updateZone, aut
             </div>
 
             {/* List */}
-            <div className="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden">
-                <div className="grid grid-cols-12 gap-4 p-4 border-b border-neutral-800 bg-black/20 text-xs font-bold text-neutral-500 uppercase tracking-wider">
+            <div className="bg-card border border-subtle rounded-2xl overflow-hidden">
+                <div className="grid grid-cols-12 gap-4 p-4 border-b border-subtle bg-main/20 text-xs font-bold text-muted uppercase tracking-wider">
                     <div className="col-span-4">Location</div>
                     <div className="col-span-2">Warehouse</div>
                     <div className="col-span-6 text-right">Assigned Zone</div>
@@ -124,9 +124,9 @@ const LocationRow = ({ warehouse, location, zone, onUpdate }) => {
     };
 
     return (
-        <div className="grid grid-cols-12 gap-4 p-4 border-b border-neutral-800/50 hover:bg-white/5 items-center transition-colors">
-            <div className="col-span-4 font-bold text-white font-mono">{location}</div>
-            <div className="col-span-2 text-sm text-neutral-400">{warehouse}</div>
+        <div className="grid grid-cols-12 gap-4 p-4 border-b border-subtle hover:bg-surface items-center transition-colors">
+            <div className="col-span-4 font-bold text-content font-mono">{location}</div>
+            <div className="col-span-2 text-sm text-muted">{warehouse}</div>
             <div className="col-span-6 flex justify-end gap-2">
                 {['HOT', 'WARM', 'COLD'].map(z => (
                     <button
@@ -135,8 +135,8 @@ const LocationRow = ({ warehouse, location, zone, onUpdate }) => {
                         className={`
                             text-[10px] font-black uppercase px-3 py-1.5 rounded-md border transition-all
                             ${zone === z
-                                ? getZoneColor(z) + ' ring-1 ring-inset ring-white/10'
-                                : 'bg-transparent border-transparent text-neutral-600 hover:bg-neutral-800'
+                                ? getZoneColor(z) + ' ring-1 ring-inset ring-content/10'
+                                : 'bg-transparent border-transparent text-muted hover:bg-surface'
                             }
                         `}
                     >

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useRef, useMemo } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { useAuth } from '../context/AuthContext';
 
 const InventoryContext = createContext();
 
@@ -16,6 +17,7 @@ export const InventoryProvider = ({ children }) => {
                     ...logData,
                     prev_quantity: logData.prev_quantity ?? null,
                     new_quantity: logData.new_quantity ?? null,
+                    is_reversed: logData.is_reversed || false,
                     performed_by: 'Warehouse Team',
                     created_at: new Date().toISOString()
                 }]);
@@ -140,7 +142,7 @@ export const InventoryProvider = ({ children }) => {
         );
     };
 
-    const updateQuantity = async (sku, delta, warehouse = null, location = null) => {
+    const updateQuantity = async (sku, delta, warehouse = null, location = null, isReversal = false) => {
         const item = findItem(sku, warehouse, location);
         if (!item) return;
 
@@ -185,7 +187,8 @@ export const InventoryProvider = ({ children }) => {
                 quantity: Math.abs(delta),
                 prev_quantity: item.Quantity,
                 new_quantity: newQty,
-                action_type: delta < 0 ? 'DEDUCT' : 'EDIT'
+                action_type: delta < 0 ? 'DEDUCT' : 'EDIT',
+                is_reversed: isReversal
             });
 
         } catch (err) {
@@ -202,9 +205,74 @@ export const InventoryProvider = ({ children }) => {
     const updateLudlowQuantity = (sku, delta, location = null) => updateQuantity(sku, delta, 'LUDLOW', location);
     const updateAtsQuantity = (sku, delta, location = null) => updateQuantity(sku, delta, 'ATS', location);
 
+    const { role, isAdmin } = useAuth();
+
+    /**
+     * Resolves a location name, mapping numeric "9" to "Row 9" if applicable.
+     * Also checks if the location is new and if the user has permission to create it.
+     */
+    const resolveLocation = async (warehouse, inputLocation) => {
+        if (!inputLocation) return { name: '', isNew: false };
+
+        // 1. Check if exact match exists in locations table
+        const exactMatch = locations.find(
+            l => l.warehouse === warehouse && l.location.toLowerCase() === inputLocation.toLowerCase()
+        );
+
+        if (exactMatch) {
+            return { name: exactMatch.location, isNew: false };
+        }
+
+        // 2. Business Rule: Mapping numeric "9" to "Row 9"
+        const isNumeric = /^\d+$/.test(inputLocation);
+        if (isNumeric) {
+            const rowLocation = `Row ${inputLocation}`;
+            const rowMatch = locations.find(
+                l => l.warehouse === warehouse && l.location.toLowerCase() === rowLocation.toLowerCase()
+            );
+
+            if (rowMatch) {
+                return { name: rowMatch.location, isNew: false };
+            }
+
+            // If it's numeric but no "Row X" exists, we treat "Row X" as the target name
+            return { name: rowLocation, isNew: !locations.some(l => l.warehouse === warehouse && l.location === rowLocation) };
+        }
+
+        return { name: inputLocation, isNew: true };
+    };
+
     const addItem = async (warehouse, newItem) => {
         const qty = parseInt(newItem.Quantity) || 0;
-        const targetLocation = newItem.Location || '';
+        const inputLocation = newItem.Location || '';
+
+        // Resolve location mapping and check if new
+        const { name: targetLocation, isNew } = await resolveLocation(warehouse, inputLocation);
+
+        // Security Check: Only admins can use/create new locations
+        if (isNew && !isAdmin) {
+            const errorMsg = `Unauthorized: Only administrators can create or use new locations ("${targetLocation}"). Please use an existing location.`;
+            console.warn(errorMsg);
+            alert(errorMsg);
+            throw new Error(errorMsg);
+        }
+
+        // Auto-create location record for admin if it's new
+        if (isNew && isAdmin) {
+            try {
+                await supabase.from('locations').insert([{
+                    warehouse,
+                    location: targetLocation,
+                    max_capacity: 550,
+                    zone: 'UNASSIGNED'
+                }]);
+                // We don't need to manually update local `locations` state here 
+                // because we should probably have a subscription or a refresh mechanism,
+                // but let's assume the user wants it at least in the inventory table.
+            } catch (err) {
+                console.error('Failed to auto-create location record:', err);
+            }
+        }
 
         // 1. Check if item already exists in this specific location
         const existingItem = findItem(newItem.SKU, warehouse, targetLocation);
@@ -233,7 +301,8 @@ export const InventoryProvider = ({ children }) => {
                     quantity: qty,
                     prev_quantity: existingItem.Quantity,
                     new_quantity: newTotal,
-                    action_type: 'ADD' // Keep as ADD (Restock)
+                    action_type: 'ADD', // Keep as ADD (Restock)
+                    is_reversed: newItem.isReversal || false
                 });
             } catch (err) {
                 console.error('Error updating existing item (add):', err);
@@ -270,7 +339,8 @@ export const InventoryProvider = ({ children }) => {
                 quantity: qty,
                 prev_quantity: 0,
                 new_quantity: qty,
-                action_type: 'ADD'
+                action_type: 'ADD',
+                is_reversed: newItem.isReversal || false
             });
         } catch (err) {
             console.error('Error adding item:', err);
@@ -284,12 +354,36 @@ export const InventoryProvider = ({ children }) => {
         const item = inventoryData.find(i => i.SKU === originalSku && i.Warehouse === warehouse);
         if (!item) return;
 
+        // Detect if it was a movement or just an edit
+        const inputLocation = updatedFormData.Location || item.Location;
+        const { name: targetLocation, isNew } = await resolveLocation(updatedFormData.Warehouse || item.Warehouse, inputLocation);
+
+        // Security Check
+        if (isNew && !isAdmin) {
+            const errorMsg = `Unauthorized: Only administrators can create or use new locations ("${targetLocation}").`;
+            alert(errorMsg);
+            throw new Error(errorMsg);
+        }
+
+        if (isNew && isAdmin) {
+            try {
+                await supabase.from('locations').insert([{
+                    warehouse: updatedFormData.Warehouse || item.Warehouse,
+                    location: targetLocation,
+                    max_capacity: 550,
+                    zone: 'UNASSIGNED'
+                }]);
+            } catch (err) {
+                console.error('Failed to auto-create location record (update):', err);
+            }
+        }
+
         try {
             const { error } = await supabase
                 .from('inventory')
                 .update({
                     SKU: updatedFormData.SKU,
-                    Location: updatedFormData.Location,
+                    Location: targetLocation,
                     Quantity: parseInt(updatedFormData.Quantity),
                     Location_Detail: updatedFormData.Location_Detail,
                     Warehouse: updatedFormData.Warehouse || item.Warehouse,
@@ -299,18 +393,18 @@ export const InventoryProvider = ({ children }) => {
 
             if (error) throw error;
 
-            // Detect if it was a movement or just an edit
-            const isMove = updatedFormData.Warehouse !== item.Warehouse || updatedFormData.Location !== item.Location;
+            const isMove = (updatedFormData.Warehouse || item.Warehouse) !== item.Warehouse || targetLocation !== item.Location;
             await trackLog({
                 sku: item.SKU,
                 from_warehouse: item.Warehouse,
                 from_location: item.Location,
                 to_warehouse: updatedFormData.Warehouse || item.Warehouse,
-                to_location: updatedFormData.Location || item.Location,
+                to_location: targetLocation,
                 quantity: updatedFormData.Quantity,
                 prev_quantity: item.Quantity,
                 new_quantity: updatedFormData.Quantity,
-                action_type: isMove ? 'MOVE' : 'EDIT'
+                action_type: isMove ? 'MOVE' : 'EDIT',
+                is_reversed: updatedFormData.isReversal || false
             });
         } catch (err) {
             console.error('Error updating item:', err);
@@ -318,7 +412,7 @@ export const InventoryProvider = ({ children }) => {
         }
     };
 
-    const moveItem = async (sourceItem, targetWarehouse, targetLocation, qty) => {
+    const moveItem = async (sourceItem, targetWarehouse, targetLocation, qty, isReversal = false) => {
         // 0. Concurrency Pre-check (Server-side check)
         const { data: serverItem, error: checkError } = await supabase
             .from('inventory')
@@ -329,6 +423,29 @@ export const InventoryProvider = ({ children }) => {
         if (checkError || !serverItem) throw new Error('Item no longer exists in source.');
         if (serverItem.Quantity < qty) {
             throw new Error(`Stock mismatch: Found ${serverItem.Quantity} units, but tried to move ${qty}. Use Undo or Refresh.`);
+        }
+
+        // Resolve target location mapping and check if new
+        const { name: resolvedTargetLocation, isNew } = await resolveLocation(targetWarehouse, targetLocation);
+
+        // Security Check
+        if (isNew && !isAdmin) {
+            const errorMsg = `Unauthorized: Only administrators can create or use new locations ("${resolvedTargetLocation}").`;
+            alert(errorMsg);
+            throw new Error(errorMsg);
+        }
+
+        if (isNew && isAdmin) {
+            try {
+                await supabase.from('locations').insert([{
+                    warehouse: targetWarehouse,
+                    location: resolvedTargetLocation,
+                    max_capacity: 550,
+                    zone: 'UNASSIGNED'
+                }]);
+            } catch (err) {
+                console.error('Failed to auto-create location record (move):', err);
+            }
         }
 
         // 1. Update Source (Optimistic)
@@ -345,7 +462,7 @@ export const InventoryProvider = ({ children }) => {
         const existingTarget = inventoryData.find(i =>
             i.SKU === sourceItem.SKU &&
             i.Warehouse === targetWarehouse &&
-            i.Location === targetLocation
+            i.Location === resolvedTargetLocation
         );
 
         if (existingTarget) {
@@ -356,7 +473,7 @@ export const InventoryProvider = ({ children }) => {
             const { error } = await supabase.from('inventory').insert([{
                 SKU: sourceItem.SKU,
                 Warehouse: targetWarehouse,
-                Location: targetLocation,
+                Location: resolvedTargetLocation,
                 Quantity: qty,
                 Location_Detail: sourceItem.Location_Detail,
                 Status: sourceItem.Status || 'Active',
@@ -375,11 +492,12 @@ export const InventoryProvider = ({ children }) => {
             from_warehouse: sourceItem.Warehouse,
             from_location: sourceItem.Location,
             to_warehouse: targetWarehouse,
-            to_location: targetLocation,
+            to_location: resolvedTargetLocation,
             quantity: qty,
             prev_quantity: sourceItem.Quantity,
             new_quantity: remainingQty,
-            action_type: 'MOVE'
+            action_type: 'MOVE',
+            is_reversed: isReversal
         });
     };
 
@@ -438,21 +556,23 @@ export const InventoryProvider = ({ children }) => {
                     itemToMoveBack,
                     log.from_warehouse,
                     log.from_location,
-                    log.quantity
+                    log.quantity,
+                    true // isReversal
                 );
             } else if (log.action_type === 'DEDUCT') {
                 // Return items (ADD back)
                 await addItem(log.from_warehouse, {
                     SKU: log.sku,
                     Location: log.from_location,
-                    Quantity: log.quantity
+                    Quantity: log.quantity,
+                    isReversal: true
                 });
             } else if (log.action_type === 'ADD') {
                 // Remove added items (DELETE or Subtract)
-                await updateQuantity(log.sku, -log.quantity, log.to_warehouse, log.to_location);
+                await updateQuantity(log.sku, -log.quantity, log.to_warehouse, log.to_location, true);
             } else if (log.action_type === 'EDIT') {
                 // Restore previous quantity (Not as easy if other changes happened, but we try)
-                await updateQuantity(log.sku, log.prev_quantity - log.new_quantity, log.from_warehouse, log.from_location);
+                await updateQuantity(log.sku, log.prev_quantity - log.new_quantity, log.from_warehouse, log.from_location, true);
             }
 
             // Mark as reversed

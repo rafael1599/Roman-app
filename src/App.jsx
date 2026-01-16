@@ -9,6 +9,7 @@ import { ViewModeProvider } from './context/ViewModeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LoginScreen } from './screens/LoginScreen';
 import { Loader2 } from 'lucide-react';
+import { ThemeProvider } from './context/ThemeContext';
 
 // Content accesible solo tras login
 const AuthenticatedContent = () => {
@@ -33,8 +34,8 @@ const AuthGuard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <Loader2 className="animate-spin text-green-500 w-10 h-10" />
+      <div className="min-h-screen bg-main flex items-center justify-center">
+        <Loader2 className="animate-spin text-accent w-10 h-10" />
       </div>
     );
   }
@@ -53,11 +54,13 @@ const AuthGuard = () => {
 
 function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <AuthGuard />
-      </BrowserRouter>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <AuthGuard />
+        </BrowserRouter>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 

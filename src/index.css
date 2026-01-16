@@ -7,9 +7,23 @@
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: dark;
-  background-color: #0a0a0a; /* neutral-950 */
-  color: rgba(255, 255, 255, 0.87);
+  /* Semantic Tokens - Light Mode (Default) */
+  --bg-main: #f2f2f7;
+  --bg-surface: #ffffff;
+  --bg-card: rgba(255, 255, 255, 0.85);
+  --text-main: #000000;
+  --text-muted: #8e8e93;
+  --border-subtle: rgba(0, 0, 0, 0.08);
+  --accent-primary: #34c759;
+
+  --glass-bg: rgba(255, 255, 255, 0.8);
+  --glass-border: rgba(255, 255, 255, 0.3);
+  --radius-ios: 1.25rem;
+  --shadow-ios: 0 4px 20px rgba(0, 0, 0, 0.05);
+
+  color-scheme: light dark;
+  background-color: var(--bg-main);
+  color: var(--text-main);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -17,18 +31,74 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+[data-theme='dark'] {
+  /* Semantic Tokens - Dark Mode */
+  --bg-main: #000000;
+  --bg-surface: #1c1c1e;
+  --bg-card: rgba(28, 28, 30, 0.85);
+  --text-main: #ffffff;
+  --text-muted: #8e8e93;
+  --border-subtle: rgba(255, 255, 255, 0.1);
+  --accent-primary: #30d158;
+
+  --glass-bg: rgba(28, 28, 30, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --shadow-ios: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
 body {
   margin: 0;
   display: flex;
-  place-items: flex-start; /* changed from center */
+  place-items: flex-start;
   min-width: 320px;
   min-height: 100vh;
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 #root {
   width: 100%;
   max-width: 100%;
   margin: 0 auto;
+}
+
+/* iOS 26 Premium Utility Classes */
+.ios-glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--glass-border);
+}
+
+.ios-btn {
+  @apply relative flex items-center justify-center transition-all duration-300 active:scale-[0.96] overflow-hidden;
+  border-radius: var(--radius-ios);
+}
+
+.ios-btn-primary {
+  @apply ios-btn font-black uppercase tracking-widest text-[10px];
+  background: var(--accent-primary);
+  color: white;
+  box-shadow: 0 4px 15px rgba(52, 199, 89, 0.2);
+}
+
+.ios-btn-surface {
+  @apply ios-btn font-black;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-main);
+  box-shadow: var(--shadow-ios);
+}
+
+.ios-btn-glass {
+  @apply ios-btn ios-glass font-black;
+}
+
+.ios-squircle {
+  border-radius: var(--radius-ios);
+  mask-image: paint(squircle);
+  /* Future-proof */
 }
 
 /* Scrollbar hiding for clean UI */
