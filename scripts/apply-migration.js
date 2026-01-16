@@ -16,12 +16,24 @@ async function run() {
     }
 
     const sql = postgres(connectionString);
+
+    // Get specific migration file from command line argument or run the latest
+    const specificFile = process.argv[2];
     const migrationsDir = path.resolve('supabase/migrations');
 
     try {
-        const migrationFiles = fs.readdirSync(migrationsDir)
-            .filter(file => file.endsWith('.sql'))
-            .sort();
+        let migrationFiles;
+
+        if (specificFile) {
+            // Run only the specified file
+            migrationFiles = [specificFile];
+            console.log(`🎯 Running specific migration: ${specificFile}`);
+        } else {
+            // Run all migrations
+            migrationFiles = fs.readdirSync(migrationsDir)
+                .filter(file => file.endsWith('.sql') && !file.includes('rollback'))
+                .sort();
+        }
 
         if (migrationFiles.length === 0) {
             console.log('No migration files found.');
@@ -31,8 +43,14 @@ async function run() {
         console.log('🚀 Applying migrations...');
         for (const file of migrationFiles) {
             const migrationPath = path.join(migrationsDir, file);
+
+            if (!fs.existsSync(migrationPath)) {
+                console.error(`❌ File not found: ${migrationPath}`);
+                continue;
+            }
+
             const migrationSql = fs.readFileSync(migrationPath, 'utf8');
-            
+
             console.log(`\t-> Applying ${file}`);
             await sql.unsafe(migrationSql);
         }

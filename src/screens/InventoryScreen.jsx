@@ -12,6 +12,8 @@ import { Plus, Warehouse, ArrowRightLeft } from 'lucide-react';
 import { MovementModal } from '../features/inventory/components/MovementModal';
 import { CapacityBar } from '../components/ui/CapacityBar';
 
+import { useLocalStorage } from '../hooks/useLocalStorage';
+
 export const InventoryScreen = () => {
     const { inventoryData, locationCapacities, updateQuantity, addItem, updateItem, moveItem, deleteItem, loading } = useInventory();
     const { viewMode } = useViewMode(); // 'stock' | 'picking'
@@ -25,7 +27,7 @@ export const InventoryScreen = () => {
     const [isMovementModalOpen, setIsMovementModalOpen] = useState(false);
 
     // Picking Mode State
-    const [cartItems, setCartItems] = useState([]);
+    const [cartItems, setCartItems] = useLocalStorage('picking_cart_items', []);
     const [showScanner, setShowScanner] = useState(false);
 
     // --- Stock Mode Handlers ---

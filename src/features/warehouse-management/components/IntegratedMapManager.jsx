@@ -3,7 +3,8 @@ import { useWarehouseZones } from '../../../hooks/useWarehouseZones';
 import { useOptimizationReports } from '../../../hooks/useOptimizationReports';
 import { UnifiedZoneMap } from './UnifiedZoneMap';
 import { OptimizationReportCard } from './OptimizationReportCard';
-import { Map as MapIcon, BarChart3, Info } from 'lucide-react';
+import { LocationList } from './LocationList';
+import { Map as MapIcon, BarChart3, MapPin } from 'lucide-react';
 
 export const IntegratedMapManager = () => {
     const {
@@ -19,7 +20,7 @@ export const IntegratedMapManager = () => {
     } = useWarehouseZones();
     const { latestReport, generateReport, loading: reportsLoading } = useOptimizationReports();
 
-    const [activeTab, setActiveTab] = useState('zones'); // 'zones' | 'reports'
+    const [activeTab, setActiveTab] = useState('locations'); // 'locations' | 'zones' | 'reports'
 
     if (zonesLoading) {
         return <div className="p-12 text-center text-neutral-500 animate-pulse">Loading Warehouse Data...</div>;
@@ -30,10 +31,16 @@ export const IntegratedMapManager = () => {
             {/* Header Tabs */}
             <div className="flex border-b border-neutral-800 bg-black/20">
                 <TabButton
+                    active={activeTab === 'locations'}
+                    onClick={() => setActiveTab('locations')}
+                    icon={MapPin}
+                    label="Edit Locations"
+                />
+                <TabButton
                     active={activeTab === 'zones'}
                     onClick={() => setActiveTab('zones')}
                     icon={MapIcon}
-                    label="Zone & Route Map"
+                    label="Zone Map"
                     badge={hasUnsavedChanges ? '●' : null}
                 />
                 <TabButton
@@ -46,6 +53,10 @@ export const IntegratedMapManager = () => {
 
             {/* Content Area */}
             <div className="p-4 sm:p-6">
+                {activeTab === 'locations' && (
+                    <LocationList />
+                )}
+
                 {activeTab === 'zones' && (
                     <UnifiedZoneMap
                         locations={allLocations}
