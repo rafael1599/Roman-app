@@ -136,6 +136,18 @@ export const usePickingSession = () => {
         }));
     }, []);
 
+    const setCartQty = useCallback((item, newAbsoluteQty) => {
+        setCartItems(prev => prev.map(i => {
+            if (isSameItem(i, item)) {
+                const maxStock = parseInt(i.Quantity, 10) || 9999;
+                // Ensure new quantity is within valid bounds (at least 1, not more than stock)
+                const newQty = Math.max(1, Math.min(newAbsoluteQty, maxStock));
+                return { ...i, pickingQty: newQty };
+            }
+            return i;
+        }));
+    }, []);
+
     const removeFromCart = useCallback((item) => {
         setCartItems(prev => prev.filter(i => !isSameItem(i, item)));
     }, []);
@@ -149,6 +161,7 @@ export const usePickingSession = () => {
         setCartItems,
         addToCart,
         updateCartQty,
+        setCartQty,
         removeFromCart,
         clearCart,
         isLoaded,

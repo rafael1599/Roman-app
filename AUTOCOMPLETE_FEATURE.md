@@ -1,70 +1,70 @@
-# Autocompletado Inteligente en Formularios de Inventario
+# Smart Autocomplete in Inventory Forms
 
-## 🎯 Funcionalidad Implementada
+## 🎯 Implemented Functionality
 
-Sistema de autocompletado con información adicional para los campos SKU y Location en los modales de Add/Edit Item.
+Autocomplete system with additional information for the SKU and Location fields in the Add/Edit Item modals.
 
 ---
 
-## ✨ Características
+## ✨ Features
 
-### **1. Autocompletado de SKU**
+### **1. SKU Autocomplete**
 
-**Comportamiento:**
+**Behavior:**
 ```
-Usuario escribe: "03-4"
+User types: "03-4"
 ↓
-Muestra sugerencias:
+Shows suggestions:
 • 03-4086SL (31 units • B2)
 • 03-4085BK (43 units • A3)
 • 03-4070BK (209 units • M1)
 • 03-4068BK (168 units • P2)
 ```
 
-**Información mostrada:**
-- ✅ SKU completo
-- ✅ Cantidad disponible
-- ✅ Ubicación actual
-- ✅ Location Detail (si existe)
+**Information displayed:**
+- ✅ Full SKU
+- ✅ Available quantity
+- ✅ Current location
+- ✅ Location Detail (if it exists)
 
-**Auto-fill inteligente:**
-- Al seleccionar un SKU existente en modo "Add", automáticamente rellena:
+**Smart auto-fill:**
+- When selecting an existing SKU in "Add" mode, it automatically fills:
   - Location
   - Location_Detail
 
-### **2. Autocompletado de Location**
+### **2. Location Autocomplete**
 
-**Comportamiento:**
+**Behavior:**
 ```
-Usuario escribe: "Row"
+User types: "Row"
 ↓
-Muestra sugerencias:
+Shows suggestions:
 • Row 1 (5 items • 150 total units)
 • Row 2 (3 items • 89 total units)
 • Row 3 (4 items • 120 total units)
 ```
 
-**Información mostrada:**
-- ✅ Nombre de la ubicación
-- ✅ Cantidad de items en esa ubicación
-- ✅ Total de unidades
+**Information displayed:**
+- ✅ Location name
+- ✅ Number of items in that location
+- ✅ Total units
 
 ---
 
-## 📱 Experiencia Mobile vs Desktop
+## 📱 Mobile vs Desktop Experience
 
-### **Desktop:** Dropdown debajo del input
-### **Mobile:** Modal fullscreen con lista táctil
+### **Desktop:** Dropdown below the input
+### **Mobile:** Fullscreen modal with touch list
 
 ---
 
-## 🎯 Ventajas
+## 🎯 Advantages
 
-- ✅ Velocidad (menos tecleo)
-- ✅ Precisión (evita typos)
-- ✅ Descubrimiento (ve qué hay en stock)
+- ✅ Speed (less typing)
+- ✅ Accuracy (avoids typos)
+- ✅ Discovery (see what's in stock)
 - ✅ Mobile-friendly
 
 ---
 
-**¡Autocompletado inteligente implementado con éxito!** 🎉
+**Smart autocomplete implemented successfully!** 🎉

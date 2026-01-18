@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X, ArrowRightLeft, Move, CheckCircle2, AlertTriangle, Zap } from 'lucide-react';
-import { useInventory } from '../../../hooks/useInventoryData';
+import { useInventory } from '../../../hooks/InventoryProvider';
 import { useMovementForm } from '../../../hooks/useMovementForm';
 import { useLocationSuggestions } from '../../../hooks/useLocationSuggestions';
 import AutocompleteInput from '../../../components/ui/AutocompleteInput';

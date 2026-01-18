@@ -11,6 +11,14 @@ export const InventoryProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
+    // Auth context for identity and permissions
+    const { role, isAdmin, user, profile } = useAuth();
+
+    const getUserInfo = () => ({
+        performed_by: profile?.full_name || user?.email || 'Warehouse Team',
+        user_id: user?.id
+    });
+
     // Using the separated logs hook
     const { trackLog, fetchLogs, undoAction: performUndo } = useInventoryLogs();
 
@@ -19,6 +27,12 @@ export const InventoryProvider = ({ children }) => {
     useEffect(() => {
         inventoryDataRef.current = inventoryData;
     }, [inventoryData]);
+
+    // Ref to track the last log ID for sequential coalescing (Race Condition Fix)
+    const lastLogRef = useRef({ id: null, sku: null, timestamp: 0, action: null });
+
+    // BUFFER REF: Accumulate clicks client-side before sending to server
+    const logBuffersRef = useRef({}); // Key: "SKU|WH|LOC" -> { qty, timer, ... }
 
     // 1. Initial Load
     useEffect(() => {
@@ -46,7 +60,29 @@ export const InventoryProvider = ({ children }) => {
         loadInitialData();
     }, []);
 
-    // 2. Real-time Subscription
+    // 2. Safety: Flush all buffers on tab close
+    useEffect(() => {
+        const handleUnload = () => {
+            Object.keys(logBuffersRef.current).forEach(key => {
+                const buffer = logBuffersRef.current[key];
+                if (buffer?.timer) {
+                    trackLog({
+                        sku: buffer.sku,
+                        from_warehouse: buffer.warehouse,
+                        from_location: buffer.location,
+                        quantity: Math.abs(buffer.netQty),
+                        prev_quantity: buffer.prevQty,
+                        new_quantity: buffer.newStockSnapshot,
+                        action_type: buffer.netQty > 0 ? 'ADD' : 'DEDUCT'
+                    }, getUserInfo());
+                }
+            });
+        };
+        window.addEventListener('beforeunload', handleUnload);
+        return () => window.removeEventListener('beforeunload', handleUnload);
+    }, [user, profile]);
+
+    // 3. Real-time Subscription
     useEffect(() => {
         const channel = supabase
             .channel('inventory_changes')
@@ -148,16 +184,70 @@ export const InventoryProvider = ({ children }) => {
 
             if (res.error) throw res.error;
 
-            await trackLog({
+            // --- CLIENT-SIDE BUFFERING STRATEGY ---
+            // Instead of sending every click, we buffer them for 1 second.
+            // This eliminates race conditions from rapid clicking entirely.
+
+            const bufferKey = `${item.SKU}|${item.Warehouse}|${item.Location}`;
+            const existingBuffer = logBuffersRef.current[bufferKey];
+
+            // Clear pending flush
+            if (existingBuffer?.timer) clearTimeout(existingBuffer.timer);
+
+            // Calculate new accumulated delta
+            // If we have a buffer, add to it. Otherwise start with current delta.
+            const currentBufferQty = existingBuffer ? existingBuffer.netQty : 0;
+            const newNetQty = currentBufferQty + delta; // delta can be positive or negative
+
+            // Store new state
+            logBuffersRef.current[bufferKey] = {
+                netQty: newNetQty,
                 sku: item.SKU,
-                from_warehouse: item.Warehouse,
-                from_location: item.Location,
-                quantity: Math.abs(delta),
-                prev_quantity: item.Quantity,
-                new_quantity: newQty,
-                action_type: delta < 0 ? 'DEDUCT' : 'EDIT',
-                is_reversed: isReversal
-            });
+                warehouse: item.Warehouse,
+                location: item.Location,
+                prevQty: existingBuffer ? existingBuffer.prevQty : item.Quantity, // Keep original start qty
+                newStockSnapshot: newQty, // Keep updating snapshot to latest
+                timer: setTimeout(async () => {
+                    // FLUSH LOGIC
+                    const finalBuffer = logBuffersRef.current[bufferKey];
+                    // Do NOT delete immediately if we want to allow 5-min session extension?
+                    // No, the buffer is for "Burst" clicks. 5-min logic is handled by server finding previous logs.
+                    delete logBuffersRef.current[bufferKey];
+
+                    if (!finalBuffer || finalBuffer.netQty === 0) {
+                        return; // Net zero change = no log needed
+                    }
+
+                    const finalAction = finalBuffer.netQty > 0 ? 'ADD' : 'DEDUCT';
+
+                    // Call the server tracker
+                    // We pass the SUM of the burst.
+                    // We pass null for candidateLogId because the buffer IS the chain for this burst.
+                    // The server will still look for a recent log (<5 min) to merge with if applicable.
+                    const finalLogId = await trackLog({
+                        sku: finalBuffer.sku,
+                        from_warehouse: finalBuffer.warehouse,
+                        from_location: finalBuffer.location,
+                        quantity: Math.abs(finalBuffer.netQty),
+                        prev_quantity: finalBuffer.prevQty,
+                        new_quantity: finalBuffer.newStockSnapshot,
+                        action_type: finalAction,
+                        is_reversed: isReversal
+                    }, getUserInfo(), null);
+
+                    if (finalLogId) {
+                        lastLogRef.current = {
+                            id: finalLogId,
+                            sku: finalBuffer.sku,
+                            timestamp: Date.now(),
+                            action: finalAction
+                        };
+                    } else {
+                        lastLogRef.current = { id: null, sku: null, timestamp: 0 };
+                    }
+
+                }, 1000) // 1 second debounce window
+            };
 
         } catch (err) {
             console.error('Failed to update quantity:', err);
@@ -173,7 +263,7 @@ export const InventoryProvider = ({ children }) => {
     const updateLudlowQuantity = (sku, delta, location = null) => updateQuantity(sku, delta, 'LUDLOW', location);
     const updateAtsQuantity = (sku, delta, location = null) => updateQuantity(sku, delta, 'ATS', location);
 
-    const { role, isAdmin } = useAuth();
+
 
     /**
      * Resolves a location name, mapping numeric "9" to "Row 9" if applicable.
@@ -282,7 +372,7 @@ export const InventoryProvider = ({ children }) => {
                     new_quantity: newTotal,
                     action_type: 'ADD', // Keep as ADD (Restock)
                     is_reversed: newItem.isReversal || false
-                });
+                }, getUserInfo());
             } catch (err) {
                 console.error('Error updating existing item (add):', err);
                 alert('Error restocking item: ' + err.message);
@@ -321,7 +411,7 @@ export const InventoryProvider = ({ children }) => {
                 new_quantity: qty,
                 action_type: 'ADD',
                 is_reversed: newItem.isReversal || false
-            });
+            }, getUserInfo());
         } catch (err) {
             console.error('Error adding item:', err);
             alert('Error adding item: ' + err.message);
@@ -394,7 +484,7 @@ export const InventoryProvider = ({ children }) => {
                 new_quantity: updatedFormData.Quantity,
                 action_type: isMove ? 'MOVE' : 'EDIT',
                 is_reversed: updatedFormData.isReversal || false
-            });
+            }, getUserInfo());
         } catch (err) {
             console.error('Error updating item:', err);
             alert('Error updating item: ' + err.message);
@@ -498,7 +588,7 @@ export const InventoryProvider = ({ children }) => {
             new_quantity: remainingQty,
             action_type: 'MOVE',
             is_reversed: isReversal
-        });
+        }, getUserInfo());
     };
 
     const deleteItem = async (warehouse, sku) => {
@@ -521,7 +611,7 @@ export const InventoryProvider = ({ children }) => {
                 prev_quantity: item.Quantity,
                 new_quantity: 0,
                 action_type: 'DELETE'
-            });
+            }, getUserInfo());
         } catch (err) {
             console.error('Error deleting item:', err);
         }

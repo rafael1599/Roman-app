@@ -1,69 +1,69 @@
-# CRUD de Locations - Warehouse Map Builder
+# Location CRUD - Warehouse Map Builder
 
-## 🎯 Nueva Funcionalidad
+## 🎯 New Functionality
 
-El Map Builder ahora incluye un **CRUD completo** para gestionar ubicaciones del almacén.
-
----
-
-## ✨ Características
-
-### **1. 📍 Agregar Ubicaciones Personalizadas**
-
-Puedes crear ubicaciones que no existen en tu inventario:
-
-**Casos de uso:**
-- Ubicaciones nuevas que aún no tienen productos
-- Áreas especiales (DOCK-1, STAGING, QC-AREA)
-- Zonas temporales
-- Ubicaciones de preparación
-
-**Cómo agregar:**
-1. Click en **"Add Location"** (botón azul)
-2. Ingresa el nombre (ej: "A-01", "DOCK-1", "STAGING")
-3. Click en **"Add"**
-4. La ubicación se agrega al final de la lista
-5. Arrástrala a la posición correcta
-6. Click en **"Save Map"**
-
-### **2. ✏️ Editar Ubicaciones**
-
-Solo puedes editar ubicaciones **personalizadas** (no las del inventario):
-
-**Cómo editar:**
-1. Encuentra la ubicación con etiqueta **(Custom)**
-2. Click en el ícono de **lápiz** (Edit)
-3. Modifica el nombre
-4. Click en **"Update"**
-
-**Nota:** Las ubicaciones del inventario no se pueden editar directamente.
-
-### **3. 🗑️ Eliminar Ubicaciones**
-
-Solo puedes eliminar ubicaciones **personalizadas**:
-
-**Cómo eliminar:**
-1. Encuentra la ubicación con etiqueta **(Custom)**
-2. Click en el ícono de **basura** (Delete)
-3. Confirma la eliminación
-4. La ubicación se elimina permanentemente
-
-**Advertencia:** Esta acción no se puede deshacer.
-
-### **4. 🔄 Reordenar Ubicaciones**
-
-Todas las ubicaciones (inventario + personalizadas) se pueden reordenar:
-
-**Cómo reordenar:**
-1. Click y arrastra el ícono de **grip** (≡)
-2. Suelta en la nueva posición
-3. Click en **"Save Map"**
+The Map Builder now includes a **full CRUD** to manage warehouse locations.
 
 ---
 
-## 🎨 Interfaz Visual
+## ✨ Features
 
-### **Ubicaciones del Inventario**
+### **1. 📍 Add Custom Locations**
+
+You can create locations that do not exist in your inventory:
+
+**Use cases:**
+- New locations that do not have products yet
+- Special areas (DOCK-1, STAGING, QC-AREA)
+- Temporary zones
+- Preparation locations
+
+**How to add:**
+1. Click on **"Add Location"** (blue button)
+2. Enter the name (e.g., "A-01", "DOCK-1", "STAGING")
+3. Click on **"Add"**
+4. The location is added to the end of the list
+5. Drag it to the correct position
+6. Click on **"Save Map"**
+
+### **2. ✏️ Edit Locations**
+
+You can only edit **custom** locations (not those from the inventory):
+
+**How to edit:**
+1. Find the location with the **(Custom)** label
+2. Click on the **pencil** icon (Edit)
+3. Modify the name
+4. Click on **"Update"**
+
+**Note:** Inventory locations cannot be edited directly.
+
+### **3. 🗑️ Delete Locations**
+
+You can only delete **custom** locations:
+
+**How to delete:**
+1. Find the location with the **(Custom)** label
+2. Click on the **trash** icon (Delete)
+3. Confirm the deletion
+4. The location is permanently deleted
+
+**Warning:** This action cannot be undone.
+
+### **4. 🔄 Reorder Locations**
+
+All locations (inventory + custom) can be reordered:
+
+**How to reorder:**
+1. Click and drag the **grip** icon (≡)
+2. Drop it in the new position
+3. Click on **"Save Map"**
+
+---
+
+## 🎨 Visual Interface
+
+### **Inventory Locations**
 ```
 ┌─────────────────────────────┐
 │ ≡  A-01                     │
@@ -71,7 +71,7 @@ Todas las ubicaciones (inventario + personalizadas) se pueden reordenar:
 └─────────────────────────────┘
 ```
 
-### **Ubicaciones Personalizadas**
+### **Custom Locations**
 ```
 ┌─────────────────────────────┐
 │ ≡  DOCK-1              ✏️ 🗑️│
@@ -79,26 +79,26 @@ Todas las ubicaciones (inventario + personalizadas) se pueden reordenar:
 └─────────────────────────────┘
 ```
 
-**Diferencias visuales:**
-- 🟢 **Verde** = Ubicación del inventario
-- 🔵 **Azul** = Ubicación personalizada (en route preview)
-- ✏️ **Edit** = Solo en ubicaciones personalizadas
-- 🗑️ **Delete** = Solo en ubicaciones personalizadas
+**Visual differences:**
+- 🟢 **Green** = Inventory location
+- 🔵 **Blue** = Custom location (in route preview)
+- ✏️ **Edit** = Only on custom locations
+- 🗑️ **Delete** = Only on custom locations
 
 ---
 
-## 💾 Persistencia de Datos
+## 💾 Data Persistence
 
-### **Almacenamiento**
+### **Storage**
 
-Dos tipos de datos se guardan en `localStorage`:
+Two types of data are saved in `localStorage`:
 
-1. **`custom_locations`** - Array de ubicaciones personalizadas
+1. **`custom_locations`** - Array of custom locations
    ```json
    ["DOCK-1", "STAGING", "QC-AREA"]
    ```
 
-2. **`warehouse_map`** - Configuración del mapa con posiciones
+2. **`warehouse_map`** - Map configuration with positions
    ```json
    {
      "A-01": { "position": 0, "x": 100, "y": 1000 },
@@ -106,228 +106,228 @@ Dos tipos de datos se guardan en `localStorage`:
    }
    ```
 
-### **Sincronización**
+### **Synchronization**
 
-- ✅ Ubicaciones del inventario se actualizan automáticamente
-- ✅ Ubicaciones personalizadas persisten entre sesiones
-- ✅ El orden se mantiene al recargar la página
-- ✅ Ediciones y eliminaciones se reflejan inmediatamente
-
----
-
-## 🔧 Operaciones Disponibles
-
-### **CREATE (Agregar)**
-
-```javascript
-// Click en "Add Location"
-// Ingresa: "DOCK-1"
-// Resultado: Nueva ubicación agregada
-```
-
-**Validaciones:**
-- ❌ No puede estar vacío
-- ❌ No puede duplicar ubicaciones existentes
-- ✅ Acepta cualquier formato (letras, números, guiones)
-
-### **READ (Ver)**
-
-```javascript
-// Todas las ubicaciones se muestran automáticamente
-// Inventario + Personalizadas
-// Ordenadas según configuración guardada
-```
-
-### **UPDATE (Editar)**
-
-```javascript
-// Solo ubicaciones personalizadas
-// Click en ✏️ → Edita → "Update"
-// Se actualiza en todas partes (lista, mapa, route)
-```
-
-**Validaciones:**
-- ❌ No puede duplicar ubicaciones existentes
-- ✅ Actualiza referencias en el mapa guardado
-
-### **DELETE (Eliminar)**
-
-```javascript
-// Solo ubicaciones personalizadas
-// Click en 🗑️ → Confirma → Eliminada
-```
-
-**Efectos:**
-- ✅ Se elimina de `custom_locations`
-- ✅ Se elimina de `warehouse_map`
-- ✅ Se elimina de la lista visual
-- ⚠️ **No se puede deshacer**
+- ✅ Inventory locations are updated automatically
+- ✅ Custom locations persist between sessions
+- ✅ The order is maintained when reloading the page
+- ✅ Edits and deletions are reflected immediately
 
 ---
 
-## 📋 Casos de Uso
+## 🔧 Available Operations
 
-### **1. Nueva Área de Almacén**
+### **CREATE (Add)**
+
+```javascript
+// Click on "Add Location"
+// Enter: "DOCK-1"
+// Result: New location added
+```
+
+**Validations:**
+- ❌ Cannot be empty
+- ❌ Cannot duplicate existing locations
+- ✅ Accepts any format (letters, numbers, hyphens)
+
+### **READ (View)**
+
+```javascript
+// All locations are displayed automatically
+// Inventory + Custom
+// Ordered according to saved configuration
+```
+
+### **UPDATE (Edit)**
+
+```javascript
+// Only custom locations
+// Click on ✏️ → Edit → "Update"
+// It is updated everywhere (list, map, route)
+```
+
+**Validations:**
+- ❌ Cannot duplicate existing locations
+- ✅ Updates references in the saved map
+
+### **DELETE (Delete)**
+
+```javascript
+// Only custom locations
+// Click on 🗑️ → Confirm → Deleted
+```
+
+**Effects:**
+- ✅ It is deleted from `custom_locations`
+- ✅ It is deleted from `warehouse_map`
+- ✅ It is deleted from the visual list
+- ⚠️ **Cannot be undone**
+
+---
+
+## 📋 Use Cases
+
+### **1. New Warehouse Area**
 
 ```
-Situación: Acabas de crear una nueva zona "C-ZONE"
-Solución:
+Situation: You have just created a new "C-ZONE" area
+Solution:
 1. Add Location → "C-ZONE"
-2. Arrastra a la posición correcta en la ruta
+2. Drag it to the correct position on the route
 3. Save Map
 ```
 
-### **2. Área Temporal**
+### **2. Temporary Area**
 
 ```
-Situación: Necesitas una zona temporal "STAGING"
-Solución:
+Situation: You need a temporary "STAGING" zone
+Solution:
 1. Add Location → "STAGING"
-2. Coloca al inicio de la ruta (primera posición)
+2. Place it at the beginning of the route (first position)
 3. Save Map
-4. Cuando termines, Delete → "STAGING"
+4. When finished, Delete → "STAGING"
 ```
 
-### **3. Reorganizar Almacén**
+### **3. Reorganize Warehouse**
 
 ```
-Situación: Cambiaste el layout físico
-Solución:
-1. Arrastra ubicaciones al nuevo orden
+Situation: You changed the physical layout
+Solution:
+1. Drag locations to the new order
 2. Save Map
-3. El picking seguirá el nuevo orden
+3. Picking will follow the new order
 ```
 
-### **4. Renombrar Ubicación**
+### **4. Rename Location**
 
 ```
-Situación: "TEMP-1" ahora es "C-15"
-Solución:
+Situation: "TEMP-1" is now "C-15"
+Solution:
 1. Edit "TEMP-1" → "C-15"
 2. Update
-3. Todas las referencias se actualizan
+3. All references are updated
 ```
 
 ---
 
-## 🎯 Mejores Prácticas
+## 🎯 Best Practices
 
-### **Nomenclatura**
+### **Nomenclature**
 
-✅ **Recomendado:**
-- `A-01`, `B-15`, `C-20` (Formato consistente)
-- `DOCK-1`, `DOCK-2` (Áreas especiales)
-- `STAGING`, `QC`, `RETURNS` (Zonas funcionales)
+✅ **Recommended:**
+- `A-01`, `B-15`, `C-20` (Consistent format)
+- `DOCK-1`, `DOCK-2` (Special areas)
+- `STAGING`, `QC`, `RETURNS` (Functional zones)
 
-❌ **Evitar:**
-- Nombres muy largos (dificulta visualización)
-- Caracteres especiales raros
-- Duplicados con diferentes mayúsculas
+❌ **Avoid:**
+- Very long names (makes visualization difficult)
+- Rare special characters
+- Duplicates with different capitalization
 
-### **Organización**
+### **Organization**
 
-1. **Agrupa por zona**
+1. **Group by zone**
    ```
    A-01, A-02, A-03
    B-01, B-02, B-03
    DOCK-1, DOCK-2
    ```
 
-2. **Ordena por flujo de trabajo**
+2. **Order by workflow**
    ```
    RECEIVING → STAGING → A-ZONE → B-ZONE → SHIPPING
    ```
 
-3. **Mantén actualizado**
-   - Elimina ubicaciones obsoletas
-   - Actualiza nombres cuando cambien
-   - Reorganiza cuando cambies el layout
+3. **Keep updated**
+   - Delete obsolete locations
+   - Update names when they change
+   - Reorganize when you change the layout
 
 ---
 
 ## 🔍 Debugging
 
-### **Ubicación no aparece**
+### **Location does not appear**
 
-**Problema:** Agregué una ubicación pero no la veo
+**Problem:** I added a location but I don't see it
 
-**Solución:**
-1. Verifica que clickeaste "Add" (no Cancel)
-2. Revisa la consola del navegador
-3. Recarga la página
-4. Verifica `localStorage` en DevTools
+**Solution:**
+1. Verify that you clicked "Add" (not Cancel)
+2. Check the browser console
+3. Reload the page
+4. Verify `localStorage` in DevTools
 
-### **No puedo editar/eliminar**
+### **I can't edit/delete**
 
-**Problema:** Los botones Edit/Delete no aparecen
+**Problem:** The Edit/Delete buttons do not appear
 
-**Razón:** Solo ubicaciones **personalizadas** tienen estos botones
+**Reason:** Only **custom** locations have these buttons
 
-**Solución:** Las ubicaciones del inventario no se pueden editar/eliminar
+**Solution:** Inventory locations cannot be edited/deleted
 
-### **Cambios no se guardan**
+### **Changes are not saved**
 
-**Problema:** Reordené pero al recargar vuelve al orden anterior
+**Problem:** I reordered but when I reload it returns to the previous order
 
-**Solución:** Debes clickear **"Save Map"** después de reordenar
+**Solution:** You must click **"Save Map"** after reordering
 
 ---
 
 ## 💡 Tips
 
-1. **Usa prefijos** para agrupar ubicaciones
-   - `A-*` para zona A
-   - `DOCK-*` para docks
-   - `TEMP-*` para temporales
+1. **Use prefixes** to group locations
+   - `A-*` for zone A
+   - `DOCK-*` for docks
+   - `TEMP-*` for temporary
 
-2. **Planifica antes de agregar**
-   - Piensa en el flujo de picking
-   - Considera expansiones futuras
-   - Mantén consistencia
+2. **Plan before adding**
+   - Think about the picking flow
+   - Consider future expansions
+   - Maintain consistency
 
-3. **Documenta ubicaciones especiales**
-   - Anota qué representa cada zona
-   - Comunica cambios al equipo
-   - Actualiza mapas físicos
+3. **Document special locations**
+   - Write down what each zone represents
+   - Communicate changes to the team
+   - Update physical maps
 
-4. **Limpia regularmente**
-   - Elimina ubicaciones no usadas
-   - Consolida zonas similares
-   - Mantén el mapa simple
-
----
-
-## 🚀 Flujo de Trabajo Recomendado
-
-### **Setup Inicial**
-
-1. ✅ Revisa ubicaciones del inventario
-2. ✅ Agrega ubicaciones faltantes
-3. ✅ Organiza por flujo de picking
-4. ✅ Guarda el mapa
-5. ✅ Prueba con una orden real
-
-### **Mantenimiento**
-
-1. 🔄 Revisa mensualmente
-2. 🗑️ Elimina obsoletas
-3. ➕ Agrega nuevas según necesidad
-4. 📊 Optimiza basado en métricas
-5. 💾 Guarda cambios
+4. **Clean up regularly**
+   - Delete unused locations
+   - Consolidate similar zones
+   - Keep the map simple
 
 ---
 
-## 📚 Referencia Rápida
+## 🚀 Recommended Workflow
 
-| Acción | Botón/Ícono | Disponible para |
+### **Initial Setup**
+
+1. ✅ Review inventory locations
+2. ✅ Add missing locations
+3. ✅ Organize by picking flow
+4. ✅ Save the map
+5. ✅ Test with a real order
+
+### **Maintenance**
+
+1. 🔄 Review monthly
+2. 🗑️ Delete obsolete ones
+3. ➕ Add new ones as needed
+4. 📊 Optimize based on metrics
+5. 💾 Save changes
+
+---
+
+## 📚 Quick Reference
+
+| Action | Button/Icon | Available for |
 |--------|-------------|-----------------|
-| **Agregar** | `+ Add Location` | Todos |
-| **Editar** | ✏️ | Solo Custom |
-| **Eliminar** | 🗑️ | Solo Custom |
-| **Reordenar** | ≡ (Grip) | Todos |
-| **Guardar** | `Save Map` | Todos |
-| **Resetear** | `Reset` | Todos |
+| **Add** | `+ Add Location` | All |
+| **Edit** | ✏️ | Custom Only |
+| **Delete** | 🗑️ | Custom Only |
+| **Reorder** | ≡ (Grip) | All |
+| **Save** | `Save Map` | All |
+| **Reset** | `Reset` | All |
 
 ---
 
-**¡Ahora tienes control total sobre las ubicaciones de tu almacén!** 🎉
+**You now have full control over your warehouse locations!** 🎉

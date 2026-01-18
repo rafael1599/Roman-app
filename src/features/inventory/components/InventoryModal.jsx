@@ -90,6 +90,19 @@ export const InventoryModal = ({ isOpen, onClose, onSave, onDelete, initialData,
 
     const handleSubmit = (e) => {
         e.preventDefault();
+
+        // Warning for SKU Change
+        if (mode === 'edit' && initialData && formData.SKU !== initialData.SKU) {
+            const confirmRename = window.confirm(
+                `⚠️ WARNING: IDENTITY CHANGE (SKU) ⚠️\n\n` +
+                `You are about to rename the product:\n` +
+                `FROM: "${initialData.SKU}"\n` +
+                `TO:  "${formData.SKU}"\n\n` +
+                `Are you sure? This will alter how this item is searched in the history.`
+            );
+            if (!confirmRename) return;
+        }
+
         onSave(formData);
         onClose();
     };

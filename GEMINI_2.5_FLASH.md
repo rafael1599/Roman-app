@@ -1,84 +1,84 @@
-# Actualización a Gemini 2.5 Flash 🚀
+# Update to Gemini 2.5 Flash 🚀
 
-## ✨ Modelo Actualizado
+## ✨ Updated Model
 
-El sistema Smart Picking ahora usa **Gemini 2.5 Flash**, el mejor modelo disponible gratuitamente.
+The Smart Picking system now uses **Gemini 2.5 Flash**, the best freely available model.
 
-## 🎯 Por qué Gemini 2.5 Flash
+## 🎯 Why Gemini 2.5 Flash
 
-### **Ventajas sobre Gemini 1.5 Flash:**
+### **Advantages over Gemini 1.5 Flash:**
 
-| Característica | Gemini 1.5 Flash | Gemini 2.5 Flash ⭐ |
+| Feature | Gemini 1.5 Flash | Gemini 2.5 Flash ⭐ |
 |----------------|------------------|---------------------|
-| **Razonamiento** | Básico | 🧠 **Híbrido** (Thinking) |
-| **Precisión OCR** | Alta | 🎯 **Muy Alta** |
-| **Velocidad** | Rápida | ⚡ **Más Rápida** |
-| **Contexto** | 1M tokens | ✅ **1M tokens** |
-| **Structured Outputs** | ✅ Soportado | ✅ **Soportado** |
-| **Costo** | ✅ Gratis | ✅ **Gratis** |
-| **Límites (Free)** | 15 RPM, 1M TPM | ✅ **15 RPM, 1M TPM** |
+| **Reasoning** | Basic | 🧠 **Hybrid** (Thinking) |
+| **OCR Accuracy** | High | 🎯 **Very High** |
+| **Speed** | Fast | ⚡ **Faster** |
+| **Context** | 1M tokens | ✅ **1M tokens** |
+| **Structured Outputs** | ✅ Supported | ✅ **Supported** |
+| **Cost** | ✅ Free | ✅ **Free** |
+| **Limits (Free)** | 15 RPM, 1M TPM | ✅ **15 RPM, 1M TPM** |
 
-### **Mejoras Clave:**
+### **Key Improvements:**
 
-1. **🧠 Razonamiento Híbrido**
-   - Puede "pensar" sobre las imágenes antes de responder
-   - Mejor comprensión del contexto visual
-   - Mayor precisión en OCR complejo
+1. **🧠 Hybrid Reasoning**
+   - Can "think" about images before responding
+   - Better understanding of visual context
+   - Higher accuracy in complex OCR
 
-2. **⚡ Optimizado para Alto Volumen**
-   - Diseñado para tareas de procesamiento masivo
-   - Menor latencia en respuestas
-   - Mejor para operaciones de almacén
+2. **⚡ Optimized for High Volume**
+   - Designed for mass processing tasks
+   - Lower latency in responses
+   - Better for warehouse operations
 
-3. **🎯 Mejor Precisión**
-   - Última tecnología de Google
-   - Entrenado con más datos
-   - Menos errores de extracción
+3. **🎯 Better Accuracy**
+   - Latest technology from Google
+   - Trained with more data
+   - Fewer extraction errors
 
-4. **📊 Thinking Soportado**
-   - Puede razonar sobre imágenes complejas
-   - Mejor manejo de casos difíciles
-   - Mayor confiabilidad
+4. **📊 Thinking Supported**
+   - Can reason about complex images
+   - Better handling of difficult cases
+   - Higher reliability
 
-## 💰 Tier Gratuito
+## 💰 Free Tier
 
-**100% Gratis** con límites generosos:
+**100% Free** with generous limits:
 
-- ✅ **15 RPM** (Requests por minuto)
-- ✅ **1,000,000 TPM** (Tokens por minuto)
-- ✅ **1,500 RPD** (Requests por día)
+- ✅ **15 RPM** (Requests per minute)
+- ✅ **1,000,000 TPM** (Tokens per minute)
+- ✅ **1,500 RPD** (Requests per day)
 
-**Para tu almacén:**
-- Puedes escanear ~**1,500 órdenes por día**
-- Cada escaneo toma ~**1-2 segundos**
-- **Más que suficiente** para operación normal
+**For your warehouse:**
+- You can scan ~**1,500 orders per day**
+- Each scan takes ~**1-2 seconds**
+- **More than enough** for normal operation
 
-## 🔧 Cambios Implementados
+## 🔧 Implemented Changes
 
-### **Código Actualizado:**
+### **Updated Code:**
 
 ```javascript
-// Antes
+// Before
 model: 'gemini-1.5-flash'
 
-// Ahora
-model: 'gemini-2.5-flash' // ⭐ Mejor modelo gratuito
+// Now
+model: 'gemini-2.5-flash' // ⭐ Best free model
 ```
 
-### **Archivos Modificados:**
+### **Modified Files:**
 
 1. ✅ `src/services/gemini.js`
    - `scanOrderImage()` → Gemini 2.5 Flash
    - `verifyPalletImage()` → Gemini 2.5 Flash
    - `testGeminiConnection()` → Gemini 2.5 Flash
 
-2. ✅ Documentación actualizada
+2. ✅ Updated documentation
 
-## ✨ Características Mantenidas
+## ✨ Maintained Features
 
-Seguimos usando las mejores prácticas:
+We continue to use best practices:
 
-### **1. Structured Outputs con JSON Schema**
+### **1. Structured Outputs with JSON Schema**
 
 ```javascript
 generationConfig: {
@@ -87,91 +87,91 @@ generationConfig: {
 }
 ```
 
-**Beneficios:**
-- ✅ JSON válido garantizado
-- ✅ Estructura predecible
-- ✅ Validación automática
+**Benefits:**
+- ✅ Guaranteed valid JSON
+- ✅ Predictable structure
+- ✅ Automatic validation
 
-### **2. Temperatura Optimizada**
+### **2. Optimized Temperature**
 
 ```javascript
-temperature: 0.1 // Para escaneo (más determinístico)
-temperature: 0.2 // Para verificación (más flexible)
+temperature: 0.1 // For scanning (more deterministic)
+temperature: 0.2 // For verification (more flexible)
 ```
 
-### **3. Prompts Mejorados**
+### **3. Improved Prompts**
 
-Prompts específicos y detallados para máxima precisión.
+Specific and detailed prompts for maximum accuracy.
 
-## 📊 Comparación Completa
+## 📊 Full Comparison
 
-| Aspecto | 1.5 Flash | 2.5 Flash ⭐ |
+| Aspect | 1.5 Flash | 2.5 Flash ⭐ |
 |---------|-----------|--------------|
-| **Generación** | 1.5 | **2.5** (más reciente) |
-| **Razonamiento** | Básico | **Híbrido** |
-| **OCR Precisión** | 85-90% | **90-95%** |
-| **Velocidad** | Rápida | **Más rápida** |
-| **Thinking** | ❌ No | ✅ **Sí** |
-| **Contexto** | 1M tokens | **1M tokens** |
-| **JSON Schema** | ✅ Sí | ✅ **Sí** |
-| **Costo** | Gratis | **Gratis** |
+| **Generation** | 1.5 | **2.5** (latest) |
+| **Reasoning** | Basic | **Hybrid** |
+| **OCR Accuracy** | 85-90% | **90-95%** |
+| **Speed** | Fast | **Faster** |
+| **Thinking** | ❌ No | ✅ **Yes** |
+| **Context** | 1M tokens | **1M tokens** |
+| **JSON Schema** | ✅ Yes | ✅ **Yes** |
+| **Cost** | Free | **Free** |
 | **RPM (Free)** | 15 | **15** |
 | **TPM (Free)** | 1M | **1M** |
 | **RPD (Free)** | 1,500 | **1,500** |
 
-## 🎯 Casos de Uso Mejorados
+## 🎯 Improved Use Cases
 
-### **1. Escaneo de Órdenes**
-- ✅ Mejor lectura de texto borroso
-- ✅ Mejor manejo de formatos variados
-- ✅ Mayor precisión en números
+### **1. Order Scanning**
+- ✅ Better reading of blurry text
+- ✅ Better handling of varied formats
+- ✅ Higher accuracy in numbers
 
-### **2. Verificación de Pallets**
-- ✅ Mejor reconocimiento de etiquetas
-- ✅ Conteo más preciso
-- ✅ Menos falsos positivos
+### **2. Pallet Verification**
+- ✅ Better label recognition
+- ✅ More accurate counting
+- ✅ Fewer false positives
 
-### **3. Casos Difíciles**
-- ✅ Imágenes con poca luz
-- ✅ Texto en ángulos
-- ✅ Múltiples SKUs en una imagen
+### **3. Difficult Cases**
+- ✅ Low light images
+- ✅ Angled text
+- ✅ Multiple SKUs in one image
 
-## 🚀 Mejoras Esperadas
+## 🚀 Expected Improvements
 
-Con Gemini 2.5 Flash, espera:
+With Gemini 2.5 Flash, expect:
 
-1. **📈 Mayor Precisión**
-   - +5-10% en precisión de OCR
-   - Menos errores de extracción
-   - Mejor manejo de casos edge
+1. **📈 Higher Accuracy**
+   - +5-10% in OCR accuracy
+   - Fewer extraction errors
+   - Better handling of edge cases
 
-2. **⚡ Mejor Performance**
-   - Respuestas más rápidas
-   - Menor latencia
-   - Procesamiento optimizado
+2. **⚡ Better Performance**
+   - Faster responses
+   - Lower latency
+   - Optimized processing
 
-3. **🛡️ Más Confiable**
-   - Razonamiento híbrido
-   - Mejor comprensión de contexto
-   - Menos necesidad de manual override
+3. **🛡️ More Reliable**
+   - Hybrid reasoning
+   - Better context understanding
+   - Less need for manual override
 
-## 📚 Referencias
+## 📚 References
 
 - [Gemini 2.5 Flash Docs](https://ai.google.dev/gemini-api/docs/models/gemini#gemini-2.5-flash)
 - [Pricing](https://ai.google.dev/gemini-api/docs/pricing)
 - [Structured Outputs](https://ai.google.dev/gemini-api/docs/structured-output)
 
-## 💡 Recomendaciones
+## 💡 Recommendations
 
-1. **Prueba el nuevo modelo** con órdenes reales
-2. **Compara la precisión** con versiones anteriores
-3. **Reporta mejoras** que notes
-4. **Disfruta** del mejor modelo gratuito disponible
+1. **Test the new model** with real orders
+2. **Compare the accuracy** with previous versions
+3. **Report improvements** you notice
+4. **Enjoy** the best free model available
 
 ---
 
-**¡Actualizado a Gemini 2.5 Flash - El mejor modelo gratuito de Google!** 🎉
+**Updated to Gemini 2.5 Flash - The best free model from Google!** 🎉
 
-**Fecha:** Diciembre 2025  
-**Modelo:** `gemini-2.5-flash`  
+**Date:** December 2025
+**Model:** `gemini-2.5-flash`
 **Tier:** FREE (15 RPM, 1M TPM, 1.5K RPD)

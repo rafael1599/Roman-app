@@ -1,44 +1,44 @@
-# Por qué usamos Gemini 1.5 Flash (FREE)
+# Why we use Gemini 1.5 Flash (FREE)
 
-## 💰 Gemini 3 Pro no es gratis
+## 💰 Gemini 3 Pro is not free
 
-Gemini 3 Pro Preview **NO está disponible en el tier gratuito** de Google AI.
+Gemini 3 Pro Preview **is NOT available in the free tier** of Google AI.
 
-### Error que obtendrías:
+### Error you would get:
 ```
 [429] You exceeded your current quota
 Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests
 limit: 0, model: gemini-3-pro
 ```
 
-## ✅ Solución: Gemini 1.5 Flash con Structured Outputs
+## ✅ Solution: Gemini 1.5 Flash with Structured Outputs
 
-Hemos configurado el sistema para usar **Gemini 1.5 Flash** que:
+We have configured the system to use **Gemini 1.5 Flash** which:
 
-### ✨ Ventajas
-- ✅ **100% GRATIS** - Tier gratuito generoso
-- ✅ **Structured Outputs** - Soporta JSON Schema (igual que Pro)
-- ✅ **Rápido** - Optimizado para velocidad
-- ✅ **Preciso** - Excelente para OCR
-- ✅ **Sin límites restrictivos** - 15 RPM, 1M TPM, 1500 RPD
+### ✨ Advantages
+- ✅ **100% FREE** - Generous free tier
+- ✅ **Structured Outputs** - Supports JSON Schema (same as Pro)
+- ✅ **Fast** - Optimized for speed
+- ✅ **Accurate** - Excellent for OCR
+- ✅ **No restrictive limits** - 15 RPM, 1M TPM, 1500 RPD
 
-### 📊 Comparación de Modelos
+### 📊 Model Comparison
 
-| Característica | Gemini 1.5 Flash (FREE) | Gemini 3 Pro (PAID) |
+| Feature | Gemini 1.5 Flash (FREE) | Gemini 3 Pro (PAID) |
 |----------------|-------------------------|---------------------|
-| **Costo** | ✅ Gratis | ❌ De pago |
-| **JSON Schema** | ✅ Soportado | ✅ Soportado |
-| **Thinking Level** | ❌ No disponible | ✅ Disponible |
-| **Velocidad** | ⚡ Muy rápida | 🐢 Más lenta (con thinking) |
-| **RPM (Free)** | 15 | 0 (no disponible) |
-| **TPM (Free)** | 1,000,000 | 0 (no disponible) |
-| **RPD (Free)** | 1,500 | 0 (no disponible) |
+| **Cost** | ✅ Free | ❌ Paid |
+| **JSON Schema** | ✅ Supported | ✅ Supported |
+| **Thinking Level** | ❌ Not available | ✅ Available |
+| **Speed** | ⚡ Very fast | 🐢 Slower (with thinking) |
+| **RPM (Free)** | 15 | 0 (not available) |
+| **TPM (Free)** | 1,000,000 | 0 (not available) |
+| **RPD (Free)** | 1,500 | 0 (not available) |
 
-## 🎯 Lo que SÍ mantenemos de Gemini 3
+## 🎯 What we DO keep from Gemini 3
 
-Aunque usamos Flash, implementamos las **mejores prácticas de Gemini 3**:
+Although we use Flash, we implement the **best practices of Gemini 3**:
 
-### 1. **Structured Outputs con JSON Schema**
+### 1. **Structured Outputs with JSON Schema**
 
 ```javascript
 const orderSchema = {
@@ -68,63 +68,63 @@ const result = await model.generateContent({
 });
 ```
 
-**Beneficios:**
-- ✅ JSON válido garantizado
-- ✅ Estructura predecible
-- ✅ Validación automática
-- ✅ No más errores de parsing
+**Benefits:**
+- ✅ Guaranteed valid JSON
+- ✅ Predictable structure
+- ✅ Automatic validation
+- ✅ No more parsing errors
 
-### 2. **Temperatura Optimizada**
+### 2. **Optimized Temperature**
 
 ```javascript
-temperature: 0.1 // Para escaneo (más determinístico)
-temperature: 0.2 // Para verificación (más flexible)
+temperature: 0.1 // For scanning (more deterministic)
+temperature: 0.2 // For verification (more flexible)
 ```
 
-### 3. **Prompts Mejorados**
+### 3. **Improved Prompts**
 
-Prompts específicos y detallados para mejor precisión.
+Specific and detailed prompts for better accuracy.
 
-## 📈 Límites del Tier Gratuito
+## 📈 Free Tier Limits
 
 ### Gemini 1.5 Flash (FREE)
-- **RPM**: 15 requests por minuto
-- **TPM**: 1,000,000 tokens por minuto
-- **RPD**: 1,500 requests por día
+- **RPM**: 15 requests per minute
+- **TPM**: 1,000,000 tokens per minute
+- **RPD**: 1,500 requests per day
 
-**Para nuestro caso de uso:**
-- ✅ Suficiente para operación normal
-- ✅ Puedes escanear ~1500 órdenes por día
-- ✅ Cada escaneo toma ~1-2 segundos
+**For our use case:**
+- ✅ Enough for normal operation
+- ✅ You can scan ~1500 orders per day
+- ✅ Each scan takes ~1-2 seconds
 
-## 🔄 ¿Cuándo considerar Gemini 3 Pro?
+## 🔄 When to consider Gemini 3 Pro?
 
-Considera pagar por Gemini 3 Pro si:
+Consider paying for Gemini 3 Pro if:
 
-1. **Alto volumen**: >1500 órdenes por día
-2. **Razonamiento complejo**: Necesitas análisis profundo
-3. **Thinking Level**: Quieres control fino del razonamiento
-4. **Herramientas integradas**: Necesitas Google Search, etc.
+1. **High volume**: >1500 orders per day
+2. **Complex reasoning**: You need deep analysis
+3. **Thinking Level**: You want fine control of reasoning
+4. **Integrated tools**: You need Google Search, etc.
 
-## 💡 Recomendación
+## 💡 Recommendation
 
-**Para Roman's Warehouse:**
-- ✅ **Gemini 1.5 Flash es PERFECTO**
-- ✅ Gratis y rápido
-- ✅ Suficiente precisión para OCR
-- ✅ JSON Schema garantiza calidad
-- ✅ Sin costos operativos
+**For Roman's Warehouse:**
+- ✅ **Gemini 1.5 Flash is PERFECT**
+- ✅ Free and fast
+- ✅ Sufficient accuracy for OCR
+- ✅ JSON Schema guarantees quality
+- ✅ No operating costs
 
-## 🚀 Mejoras Implementadas
+## 🚀 Implemented Improvements
 
-Aunque usamos Flash, hemos implementado:
+Although we use Flash, we have implemented:
 
-1. **JSON Schema** - Estructura garantizada
-2. **Temperatura optimizada** - Resultados consistentes
-3. **Prompts mejorados** - Mayor precisión
-4. **Validación robusta** - Manejo de errores
+1. **JSON Schema** - Guaranteed structure
+2. **Optimized temperature** - Consistent results
+3. **Improved prompts** - Higher accuracy
+4. **Robust validation** - Error handling
 
-## 📚 Referencias
+## 📚 References
 
 - [Gemini Models Pricing](https://ai.google.dev/gemini-api/docs/pricing)
 - [Gemini 1.5 Flash Docs](https://ai.google.dev/gemini-api/docs/models/gemini)
@@ -132,4 +132,4 @@ Aunque usamos Flash, hemos implementado:
 
 ---
 
-**Conclusión:** Gemini 1.5 Flash con JSON Schema es la mejor opción para un sistema de picking gratuito, rápido y preciso. 🎯
+**Conclusion:** Gemini 1.5 Flash with JSON Schema is the best option for a free, fast, and accurate picking system. 🎯

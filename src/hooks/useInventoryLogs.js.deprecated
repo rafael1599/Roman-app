@@ -1,0 +1,248 @@
+import { supabase } from '../lib/supabaseClient';
+
+/**
+ * Hook to manage inventory logs and undo operations.
+ * Separated from the main inventory hook for better maintainability.
+ */
+export const useInventoryLogs = () => {
+
+    /**
+     * Records an activity in the inventory_logs table
+     */
+    /**
+     * Records an activity in the inventory_logs table
+     * Implements "Write-Time Coalescing": Updates the last log if specific conditions met.
+     */
+    /**
+     * Records an activity in the inventory_logs table
+     * Implements "Write-Time Coalescing": Updates the last log if specific conditions met.
+     * @param {Object} logData - The log payload
+     * @param {Object} userInfo - Identity metadata
+     * @param {string|null} candidateLogId - (Optional) ID of previous sequential log to attempt direct update
+     * @returns {string|null} The ID of the log that was touched (or null if deleted)
+     */
+    const trackLog = async (logData, userInfo = {}, candidateLogId = null) => {
+        const { performed_by, user_id } = userInfo;
+        const userName = performed_by || 'Warehouse Team';
+
+        try {
+            let targetLog = null;
+
+            // STRATEGY 1: Direct Chained Update (Optimistic)
+            if (candidateLogId) {
+                // Fetch the candidate to verify it still exists and matches context
+                // We MUST fetch because we need 'quantity' and 'action_type' to do math.
+                // Optimizing: We could blindly 'rpc' call, but Supabase JS is better with CRUD.
+                const { data: candidate } = await supabase
+                    .from('inventory_logs')
+                    .select('*')
+                    .eq('id', candidateLogId)
+                    .single();
+
+                if (candidate) {
+                    // Verify context matches
+                    const isSameContext = !candidate.is_reversed &&
+                        candidate.sku === logData.sku &&
+                        (candidate.from_location || null) === (logData.from_location || null) &&
+                        (candidate.to_location || null) === (logData.to_location || null);
+
+                    if (isSameContext) {
+                        targetLog = candidate; // Found it directly! No race condition.
+                    }
+                }
+            }
+
+            // STRATEGY 2: Fallback to Time-Based Search (If no chain or broken chain)
+            if (!targetLog) {
+                const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+                const { data: recentLogs } = await supabase
+                    .from('inventory_logs')
+                    .select('*')
+                    .eq('performed_by', userName)
+                    .gt('created_at', fiveMinutesAgo)
+                    .order('created_at', { ascending: false })
+                    .limit(1);
+
+                const lastLog = recentLogs?.[0];
+
+                // Strict Sequence Check
+                if (lastLog &&
+                    lastLog.sku === logData.sku &&
+                    !lastLog.is_reversed &&
+                    (lastLog.from_location || null) === (logData.from_location || null) &&
+                    (lastLog.to_location || null) === (logData.to_location || null) &&
+                    (lastLog.to_warehouse || null) === (logData.to_warehouse || null)) {
+                    targetLog = lastLog;
+                }
+            }
+
+            // --- EXECUTE MERGE OR INSERT ---
+
+            if (targetLog) {
+                // Smart Merging Logic
+                const sameType = targetLog.action_type === logData.action_type;
+                const isInverse = (targetLog.action_type === 'ADD' && logData.action_type === 'DEDUCT') ||
+                    (targetLog.action_type === 'DEDUCT' && logData.action_type === 'ADD');
+
+                if (sameType) {
+                    // Accumulate
+                    const newTotalQty = targetLog.quantity + logData.quantity;
+                    console.log(`[Log] Merging ${logData.action_type}: ${targetLog.quantity} + ${logData.quantity} = ${newTotalQty}`);
+
+                    await supabase.from('inventory_logs')
+                        .update({
+                            quantity: newTotalQty,
+                            new_quantity: logData.new_quantity
+                        })
+                        .eq('id', targetLog.id);
+
+                    return targetLog.id; // Return ID so client can chain again
+
+                } else if (isInverse) {
+                    // Cancel/Reduce
+                    const netQty = targetLog.quantity - logData.quantity;
+
+                    if (netQty === 0) {
+                        // Delete
+                        await supabase.from('inventory_logs').delete().eq('id', targetLog.id);
+                        return null; // Return null effectively breaking the chain
+                    } else if (netQty > 0) {
+                        // Reduce
+                        await supabase.from('inventory_logs')
+                            .update({
+                                quantity: netQty,
+                                new_quantity: logData.new_quantity
+                            })
+                            .eq('id', targetLog.id);
+                        return targetLog.id;
+                    } else {
+                        // Flip
+                        await supabase.from('inventory_logs')
+                            .update({
+                                quantity: Math.abs(netQty),
+                                action_type: logData.action_type,
+                                new_quantity: logData.new_quantity
+                            })
+                            .eq('id', targetLog.id);
+                        return targetLog.id;
+                    }
+                }
+            }
+
+            // --- INSERT NEW LOG (Default) ---
+            const { data: newLog, error } = await supabase
+                .from('inventory_logs')
+                .insert([{
+                    ...logData,
+                    prev_quantity: logData.prev_quantity ?? null,
+                    new_quantity: logData.new_quantity ?? null,
+                    is_reversed: logData.is_reversed || false,
+                    performed_by: userName,
+                    created_at: new Date().toISOString()
+                }])
+                .select()
+                .single();
+
+            if (error) {
+                console.error('Logging error:', error);
+                return null;
+            }
+
+            return newLog?.id; // Start new chain
+
+        } catch (err) {
+            console.error('Log tracking failed:', err);
+            return null;
+        }
+    };
+
+    /**
+     * Fetches the last 100 activity logs
+     */
+    const fetchLogs = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('inventory_logs')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(100);
+            if (error) {
+                console.error('Error fetching logs:', error);
+                return [];
+            }
+            return data || [];
+        } catch (err) {
+            console.error('Fetch logs failed:', err);
+            return [];
+        }
+    };
+
+    /**
+     * Reverses a previously performed action
+     * @param {string} logId - ID of the log entry to undo
+     * @param {Object} actions - Object containing CRUD methods { addItem, moveItem, updateQuantity }
+     */
+    const undoAction = async (logId, { addItem, moveItem, updateQuantity }) => {
+        try {
+            const { data: log, error: fetchError } = await supabase
+                .from('inventory_logs')
+                .select('*')
+                .eq('id', logId)
+                .single();
+
+            if (fetchError || !log) throw new Error('Action log not found');
+            if (log.is_reversed) throw new Error('Action already undone');
+
+            // --- Reversal Logic ---
+            if (log.action_type === 'MOVE') {
+                const { data: itemToMoveBack, error: findError } = await supabase
+                    .from('inventory')
+                    .select('*')
+                    .eq('SKU', log.sku)
+                    .eq('Warehouse', log.to_warehouse)
+                    .eq('Location', log.to_location)
+                    .single();
+
+                if (findError || !itemToMoveBack) {
+                    throw new Error(`Cannot undo move: Item ${log.sku} not found at destination ${log.to_warehouse}-${log.to_location}.`);
+                }
+
+                await moveItem(
+                    itemToMoveBack,
+                    log.from_warehouse,
+                    log.from_location,
+                    log.quantity,
+                    true // isReversal
+                );
+            } else if (log.action_type === 'DEDUCT') {
+                await addItem(log.from_warehouse, {
+                    SKU: log.sku,
+                    Location: log.from_location,
+                    Quantity: log.quantity,
+                    isReversal: true
+                });
+            } else if (log.action_type === 'ADD') {
+                await updateQuantity(log.sku, -log.quantity, log.to_warehouse, log.to_location, true);
+            } else if (log.action_type === 'EDIT') {
+                await updateQuantity(log.sku, log.prev_quantity - log.new_quantity, log.from_warehouse, log.from_location, true);
+            }
+
+            // Mark as reversed
+            await supabase
+                .from('inventory_logs')
+                .update({ is_reversed: true })
+                .eq('id', logId);
+
+            return { success: true };
+        } catch (err) {
+            console.error('Undo failed:', err.message);
+            return { success: false, error: err.message };
+        }
+    };
+
+    return {
+        trackLog,
+        fetchLogs,
+        undoAction
+    };
+};

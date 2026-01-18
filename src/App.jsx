@@ -1,15 +1,17 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { InventoryProvider, useInventory } from './hooks/useInventoryData';
+import { InventoryProvider, useInventory } from './hooks/InventoryProvider';
 import { LayoutMain } from './components/layout/LayoutMain';
-import { InventoryScreen } from './screens/InventoryScreen';
-import { HistoryScreen } from './screens/HistoryScreen';
-import Settings from './screens/Settings';
+const InventoryScreen = React.lazy(() => import('./screens/InventoryScreen').then(m => ({ default: m.InventoryScreen })));
+const HistoryScreen = React.lazy(() => import('./screens/HistoryScreen').then(m => ({ default: m.HistoryScreen })));
+const Settings = React.lazy(() => import('./screens/Settings'));
+
 import { ViewModeProvider } from './context/ViewModeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LoginScreen } from './screens/LoginScreen';
 import { Loader2 } from 'lucide-react';
 import { ThemeProvider } from './context/ThemeContext';
+import { Suspense } from 'react';
 
 // Content accesible solo tras login
 const AuthenticatedContent = () => {
@@ -18,11 +20,17 @@ const AuthenticatedContent = () => {
   return (
     <ViewModeProvider>
       <LayoutMain onExport={exportData}>
-        <Routes>
-          <Route path="/" element={<InventoryScreen />} />
-          <Route path="/history" element={<HistoryScreen />} />
-          <Route path="/settings" element={<Settings />} />
-        </Routes>
+        <Suspense fallback={
+          <div className="min-h-[50vh] flex items-center justify-center">
+            <Loader2 className="animate-spin text-accent w-8 h-8 opacity-20" />
+          </div>
+        }>
+          <Routes>
+            <Route path="/" element={<InventoryScreen />} />
+            <Route path="/history" element={<HistoryScreen />} />
+            <Route path="/settings" element={<Settings />} />
+          </Routes>
+        </Suspense>
       </LayoutMain>
     </ViewModeProvider>
   );

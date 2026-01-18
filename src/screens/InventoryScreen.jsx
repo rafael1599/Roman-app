@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useInventory } from '../hooks/useInventoryData';
 import { useViewMode } from '../context/ViewModeContext';
 import { SearchInput } from '../components/ui/SearchInput';
@@ -35,7 +35,7 @@ export const InventoryScreen = () => {
     const [locationBeingEdited, setLocationBeingEdited] = useState(null);
 
     const { isAdmin } = useAuth();
-    const { updateLocation, deactivateLocation, refresh: refreshLocations } = useLocationManagement();
+    const { locations: allMappedLocations, createLocation, updateLocation, deactivateLocation, refresh: refreshLocations } = useLocationManagement();
 
     // Picking Mode State (Now Server-Side)
     const {
@@ -43,6 +43,7 @@ export const InventoryScreen = () => {
         setCartItems, // Exposed for scanner
         addToCart,
         updateCartQty,
+        setCartQty,
         removeFromCart,
         isSaving
     } = usePickingSession();
@@ -50,35 +51,35 @@ export const InventoryScreen = () => {
     const [showScanner, setShowScanner] = useState(false);
 
     // --- Stock Mode Handlers ---
-    const handleAddItem = (warehouse = 'LUDLOW') => {
+    const handleAddItem = useCallback((warehouse = 'LUDLOW') => {
         setModalMode('add');
         setSelectedWarehouseForAdd(warehouse);
         setEditingItem(null);
         setIsModalOpen(true);
-    };
+    }, []);
 
-    const handleEditItem = (item) => {
+    const handleEditItem = useCallback((item) => {
         setModalMode('edit');
         setEditingItem(item);
         setIsModalOpen(true);
-    };
+    }, []);
 
-    const handleDelete = () => {
+    const handleDelete = useCallback(() => {
         if (editingItem) {
             deleteItem(editingItem.Warehouse, editingItem.SKU);
         }
-    };
+    }, [editingItem, deleteItem]);
 
-    const saveItem = (formData) => {
+    const saveItem = useCallback((formData) => {
         const targetWarehouse = formData.Warehouse;
         if (modalMode === 'add') {
             addItem(targetWarehouse, formData);
         } else {
             updateItem(editingItem.Warehouse, editingItem.SKU, formData);
         }
-    };
+    }, [modalMode, addItem, updateItem, editingItem]);
 
-    const handleMoveStock = async (moveData) => {
+    const handleMoveStock = useCallback(async (moveData) => {
         try {
             await moveItem(moveData.sourceItem, moveData.targetWarehouse, moveData.targetLocation, moveData.quantity);
             alert('Stock successfully moved!');
@@ -86,17 +87,16 @@ export const InventoryScreen = () => {
             console.error('Error moving stock:', err);
             alert('Move failed: ' + err.message);
         }
-    };
+    }, [moveItem]);
 
-    const handleQuickMove = (item) => {
+    const handleQuickMove = useCallback((item) => {
         // We reuse the MovementModal but skip step 1 in the future or just pre-fill it
         setEditingItem(item);
         setIsMovementModalOpen(true);
-    };
+    }, []);
 
-    const { locations: allMappedLocations } = useLocationManagement();
 
-    const handleOpenLocationEditor = (warehouse, locationName, locationId) => {
+    const handleOpenLocationEditor = useCallback((warehouse, locationName, locationId) => {
         if (!isAdmin || viewMode !== 'stock') return;
 
         // 1. Prioridad: Intento de coincidencia por ID exacto de la base de datos
@@ -130,11 +130,11 @@ export const InventoryScreen = () => {
                 isNew: true
             });
         }
-    };
+    }, [isAdmin, viewMode, allMappedLocations]);
 
-    const handleSaveLocation = async (formData) => {
+    const handleSaveLocation = useCallback(async (formData) => {
         let result;
-        if (locationBeingEdited.isNew) {
+        if (locationBeingEdited?.isNew) {
             // Crear nueva ubicación
             const { isNew, ...dataToCreate } = formData;
             result = await createLocation(dataToCreate);
@@ -147,12 +147,12 @@ export const InventoryScreen = () => {
             setLocationBeingEdited(null);
             window.location.reload();
         } else {
-            alert(`Error al guardar: ${result.error}`);
+            alert(`Error saving: ${result.error}`);
         }
-    };
+    }, [locationBeingEdited, createLocation, updateLocation]);
 
-    const handleDeleteLocation = async (id) => {
-        if (locationBeingEdited.isNew) {
+    const handleDeleteLocation = useCallback(async (id) => {
+        if (locationBeingEdited?.isNew) {
             // Caso especial: La ubicación no existe en la DB de configuraciones, 
             // pero el usuario quiere "eliminarla" de la vista de inventario.
             // Esto implica borrar o mover todos los SKUs que tengan ese string.
@@ -160,8 +160,8 @@ export const InventoryScreen = () => {
                 .filter(i => i.Warehouse === locationBeingEdited.warehouse && i.Location === locationBeingEdited.location)
                 .reduce((sum, i) => sum + (i.Quantity || 0), 0);
 
-            const confirmMsg = `Esta es una ubicación "fantasma" (solo existe como texto en ${totalUnits} unidades de inventario). 
-¿Deseas ELIMINAR permanentemente todos estos productos para que la ubicación desaparezca?`;
+            const confirmMsg = `This is a "ghost" location (it only exists as text on ${totalUnits} inventory units). 
+Do you want to PERMANENTLY DELETE all these products so the location disappears?`;
 
             if (window.confirm(confirmMsg)) {
                 const itemsToDelete = inventoryData.filter(i =>
@@ -184,18 +184,18 @@ export const InventoryScreen = () => {
             setLocationBeingEdited(null);
             window.location.reload();
         }
-    };
+    }, [locationBeingEdited, inventoryData, deleteItem, deactivateLocation]);
 
     // --- Picking Mode Handlers ---
 
-    const handleCardClick = (item) => {
+    const handleCardClick = useCallback((item) => {
         if (viewMode === 'stock') {
             handleEditItem(item);
         } else {
             // Picking Mode: Add to Cart
             addToCart(item);
         }
-    };
+    }, [viewMode, handleEditItem, addToCart]);
 
     // Note: addToCart, updateCartQty, removeFromCart are now imported from hook
     // We removed the local implementations.
@@ -226,7 +226,7 @@ export const InventoryScreen = () => {
         setShowScanner(false);
     };
 
-    const handleDeduct = async () => {
+    const handleDeduct = useCallback(async () => {
         if (cartItems.length === 0) return;
 
         const totalUnits = cartItems.reduce((acc, item) => acc + (item.pickingQty || 0), 0);
@@ -234,19 +234,19 @@ export const InventoryScreen = () => {
         if (!confirmDeduct) return;
 
         try {
-            // Deduct each item sequentially
-            for (const item of cartItems) {
+            // Elimination of Waterfall: Parallelize updates
+            await Promise.all(cartItems.map(item => {
                 const delta = -(item.pickingQty || 0);
-                await updateQuantity(item.SKU, delta, item.Warehouse, item.Location);
-            }
+                return updateQuantity(item.SKU, delta, item.Warehouse, item.Location);
+            }));
 
             alert("Deduction complete! Inventory has been updated.");
-            setCartItems([]); // Clear cart after success
+            setCartItems([]);
         } catch (error) {
             console.error("Deduction error:", error);
             alert("Error during deduction. Please check your internet connection.");
         }
-    };
+    }, [cartItems, updateQuantity, setCartItems]);
 
 
     // --- Data Processing ---
@@ -358,7 +358,7 @@ export const InventoryScreen = () => {
                                 .map((item, idx) => {
                                     const isInCart = cartItems.some(c => c.SKU === item.SKU && c.Warehouse === item.Warehouse && c.Location === item.Location);
                                     return (
-                                        <div key={`${item.id || item.SKU}-${idx}`} className={isInCart ? 'ring-1 ring-accent rounded-lg' : ''}>
+                                        <div key={item.id || `${item.SKU}-${item.Warehouse}-${item.Location}`} className={isInCart ? 'ring-1 ring-accent rounded-lg' : ''}>
                                             <InventoryCard
                                                 sku={item.SKU}
                                                 quantity={item.Quantity}
@@ -414,6 +414,7 @@ export const InventoryScreen = () => {
                 <PickingCartDrawer
                     cartItems={cartItems}
                     onUpdateQty={updateCartQty}
+                    onSetQty={setCartQty}
                     onRemoveItem={removeFromCart}
                     onDeduct={handleDeduct}
                 />
@@ -443,7 +444,7 @@ export const InventoryScreen = () => {
                 initialSourceItem={editingItem}
             />
 
-            {locationBeingEdited && (
+            {!!locationBeingEdited && (
                 <LocationEditorModal
                     location={locationBeingEdited}
                     onSave={handleSaveLocation}

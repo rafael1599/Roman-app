@@ -1,11 +1,54 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react'; // Add useRef and useEffect
 import { Minus, Plus, Trash2, CheckCircle, ChevronUp, ChevronDown } from 'lucide-react';
 
-export const PickingCartDrawer = ({ cartItems, onUpdateQty, onRemoveItem, onDeduct }) => {
+export const PickingCartDrawer = ({ cartItems, onUpdateQty, onRemoveItem, onDeduct, onSetQty }) => {
     const [isOpen, setIsOpen] = useState(false);
+    const [editingItemId, setEditingItemId] = useState(null); // State to track which item is being edited
+    const [editingQuantity, setEditingQuantity] = useState(''); // State for the input field value
+    const inputRef = useRef(null); // Ref for auto-focusing the input
 
     const totalItems = cartItems.length;
     const totalQty = cartItems.reduce((acc, item) => acc + (item.pickingQty || 0), 0);
+
+    // Effect to focus the input when editing starts
+    useEffect(() => {
+        if (editingItemId && inputRef.current) {
+            inputRef.current.focus();
+            inputRef.current.select(); // Select all text for easy replacement
+        }
+    }, [editingItemId]);
+
+    const handleQuantityClick = (item) => {
+        setEditingItemId(item.id || item.SKU);
+        setEditingQuantity(item.pickingQty?.toString() || '0');
+    };
+
+    const handleQuantitySubmit = (item) => {
+        const newQty = parseInt(editingQuantity, 10);
+        const maxStock = parseInt(item.Quantity, 10) || 0;
+
+        if (isNaN(newQty) || newQty < 0) {
+            alert("Invalid quantity entered. Please enter a non-negative number.");
+            setEditingQuantity(item.pickingQty?.toString() || '0'); // Revert to original
+        } else if (newQty > maxStock) {
+            alert(`Quantity cannot exceed available stock of ${maxStock}. Setting to max.`);
+            onSetQty(item, maxStock);
+        } else if (newQty === 0) {
+            onRemoveItem(item); // Remove item if quantity is set to 0
+        } else {
+            onSetQty(item, newQty);
+        }
+        setEditingItemId(null); // Exit editing mode
+    };
+
+    const handleQuantityKeyDown = (e, item) => {
+        if (e.key === 'Enter') {
+            handleQuantitySubmit(item);
+        } else if (e.key === 'Escape') {
+            setEditingItemId(null); // Cancel editing
+            setEditingQuantity(item.pickingQty?.toString() || '0'); // Revert to original
+        }
+    };
 
     if (totalItems === 0) return null;
 
@@ -41,6 +84,7 @@ export const PickingCartDrawer = ({ cartItems, onUpdateQty, onRemoveItem, onDedu
                             {cartItems.map((item) => {
                                 const maxStock = parseInt(item.Quantity, 10) || 0;
                                 const isAtMax = (item.pickingQty || 0) >= maxStock;
+                                const isEditing = editingItemId === (item.id || item.SKU);
 
                                 return (
                                     <div key={item.id || item.SKU} className="bg-surface rounded-xl p-3 flex items-center gap-3">
@@ -61,9 +105,26 @@ export const PickingCartDrawer = ({ cartItems, onUpdateQty, onRemoveItem, onDedu
                                             >
                                                 <Minus size={16} />
                                             </button>
-                                            <div className="w-8 text-center font-black text-accent text-lg">
-                                                {item.pickingQty}
-                                            </div>
+                                            {isEditing ? (
+                                                <input
+                                                    type="number"
+                                                    ref={inputRef}
+                                                    value={editingQuantity}
+                                                    onChange={(e) => setEditingQuantity(e.target.value)}
+                                                    onBlur={() => handleQuantitySubmit(item)}
+                                                    onKeyDown={(e) => handleQuantityKeyDown(e, item)}
+                                                    className="w-12 text-center font-black text-accent text-lg bg-transparent border-none focus:outline-none"
+                                                    min="0"
+                                                    max={maxStock.toString()}
+                                                />
+                                            ) : (
+                                                <div
+                                                    className="w-8 text-center font-black text-accent text-lg cursor-pointer"
+                                                    onClick={() => handleQuantityClick(item)}
+                                                >
+                                                    {item.pickingQty}
+                                                </div>
+                                            )}
                                             <button
                                                 onClick={() => onUpdateQty(item, 1)}
                                                 disabled={isAtMax}

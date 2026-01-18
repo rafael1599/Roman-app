@@ -1,6 +1,7 @@
+import React, { memo } from 'react';
 import { Plus, Minus, ArrowRightLeft } from 'lucide-react';
 
-export const InventoryCard = ({ sku, quantity, location, onIncrement, onDecrement, onMove, detail, onClick, warehouse, mode = 'stock' }) => {
+export const InventoryCard = memo(({ sku, quantity, location, onIncrement, onDecrement, onMove, detail, onClick, warehouse, mode = 'stock' }) => {
     const getWarehouseColor = (wh) => {
         switch (wh?.toUpperCase()) {
             case 'LUDLOW': return 'bg-green-500/10 text-green-500 border-green-500/30';
@@ -64,4 +65,4 @@ export const InventoryCard = ({ sku, quantity, location, onIncrement, onDecremen
             )}
         </div>
     );
-};
+});

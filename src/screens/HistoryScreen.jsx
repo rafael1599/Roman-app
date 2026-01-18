@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useInventory } from '../hooks/useInventoryData';
 import {
@@ -17,8 +17,7 @@ import {
     Filter,
     Mail
 } from 'lucide-react';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+// jspdf and autoTable are imported dynamically in handleDownloadReport
 import { useAuth } from '../context/AuthContext';
 
 
@@ -75,6 +74,13 @@ export const HistoryScreen = () => {
                     ));
                 }
             )
+            .on(
+                'postgres_changes',
+                { event: 'DELETE', schema: 'public', table: 'inventory_logs' },
+                (payload) => {
+                    setLogs(prev => prev.filter(log => log.id !== payload.old.id));
+                }
+            )
             .subscribe();
 
         return () => supabase.removeChannel(channel);
@@ -86,6 +92,10 @@ export const HistoryScreen = () => {
             .filter(log => {
                 // If not admin, hide undone (reversed) actions
                 if (!isAdmin && log.is_reversed) return false;
+                // If not admin, hide 'ADD' (Restock) and 'DELETE' (Remove) actions
+                if (!isAdmin && (log.action_type === 'ADD' || log.action_type === 'DELETE')) {
+                    return false;
+                }
                 return true;
             })
             .filter(log => {
@@ -116,9 +126,9 @@ export const HistoryScreen = () => {
         return groups;
     }, [filteredLogs]);
 
-    const handleUndo = async (id) => {
+    const handleUndo = useCallback(async (id) => {
         if (window.confirm('Are you sure you want to undo this action?')) {
-            // Optimistic update: mark as reversed locally so it hides instantly for staff
+            // Optimistic update
             setLogs(prev => prev.map(log =>
                 log.id === id ? { ...log, is_reversed: true } : log
             ));
@@ -126,12 +136,11 @@ export const HistoryScreen = () => {
             try {
                 await undoAction(id);
             } catch (err) {
-                // Rollback on failure
                 console.error("Undo failed, rolling back state:", err);
                 fetchLogs();
             }
         }
-    };
+    }, [undoAction]);
 
     const getActionTypeInfo = (type) => {
         switch (type) {
@@ -145,24 +154,21 @@ export const HistoryScreen = () => {
 
     // --- Report & Automation Logic ---
 
-    const generateDailyPDF = () => {
-        // 'l' for landscape orientation
+    const generateDailyPDF = useCallback((jsPDF, autoTable) => {
         const doc = new jsPDF('l', 'mm', 'a4');
         const todayStr = new Date().toLocaleDateString();
 
-        doc.setFontSize(28); // Much larger text
+        doc.setFontSize(28);
         doc.text(`Daily Inventory Report - ${todayStr}`, 14, 22);
 
-        doc.setFontSize(14); // Larger metadata
+        doc.setFontSize(14);
         doc.text(`Generated at: ${new Date().toLocaleTimeString()}`, 14, 32);
 
-        // Filter valid logs for today strictly using local date strings
         const now = new Date();
         const todayStrComp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
         const todaysLogs = logs.filter(log => {
             if (!log.created_at) return false;
-            // Business rule: Exclude undone actions from reports
             if (log.is_reversed) return false;
 
             const logDate = new Date(log.created_at);
@@ -206,17 +212,17 @@ export const HistoryScreen = () => {
             body: tableData,
             theme: 'grid',
             headStyles: {
-                fillColor: [240, 240, 240], // Light gray for header secondary visibility
-                textColor: [0, 0, 0], // Black text
+                fillColor: [240, 240, 240],
+                textColor: [0, 0, 0],
                 fontSize: 16,
                 fontStyle: 'bold'
             },
             styles: {
-                fontSize: 14, // Much larger body text
+                fontSize: 14,
                 cellPadding: 5
             },
             columnStyles: {
-                0: { cellWidth: 40 }, // Expanded for larger text
+                0: { cellWidth: 40 },
                 1: { cellWidth: 60, fontStyle: 'bold' },
                 2: { cellWidth: 'auto' },
                 3: { cellWidth: 30, halign: 'right', fontStyle: 'bold' }
@@ -224,20 +230,31 @@ export const HistoryScreen = () => {
         });
 
         return doc;
-    };
+    }, [logs]);
 
-    const handleDownloadReport = () => {
-        const doc = generateDailyPDF();
-        doc.save(`inventory-report-${new Date().toISOString().split('T')[0]}.pdf`);
-    };
+    const handleDownloadReport = useCallback(async () => {
+        try {
+            setLoading(true);
+            const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+                import('jspdf'),
+                import('jspdf-autotable')
+            ]);
+            const doc = generateDailyPDF(jsPDF, autoTable);
+            doc.save(`inventory-report-${new Date().toISOString().split('T')[0]}.pdf`);
+        } catch (err) {
+            console.error('Failed to generate PDF:', err);
+            alert('Error generating PDF report.');
+        } finally {
+            setLoading(false);
+        }
+    }, [generateDailyPDF]);
 
-    const sendDailyEmail = async () => {
+    const sendDailyEmail = useCallback(async () => {
         try {
             console.log("Attempting to send daily email...");
 
-            // Build simple HTML summary
-            const todayStr = new Date().toLocaleDateString();
             const now = new Date();
+            const todayStr = now.toLocaleDateString();
             const todayStrComp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
             const todaysLogs = logs.filter(log => {
@@ -354,7 +371,7 @@ export const HistoryScreen = () => {
             // Optionally alert user or just log
             alert("Failed to send daily email via Edge Function.");
         }
-    };
+    }, [logs]);
 
     // Automated 6 PM Check
     useEffect(() => {
@@ -376,7 +393,7 @@ export const HistoryScreen = () => {
         checkTime(); // Initial check
 
         return () => clearInterval(interval);
-    }, [logs]); // Dependency on logs so we have data to send
+    }, [sendDailyEmail]); // Dependency on logs so we have data to send
 
     return (
         <div className="flex flex-col h-full bg-main text-content p-4 max-w-2xl mx-auto w-full">
@@ -503,18 +520,27 @@ export const HistoryScreen = () => {
                                                     <div className="flex items-center gap-2 flex-1">
                                                         <div className="flex-1 px-3 py-2 bg-main/40 rounded-xl border border-subtle">
                                                             <p className="text-[7px] text-muted font-black uppercase tracking-widest mb-1">From</p>
-                                                            <p className="text-[11px] font-bold text-muted">{log.from_location}</p>
+                                                            <div className="flex items-baseline gap-1">
+                                                                <p className="text-[11px] font-bold text-muted">{log.from_location}</p>
+                                                                <span className="text-[6px] opacity-40 font-black uppercase">{log.from_warehouse}</span>
+                                                            </div>
                                                         </div>
                                                         <ArrowRight size={12} className="text-muted" />
                                                         <div className="flex-1 px-3 py-2 bg-accent/5 rounded-xl border border-accent/20">
                                                             <p className="text-[7px] text-accent/50 font-black uppercase tracking-widest mb-1">To</p>
-                                                            <p className="text-[11px] font-black text-accent">{log.to_location}</p>
+                                                            <div className="flex items-baseline gap-1">
+                                                                <p className="text-[11px] font-black text-accent">{log.to_location}</p>
+                                                                <span className="text-[6px] opacity-40 font-black uppercase text-accent">{log.to_warehouse}</span>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 ) : (
                                                     <div className="flex-1 px-4 py-2 bg-surface/30 rounded-xl border border-subtle">
                                                         <p className="text-[7px] text-muted font-black uppercase tracking-widest mb-1">Location</p>
-                                                        <p className="text-[11px] font-black text-content">{log.from_location || log.to_location || 'N/A'}</p>
+                                                        <div className="flex items-baseline gap-1">
+                                                            <p className="text-[11px] font-black text-content">{log.from_location || log.to_location || 'N/A'}</p>
+                                                            <span className="text-[6px] opacity-40 font-black uppercase">{(log.from_warehouse || log.to_warehouse) || 'N/A'}</span>
+                                                        </div>
                                                     </div>
                                                 )}
 

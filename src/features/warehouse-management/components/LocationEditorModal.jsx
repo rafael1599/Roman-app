@@ -52,7 +52,7 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
         setFormData(prev => ({ ...prev, zone: newZone }));
     };
 
-    // Efecto para calcular el impacto de todos los cambios realizados
+    // Effect to calculate the impact of all changes made
     useEffect(() => {
         const changes = {};
         if (parseInt(formData.max_capacity) !== parseInt(location?.max_capacity)) {
@@ -115,13 +115,13 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
 
     const handleDeleteClick = () => {
         if (hasUnits) {
-            alert(`No puedes eliminar una ubicación con inventario activo (${totalUnits} unidades). Primero debes mover los productos.`);
+            alert(`You cannot delete a location with active inventory (${totalUnits} units). You must move the products first.`);
             return;
         }
 
         const confirmMessage = hasInventory
-            ? `Esta ubicación tiene ${locationInventory.length} SKU(s) registrados (0 unidades). ¿Estás seguro de que deseas eliminarla?`
-            : `¿Estás seguro de que deseas eliminar la ubicación ${location?.location}?`;
+            ? `This location has ${locationInventory.length} SKU(s) registered (0 units). Are you sure you want to delete it?`
+            : `Are you sure you want to delete the location ${location?.location}?`;
 
         if (window.confirm(confirmMessage)) {
             onDelete(location.id);
@@ -147,7 +147,7 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
                             <button
                                 onClick={handleDeleteClick}
                                 className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                                title="Eliminar ubicación"
+                                title="Delete location"
                             >
                                 <X size={20} className="rotate-45" />
                             </button>
@@ -164,7 +164,7 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
                         <div className="flex items-start gap-3 mb-2">
                             <AlertCircle className="text-red-400 flex-shrink-0 mt-0.5" size={20} />
                             <div>
-                                <p className="text-red-300 font-semibold text-sm">Errores que deben corregirse</p>
+                                <p className="text-red-300 font-semibold text-sm">Errors that must be corrected</p>
                             </div>
                         </div>
                         <ul className="ml-8 space-y-1">
@@ -181,8 +181,8 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
                         <div className="flex items-start gap-3 mb-3">
                             <AlertTriangle className="text-yellow-400 flex-shrink-0 mt-0.5" size={20} />
                             <div className="flex-1">
-                                <p className="text-yellow-300 font-semibold text-sm">Advertencias</p>
-                                <p className="text-yellow-400/60 text-xs mt-1">Puedes continuar bajo tu propio riesgo</p>
+                                <p className="text-yellow-300 font-semibold text-sm">Warnings</p>
+                                <p className="text-yellow-400/60 text-xs mt-1">You can proceed at your own risk</p>
                             </div>
                         </div>
 
@@ -202,7 +202,7 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
                                 className="mt-1 w-4 h-4 rounded border-yellow-500/50 bg-yellow-500/10 focus:ring-yellow-500/50"
                             />
                             <span className="text-yellow-300/90 text-xs">
-                                Entiendo los riesgos y deseo continuar de todas formas
+                                I understand the risks and wish to continue anyway
                             </span>
                         </label>
                     </div>
@@ -220,10 +220,10 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
                                 <AlertCircle className="text-accent" size={20} />
                                 <div className="text-left">
                                     <p className="text-accent font-semibold text-sm">
-                                        Análisis de Impacto ({impact.impacts.length})
+                                        Impact Analysis ({impact.impacts.length})
                                     </p>
                                     <p className="text-muted text-xs">
-                                        {impact.affectedSKUs} SKU(s) afectados • {impact.totalUnits} unidades
+                                        {impact.affectedSKUs} SKU(s) affected • {impact.totalUnits} units
                                     </p>
                                 </div>
                             </div>
@@ -249,7 +249,7 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
                                         {impactItem.type === 'REPORTS_INVALIDATED' && (
                                             <div className="mt-2 p-2 bg-orange-500/10 border border-orange-500/20 rounded">
                                                 <p className="text-orange-300 text-xs font-semibold">
-                                                    ⚠️ Estos reportes serán marcados como obsoletos automáticamente
+                                                    ⚠️ These reports will be automatically marked as obsolete
                                                 </p>
                                             </div>
                                         )}
@@ -265,7 +265,7 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
                     <div className="mx-6 mt-6 p-3 bg-gray-800/50 border border-gray-700/50 rounded-lg flex items-start gap-3">
                         <AlertTriangle className="text-gray-400 flex-shrink-0 mt-0.5" size={16} />
                         <p className="text-gray-400 text-xs">
-                            Esta ubicación tiene {locationInventory.length} SKU(s) con {totalUnits} unidades totales
+                        This location has {locationInventory.length} SKU(s) with {totalUnits} total units
                         </p>
                     </div>
                 )}
@@ -339,7 +339,7 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
                     <div>
                         <label className="block text-sm font-semibold text-muted mb-2">
                             Picking Order
-                            <span className="text-xs text-muted ml-2">(menor = mayor prioridad)</span>
+                            <span className="text-xs text-muted ml-2">(lower = higher priority)</span>
                         </label>
                         <input
                             type="number"
@@ -355,14 +355,14 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
                     {/* Notas */}
                     <div>
                         <label className="block text-sm font-semibold text-muted mb-2">
-                            Notes (opcional)
+                            Notes (optional)
                         </label>
                         <textarea
                             value={formData.notes || ''}
                             onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
                             className="w-full px-4 py-3 bg-main border border-subtle rounded-lg text-content focus:border-accent focus:outline-none transition-colors resize-none"
                             rows="3"
-                            placeholder="Información adicional sobre esta ubicación..."
+                            placeholder="Additional information about this location..."
                         />
                     </div>
                 </form>
@@ -388,7 +388,7 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
                     >
                         <Save size={20} />
                         {validation.warnings.length > 0 && !overrideWarnings
-                            ? 'Confirma los riesgos para continuar'
+                            ? 'Confirm risks to continue'
                             : 'Save Changes'}
                     </button>
                 </div>

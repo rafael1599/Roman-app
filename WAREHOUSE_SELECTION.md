@@ -1,57 +1,57 @@
-# Selección de Almacén para SKUs Duplicados
+# Warehouse Selection for Duplicate SKUs
 
-## 🎯 Funcionalidad Implementada
+## 🎯 Implemented Functionality
 
-Cuando un SKU está disponible en **ambos almacenes** (Ludlow y ATS), el sistema ahora pregunta al usuario de dónde quiere recogerlo.
-
----
-
-## 🔄 Flujo de Trabajo
-
-### **1. Escaneo de Orden**
-
-```
-Usuario escanea orden con Gemini AI
-↓
-Sistema extrae SKUs y cantidades
-↓
-Sistema valida contra inventario
-```
-
-### **2. Detección de Duplicados**
-
-```
-Para cada SKU:
-├─ ¿Está en Ludlow? → Sí
-├─ ¿Está en ATS? → Sí
-└─ Marcar como "needs_warehouse_selection"
-```
-
-### **3. Modal de Selección**
-
-```
-Sistema muestra modal con:
-├─ SKU y cantidad necesaria
-├─ Opción Ludlow (stock, ubicación)
-├─ Opción ATS (stock, ubicación)
-└─ Usuario selecciona almacén
-```
-
-### **4. Procesamiento**
-
-```
-Usuario confirma selección
-↓
-Sistema aplica lógica del almacén elegido
-↓
-Continúa con picking normal
-```
+When a SKU is available in **both warehouses** (Ludlow and ATS), the system now asks the user where they want to pick it from.
 
 ---
 
-## 🎨 Interfaz del Modal
+## 🔄 Workflow
 
-### **Diseño:**
+### **1. Order Scanning**
+
+```
+User scans order with Gemini AI
+↓
+System extracts SKUs and quantities
+↓
+System validates against inventory
+```
+
+### **2. Duplicate Detection**
+
+```
+For each SKU:
+├─ Is it in Ludlow? → Yes
+├─ Is it in ATS? → Yes
+└─ Mark as "needs_warehouse_selection"
+```
+
+### **3. Selection Modal**
+
+```
+System displays modal with:
+├─ SKU and required quantity
+├─ Ludlow option (stock, location)
+├─ ATS option (stock, location)
+└─ User selects warehouse
+```
+
+### **4. Processing**
+
+```
+User confirms selection
+↓
+System applies logic for the chosen warehouse
+↓
+Continues with normal picking
+```
+
+---
+
+## 🎨 Modal Interface
+
+### **Design:**
 
 ```
 ┌─────────────────────────────────────────┐
@@ -80,18 +80,18 @@ Continúa con picking normal
 └─────────────────────────────────────────┘
 ```
 
-### **Características:**
+### **Features:**
 
-- 🟢 **Ludlow** - Verde cuando seleccionado
-- 🔵 **ATS** - Azul cuando seleccionado
-- ⚠️ **Advertencia** - Si no hay stock suficiente
-- 📊 **Información** - Stock disponible y ubicación
+- 🟢 **Ludlow** - Green when selected
+- 🔵 **ATS** - Blue when selected
+- ⚠️ **Warning** - If there is not enough stock
+- 📊 **Information** - Available stock and location
 
 ---
 
-## 💻 Implementación Técnica
+## 💻 Technical Implementation
 
-### **1. Detección en `useOrderProcessing.js`**
+### **1. Detection in `useOrderProcessing.js`**
 
 ```javascript
 const findInventoryItem = (sku) => {
@@ -115,7 +115,7 @@ const findInventoryItem = (sku) => {
 };
 ```
 
-### **2. Validación en `validateOrder`**
+### **2. Validation in `validateOrder`**
 
 ```javascript
 const validateOrder = (orderItems) => {
@@ -146,7 +146,7 @@ const validateOrder = (orderItems) => {
 };
 ```
 
-### **3. Modal en `WarehouseSelectionModal.jsx`**
+### **3. Modal in `WarehouseSelectionModal.jsx`**
 
 ```javascript
 export default function WarehouseSelectionModal({ items, onConfirm, onCancel }) {
@@ -174,7 +174,7 @@ export default function WarehouseSelectionModal({ items, onConfirm, onCancel }) 
 }
 ```
 
-### **4. Integración en `SmartPicking.jsx`**
+### **4. Integration in `SmartPicking.jsx`**
 
 ```javascript
 const handleScanComplete = (scannedItems) => {
@@ -199,37 +199,37 @@ const handleWarehouseSelectionConfirm = (selections) => {
 
 ---
 
-## 📊 Ejemplo Completo
+## 📊 Full Example
 
-### **Escenario:**
+### **Scenario:**
 
 ```
-Orden escaneada:
+Scanned Order:
 ├─ 03-3978BL x 50
 ├─ 03-4070BK x 100
 └─ 06-4432BK x 20
 ```
 
-### **Validación:**
+### **Validation:**
 
 ```
 03-3978BL:
-├─ Ludlow: 319 disponibles ✓
-├─ ATS: 319 disponibles ✓
+├─ Ludlow: 319 available ✓
+├─ ATS: 319 available ✓
 └─ Status: needs_warehouse_selection
 
 03-4070BK:
-├─ Ludlow: 54 disponibles ✗
-├─ ATS: 209 disponibles ✓
+├─ Ludlow: 54 available ✗
+├─ ATS: 209 available ✓
 └─ Status: needs_warehouse_selection
 
 06-4432BK:
-├─ Ludlow: 50 disponibles ✓
-├─ ATS: No encontrado
+├─ Ludlow: 50 available ✓
+├─ ATS: Not found
 └─ Status: available (Ludlow)
 ```
 
-### **Modal Muestra:**
+### **Modal Shows:**
 
 ```
 2 items need warehouse selection:
@@ -237,14 +237,14 @@ Orden escaneada:
 2. 03-4070BK (qty: 100)
 ```
 
-### **Usuario Selecciona:**
+### **User Selects:**
 
 ```
-03-3978BL → Ludlow (más cercano)
-03-4070BK → ATS (más stock)
+03-3978BL → Ludlow (closer)
+03-4070BK → ATS (more stock)
 ```
 
-### **Resultado:**
+### **Result:**
 
 ```
 Picking List:
@@ -255,79 +255,79 @@ Picking List:
 
 ---
 
-## ✅ Ventajas
+## ✅ Advantages
 
-### **1. Flexibilidad**
-- Usuario decide según conveniencia
-- Puede elegir almacén más cercano
-- Puede balancear stock entre almacenes
+### **1. Flexibility**
+- User decides based on convenience
+- Can choose the nearest warehouse
+- Can balance stock between warehouses
 
-### **2. Transparencia**
-- Muestra stock disponible en ambos
-- Muestra ubicaciones
-- Advierte si hay shortage
+### **2. Transparency**
+- Shows available stock in both
+- Shows locations
+- Warns if there is a shortage
 
-### **3. Optimización**
-- Minimizar distancias
-- Balancear carga de trabajo
-- Evitar agotamiento de un almacén
+### **3. Optimization**
+- Minimize distances
+- Balance workload
+- Avoid depleting one warehouse
 
 ### **4. Control**
-- Usuario tiene control total
-- Puede cambiar estrategia según necesidad
-- Puede priorizar según urgencia
+- User has full control
+- Can change strategy as needed
+- Can prioritize based on urgency
 
 ---
 
-## 🎯 Estados de Items
+## 🎯 Item Statuses
 
-| Status | Descripción | Acción |
+| Status | Description | Action |
 |--------|-------------|--------|
-| `available` | En un solo almacén con stock | Procesar normal |
-| `shortage` | En un solo almacén sin stock suficiente | Advertir |
-| `not_found` | No está en ningún almacén | Mostrar sugerencias |
-| `needs_warehouse_selection` | En ambos almacenes | Mostrar modal |
+| `available` | In a single warehouse with stock | Process normally |
+| `shortage` | In a single warehouse without enough stock | Warn |
+| `not_found` | Not in any warehouse | Show suggestions |
+| `needs_warehouse_selection` | In both warehouses | Show modal |
 
 ---
 
-## 🔄 Próximos Pasos
+## 🔄 Next Steps
 
 ### **TODO:**
 
-1. **Aplicar selecciones al procesamiento**
-   - Actualizar `processOrder` para aceptar preferencias
-   - Deducir del almacén seleccionado
+1. **Apply selections to processing**
+   - Update `processOrder` to accept preferences
+   - Deduct from the selected warehouse
 
-2. **Recordar preferencias**
-   - Guardar selecciones del usuario
-   - Sugerir mismo almacén en futuras órdenes
+2. **Remember preferences**
+   - Save user selections
+   - Suggest the same warehouse in future orders
 
-3. **Optimización automática**
-   - Sugerir almacén más cercano
-   - Sugerir almacén con más stock
-   - Balancear automáticamente
+3. **Automatic optimization**
+   - Suggest the nearest warehouse
+   - Suggest the warehouse with more stock
+   - Balance automatically
 
-4. **Reportes**
-   - Tracking de qué almacén se usa más
-   - Análisis de eficiencia
-   - Recomendaciones de rebalanceo
+4. **Reports**
+   - Track which warehouse is used more
+   - Efficiency analysis
+   - Rebalancing recommendations
 
 ---
 
-## 📚 Archivos Modificados
+## 📚 Modified Files
 
 1. **`useOrderProcessing.js`**
-   - `findInventoryItem()` - Detecta duplicados
-   - `validateOrder()` - Marca items para selección
+   - `findInventoryItem()` - Detects duplicates
+   - `validateOrder()` - Marks items for selection
 
-2. **`WarehouseSelectionModal.jsx`** (nuevo)
-   - Modal de selección
-   - UI para elegir almacén
+2. **`WarehouseSelectionModal.jsx`** (new)
+   - Selection modal
+   - UI for choosing warehouse
 
 3. **`SmartPicking.jsx`**
-   - Integración del modal
-   - Manejo de selecciones
+   - Modal integration
+   - Handling selections
 
 ---
 
-**¡El sistema ahora permite elegir de qué almacén recoger cuando hay duplicados!** 🎉
+**The system now allows choosing which warehouse to pick from when there are duplicates!** 🎉
