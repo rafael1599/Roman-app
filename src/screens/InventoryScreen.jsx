@@ -358,7 +358,7 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
                                 .map((item, idx) => {
                                     const isInCart = cartItems.some(c => c.SKU === item.SKU && c.Warehouse === item.Warehouse && c.Location === item.Location);
                                     return (
-                                        <div key={item.id || `${item.SKU}-${item.Warehouse}-${item.Location}`} className={isInCart ? 'ring-1 ring-accent rounded-lg' : ''}>
+                                        <div key={item.id || `${item.SKU}-${item.Warehouse}-${item.Location}`} className={isInCart && viewMode === 'picking' ? 'ring-1 ring-accent rounded-lg' : ''}>
                                             <InventoryCard
                                                 sku={item.SKU}
                                                 quantity={item.Quantity}
