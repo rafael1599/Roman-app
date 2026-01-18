@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { X, Save, Trash2, Plus } from 'lucide-react';
 import { useInventory } from '../../../hooks/useInventoryData';
 import AutocompleteInput from '../../../components/ui/AutocompleteInput';
+import toast from 'react-hot-toast';
+import { useConfirmation } from '../../../context/ConfirmationContext';
 
 export const InventoryModal = ({ isOpen, onClose, onSave, onDelete, initialData, mode = 'add', screenType }) => {
     const { ludlowData, atsData } = useInventory();
@@ -12,6 +14,7 @@ export const InventoryModal = ({ isOpen, onClose, onSave, onDelete, initialData,
         Location_Detail: '',
         Warehouse: screenType || 'LUDLOW'
     });
+    const { showConfirmation } = useConfirmation();
 
     // Get current inventory based on the warehouse selected IN THE MODAL
     const currentInventory = formData.Warehouse === 'ATS' ? atsData : ludlowData;
@@ -93,14 +96,18 @@ export const InventoryModal = ({ isOpen, onClose, onSave, onDelete, initialData,
 
         // Warning for SKU Change
         if (mode === 'edit' && initialData && formData.SKU !== initialData.SKU) {
-            const confirmRename = window.confirm(
-                `⚠️ WARNING: IDENTITY CHANGE (SKU) ⚠️\n\n` +
-                `You are about to rename the product:\n` +
-                `FROM: "${initialData.SKU}"\n` +
-                `TO:  "${formData.SKU}"\n\n` +
-                `Are you sure? This will alter how this item is searched in the history.`
+            showConfirmation(
+                'Identity Change (SKU)',
+                `You are about to rename the product:\nFROM: "${initialData.SKU}"\nTO:  "${formData.SKU}"\n\nAre you sure? This will alter how this item is searched in the history.`,
+                () => {
+                    onSave(formData);
+                    onClose();
+                },
+                null,
+                'Rename',
+                'Cancel'
             );
-            if (!confirmRename) return;
+            return; // Prevent default submit after showing confirmation
         }
 
         onSave(formData);
@@ -141,7 +148,7 @@ export const InventoryModal = ({ isOpen, onClose, onSave, onDelete, initialData,
                             ))}
                             <button
                                 type="button"
-                                onClick={() => alert('Coming Soon: You will be able to add custom warehouses here.')}
+                                onClick={() => toast.info('Coming Soon: You will be able to add custom warehouses here.')}
                                 className="w-9 h-9 flex items-center justify-center rounded-lg bg-surface border border-dashed border-subtle text-muted hover:border-accent hover:text-accent transition-all"
                                 title="Add New Warehouse"
                             >
@@ -218,10 +225,14 @@ export const InventoryModal = ({ isOpen, onClose, onSave, onDelete, initialData,
                             <button
                                 type="button"
                                 onClick={() => {
-                                    if (window.confirm('Are you sure you want to delete this item?')) {
+                                showConfirmation(
+                                    'Delete Item',
+                                    'Are you sure you want to delete this item?',
+                                    () => {
                                         onDelete();
                                         onClose();
                                     }
+                                );
                                 }}
                                 className="flex-1 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-500 font-bold py-4 rounded-lg flex items-center justify-center gap-2 transition-all active:scale-95 touch-manipulation"
                             >

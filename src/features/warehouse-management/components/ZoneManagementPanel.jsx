@@ -1,10 +1,12 @@
 import { useState, useMemo } from 'react';
 import { Search, Info, Wand2 } from 'lucide-react';
+import { useError } from '../../context/ErrorContext';
 
 export const ZoneManagementPanel = ({ locations, zones, getZone, updateZone, autoAssignZones }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filterZone, setFilterZone] = useState('ALL');
     const [isAutoAssigning, setIsAutoAssigning] = useState(false);
+    const { showError } = useError();
 
     const filteredLocations = useMemo(() => {
         let result = locations;
@@ -32,7 +34,7 @@ export const ZoneManagementPanel = ({ locations, zones, getZone, updateZone, aut
             await autoAssignZones();
             // Optional: toast success
         } catch (err) {
-            alert("Failed: " + err.message);
+            showError('Auto-assign failed', err.message);
         } finally {
             setIsAutoAssigning(false);
         }

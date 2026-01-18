@@ -4,6 +4,8 @@ import { arrayMove, SortableContext, rectSortingStrategy, useSortable } from '@d
 import { CSS } from '@dnd-kit/utilities';
 import { useInventory } from '../../../hooks/useInventoryData';
 import { Plus, Trash2, Edit2, GripVertical } from 'lucide-react';
+import { useError } from '../../../context/ErrorContext';
+import { useConfirmation } from '../../../context/ConfirmationContext';
 
 /**
  * Draggable location block component
@@ -142,6 +144,8 @@ export default function MapBuilder() {
     const [hasChanges, setHasChanges] = useState(false); // Track if there are unsaved changes
     const [showModal, setShowModal] = useState(false);
     const [editingLocation, setEditingLocation] = useState(null);
+    const { showError } = useError();
+    const { showConfirmation } = useConfirmation();
 
     const sensors = useSensors(
         useSensor(PointerSensor, {
@@ -232,17 +236,21 @@ export default function MapBuilder() {
      * Reset to default order
      */
     const resetMap = () => {
-        if (confirm('Reset map to default order? This will not delete custom locations.')) {
-            const inventory = warehouse === 'ludlow' ? ludlowInventory : atsInventory;
-            const inventoryLocations = [...new Set(
-                inventory
-                    .map(item => item.Location)
-                    .filter(loc => loc && loc.trim() !== '')
-            )];
-            const allLocations = [...new Set([...inventoryLocations, ...customLocations])].sort();
-            setLocations(allLocations);
-            localStorage.removeItem('warehouse_map');
-        }
+        showConfirmation(
+            'Reset Map',
+            'Reset map to default order? This will not delete custom locations.',
+            () => {
+                const inventory = warehouse === 'ludlow' ? ludlowInventory : atsInventory;
+                const inventoryLocations = [...new Set(
+                    inventory
+                        .map(item => item.Location)
+                        .filter(loc => loc && loc.trim() !== '')
+                )];
+                const allLocations = [...new Set([...inventoryLocations, ...customLocations])].sort();
+                setLocations(allLocations);
+                localStorage.removeItem('warehouse_map');
+            }
+        );
     };
 
     /**
@@ -255,8 +263,7 @@ export default function MapBuilder() {
             localStorage.setItem('custom_locations', JSON.stringify(updated));
             setHasChanges(true); // Mark as changed
             setShowModal(false);
-        } else {
-            alert('Location already exists!');
+showError('Location Exists', 'This location name already exists. Please choose a different name.');
         }
     };
 
@@ -271,7 +278,7 @@ export default function MapBuilder() {
         }
 
         if (customLocations.includes(newName) || locations.includes(newName)) {
-            alert('Location already exists!');
+            showError('Location Exists', 'This location name already exists. Please choose a different name.');
             return;
         }
 
@@ -302,24 +309,30 @@ export default function MapBuilder() {
      * Delete custom location
      */
     const handleDeleteLocation = (name) => {
-        if (confirm(`Delete location "${name}"? This cannot be undone.`)) {
-            const updated = customLocations.filter(loc => loc !== name);
-            setCustomLocations(updated);
-            localStorage.setItem('custom_locations', JSON.stringify(updated));
+        showConfirmation(
+            'Delete Location',
+            `Delete location "${name}"? This cannot be undone.`,
+            () => {
+                const updated = customLocations.filter(loc => loc !== name);
+                setCustomLocations(updated);
+                localStorage.setItem('custom_locations', JSON.stringify(updated));
 
-            // Remove from locations array
-            setLocations(prev => prev.filter(loc => loc !== name));
+                // Remove from locations array
+                setLocations(prev => prev.filter(loc => loc !== name));
 
-            // Remove from saved map
-            const savedMap = localStorage.getItem('warehouse_map');
-            if (savedMap) {
-                const mapData = JSON.parse(savedMap);
-                delete mapData[name];
-                localStorage.setItem('warehouse_map', JSON.stringify(mapData));
-            }
+                // Remove from saved map
+                const savedMap = localStorage.getItem('warehouse_map');
+                if (savedMap) {
+                    const mapData = JSON.parse(savedMap);
+                    delete mapData[name];
+                    localStorage.setItem('warehouse_map', JSON.stringify(mapData));
+                }
 
-            setHasChanges(true); // Mark as changed
-        }
+                setHasChanges(true); // Mark as changed
+            },
+            null,
+            'Delete Permanently'
+        );
     };
 
     return (

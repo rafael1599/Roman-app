@@ -3,6 +3,8 @@ import { useAuth } from '../../context/AuthContext';
 import { createPortal } from 'react-dom';
 import { useTheme } from '../../context/ThemeContext';
 import { LogOut, X, Check, Sun, Moon, Save, RefreshCw, Eye, ShieldCheck } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { useConfirmation } from '../../context/ConfirmationContext';
 
 export const UserMenu = ({ isOpen, onClose, onExport, onSync }) => {
     const { profile, signOut, updateProfileName, isSystemAdmin, viewAsUser, toggleAdminView } = useAuth();
@@ -10,6 +12,7 @@ export const UserMenu = ({ isOpen, onClose, onExport, onSync }) => {
     const [newName, setNewName] = useState(profile?.full_name || '');
     const [isEditing, setIsEditing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const { showConfirmation } = useConfirmation();
 
     if (!isOpen) return null;
 
@@ -118,11 +121,15 @@ export const UserMenu = ({ isOpen, onClose, onExport, onSync }) => {
                             {onSync && profile?.role === 'admin' && (
                                 <button
                                     onClick={async () => {
-                                        if (window.confirm('This will link legacy inventory items to their database IDs. Proceed?')) {
-                                            const res = await onSync();
-                                            alert(`Sync Complete: ${res.successCount} items repaired.`);
-                                            onClose();
-                                        }
+                                        showConfirmation(
+                                            'Repair Database Links',
+                                            'This will link legacy inventory items to their database IDs. Proceed?',
+                                            async () => {
+                                                const res = await onSync();
+                                                toast.success(`Sync Complete: ${res.successCount} items repaired.`);
+                                                onClose();
+                                            }
+                                        );
                                     }}
                                     className="ios-btn w-full h-14 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/10 text-blue-400 transition-all font-black uppercase tracking-[0.2em] text-[10px]"
                                 >

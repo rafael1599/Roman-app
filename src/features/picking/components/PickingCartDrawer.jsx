@@ -1,11 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react'; // Add useRef and useEffect
 import { Minus, Plus, Trash2, CheckCircle, ChevronUp, ChevronDown } from 'lucide-react';
+import { useError } from '../../../context/ErrorContext';
 
 export const PickingCartDrawer = ({ cartItems, onUpdateQty, onRemoveItem, onDeduct, onSetQty }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [editingItemId, setEditingItemId] = useState(null); // State to track which item is being edited
     const [editingQuantity, setEditingQuantity] = useState(''); // State for the input field value
     const inputRef = useRef(null); // Ref for auto-focusing the input
+    const { showError } = useError();
 
     const totalItems = cartItems.length;
     const totalQty = cartItems.reduce((acc, item) => acc + (item.pickingQty || 0), 0);
@@ -28,10 +30,10 @@ export const PickingCartDrawer = ({ cartItems, onUpdateQty, onRemoveItem, onDedu
         const maxStock = parseInt(item.Quantity, 10) || 0;
 
         if (isNaN(newQty) || newQty < 0) {
-            alert("Invalid quantity entered. Please enter a non-negative number.");
+            showError('Invalid Quantity', "Please enter a non-negative number for the quantity.");
             setEditingQuantity(item.pickingQty?.toString() || '0'); // Revert to original
         } else if (newQty > maxStock) {
-            alert(`Quantity cannot exceed available stock of ${maxStock}. Setting to max.`);
+            showError('Quantity Exceeded', `Quantity cannot exceed available stock of ${maxStock}.`);
             onSetQty(item, maxStock);
         } else if (newQty === 0) {
             onRemoveItem(item); // Remove item if quantity is set to 0

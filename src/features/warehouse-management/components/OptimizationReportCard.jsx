@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { useInventory } from '../../../hooks/useInventoryData';
 import { ArrowRight, Check, X, AlertTriangle, TrendingUp, Clock } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { useError } from '../../../context/ErrorContext';
 
 export const OptimizationReportCard = ({ report, onGenerateNew }) => {
     const { moveItem } = useInventory();
+    const { showError } = useError();
     const [applying, setApplying] = useState(null); // ID/Index of applying suggestion
     const [dismissed, setDismissed] = useState([]);
 
@@ -65,11 +68,11 @@ export const OptimizationReportCard = ({ report, onGenerateNew }) => {
 
             // Mark as applied (locally for now, ideally update DB report status)
             setDismissed(prev => [...prev, idx]);
-            alert(`✅ Successfully swapped ${suggestion.promote.sku} and ${suggestion.demote.sku}`);
+            toast.success(`✅ Successfully swapped ${suggestion.promote.sku} and ${suggestion.demote.sku}`);
 
         } catch (err) {
             console.error(err);
-            alert("Failed to apply suggestion: " + err.message);
+            showError('Failed to apply suggestion', err.message);
         } finally {
             setApplying(null);
         }

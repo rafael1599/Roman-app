@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Warehouse, Package, AlertCircle, X } from 'lucide-react';
+import { useError } from '../../../context/ErrorContext';
 
 /**
  * Warehouse Selection Modal
@@ -7,6 +8,7 @@ import { Warehouse, Package, AlertCircle, X } from 'lucide-react';
  */
 export default function WarehouseSelectionModal({ items, onConfirm, onCancel, singleMode = false }) {
     const [selections, setSelections] = useState({});
+    const { showError } = useError();
 
     // Initialize selections if items already have a warehouse pre-selected (for on-the-fly change)
     useEffect(() => {
@@ -31,7 +33,7 @@ export default function WarehouseSelectionModal({ items, onConfirm, onCancel, si
         const allSelected = items.every(item => selections[item.id || item.sku]);
 
         if (!allSelected) {
-            alert('Please select a warehouse for all items');
+            showError('Incomplete Selection', 'Please select a warehouse for all items before confirming.');
             return;
         }
 

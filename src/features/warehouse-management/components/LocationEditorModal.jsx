@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import { Edit3, Save, X, AlertTriangle, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useInventory } from '../../../hooks/useInventoryData';
 import { useOptimizationReports } from '../../../hooks/useOptimizationReports';
+import { useError } from '../../../context/ErrorContext';
+import { useConfirmation } from '../../../context/ConfirmationContext';
 import {
     validateCapacityChange,
     hasActiveInventory,
@@ -25,6 +27,8 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
     const [impact, setImpact] = useState(null);
     const [overrideWarnings, setOverrideWarnings] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+    const { showError } = useError();
+    const { showConfirmation } = useConfirmation();
 
     // Obtener inventario de esta ubicación (Prefer ID match, fallback to name match)
     const inventory = location?.warehouse === 'ATS' ? atsData : ludlowData;
@@ -115,7 +119,7 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
 
     const handleDeleteClick = () => {
         if (hasUnits) {
-            alert(`You cannot delete a location with active inventory (${totalUnits} units). You must move the products first.`);
+            showError('Cannot delete location', `You cannot delete a location with active inventory (${totalUnits} units). You must move the products first.`);
             return;
         }
 
@@ -123,9 +127,15 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
             ? `This location has ${locationInventory.length} SKU(s) registered (0 units). Are you sure you want to delete it?`
             : `Are you sure you want to delete the location ${location?.location}?`;
 
-        if (window.confirm(confirmMessage)) {
-            onDelete(location.id);
-        }
+        showConfirmation(
+            'Delete Location',
+            confirmMessage,
+            () => {
+                onDelete(location.id);
+            },
+            null,
+            'Delete'
+        );
     };
 
     return createPortal(

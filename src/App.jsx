@@ -2,6 +2,10 @@ import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { InventoryProvider, useInventory } from './hooks/InventoryProvider';
 import { LayoutMain } from './components/layout/LayoutMain';
+import { ErrorProvider, useError } from './context/ErrorContext'; // Import ErrorProvider and useError
+import { ConfirmationProvider, useConfirmation } from './context/ConfirmationContext'; // Import ConfirmationProvider and useConfirmation
+import { ErrorModal } from './components/ui/ErrorModal'; // Import ErrorModal
+import { ConfirmationModal } from './components/ui/ConfirmationModal'; // Import ConfirmationModal
 const InventoryScreen = React.lazy(() => import('./screens/InventoryScreen').then(m => ({ default: m.InventoryScreen })));
 const HistoryScreen = React.lazy(() => import('./screens/HistoryScreen').then(m => ({ default: m.HistoryScreen })));
 const Settings = React.lazy(() => import('./screens/Settings'));
@@ -39,6 +43,8 @@ const AuthenticatedContent = () => {
 // Maneja estado de sesión y loader
 const AuthGuard = () => {
   const { user, loading } = useAuth();
+  const { error, clearError } = useError(); // Use the error context
+  const { confirmationState, showConfirmation, hideConfirmation } = useConfirmation(); // Use the confirmation context state
 
   if (loading) {
     return (
@@ -54,9 +60,29 @@ const AuthGuard = () => {
 
   // Solo cargar datos si hay usuario
   return (
-    <InventoryProvider>
-      <AuthenticatedContent />
-    </InventoryProvider>
+    <>
+      <InventoryProvider>
+        <AuthenticatedContent />
+      </InventoryProvider>
+      <ErrorModal
+        isOpen={error.isOpen}
+        title={error.title}
+        message={error.message}
+        details={error.details}
+        onClose={clearError}
+      />
+      {confirmationState.isOpen && (
+        <ConfirmationModal
+          isOpen={confirmationState.isOpen}
+          title={confirmationState.title}
+          message={confirmationState.message}
+          onConfirm={confirmationState.onConfirm}
+          onClose={confirmationState.onClose}
+          confirmText={confirmationState.confirmText}
+          cancelText={confirmationState.cancelText}
+        />
+      )}
+    </>
   );
 };
 
@@ -65,7 +91,11 @@ function App() {
     <ThemeProvider>
       <AuthProvider>
         <BrowserRouter>
-          <AuthGuard />
+          <ErrorProvider>
+            <ConfirmationProvider> {/* Wrap with ConfirmationProvider */}
+              <AuthGuard />
+            </ConfirmationProvider>
+          </ErrorProvider>
         </BrowserRouter>
       </AuthProvider>
     </ThemeProvider>

@@ -11,11 +11,14 @@ import { naturalSort } from '../utils/sortUtils';
 import { Plus, Warehouse, ArrowRightLeft } from 'lucide-react';
 import { MovementModal } from '../features/inventory/components/MovementModal';
 import { CapacityBar } from '../components/ui/CapacityBar';
+import toast from 'react-hot-toast';
 
 import { usePickingSession } from '../hooks/usePickingSession';
 import { useAuth } from '../context/AuthContext';
 import { useLocationManagement } from '../hooks/useLocationManagement';
 import LocationEditorModal from '../features/warehouse-management/components/LocationEditorModal';
+import { useError } from '../context/ErrorContext';
+import { useConfirmation } from '../context/ConfirmationContext';
 
 export const InventoryScreen = () => {
     const { inventoryData, locationCapacities, updateQuantity, addItem, updateItem, moveItem, deleteItem, loading } = useInventory();
@@ -35,6 +38,8 @@ export const InventoryScreen = () => {
     const [locationBeingEdited, setLocationBeingEdited] = useState(null);
 
     const { isAdmin } = useAuth();
+    const { showError } = useError(); // Initialize useError
+    const { showConfirmation } = useConfirmation();
     const { locations: allMappedLocations, createLocation, updateLocation, deactivateLocation, refresh: refreshLocations } = useLocationManagement();
 
     // Picking Mode State (Now Server-Side)
@@ -82,10 +87,10 @@ export const InventoryScreen = () => {
     const handleMoveStock = useCallback(async (moveData) => {
         try {
             await moveItem(moveData.sourceItem, moveData.targetWarehouse, moveData.targetLocation, moveData.quantity);
-            alert('Stock successfully moved!');
+            toast.success('Stock successfully moved!');
         } catch (err) {
             console.error('Error moving stock:', err);
-            alert('Move failed: ' + err.message);
+            showError('Move failed', err.message);
         }
     }, [moveItem]);
 
@@ -147,7 +152,7 @@ export const InventoryScreen = () => {
             setLocationBeingEdited(null);
             window.location.reload();
         } else {
-            alert(`Error saving: ${result.error}`);
+            showError('Error saving location', result.error);
         }
     }, [locationBeingEdited, createLocation, updateLocation]);
 
@@ -163,19 +168,26 @@ export const InventoryScreen = () => {
             const confirmMsg = `This is a "ghost" location (it only exists as text on ${totalUnits} inventory units). 
 Do you want to PERMANENTLY DELETE all these products so the location disappears?`;
 
-            if (window.confirm(confirmMsg)) {
-                const itemsToDelete = inventoryData.filter(i =>
-                    i.Warehouse === locationBeingEdited.warehouse &&
-                    i.Location === locationBeingEdited.location
-                );
+            showConfirmation(
+                'Delete Ghost Location',
+                confirmMsg,
+                async () => {
+                    const itemsToDelete = inventoryData.filter(i =>
+                        i.Warehouse === locationBeingEdited.warehouse &&
+                        i.Location === locationBeingEdited.location
+                    );
 
-                for (const item of itemsToDelete) {
-                    await deleteItem(item.Warehouse, item.SKU);
-                }
+                    for (const item of itemsToDelete) {
+                        await deleteItem(item.Warehouse, item.SKU);
+                    }
 
-                setLocationBeingEdited(null);
-                window.location.reload();
-            }
+                    setLocationBeingEdited(null);
+                    window.location.reload();
+                },
+                null,
+                'Permanently Delete',
+                'Cancel'
+            );
             return;
         }
 
@@ -229,24 +241,18 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
     const handleDeduct = useCallback(async () => {
         if (cartItems.length === 0) return;
 
-        const totalUnits = cartItems.reduce((acc, item) => acc + (item.pickingQty || 0), 0);
-        const confirmDeduct = window.confirm(`Confirm deduction of ${totalUnits} units across ${cartItems.length} items from inventory?`);
-        if (!confirmDeduct) return;
-
         try {
-            // Elimination of Waterfall: Parallelize updates
             await Promise.all(cartItems.map(item => {
                 const delta = -(item.pickingQty || 0);
                 return updateQuantity(item.SKU, delta, item.Warehouse, item.Location);
             }));
-
-            alert("Deduction complete! Inventory has been updated.");
             setCartItems([]);
+            toast.success('Inventory deduction complete!');
         } catch (error) {
             console.error("Deduction error:", error);
-            alert("Error during deduction. Please check your internet connection.");
+            showError('Deduction error', error.message || "Please check your internet connection.");
         }
-    }, [cartItems, updateQuantity, setCartItems]);
+    }, [cartItems, updateQuantity, setCartItems, showError]);
 
 
     // --- Data Processing ---

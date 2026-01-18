@@ -17,13 +17,18 @@ import {
     Filter,
     Mail
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 // jspdf and autoTable are imported dynamically in handleDownloadReport
 import { useAuth } from '../context/AuthContext';
+import { useError } from '../context/ErrorContext';
+import { useConfirmation } from '../context/ConfirmationContext';
 
 
 export const HistoryScreen = () => {
     const { undoAction } = useInventory();
     const { isAdmin } = useAuth();
+    const { showError } = useError(); // Initialize useError
+    const { showConfirmation } = useConfirmation();
     const [logs, setLogs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('ALL');
@@ -127,19 +132,25 @@ export const HistoryScreen = () => {
     }, [filteredLogs]);
 
     const handleUndo = useCallback(async (id) => {
-        if (window.confirm('Are you sure you want to undo this action?')) {
-            // Optimistic update
-            setLogs(prev => prev.map(log =>
-                log.id === id ? { ...log, is_reversed: true } : log
-            ));
+        showConfirmation(
+            'Undo Action',
+            'Are you sure you want to undo this action?',
+            async () => {
+                // Optimistic update
+                setLogs(prev => prev.map(log =>
+                    log.id === id ? { ...log, is_reversed: true } : log
+                ));
 
-            try {
-                await undoAction(id);
-            } catch (err) {
-                console.error("Undo failed, rolling back state:", err);
-                fetchLogs();
-            }
-        }
+                try {
+                    await undoAction(id);
+                } catch (err) {
+                    console.error("Undo failed, rolling back state:", err);
+                    fetchLogs();
+                }
+            },
+            null,
+            'Undo'
+        );
     }, [undoAction]);
 
     const getActionTypeInfo = (type) => {
@@ -243,7 +254,7 @@ export const HistoryScreen = () => {
             doc.save(`inventory-report-${new Date().toISOString().split('T')[0]}.pdf`);
         } catch (err) {
             console.error('Failed to generate PDF:', err);
-            alert('Error generating PDF report.');
+            showError('Error generating PDF report.', err.message);
         } finally {
             setLoading(false);
         }
@@ -358,18 +369,18 @@ export const HistoryScreen = () => {
             // Check for functional error returned in body (status 200)
             if (data?.error) {
                 console.error("Email Sending Error:", data.error);
-                alert(`Error sending email: ${JSON.stringify(data.error)}`);
+                showError('Error sending email', JSON.stringify(data.error));
                 return;
             }
 
             console.log("Email sent successfully:", data);
             localStorage.setItem(`email_sent_${new Date().toDateString()}`, 'true');
-            alert(`Daily report sent to rafaelukf@gmail.com`);
+            toast.success(`Daily report sent to rafaelukf@gmail.com`);
 
         } catch (err) {
             console.error("Failed to send email:", err);
             // Optionally alert user or just log
-            alert("Failed to send daily email via Edge Function.");
+            showError('Failed to send daily email', err.message || "Failed to send daily email via Edge Function.");
         }
     }, [logs]);
 
