@@ -5,6 +5,7 @@ import { type User } from '@supabase/supabase-js';
 export interface AuthProfile {
     role: 'admin' | 'staff' | string;
     full_name: string | null;
+    last_seen_at?: string | null;
 }
 
 interface AuthContextType {
@@ -91,6 +92,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         };
     }, []);
 
+    // Update last seen
+    useEffect(() => {
+        if (user) {
+            const updateLastSeen = async () => {
+                await supabase
+                    .from('profiles')
+                    .update({ last_seen_at: new Date().toISOString() })
+                    .eq('id', user.id);
+            };
+            updateLastSeen();
+        }
+    }, [user?.id]);
+
     const fetchProfileWithTimeout = async (userId: string, isBackground = false) => {
         const timeoutMs = 3000;
         const timeout = new Promise(resolve => setTimeout(() => resolve('timeout'), timeoutMs));
@@ -98,7 +112,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const fetchProfile = async () => {
             const { data, error } = await supabase
                 .from('profiles')
-                .select('role, full_name')
+                .select('role, full_name, last_seen_at')
                 .eq('id', userId)
                 .single();
             return { data, error };

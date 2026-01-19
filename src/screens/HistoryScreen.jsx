@@ -15,7 +15,8 @@ import {
     Calendar,
     Search,
     Filter,
-    Mail
+    Mail,
+    Package
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 // jspdf and autoTable are imported dynamically in handleDownloadReport
@@ -153,11 +154,11 @@ export const HistoryScreen = () => {
         );
     }, [undoAction]);
 
-    const getActionTypeInfo = (type) => {
+    const getActionTypeInfo = (type, log = {}) => {
         switch (type) {
             case 'MOVE': return { icon: <MoveIcon size={14} />, color: 'text-blue-500', bg: 'bg-blue-500/10', label: 'Relocate' };
             case 'ADD': return { icon: <Plus size={14} />, color: 'text-green-500', bg: 'bg-green-500/10', label: 'Restock' };
-            case 'DEDUCT': return { icon: <Minus size={14} />, color: 'text-red-500', bg: 'bg-red-500/10', label: 'Pick' };
+            case 'DEDUCT': return { icon: <Minus size={14} />, color: 'text-red-500', bg: 'bg-red-500/10', label: log.list_id ? 'Order Pick' : 'Manual Pick' };
             case 'DELETE': return { icon: <Trash2 size={14} />, color: 'text-muted', bg: 'bg-surface', label: 'Remove' };
             default: return { icon: <Clock size={14} />, color: 'text-muted', bg: 'bg-surface', label: 'Update' };
         }
@@ -483,7 +484,7 @@ export const HistoryScreen = () => {
                             </h3>
                             <div className="space-y-3">
                                 {items.map(log => {
-                                    const info = getActionTypeInfo(log.action_type);
+                                    const info = getActionTypeInfo(log.action_type, log);
                                     return (
                                         <div
                                             key={log.id}
@@ -510,7 +511,7 @@ export const HistoryScreen = () => {
                                                     </div>
                                                 </div>
 
-                                                {!log.is_reversed && log.action_type !== 'DELETE' && (
+                                                {!log.is_reversed && log.action_type !== 'DELETE' && isAdmin && (
                                                     <button
                                                         onClick={() => handleUndo(log.id)}
                                                         className="p-3 bg-surface border border-subtle hover:bg-content hover:text-main rounded-2xl transition-all shadow-xl text-content"
@@ -563,9 +564,19 @@ export const HistoryScreen = () => {
                                             </div>
 
                                             {/* Details indicator */}
-                                            {(log.prev_quantity !== null && log.new_quantity !== null) && (
+                                            {(log.prev_quantity !== null && log.new_quantity !== null && isAdmin) && (
                                                 <div className="mt-4 flex gap-4 text-[8px] font-black uppercase tracking-widest opacity-20 border-t border-subtle pt-2 text-muted">
                                                     <span>Stock: {log.prev_quantity} → {log.new_quantity}</span>
+                                                    {log.list_id && (
+                                                        <span className="text-accent opacity-100 flex items-center gap-1 font-mono">
+                                                            <Package size={8} /> LIST ID: {log.list_id.slice(-6).toUpperCase()}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )}
+                                            {log.list_id && !isAdmin && (
+                                                <div className="mt-4 flex gap-4 text-[8px] font-black uppercase tracking-widest opacity-40 border-t border-subtle pt-2 text-accent font-mono">
+                                                    <Package size={8} className="translate-y-[1px]" /> SESIÓN DE PICKING: #{log.list_id.slice(-6).toUpperCase()}
                                                 </div>
                                             )}
                                         </div>

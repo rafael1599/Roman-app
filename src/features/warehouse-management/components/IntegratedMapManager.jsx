@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { useWarehouseZones } from '../../../hooks/useWarehouseZones';
 import { useOptimizationReports } from '../../../hooks/useOptimizationReports';
-import { UnifiedZoneMap } from './UnifiedZoneMap';
 import { OptimizationReportCard } from './OptimizationReportCard';
 import { LocationList } from './LocationList';
-import { Map as MapIcon, BarChart3, MapPin } from 'lucide-react';
+import { UserManagement } from './UserManagement';
+import { BarChart3, MapPin, Users, ShieldCheck } from 'lucide-react';
+import { useAuth } from '../../../context/AuthContext';
 
 export const IntegratedMapManager = () => {
+    const { isAdmin } = useAuth();
     const {
         allLocations,
         zones,
@@ -20,7 +22,7 @@ export const IntegratedMapManager = () => {
     } = useWarehouseZones();
     const { latestReport, generateReport, loading: reportsLoading } = useOptimizationReports();
 
-    const [activeTab, setActiveTab] = useState('locations'); // 'locations' | 'zones' | 'reports'
+    const [activeTab, setActiveTab] = useState('locations'); // 'locations' | 'zones' | 'reports' | 'users'
 
     if (zonesLoading) {
         return <div className="p-12 text-center text-muted animate-pulse">Loading Warehouse Data...</div>;
@@ -29,7 +31,7 @@ export const IntegratedMapManager = () => {
     return (
         <div className="bg-card border border-subtle rounded-3xl overflow-hidden backdrop-blur-sm">
             {/* Header Tabs */}
-            <div className="flex border-b border-subtle bg-main/20">
+            <div className="flex border-b border-subtle bg-main/20 overflow-x-auto no-scrollbar">
                 <TabButton
                     active={activeTab === 'locations'}
                     onClick={() => setActiveTab('locations')}
@@ -37,37 +39,25 @@ export const IntegratedMapManager = () => {
                     label="Edit Locations"
                 />
                 <TabButton
-                    active={activeTab === 'zones'}
-                    onClick={() => setActiveTab('zones')}
-                    icon={MapIcon}
-                    label="Zone Map"
-                    badge={hasUnsavedChanges ? '●' : null}
-                />
-                <TabButton
                     active={activeTab === 'reports'}
                     onClick={() => setActiveTab('reports')}
                     icon={BarChart3}
                     label="Reports"
                 />
+                {isAdmin && (
+                    <TabButton
+                        active={activeTab === 'users'}
+                        onClick={() => setActiveTab('users')}
+                        icon={Users}
+                        label="Users"
+                    />
+                )}
             </div>
 
             {/* Content Area */}
             <div className="p-4 sm:p-6">
                 {activeTab === 'locations' && (
                     <LocationList />
-                )}
-
-                {activeTab === 'zones' && (
-                    <UnifiedZoneMap
-                        locations={allLocations}
-                        zones={zones}
-                        getZone={getZone}
-                        updateZone={updateZone}
-                        batchUpdateZones={batchUpdateZones}
-                        autoAssignZones={autoAssignZones}
-                        hasUnsavedChanges={hasUnsavedChanges}
-                        onSave={saveAllChanges}
-                    />
                 )}
 
                 {activeTab === 'reports' && (
@@ -77,6 +67,10 @@ export const IntegratedMapManager = () => {
                             onGenerateNew={generateReport}
                         />
                     </div>
+                )}
+
+                {activeTab === 'users' && isAdmin && (
+                    <UserManagement />
                 )}
             </div>
         </div >

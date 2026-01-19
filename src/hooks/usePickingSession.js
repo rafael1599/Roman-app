@@ -8,45 +8,50 @@ const LOCAL_STORAGE_KEY = 'picking_cart_items';
 export const usePickingSession = () => {
     const { user } = useAuth();
     const [cartItems, setCartItems] = useState([]);
+    const [activeListId, setActiveListId] = useState(null);
     const [isLoaded, setIsLoaded] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [lastSaved, setLastSaved] = useState(null);
+    const isInitialSyncRef = useRef(true);
+    const isSyncingRef = useRef(false);
     const pendingSaveRef = useRef(null);
 
-    // 1. Initial Load & Migration
+    // 1. Initial Load
     useEffect(() => {
         if (!user) {
             setCartItems([]);
+            setActiveListId(null);
             return;
         }
 
         const loadSession = async () => {
             try {
-                // Fetch from DB
+                // Fetch active list from DB
                 const { data, error } = await supabase
-                    .from('picking_sessions')
-                    .select('items')
+                    .from('picking_lists')
+                    .select('id, items')
                     .eq('user_id', user.id)
-                    .single();
+                    .eq('status', 'active')
+                    .order('updated_at', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
 
-                if (error && error.code !== 'PGRST116') { // PGRST116 = Row not found
+                if (error) {
                     console.error('Error loading picking session:', error);
                 }
 
-                if (data?.items) {
-                    // DB has data - Use it (Server Truth)
-                    setCartItems(data.items);
+                if (data) {
+                    setCartItems(data.items || []);
+                    setActiveListId(data.id);
                 } else {
-                    // DB empty - Check LocalStorage (Migration)
+                    // Check LocalStorage for migration or new session
                     const localData = localStorage.getItem(LOCAL_STORAGE_KEY);
                     if (localData) {
                         try {
                             const parsed = JSON.parse(localData);
                             if (Array.isArray(parsed) && parsed.length > 0) {
-                                console.log('Migrating local cart to cloud...', parsed.length);
                                 setCartItems(parsed);
-                                // Trigger immediate save to establish DB record
-                                saveToDb(parsed, user.id);
+                                // We'll create the DB record on the first sync
                             }
                         } catch (e) {
                             console.warn('Corrupt local storage cart', e);
@@ -64,39 +69,64 @@ export const usePickingSession = () => {
     }, [user]);
 
     // 2. Sync Logic (Debounced)
-    const saveToDb = async (items, userId) => {
-        if (!userId) return;
+    const saveToDb = async (items, userId, listId) => {
+        if (!userId || isSyncingRef.current) return;
+        isSyncingRef.current = true;
         setIsSaving(true);
         try {
-            const { error } = await supabase
-                .from('picking_sessions')
-                .upsert({ user_id: userId, items: items, updated_at: new Date() });
+            if (listId) {
+                // Update existing
+                const { error } = await supabase
+                    .from('picking_lists')
+                    .update({ items: items })
+                    .eq('id', listId);
+                if (error) throw error;
+            } else if (items.length > 0) {
+                // Create new active list
+                const { data, error } = await supabase
+                    .from('picking_lists')
+                    .insert({ user_id: userId, items: items, status: 'active' })
+                    .select()
+                    .single();
 
-            if (error) throw error;
+                if (error) throw error;
+                if (data) setActiveListId(data.id);
+            }
             setLastSaved(new Date());
         } catch (err) {
             console.error('Failed to sync picking session:', err);
         } finally {
             setIsSaving(false);
+            isSyncingRef.current = false;
         }
     };
 
-    // Debounce wrapper
+    // 2. Sync Logic (Hybrid Local + Remote)
     useEffect(() => {
         if (!isLoaded || !user) return;
 
-        // Clear previous pending save
-        if (pendingSaveRef.current) {
-            clearTimeout(pendingSaveRef.current);
+        // Immediate Local Backup
+        if (cartItems.length > 0) {
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(cartItems));
+        } else {
+            localStorage.removeItem(LOCAL_STORAGE_KEY);
         }
 
-        // Set new pending save
+        // Skip DB sync if nothing to sync and we haven't synced before
+        if (cartItems.length === 0 && !activeListId && isInitialSyncRef.current) {
+            isInitialSyncRef.current = false;
+            return;
+        }
+
+        if (pendingSaveRef.current) clearTimeout(pendingSaveRef.current);
+
         pendingSaveRef.current = setTimeout(() => {
-            saveToDb(cartItems, user.id);
+            saveToDb(cartItems, user.id, activeListId);
+            isInitialSyncRef.current = false;
         }, SYNC_DEBOUNCE_MS);
 
         return () => clearTimeout(pendingSaveRef.current);
-    }, [cartItems, isLoaded, user]);
+    }, [cartItems, isLoaded, user, activeListId]);
 
     // 3. Actions
     // Helper to match items (by ID if available, otherwise SKU+Loc)
@@ -154,16 +184,40 @@ export const usePickingSession = () => {
 
     const clearCart = useCallback(() => {
         setCartItems([]);
+        localStorage.removeItem(LOCAL_STORAGE_KEY);
     }, []);
+
+    const completeList = useCallback(async () => {
+        if (!activeListId || !user) return;
+        setIsSaving(true);
+        try {
+            const { error } = await supabase
+                .from('picking_lists')
+                .update({ status: 'completed' })
+                .eq('id', activeListId);
+
+            if (error) throw error;
+
+            setCartItems([]);
+            setActiveListId(null);
+            localStorage.removeItem(LOCAL_STORAGE_KEY);
+        } catch (err) {
+            console.error('Failed to complete list:', err);
+        } finally {
+            setIsSaving(false);
+        }
+    }, [activeListId, user]);
 
     return {
         cartItems,
         setCartItems,
+        activeListId,
         addToCart,
         updateCartQty,
         setCartQty,
         removeFromCart,
         clearCart,
+        completeList,
         isLoaded,
         isSaving,
         lastSaved

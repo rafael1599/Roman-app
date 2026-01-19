@@ -65,9 +65,6 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
         if (formData.zone !== location?.zone) {
             changes.zone = formData.zone;
         }
-        if (parseInt(formData.picking_order) !== parseInt(location?.picking_order)) {
-            changes.picking_order = parseInt(formData.picking_order);
-        }
         if (formData.location !== location?.location) {
             changes.location = formData.location;
         }

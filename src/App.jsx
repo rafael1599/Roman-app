@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { InventoryProvider, useInventory } from './hooks/InventoryProvider';
 import { LayoutMain } from './components/layout/LayoutMain';
 import { ErrorProvider, useError } from './context/ErrorContext'; // Import ErrorProvider and useError
@@ -21,6 +21,7 @@ import { Suspense } from 'react';
 // Content accesible solo tras login
 const AuthenticatedContent = () => {
   const { exportData } = useInventory();
+  const { isAdmin } = useAuth();
 
   return (
     <ViewModeProvider>
@@ -33,8 +34,12 @@ const AuthenticatedContent = () => {
           <Routes>
             <Route path="/" element={<InventoryScreen />} />
             <Route path="/history" element={<HistoryScreen />} />
-            <Route path="/settings" element={<Settings />} />
-
+            <Route
+              path="/settings"
+              element={isAdmin ? <Settings /> : <Navigate to="/" replace />}
+            />
+            {/* Catch-all for unknown routes */}
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>
       </LayoutMain>

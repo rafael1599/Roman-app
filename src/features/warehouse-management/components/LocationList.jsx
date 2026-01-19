@@ -173,6 +173,7 @@ export const LocationList = () => {
                                     Orden de picking: #{loc.picking_order}
                                 </div>
                             )}
+
                         </button>
                     );
                 })}

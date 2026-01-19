@@ -21,7 +21,7 @@ interface InventoryContextType {
     fetchLogs: () => Promise<any[]>;
     loading: boolean;
     error: string | null;
-    updateQuantity: (sku: string, delta: number, warehouse?: string | null, location?: string | null, isReversal?: boolean) => Promise<void>;
+    updateQuantity: (sku: string, delta: number, warehouse?: string | null, location?: string | null, isReversal?: boolean, listId?: string) => Promise<void>;
     updateLudlowQuantity: (sku: string, delta: number, location?: string | null) => Promise<void>;
     updateAtsQuantity: (sku: string, delta: number, location?: string | null) => Promise<void>;
     addItem: (warehouse: string, newItem: any) => Promise<void>;
@@ -165,7 +165,7 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
 
     // --- ACTIONS ---
 
-    const updateQuantity = useCallback(async (sku: string, delta: number, warehouse: string | null = null, location: string | null = null, isReversal = false) => {
+    const updateQuantity = useCallback(async (sku: string, delta: number, warehouse: string | null = null, location: string | null = null, isReversal = false, listId?: string) => {
         const item = findItem(sku, warehouse || '', location || '');
         if (!item) return;
 
@@ -191,34 +191,48 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
             initialQty,
             item,
             isReversal,
+            listId,
             timer: setTimeout(async () => {
                 const finalBuffer = logBuffersRef.current[bufferKey];
                 delete logBuffersRef.current[bufferKey];
 
                 if (!finalBuffer || finalBuffer.netDelta === 0) return;
 
-                const finalQty = Math.max(0, finalBuffer.initialQty + finalBuffer.netDelta);
+                // 1. Fetch latest server quantity to minimize overwrite impact
+                const { data: latestItem } = await supabase
+                    .from('inventory')
+                    .select('Quantity')
+                    .eq('id', finalBuffer.item.id)
+                    .single();
+
+                const serverQty = latestItem ? Number(latestItem.Quantity) : finalBuffer.initialQty;
+                const finalQty = Math.max(0, serverQty + finalBuffer.netDelta);
+                const actualChange = finalQty - serverQty;
+
+                if (actualChange === 0) return;
 
                 try {
                     const { error } = await supabase.from('inventory').update({ Quantity: finalQty }).eq('id', finalBuffer.item.id);
                     if (error) throw error;
 
-                    const action = finalBuffer.netDelta > 0 ? 'ADD' : 'DEDUCT';
+                    const action = actualChange > 0 ? 'ADD' : 'DEDUCT';
                     await trackLog({
                         sku: finalBuffer.item.SKU,
                         from_warehouse: finalBuffer.item.Warehouse as 'LUDLOW' | 'ATS',
                         from_location: finalBuffer.item.Location || undefined,
-                        quantity: Math.abs(finalBuffer.netDelta),
-                        prev_quantity: finalBuffer.initialQty,
+                        quantity: Math.abs(actualChange),
+                        prev_quantity: serverQty,
                         new_quantity: finalQty,
                         action_type: action,
-                        is_reversed: finalBuffer.isReversal
+                        is_reversed: finalBuffer.isReversal,
+                        list_id: finalBuffer.listId
                     }, { performed_by: userName, user_id: user?.id });
 
                 } catch (err) {
                     console.error('Failed to update quantity (debounced):', err);
+                    // Revert to initial state on error
                     setInventoryData(prev => prev.map(i =>
-                        i.id === finalBuffer.item.id ? { ...i, Quantity: finalBuffer.initialQty } : i
+                        i.id === finalBuffer.item.id ? { ...i, Quantity: serverQty } : i
                     ));
                 }
             }, 500)

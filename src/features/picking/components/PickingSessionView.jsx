@@ -6,7 +6,7 @@ import { useLocationManagement } from '../../../hooks/useLocationManagement';
 import { SlideToConfirm } from '../../../components/ui/SlideToConfirm';
 import { useError } from '../../../context/ErrorContext';
 
-export const PickingSessionView = ({ cartItems, onDeduct, onUpdateQty, onRemoveItem, onClose }) => {
+export const PickingSessionView = ({ cartItems, activeListId, onDeduct, onUpdateQty, onRemoveItem, onClose }) => {
     const { locations } = useLocationManagement();
     const { showError } = useError();
     const [isDeducting, setIsDeducting] = useState(false);
@@ -14,7 +14,6 @@ export const PickingSessionView = ({ cartItems, onDeduct, onUpdateQty, onRemoveI
     const [editingQuantity, setEditingQuantity] = useState('');
     const inputRef = useRef(null);
 
-    // 1. Optimize Picking Path
     const optimizedItems = useMemo(() => {
         return getOptimizedPickingPath(cartItems, locations);
     }, [cartItems, locations]);
@@ -93,7 +92,14 @@ export const PickingSessionView = ({ cartItems, onDeduct, onUpdateQty, onRemoveI
                     <ChevronDown size={24} />
                 </button>
                 <div className="flex-1 mx-2">
-                    <h2 className="text-base font-black text-content uppercase tracking-tight text-center">Review Pick List</h2>
+                    <div className="flex items-center justify-center gap-2">
+                        <h2 className="text-base font-black text-content uppercase tracking-tight">Review Pick List</h2>
+                        {activeListId && (
+                            <span className="text-[9px] font-mono bg-accent/10 text-accent px-1.5 py-0.5 rounded border border-accent/20">
+                                #{activeListId.slice(-6).toUpperCase()}
+                            </span>
+                        )}
+                    </div>
                     <p className="text-[10px] text-muted font-bold uppercase tracking-widest text-center">
                         {pallets.length} Pallets • {totalUnits} Units
                     </p>

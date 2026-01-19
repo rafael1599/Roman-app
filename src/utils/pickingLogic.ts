@@ -20,17 +20,16 @@ export const getOptimizedPickingPath = (items: any[], locations: Location[]) => 
     });
 
     return [...items].sort((a, b) => {
-        // Prioritize same SKU on same pallet
-        const skuComparison = a.SKU.localeCompare(b.SKU);
-        if (skuComparison !== 0) return skuComparison;
-
         const keyA = `${a.Warehouse}-${a.Location}`;
         const keyB = `${b.Warehouse}-${b.Location}`;
 
         const orderA = orderMap.get(keyA) ?? 9999;
         const orderB = orderMap.get(keyB) ?? 9999;
 
-        return orderA - orderB;
+        if (orderA !== orderB) return orderA - orderB;
+
+        // Fallback to alphanumeric
+        return a.Location.localeCompare(b.Location, undefined, { numeric: true, sensitivity: 'base' });
     });
 };
 
@@ -65,11 +64,13 @@ export const calculatePallets = (items: any[]): Pallet[] => {
                 currentPallet.totalUnits += take;
                 remainingToProcess -= take;
 
-                // Calculate estimated footprint (simplified: length * width * units in base layer)
+                // Calculate estimated footprint
+                // Fallback to average box/roll size (5ft x 0.5ft) if metadata is missing or invalid
+                const length = Math.max(1, item.sku_metadata?.length_ft ?? 5);
+                const width = Math.max(1, item.sku_metadata?.width_in ?? 6);
+
                 // Assuming base layer is ~40% of units (4 for 10 units, 5 for 12 units)
-                const baseUnits = Math.min(5, Math.ceil(currentPallet.totalUnits * 0.4));
-                const length = item.sku_metadata?.length_ft ?? 5;
-                const width = item.sku_metadata?.width_in ?? 6;
+                const baseUnits = Math.max(1, Math.min(5, Math.ceil(currentPallet.totalUnits * 0.4)));
                 currentPallet.footprint_in2 = (length * 12) * (width * baseUnits);
             }
 

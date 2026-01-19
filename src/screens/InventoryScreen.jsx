@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useInventory } from '../hooks/useInventoryData';
 import { useViewMode } from '../context/ViewModeContext';
 import { SearchInput } from '../components/ui/SearchInput';
@@ -8,7 +8,7 @@ import { PickingCartDrawer } from '../features/picking/components/PickingCartDra
 import CamScanner from '../features/smart-picking/components/CamScanner';
 import { useOrderProcessing } from '../features/smart-picking/hooks/useOrderProcessing';
 import { naturalSort } from '../utils/sortUtils';
-import { Plus, Warehouse, ArrowRightLeft } from 'lucide-react';
+import { Plus, Warehouse, ArrowRightLeft, Sparkles, X } from 'lucide-react';
 import { MovementModal } from '../features/inventory/components/MovementModal';
 import { CapacityBar } from '../components/ui/CapacityBar';
 import toast from 'react-hot-toast';
@@ -37,24 +37,52 @@ export const InventoryScreen = () => {
     const [isMovementModalOpen, setIsMovementModalOpen] = useState(false);
     const [locationBeingEdited, setLocationBeingEdited] = useState(null);
 
+    const [showWelcome, setShowWelcome] = useState(false);
+    const welcomeTimerRef = useRef(null);
     const { isAdmin } = useAuth();
     const { showError } = useError(); // Initialize useError
     const { showConfirmation } = useConfirmation();
     const { locations: allMappedLocations, createLocation, updateLocation, deactivateLocation, refresh: refreshLocations } = useLocationManagement();
 
+    // Welcome Message Logic
+    useEffect(() => {
+        const checkWelcome = () => {
+            const hasBeenShown = localStorage.getItem('roman_welcome_genesis_shown');
+            const releaseTime = new Date('2026-01-19T08:00:00-05:00').getTime();
+            const currentTime = Date.now();
+
+            if (!hasBeenShown && currentTime >= releaseTime) {
+                setShowWelcome(true);
+                // Auto-dismiss after 5 seconds
+                welcomeTimerRef.current = setTimeout(() => {
+                    setShowWelcome(false);
+                    localStorage.setItem('roman_welcome_genesis_shown', 'true');
+                }, 5000);
+            }
+        };
+
+        checkWelcome();
+        return () => {
+            if (welcomeTimerRef.current) clearTimeout(welcomeTimerRef.current);
+        };
+    }, []);
+
     // Picking Mode State (Now Server-Side)
     const {
         cartItems,
-        setCartItems, // Exposed for scanner
+        activeListId,
+        setCartItems,
         addToCart,
         updateCartQty,
         setCartQty,
         removeFromCart,
         clearCart,
+        completeList,
         isSaving
     } = usePickingSession();
 
     const [showScanner, setShowScanner] = useState(false);
+    const [isProcessingDeduction, setIsProcessingDeduction] = useState(false);
 
     // --- Stock Mode Handlers ---
     const handleAddItem = useCallback((warehouse = 'LUDLOW') => {
@@ -313,6 +341,40 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
 
     return (
         <div className="pb-4 relative">
+            {showWelcome && (
+                <div className="mx-4 mt-4 relative group animate-in fade-in slide-in-from-top-4 duration-1000">
+                    <div className="absolute -inset-0.5 bg-gradient-to-r from-accent to-blue-600 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
+                    <div className="relative bg-surface border border-accent/20 rounded-2xl p-6 overflow-hidden">
+                        <div className="flex items-start gap-4">
+                            <div className="w-12 h-12 bg-accent/10 rounded-xl flex items-center justify-center shrink-0 border border-accent/20">
+                                <Sparkles className="text-accent" size={24} />
+                            </div>
+                            <div className="flex-1">
+                                <h2 className="text-xl font-black text-content uppercase tracking-tight mb-1">
+                                    Roman System is officially Live
+                                </h2>
+                                <p className="text-sm text-muted font-medium leading-relaxed max-w-lg">
+                                    The warehouse digital era begins now. Every movement is recorded to ensure precision and speed. Happy picking!
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    setShowWelcome(false);
+                                    localStorage.setItem('roman_welcome_genesis_shown', 'true');
+                                }}
+                                className="p-2 hover:bg-main rounded-lg text-muted hover:text-content transition-colors shrink-0"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+                        {/* Decorative background element */}
+                        <div className="absolute -right-8 -bottom-8 opacity-[0.03] text-accent">
+                            <Warehouse size={160} />
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <SearchInput
                 value={search}
                 onChange={setSearch}
@@ -390,45 +452,51 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
             </div>
 
             {/* Floating Action Buttons (Stock Mode Only) */}
-            {viewMode === 'stock' && (
-                <div className="fixed bottom-24 right-4 flex flex-col gap-3 z-40">
-                    <button
-                        onClick={() => handleAddItem('LUDLOW')}
-                        className="w-16 h-16 ios-btn-primary shadow-2xl shadow-accent/40 active:scale-90 transition-transform"
-                        title="Add New SKU"
-                    >
-                        <Plus size={32} strokeWidth={3} />
-                    </button>
-                </div>
-            )}
+            {
+                viewMode === 'stock' && (
+                    <div className="fixed bottom-24 right-4 flex flex-col gap-3 z-40">
+                        <button
+                            onClick={() => handleAddItem('LUDLOW')}
+                            className="w-16 h-16 ios-btn-primary shadow-2xl shadow-accent/40 active:scale-90 transition-transform"
+                            title="Add New SKU"
+                        >
+                            <Plus size={32} strokeWidth={3} />
+                        </button>
+                    </div>
+                )
+            }
 
-            {viewMode === 'picking' && (
-                <PickingCartDrawer
-                    cartItems={cartItems}
-                    onUpdateQty={updateCartQty}
-                    onSetQty={setCartQty}
-                    onRemoveItem={removeFromCart}
-                    onDeduct={async (items) => {
-                        try {
-                            const results = await Promise.all(items.map(item => {
-                                const delta = -(item.pickingQty || 0);
-                                return updateQuantity(item.SKU, delta, item.Warehouse, item.Location);
-                            }));
-                            // Check for errors in results if updateQuantity returns them? 
-                            // Assuming updateQuantity throws or returns success. 
-                            // Based on useInventory, it usually handles errors.
-                            // But let's assume if it doesn't throw, it worked.
-                            clearCart();
-                            toast.success('Picking complete! Inventory updated.');
-                            return true;
-                        } catch (error) {
-                            console.error("Deduction error:", error);
-                            showError("Failed to deduct inventory", "Some items might not have been updated. Check console.");
-                            throw error;
-                        }
-                    }}
-                />
-            )}
+            {
+                viewMode === 'picking' && (
+                    <PickingCartDrawer
+                        cartItems={cartItems}
+                        activeListId={activeListId}
+                        onUpdateQty={updateCartQty}
+                        onSetQty={setCartQty}
+                        onRemoveItem={removeFromCart}
+                        onDeduct={async (items) => {
+                            if (isProcessingDeduction) return;
+                            setIsProcessingDeduction(true);
+                            try {
+                                await Promise.all(items.map(item => {
+                                    const delta = -(item.pickingQty || 0);
+                                    return updateQuantity(item.SKU, delta, item.Warehouse, item.Location, false, activeListId);
+                                }));
+
+                                await completeList();
+                                toast.success('Picking complete! Inventory updated.');
+                                return true;
+                            } catch (error) {
+                                console.error("Deduction error:", error);
+                                showError("Failed to deduct inventory", "Some items might not have been updated. Check console.");
+                                throw error;
+                            } finally {
+                                setIsProcessingDeduction(false);
+                            }
+                        }}
+                    />
+                )
+            }
 
             {/* Modals */}
             <InventoryModal
@@ -441,12 +509,14 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
                 screenType={selectedWarehouseForAdd || (editingItem?.Warehouse)}
             />
 
-            {showScanner && (
-                <CamScanner
-                    onScanComplete={handleScanComplete}
-                    onCancel={() => setShowScanner(false)}
-                />
-            )}
+            {
+                showScanner && (
+                    <CamScanner
+                        onScanComplete={handleScanComplete}
+                        onCancel={() => setShowScanner(false)}
+                    />
+                )
+            }
             <MovementModal
                 isOpen={isMovementModalOpen}
                 onClose={() => setIsMovementModalOpen(false)}
@@ -454,14 +524,16 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
                 initialSourceItem={editingItem}
             />
 
-            {!!locationBeingEdited && (
-                <LocationEditorModal
-                    location={locationBeingEdited}
-                    onSave={handleSaveLocation}
-                    onDelete={handleDeleteLocation}
-                    onCancel={() => setLocationBeingEdited(null)}
-                />
-            )}
-        </div>
+            {
+                !!locationBeingEdited && (
+                    <LocationEditorModal
+                        location={locationBeingEdited}
+                        onSave={handleSaveLocation}
+                        onDelete={handleDeleteLocation}
+                        onCancel={() => setLocationBeingEdited(null)}
+                    />
+                )
+            }
+        </div >
     );
 };
