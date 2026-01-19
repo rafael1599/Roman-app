@@ -235,7 +235,7 @@ export const PickingSessionView = ({ cartItems, activeListId, onDeduct, onUpdate
             </div>
 
             {/* Footer */}
-            <div className="px-3 py-2 pb-20 border-t border-subtle bg-surface/30 backdrop-blur-xl shrink-0">
+            <div className="px-12 py-2 pb-20 border-t border-subtle bg-surface/30 backdrop-blur-xl shrink-0">
                 <SlideToConfirm
                     onConfirm={handleConfirm}
                     isLoading={isDeducting}

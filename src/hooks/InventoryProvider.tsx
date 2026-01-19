@@ -36,21 +36,30 @@ interface InventoryContextType {
     updateAtsInventory: (newData: InventoryItem[]) => void;
     updateSKUMetadata: (metadata: SKUMetadataInput) => Promise<void>;
     isAdmin: boolean;
+    isDemoMode: boolean;
+    toggleDemoMode: () => void;
     user: any;
     profile: any;
+    demoLogs: any[];
+    resetDemo: () => void;
 }
 
 const InventoryContext = createContext<InventoryContextType | undefined>(undefined);
 
 export const InventoryProvider = ({ children }: { children: ReactNode }) => {
     const [inventoryData, setInventoryData] = useState<InventoryItemWithMetadata[]>([]);
+    const [demoInventoryData, setDemoInventoryData] = useState<InventoryItemWithMetadata[]>([]);
+    const [demoLogs, setDemoLogs] = useState<any[]>([]);
     const [skuMetadataMap, setSkuMetadataMap] = useState<Record<string, any>>({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     // Identity & permissions
-    const { isAdmin, user, profile } = useAuth();
+    const { isAdmin, isDemoMode, toggleDemoMode, user, profile } = useAuth();
     const userName = profile?.full_name || user?.email || 'Warehouse Team';
+
+    // Current effective data
+    const activeData = isDemoMode ? demoInventoryData : inventoryData;
 
     // Sub-hooks
     const { trackLog, fetchLogs, undoAction: performUndo } = useInventoryLogs();
@@ -95,6 +104,18 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
         };
         loadAllData();
     }, []);
+
+    // Initialize demo data from real data when entering demo mode
+    useEffect(() => {
+        if (isDemoMode && demoInventoryData.length === 0 && inventoryData.length > 0) {
+            setDemoInventoryData(inventoryData);
+        }
+    }, [isDemoMode, inventoryData]);
+
+    const resetDemo = useCallback(() => {
+        setDemoInventoryData(inventoryData);
+        setDemoLogs([]);
+    }, [inventoryData]);
 
     // Helper to enrich a single item
     const enrichItem = useCallback((item: any) => ({
@@ -142,6 +163,26 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
         return caps;
     }, [inventoryData, locations]);
 
+    // Demo Capacity calculations
+    const demoLocationCapacities = useMemo(() => {
+        const caps: Record<string, { current: number; max: number }> = {};
+
+        locations.forEach(loc => {
+            const key = `${loc.warehouse}-${loc.location}`;
+            caps[key] = { current: 0, max: loc.max_capacity || 550 };
+        });
+
+        demoInventoryData.forEach(item => {
+            const key = `${item.Warehouse}-${item.Location}`;
+            if (!caps[key]) caps[key] = { current: 0, max: 550 };
+            caps[key].current += Number(item.Quantity || 0);
+        });
+
+        return caps;
+    }, [demoInventoryData, locations]);
+
+    const activeCapacities = isDemoMode ? demoLocationCapacities : locationCapacities;
+
     // Helper context for services
     const getServiceContext = (): InventoryServiceContext => ({
         isAdmin: !!isAdmin,
@@ -149,19 +190,15 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
         trackLog
     });
 
-    const inventoryMap = useMemo(() => {
-        const map = new Map<string, InventoryItem>();
-        inventoryData.forEach(item => {
-            const key = `${item.SKU}-${item.Warehouse}-${item.Location}`;
-            map.set(key, item);
-        });
-        return map;
-    }, [inventoryData]);
-
     const findItem = useCallback((sku: string, warehouse: string, location: string) => {
         const key = `${sku}-${warehouse}-${location}`;
-        return inventoryMap.get(key);
-    }, [inventoryMap]);
+        const map = new Map<string, InventoryItem>();
+        activeData.forEach(item => {
+            const k = `${item.SKU}-${item.Warehouse}-${item.Location}`;
+            map.set(k, item);
+        });
+        return map.get(key);
+    }, [activeData]);
 
     // --- ACTIONS ---
 
@@ -174,6 +211,26 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
 
         const newQty = Math.max(0, currentQty + delta);
         if (newQty === currentQty) return;
+
+        if (isDemoMode) {
+            setDemoInventoryData(prev => prev.map(i => i.id === item.id ? { ...i, Quantity: newQty } : i));
+            // Add to demo logs
+            const action = delta > 0 ? 'ADD' : 'DEDUCT';
+            setDemoLogs(prev => [{
+                id: `demo-${Date.now()}`,
+                sku,
+                from_warehouse: warehouse as any,
+                from_location: location as any,
+                quantity: Math.abs(delta),
+                prev_quantity: currentQty,
+                new_quantity: newQty,
+                action_type: action,
+                created_at: new Date().toISOString(),
+                performed_by: userName,
+                is_demo: true
+            }, ...prev]);
+            return;
+        }
 
         // Optimistic UI update
         setInventoryData(prev => prev.map(i => i.id === item.id ? { ...i, Quantity: newQty } : i));
@@ -240,19 +297,51 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
     }, [findItem, trackLog, userName, user?.id]);
 
     const addItem = useCallback(async (warehouse: string, newItem: any) => {
+        if (isDemoMode) {
+            const id = `demo-item-${Date.now()}`;
+            const item = { ...newItem, id, Warehouse: warehouse, created_at: new Date().toISOString() };
+            setDemoInventoryData(prev => [item, ...prev]);
+            setDemoLogs(prev => [{
+                id: `demo-log-${Date.now()}`,
+                sku: newItem.SKU,
+                to_warehouse: warehouse,
+                to_location: newItem.Location,
+                quantity: newItem.Quantity,
+                action_type: 'ADD',
+                created_at: new Date().toISOString(),
+                performed_by: userName,
+                is_demo: true
+            }, ...prev]);
+            return;
+        }
         try {
             await inventoryService.addItem(warehouse, newItem, locations, getServiceContext());
         } catch (err: any) {
             console.error('Error adding item:', err);
             alert(err.message);
         }
-    }, [locations, getServiceContext]);
+    }, [isDemoMode, locations, getServiceContext, userName]);
 
     const updateItem = useCallback(async (warehouse: string, originalSku: string, updatedFormData: any) => {
+        if (isDemoMode) {
+            setDemoInventoryData(prev => prev.map(i =>
+                (i.SKU === originalSku && i.Warehouse === warehouse)
+                    ? { ...i, ...updatedFormData }
+                    : i
+            ));
+            setDemoLogs(prev => [{
+                id: `demo-upd-log-${Date.now()}`,
+                sku: updatedFormData.SKU || originalSku,
+                from_warehouse: warehouse as any,
+                action_type: 'UPDATE',
+                created_at: new Date().toISOString(),
+                performed_by: userName,
+                is_demo: true
+            }, ...prev]);
+            return;
+        }
         try {
             const ctx = getServiceContext();
-
-            // Pass locations from hook state to service
             const result = await inventoryService.updateItem(
                 warehouse,
                 originalSku,
@@ -261,29 +350,79 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
                 ctx
             );
 
-            // PHASE 3: Merge Feedback
             if (result && result.action === 'merged') {
                 alert(`🚀 Dynamic Merge: Internal stock of "${result.source}" has been consolidated into existing SKU "${result.target}".`);
             }
-
         } catch (err: any) {
             console.error('Error updating item:', err);
             alert(err.message);
         }
-    }, [locations, getServiceContext]);
+    }, [isDemoMode, locations, getServiceContext, userName]);
 
     const moveItem = useCallback(async (sourceItem: InventoryItem, targetWarehouse: string, targetLocation: string, qty: number, isReversal = false) => {
+        if (isDemoMode) {
+            const newSourceQty = Math.max(0, Number(sourceItem.Quantity) - qty);
+
+            setDemoInventoryData(prev => {
+                let updated = prev.map(i => i.id === sourceItem.id ? { ...i, Quantity: newSourceQty } : i);
+                const targetIdx = updated.findIndex(i => i.SKU === sourceItem.SKU && i.Warehouse === targetWarehouse && i.Location === targetLocation);
+                if (targetIdx >= 0) {
+                    updated = updated.map((item, idx) => idx === targetIdx ? { ...item, Quantity: Number(item.Quantity) + qty } : item);
+                } else {
+                    updated.push({
+                        ...sourceItem,
+                        id: `demo-move-${Date.now()}`,
+                        Warehouse: targetWarehouse as any,
+                        Location: targetLocation,
+                        Quantity: qty,
+                        created_at: new Date()
+                    } as any);
+                }
+                return updated;
+            });
+
+            setDemoLogs(prev => [{
+                id: `demo-move-log-${Date.now()}`,
+                sku: sourceItem.SKU,
+                from_warehouse: sourceItem.Warehouse as any,
+                from_location: sourceItem.Location as any,
+                to_warehouse: targetWarehouse as any,
+                to_location: targetLocation as any,
+                quantity: qty,
+                action_type: 'MOVE',
+                created_at: new Date().toISOString(),
+                performed_by: userName,
+                is_demo: true
+            }, ...prev]);
+            return;
+        }
         try {
             await inventoryService.moveItem(sourceItem, targetWarehouse, targetLocation, qty, locations, getServiceContext(), isReversal);
         } catch (err: any) {
             console.error('Error moving item:', err);
             alert(err.message);
         }
-    }, [locations, getServiceContext]);
+    }, [isDemoMode, locations, getServiceContext, userName]);
 
     const deleteItem = useCallback(async (warehouse: string, sku: string) => {
-        const item = inventoryData.find(i => i.SKU === sku && i.Warehouse === warehouse);
+        const item = activeData.find(i => i.SKU === sku && i.Warehouse === warehouse);
         if (!item) return;
+
+        if (isDemoMode) {
+            setDemoInventoryData(prev => prev.filter(i => i.id !== item.id));
+            setDemoLogs(prev => [{
+                id: `demo-del-log-${Date.now()}`,
+                sku,
+                from_warehouse: warehouse as any,
+                from_location: item.Location as any,
+                quantity: item.Quantity,
+                action_type: 'DELETE',
+                created_at: new Date().toISOString(),
+                performed_by: userName,
+                is_demo: true
+            }, ...prev]);
+            return;
+        }
 
         try {
             const { error } = await supabase.from('inventory').delete().eq('id', item.id);
@@ -302,9 +441,19 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
         } catch (err) {
             console.error('Error deleting item:', err);
         }
-    }, [inventoryData, trackLog, userName, user?.id]);
+    }, [activeData, isDemoMode, trackLog, userName, user?.id]);
 
     const undoAction = useCallback(async (logId: string) => {
+        if (isDemoMode) {
+            if (logId.startsWith('demo-')) {
+                // TODO: Implement local undo for demo actions if needed.
+                // For now, we block it to avoid complexity/confusion or modifying the real DB logic.
+                alert('Undo is currently not supported for simulated actions in Demo Mode.');
+            } else {
+                alert('Cannot undo real production actions while in Demo Mode.');
+            }
+            return;
+        }
         const result = await performUndo(logId, {
             addItem,
             moveItem,
@@ -312,13 +461,26 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
             updateItem
         });
         if (!result.success) alert('Undo failed: ' + result.error);
-    }, [performUndo, addItem, moveItem, updateQuantity, updateItem]);
+    }, [performUndo, addItem, moveItem, updateQuantity, updateItem, isDemoMode]);
 
     const syncInventoryLocations = useCallback(async () => {
+        if (isDemoMode) {
+            console.log('Skipping syncInventoryLocations in Demo Mode');
+            return { successCount: 0, failCount: 0 };
+        }
         return await inventoryService.syncInventoryLocations(inventoryData, locations);
-    }, [inventoryData, locations]);
+    }, [inventoryData, locations, isDemoMode]);
 
     const updateSKUMetadata = useCallback(async (metadata: SKUMetadataInput) => {
+        if (isDemoMode) {
+            // Simulate metadata update locally
+            setSkuMetadataMap(prev => ({ ...prev, [metadata.sku]: metadata }));
+            setDemoInventoryData(prev => prev.map(item =>
+                item.SKU === metadata.sku ? { ...item, sku_metadata: metadata } : item
+            ));
+            return;
+        }
+
         try {
             const updated = await inventoryApi.upsertMetadata(metadata);
 
@@ -333,7 +495,7 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
             console.error('Error updating SKU metadata:', err);
             throw err;
         }
-    }, []);
+    }, [isDemoMode]);
 
     const exportData = useCallback(() => {
         if (!inventoryData.length) return;
@@ -350,12 +512,12 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
     }, [inventoryData]);
 
     const contextValue: InventoryContextType = useMemo(() => ({
-        inventoryData,
-        ludlowData: inventoryData.filter(i => i.Warehouse === 'LUDLOW'),
-        atsData: inventoryData.filter(i => i.Warehouse === 'ATS'),
-        ludlowInventory: inventoryData.filter(i => i.Warehouse === 'LUDLOW'),
-        atsInventory: inventoryData.filter(i => i.Warehouse === 'ATS'),
-        locationCapacities,
+        inventoryData: activeData,
+        ludlowData: activeData.filter(i => i.Warehouse === 'LUDLOW'),
+        atsData: activeData.filter(i => i.Warehouse === 'ATS'),
+        ludlowInventory: activeData.filter(i => i.Warehouse === 'LUDLOW'),
+        atsInventory: activeData.filter(i => i.Warehouse === 'ATS'),
+        locationCapacities: activeCapacities,
         fetchLogs,
         loading,
         error,
@@ -369,20 +531,35 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
         deleteItem,
         exportData,
         syncInventoryLocations,
-        updateInventory: (newData) => setInventoryData(newData),
+        updateInventory: (newData) => {
+            if (isDemoMode) setDemoInventoryData(newData);
+            else setInventoryData(newData);
+        },
         updateLudlowInventory: (newData) => {
-            setInventoryData(prev => [...prev.filter(i => i.Warehouse !== 'LUDLOW'), ...newData]);
+            if (isDemoMode) {
+                setDemoInventoryData(prev => [...prev.filter(i => i.Warehouse !== 'LUDLOW'), ...newData]);
+            } else {
+                setInventoryData(prev => [...prev.filter(i => i.Warehouse !== 'LUDLOW'), ...newData]);
+            }
         },
         updateAtsInventory: (newData) => {
-            setInventoryData(prev => [...prev.filter(i => i.Warehouse !== 'ATS'), ...newData] as InventoryItemWithMetadata[]);
+            if (isDemoMode) {
+                setDemoInventoryData(prev => [...prev.filter(i => i.Warehouse !== 'ATS'), ...newData] as InventoryItemWithMetadata[]);
+            } else {
+                setInventoryData(prev => [...prev.filter(i => i.Warehouse !== 'ATS'), ...newData] as InventoryItemWithMetadata[]);
+            }
         },
         updateSKUMetadata,
         isAdmin: !!isAdmin,
+        isDemoMode,
+        toggleDemoMode,
         user,
-        profile
+        profile,
+        demoLogs,
+        resetDemo
     }), [
-        inventoryData,
-        locationCapacities,
+        activeData,
+        activeCapacities,
         fetchLogs,
         loading,
         error,
@@ -396,8 +573,12 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
         syncInventoryLocations,
         updateSKUMetadata,
         isAdmin,
+        isDemoMode,
+        toggleDemoMode,
         user,
-        profile
+        profile,
+        demoLogs,
+        resetDemo
     ]);
 
     return (

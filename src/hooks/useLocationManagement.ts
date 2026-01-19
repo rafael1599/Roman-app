@@ -3,6 +3,7 @@ import { type Location, type LocationInput, LocationSchema } from '../schemas/lo
 import { validateData } from '../utils/validate';
 import { DEFAULT_MAX_CAPACITY } from '../utils/capacityUtils';
 import { supabase } from '../lib/supabaseClient';
+import { useAuth } from '../context/AuthContext';
 
 /**
  * Hook for managing warehouse locations (CRUD operations)
@@ -10,6 +11,7 @@ import { supabase } from '../lib/supabaseClient';
  * Optimized for Phase 2: Uses centralized API and Schema validation.
  */
 export const useLocationManagement = () => {
+    const { isDemoMode } = useAuth();
     const [locations, setLocations] = useState<Location[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -55,6 +57,15 @@ export const useLocationManagement = () => {
     // Update location configuration
     const updateLocation = useCallback(async (id: string, updates: any) => {
         try {
+            if (isDemoMode) {
+                // Simulate update
+                const existing = locations.find(l => l.id === id);
+                if (!existing) return { success: false, error: 'Location not found' };
+                const updatedLoc = { ...existing, ...updates };
+                setLocations(prev => prev.map(loc => loc.id === id ? updatedLoc : loc));
+                return { success: true, data: updatedLoc };
+            }
+
             const { invalidateReports, ...dbUpdates } = updates;
 
             const { data, error } = await supabase
@@ -89,11 +100,23 @@ export const useLocationManagement = () => {
             console.error('Error updating location:', err);
             return { success: false, error: err.message };
         }
-    }, []);
+    }, [isDemoMode, locations]);
 
     // Create new location
     const createLocation = useCallback(async (locationData: LocationInput) => {
         try {
+            if (isDemoMode) {
+                const newLoc = {
+                    ...locationData,
+                    id: `demo-loc-${Date.now()}`,
+                    created_at: new Date().toISOString(),
+                    max_capacity: locationData.max_capacity || DEFAULT_MAX_CAPACITY,
+                    is_active: true
+                } as Location;
+                setLocations(prev => [...prev, newLoc]);
+                return { success: true, data: newLoc };
+            }
+
             const validated = validateData(LocationSchema.omit({ id: true, created_at: true }), {
                 ...locationData,
                 max_capacity: locationData.max_capacity || DEFAULT_MAX_CAPACITY,
@@ -115,11 +138,16 @@ export const useLocationManagement = () => {
             console.error('Error creating location:', err);
             return { success: false, error: err.message };
         }
-    }, []);
+    }, [isDemoMode]);
 
     // Soft delete (deactivate)
     const deactivateLocation = useCallback(async (id: string) => {
         try {
+            if (isDemoMode) {
+                setLocations(prev => prev.filter(loc => loc.id !== id));
+                return { success: true };
+            }
+
             const { error } = await supabase
                 .from('locations')
                 .update({ is_active: false })
@@ -133,7 +161,7 @@ export const useLocationManagement = () => {
             console.error('Error deactivating location:', err);
             return { success: false, error: err.message };
         }
-    }, []);
+    }, [isDemoMode]);
 
     return useMemo(() => ({
         locations,
@@ -144,5 +172,5 @@ export const useLocationManagement = () => {
         createLocation,
         deactivateLocation,
         refresh: fetchLocations
-    }), [locations, loading, error, getLocation, updateLocation, createLocation, deactivateLocation, fetchLocations]);
+    }), [locations, loading, error, getLocation, updateLocation, createLocation, deactivateLocation, fetchLocations, isDemoMode]);
 };

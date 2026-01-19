@@ -10,7 +10,7 @@ export const useOptimizationReports = () => {
     const [allReports, setAllReports] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    const { inventoryData, locationCapacities, fetchLogs } = useInventory();
+    const { inventoryData, locationCapacities, fetchLogs, isDemoMode } = useInventory();
     const { zones } = useWarehouseZones(); // Access zone data
 
     // Fetch reports from Supabase
@@ -40,6 +40,11 @@ export const useOptimizationReports = () => {
     // Generate New Report (Logic Engine)
     const generateReport = async () => {
         try {
+            if (isDemoMode) {
+                console.log('Skipping report generation in Demo Mode');
+                return { success: true, count: 0, message: "Optimization report simulation disabled." };
+            }
+
             // 1. Fetch ALL recent logs for accurate velocity
             // We need raw logs from DB, fetchLogs from context might be paginated or filtered
             // Direct query here for robustness

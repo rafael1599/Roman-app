@@ -7,7 +7,7 @@ import toast from 'react-hot-toast';
 import { useConfirmation } from '../../context/ConfirmationContext';
 
 export const UserMenu = ({ isOpen, onClose, onExport, onSync }) => {
-    const { profile, signOut, updateProfileName, isSystemAdmin, viewAsUser, toggleAdminView } = useAuth();
+    const { profile, signOut, updateProfileName, isSystemAdmin, viewAsUser, toggleAdminView, isDemoMode, toggleDemoMode } = useAuth();
     const { theme, toggleTheme } = useTheme();
     const [newName, setNewName] = useState(profile?.full_name || '');
     const [isEditing, setIsEditing] = useState(false);
@@ -43,7 +43,42 @@ export const UserMenu = ({ isOpen, onClose, onExport, onSync }) => {
                     </div>
 
                     <div className="space-y-6">
-                        {/* Preferences Section */}
+                        {/* Demo Mode Section */}
+                        <div className="p-4 bg-surface rounded-2xl border border-subtle">
+                            <label className="text-[10px] text-muted font-black uppercase tracking-widest mb-4 block">Experimental</label>
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-card border border-subtle rounded-xl text-content">
+                                        <RefreshCw size={16} className={isDemoMode ? 'text-accent animate-spin-slow' : ''} />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-bold text-content uppercase tracking-tight">Demo Mode</p>
+                                        <p className="text-[9px] text-muted font-bold uppercase">Simulate Without Changes</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        toggleDemoMode();
+                                        onClose();
+                                        toast.success(isDemoMode ? 'Switched to Live Data' : 'Entered Demo Mode');
+                                    }}
+                                    className={`
+                                        relative w-14 h-7 rounded-full p-1 transition-all duration-300 focus:outline-none ring-1 
+                                        ${isDemoMode ? 'bg-accent/20 ring-accent/30' : 'bg-subtle ring-subtle/50'}
+                                    `}
+                                    aria-label="Toggle Demo Mode"
+                                >
+                                    <div
+                                        className={`
+                                            w-5 h-5 bg-accent rounded-full shadow-lg transition-all duration-300 transform
+                                            ${isDemoMode ? 'translate-x-7 rotate-0' : 'translate-x-0 rotate-180'}
+                                        `}
+                                    />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Visual Preferences Section */}
                         <div className="p-4 bg-surface rounded-2xl border border-subtle">
                             <label className="text-[10px] text-muted font-black uppercase tracking-widest mb-4 block">Visual Preferences</label>
                             <div className="flex items-center justify-between">

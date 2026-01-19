@@ -26,7 +26,7 @@ import { useConfirmation } from '../context/ConfirmationContext';
 
 
 export const HistoryScreen = () => {
-    const { undoAction } = useInventory();
+    const { undoAction, isDemoMode, demoLogs, resetDemo } = useInventory();
     const { isAdmin } = useAuth();
     const { showError } = useError(); // Initialize useError
     const { showConfirmation } = useConfirmation();
@@ -92,8 +92,17 @@ export const HistoryScreen = () => {
         return () => supabase.removeChannel(channel);
     }, []);
 
+    const workingLogs = useMemo(() => {
+        if (isDemoMode) {
+            // Combine real logs with demo logs, putting demo logs first
+            // or just show demo logs. Let's show both but demo logs are "extra"
+            return [...demoLogs, ...logs];
+        }
+        return logs;
+    }, [isDemoMode, demoLogs, logs]);
+
     const filteredLogs = useMemo(() => {
-        return logs
+        return workingLogs
             .filter(log => filter === 'ALL' || log.action_type === filter)
             .filter(log => {
                 // If not admin, hide undone (reversed) actions
@@ -111,7 +120,7 @@ export const HistoryScreen = () => {
                     log.from_location?.toLowerCase().includes(query) ||
                     log.to_location?.toLowerCase().includes(query);
             });
-    }, [logs, filter, searchQuery, isAdmin]);
+    }, [workingLogs, filter, searchQuery, isAdmin]);
 
     const groupedLogs = useMemo(() => {
         const groups = {};
@@ -417,6 +426,20 @@ export const HistoryScreen = () => {
                     </p>
                 </div>
                 <div className="flex gap-2">
+                    {isDemoMode && (
+                        <button
+                            onClick={() => {
+                                showConfirmation(
+                                    'Reset Demo',
+                                    'This will clear all demo movements and reset the inventory to its original state.',
+                                    resetDemo
+                                );
+                            }}
+                            className="p-3 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-500 font-black uppercase text-[10px]"
+                        >
+                            Reset Demo
+                        </button>
+                    )}
                     <button
                         onClick={fetchLogs}
                         className="p-3 bg-surface border border-subtle rounded-2xl hover:opacity-80 transition-all text-content"
@@ -506,7 +529,7 @@ export const HistoryScreen = () => {
                                                             </span>
                                                         </div>
                                                         <p className="text-[10px] text-muted font-bold uppercase tracking-wider">
-                                                            {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {log.performed_by || 'Unknown'}
+                                                            {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {log.performed_by || 'Unknown'} {log.is_demo && <span className="text-accent ml-2">DEMO</span>}
                                                         </p>
                                                     </div>
                                                 </div>

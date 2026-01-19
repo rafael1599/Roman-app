@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { useAuth } from '../context/AuthContext';
 import { SLOTTING_CONFIG, inferZoneByAlphabetical } from '../config/slotting';
 import {
     type ZoneType
@@ -20,6 +21,7 @@ interface ZoneMapItem {
 }
 
 export const useWarehouseZones = () => {
+    const { isDemoMode } = useAuth();
     const [zones, setZones] = useState<Record<string, ZoneMapItem>>({});
     const [pendingChanges, setPendingChanges] = useState<Record<string, PendingChange>>({});
     const [loading, setLoading] = useState(true);
@@ -184,6 +186,14 @@ export const useWarehouseZones = () => {
         const changes = Object.values(pendingChanges);
         if (changes.length === 0) return { success: true };
 
+        if (isDemoMode) {
+            // In demo mode, we just clear the pending changes state
+            // since the 'zones' state was already optimistically updated.
+            // This simulates a "save" without persisting to Supabase.
+            setPendingChanges({});
+            return { success: true };
+        }
+
         try {
             // Prepare upsert data
             const upsertData = changes.map(({ warehouse, location, zone }) => ({
@@ -206,7 +216,7 @@ export const useWarehouseZones = () => {
             console.error('Error saving zone changes:', err);
             return { success: false, error: err.message };
         }
-    }, [pendingChanges]);
+    }, [pendingChanges, isDemoMode]);
 
     // 7. Auto-Assign Zones based on alphabetical order
     const autoAssignZones = useCallback(async () => {

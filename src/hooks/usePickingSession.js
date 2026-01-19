@@ -6,7 +6,7 @@ const SYNC_DEBOUNCE_MS = 1000;
 const LOCAL_STORAGE_KEY = 'picking_cart_items';
 
 export const usePickingSession = () => {
-    const { user } = useAuth();
+    const { user, isDemoMode } = useAuth();
     const [cartItems, setCartItems] = useState([]);
     const [activeListId, setActiveListId] = useState(null);
     const [isLoaded, setIsLoaded] = useState(false);
@@ -18,9 +18,21 @@ export const usePickingSession = () => {
 
     // 1. Initial Load
     useEffect(() => {
-        if (!user) {
-            setCartItems([]);
-            setActiveListId(null);
+        if (!user || isDemoMode) {
+            if (isDemoMode) {
+                // In demo mode, we just load from local storage if anything exists
+                const localData = localStorage.getItem(LOCAL_STORAGE_KEY);
+                if (localData) {
+                    try {
+                        const parsed = JSON.parse(localData);
+                        setCartItems(parsed || []);
+                    } catch (e) { }
+                }
+                setIsLoaded(true);
+            } else {
+                setCartItems([]);
+                setActiveListId(null);
+            }
             return;
         }
 
@@ -70,7 +82,7 @@ export const usePickingSession = () => {
 
     // 2. Sync Logic (Debounced)
     const saveToDb = async (items, userId, listId) => {
-        if (!userId || isSyncingRef.current) return;
+        if (!userId || isSyncingRef.current || isDemoMode) return;
         isSyncingRef.current = true;
         setIsSaving(true);
         try {
@@ -188,6 +200,12 @@ export const usePickingSession = () => {
     }, []);
 
     const completeList = useCallback(async () => {
+        if (isDemoMode) {
+            setCartItems([]);
+            setActiveListId(null);
+            localStorage.removeItem(LOCAL_STORAGE_KEY);
+            return;
+        }
         if (!activeListId || !user) return;
         setIsSaving(true);
         try {

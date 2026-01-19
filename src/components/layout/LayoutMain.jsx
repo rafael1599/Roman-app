@@ -7,7 +7,7 @@ import { UserMenu } from './UserMenu';
 
 export const LayoutMain = ({ children, onExport }) => {
     const navigate = useNavigate();
-    const { isAdmin, profile } = useAuth();
+    const { isAdmin, profile, isDemoMode, toggleDemoMode } = useAuth();
     const [isUserMenuOpen, setIsUserMenuOpen] = React.useState(false);
     const [isScrolled, setIsScrolled] = React.useState(false);
 
@@ -61,6 +61,21 @@ export const LayoutMain = ({ children, onExport }) => {
                     </div>
                 </div>
             </header>
+
+            {isDemoMode && (
+                <div className="bg-accent/10 border-b border-accent/20 px-4 py-2 flex items-center justify-between sticky top-0 z-[40] backdrop-blur-md">
+                    <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+                        <p className="text-[10px] font-black uppercase tracking-widest text-accent">Demo Mode Active</p>
+                    </div>
+                    <button
+                        onClick={toggleDemoMode}
+                        className="text-[9px] font-black uppercase tracking-widest bg-accent text-white px-3 py-1 rounded-full shadow-lg shadow-accent/20 active:scale-95 transition-all"
+                    >
+                        Exit Demo
+                    </button>
+                </div>
+            )}
 
             {/* Floating Action Button (REMOVED as it overlapped search) */}
 

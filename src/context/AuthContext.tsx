@@ -19,6 +19,8 @@ interface AuthContextType {
     signOut: () => Promise<void>;
     updateProfileName: (newName: string) => Promise<{ success: boolean; error?: string }>;
     toggleAdminView: () => void;
+    isDemoMode: boolean;
+    toggleDemoMode: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -30,6 +32,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [profile, setProfile] = useState<AuthProfile | null>(null);
     const [viewAsUser, setViewAsUser] = useState<boolean>(() => {
         return localStorage.getItem('view_as_user') === 'true';
+    });
+    const [isDemoMode, setIsDemoMode] = useState<boolean>(() => {
+        return localStorage.getItem('is_demo_mode') === 'true';
     });
 
     useEffect(() => {
@@ -94,7 +99,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     // Update last seen
     useEffect(() => {
-        if (user) {
+        if (user && !isDemoMode) {
             const updateLastSeen = async () => {
                 await supabase
                     .from('profiles')
@@ -103,7 +108,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             };
             updateLastSeen();
         }
-    }, [user?.id]);
+    }, [user?.id, isDemoMode]);
 
     const fetchProfileWithTimeout = async (userId: string, isBackground = false) => {
         const timeoutMs = 3000;
@@ -143,6 +148,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const updateProfileName = async (newName: string) => {
         if (!user) return { success: false, error: 'No user session' };
+
+        if (isDemoMode) {
+            // Simulate profile update locally
+            setProfile(prev => prev ? { ...prev, full_name: newName } : null);
+            return { success: true };
+        }
+
         try {
             const { error } = await supabase
                 .from('profiles')
@@ -176,6 +188,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         });
     };
 
+    const toggleDemoMode = () => {
+        setIsDemoMode(prev => {
+            const newValue = !prev;
+            localStorage.setItem('is_demo_mode', String(newValue));
+            // When entering/exiting demo mode, we might want to refresh the page to reset providers
+            // but for now we'll rely on the providers reacting to the change.
+            return newValue;
+        });
+    };
+
     const value = {
         user,
         role,
@@ -183,10 +205,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         isAdmin: role === 'admin' && !viewAsUser,
         isSystemAdmin: role === 'admin',
         viewAsUser,
+        isDemoMode,
         loading,
         signOut,
         updateProfileName,
-        toggleAdminView
+        toggleAdminView,
+        toggleDemoMode
     };
 
     return (

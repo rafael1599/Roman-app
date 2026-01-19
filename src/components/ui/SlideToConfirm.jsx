@@ -13,17 +13,19 @@ export const SlideToConfirm = ({
     const [thumbPosition, setThumbPosition] = useState(0);
     const [isDragging, setIsDragging] = useState(false);
 
+    // Create a ref to track the current position synchronously for event handlers
+    const positionRef = useRef(0);
+
     const containerRef = useRef(null);
     const thumbRef = useRef(null);
-    const THUMB_SIZE = 40; // Width/Height of the thumb in px (reduced from 48)
-    const PADDING = 4; // Padding inside the track
+    const THUMB_SIZE = 40;
+    const PADDING = 4;
 
     useEffect(() => {
         if (containerRef.current) {
             setSliderWidth(containerRef.current.clientWidth - PADDING * 2);
         }
 
-        // Handle resize
         const handleResize = () => {
             if (containerRef.current) {
                 setSliderWidth(containerRef.current.clientWidth - PADDING * 2);
@@ -50,6 +52,9 @@ export const SlideToConfirm = ({
 
         // Clamp
         newPos = Math.max(0, Math.min(newPos, maxDist));
+
+        // Update both ref (for logic) and state (for UI)
+        positionRef.current = newPos;
         setThumbPosition(newPos);
     };
 
@@ -58,14 +63,17 @@ export const SlideToConfirm = ({
         setIsDragging(false);
 
         const maxDist = sliderWidth - THUMB_SIZE;
-        const threshold = maxDist * 0.9;
+        const threshold = maxDist * 0.5;
 
-        if (thumbPosition >= threshold) {
+        // Use the ref to get the latest position, as state might be stale in this closure
+        if (positionRef.current >= threshold) {
+            positionRef.current = maxDist;
             setThumbPosition(maxDist);
             setIsConfirmed(true);
             onConfirm();
         } else {
             // Snap back
+            positionRef.current = 0;
             setThumbPosition(0);
         }
     };
@@ -98,12 +106,12 @@ export const SlideToConfirm = ({
             window.removeEventListener('touchmove', onTouchMove);
             window.removeEventListener('touchend', onTouchEnd);
         };
-    }, [isDragging]);
+    }, [isDragging]); // Dependencies rely on isDragging, forcing re-bind, but handleEnd captured updated ref
 
     return (
         <div
             ref={containerRef}
-            className={`relative h-12 rounded-full overflow-hidden select-none transition-all ${disabled ? 'opacity-50 grayscale cursor-not-allowed' : 'cursor-pointer'
+            className={`relative h-12 rounded-full overflow-hidden select-none transition-all touch-none ${disabled ? 'opacity-50 grayscale cursor-not-allowed' : 'cursor-pointer'
                 } ${isConfirmed ? 'bg-green-500' : 'bg-surface border border-subtle shadow-inner'}`}
             onMouseDown={onMouseDown}
             onTouchStart={onTouchStart}
