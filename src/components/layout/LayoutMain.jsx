@@ -3,13 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { BottomNavigation } from './BottomNavigation';
 import { Download, Save, Settings, User as UserIcon } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { useInventory } from '../../hooks/useInventoryData';
 import { UserMenu } from './UserMenu';
 
 export const LayoutMain = ({ children, onExport }) => {
     const navigate = useNavigate();
     const { isAdmin, profile } = useAuth();
-    const { syncInventoryLocations } = useInventory();
     const [isUserMenuOpen, setIsUserMenuOpen] = React.useState(false);
     const [isScrolled, setIsScrolled] = React.useState(false);
 
@@ -70,7 +68,6 @@ export const LayoutMain = ({ children, onExport }) => {
                 isOpen={isUserMenuOpen}
                 onClose={() => setIsUserMenuOpen(false)}
                 onExport={onExport}
-                onSync={syncInventoryLocations}
             />
 
             {/* Content */}

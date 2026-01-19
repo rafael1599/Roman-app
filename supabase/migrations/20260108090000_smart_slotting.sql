@@ -54,5 +54,7 @@ ALTER TABLE warehouse_zones ENABLE ROW LEVEL SECURITY;
 ALTER TABLE optimization_reports ENABLE ROW LEVEL SECURITY;
 
 -- Allow public access (TEMPORARY: user requested public for now)
+DROP POLICY IF EXISTS "Public enable full access zones" ON warehouse_zones;
 CREATE POLICY "Public enable full access zones" ON warehouse_zones FOR ALL USING (true);
+DROP POLICY IF EXISTS "Public enable full access reports" ON optimization_reports;
 CREATE POLICY "Public enable full access reports" ON optimization_reports FOR ALL USING (true);

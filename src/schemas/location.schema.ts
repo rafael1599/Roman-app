@@ -12,6 +12,9 @@ export const LocationSchema = z.object({
     picking_order: z.coerce.number().int().nonnegative().nullable(),
     is_active: z.boolean().default(true),
     created_at: z.string().datetime(),
+    length_ft: z.coerce.number().positive().nullable(),
+    bike_line: z.coerce.number().int().positive().nullable(),
+    total_bikes: z.coerce.number().int().positive().nullable(),
 });
 
 /**
@@ -24,6 +27,9 @@ export const LocationInputSchema = z.object({
     max_capacity: z.coerce.number().int().positive().optional(),
     picking_order: z.coerce.number().int().nonnegative().optional(),
     is_active: z.boolean().optional(),
+    length_ft: z.coerce.number().positive().optional(),
+    bike_line: z.coerce.number().int().positive().optional(),
+    total_bikes: z.coerce.number().int().positive().optional(),
 });
 
 // Type exports

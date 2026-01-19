@@ -10,6 +10,7 @@ const InventoryScreen = React.lazy(() => import('./screens/InventoryScreen').the
 const HistoryScreen = React.lazy(() => import('./screens/HistoryScreen').then(m => ({ default: m.HistoryScreen })));
 const Settings = React.lazy(() => import('./screens/Settings'));
 
+
 import { ViewModeProvider } from './context/ViewModeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LoginScreen } from './screens/LoginScreen';
@@ -33,6 +34,7 @@ const AuthenticatedContent = () => {
             <Route path="/" element={<InventoryScreen />} />
             <Route path="/history" element={<HistoryScreen />} />
             <Route path="/settings" element={<Settings />} />
+
           </Routes>
         </Suspense>
       </LayoutMain>

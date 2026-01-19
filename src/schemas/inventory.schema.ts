@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { SKUMetadataSchema } from './skuMetadata.schema';
 
 /**
  * Raw DB Schema - What Supabase returns from the 'inventory' table
@@ -39,3 +40,9 @@ export const InventoryItemInputSchema = z.object({
 export type InventoryItem = z.infer<typeof InventoryItemSchema>;
 export type InventoryItemDB = z.infer<typeof InventoryItemDBSchema>;
 export type InventoryItemInput = z.infer<typeof InventoryItemInputSchema>;
+
+export const InventoryItemWithMetadataSchema = InventoryItemSchema.extend({
+    sku_metadata: SKUMetadataSchema.nullable().optional()
+});
+
+export type InventoryItemWithMetadata = z.infer<typeof InventoryItemWithMetadataSchema>;

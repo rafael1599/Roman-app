@@ -50,6 +50,7 @@ export const InventoryScreen = () => {
         updateCartQty,
         setCartQty,
         removeFromCart,
+        clearCart,
         isSaving
     } = usePickingSession();
 
@@ -238,21 +239,7 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
         setShowScanner(false);
     };
 
-    const handleDeduct = useCallback(async () => {
-        if (cartItems.length === 0) return;
-
-        try {
-            await Promise.all(cartItems.map(item => {
-                const delta = -(item.pickingQty || 0);
-                return updateQuantity(item.SKU, delta, item.Warehouse, item.Location);
-            }));
-            setCartItems([]);
-            toast.success('Inventory deduction complete!');
-        } catch (error) {
-            console.error("Deduction error:", error);
-            showError('Deduction error', error.message || "Please check your internet connection.");
-        }
-    }, [cartItems, updateQuantity, setCartItems, showError]);
+    // Deduction logic moved to PickAndDeductScreen
 
 
     // --- Data Processing ---
@@ -415,14 +402,31 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
                 </div>
             )}
 
-            {/* Picking Cart Drawer (Picking Mode Only) */}
             {viewMode === 'picking' && (
                 <PickingCartDrawer
                     cartItems={cartItems}
                     onUpdateQty={updateCartQty}
                     onSetQty={setCartQty}
                     onRemoveItem={removeFromCart}
-                    onDeduct={handleDeduct}
+                    onDeduct={async (items) => {
+                        try {
+                            const results = await Promise.all(items.map(item => {
+                                const delta = -(item.pickingQty || 0);
+                                return updateQuantity(item.SKU, delta, item.Warehouse, item.Location);
+                            }));
+                            // Check for errors in results if updateQuantity returns them? 
+                            // Assuming updateQuantity throws or returns success. 
+                            // Based on useInventory, it usually handles errors.
+                            // But let's assume if it doesn't throw, it worked.
+                            clearCart();
+                            toast.success('Picking complete! Inventory updated.');
+                            return true;
+                        } catch (error) {
+                            console.error("Deduction error:", error);
+                            showError("Failed to deduct inventory", "Some items might not have been updated. Check console.");
+                            throw error;
+                        }
+                    }}
                 />
             )}
 

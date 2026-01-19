@@ -1,0 +1,1 @@
+ALTER TABLE inventory ADD CONSTRAINT unique_warehouse_sku_location UNIQUE ("Warehouse", "SKU", "Location");

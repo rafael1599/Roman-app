@@ -6,6 +6,12 @@ import {
     type InventoryItemInput
 } from '../schemas/inventory.schema';
 import {
+    SKUMetadataSchema,
+    SKUMetadataInputSchema,
+    type SKUMetadata,
+    type SKUMetadataInput
+} from '../schemas/skuMetadata.schema';
+import {
     LocationSchema,
     LocationInputSchema,
     type Location,
@@ -21,14 +27,43 @@ export const inventoryApi = {
     /**
      * Fetch all inventory items
      */
-    async fetchInventory(): Promise<InventoryItem[]> {
+    async fetchInventory(): Promise<any[]> {
         const { data, error } = await supabase
             .from('inventory')
             .select('*')
             .order('created_at', { ascending: false });
 
         if (error) throw error;
-        return validateArray(InventoryItemSchema, data || []);
+        // We allow raw data for now because the join makes it a nested object
+        return data || [];
+    },
+
+    /**
+     * Fetch metadata for all SKUs
+     */
+    async fetchAllMetadata(): Promise<SKUMetadata[]> {
+        const { data, error } = await supabase
+            .from('sku_metadata')
+            .select('*');
+
+        if (error) throw error;
+        return validateArray(SKUMetadataSchema, data || []);
+    },
+
+    /**
+     * Update or create SKU metadata
+     */
+    async upsertMetadata(metadata: SKUMetadataInput): Promise<SKUMetadata> {
+        const validated = validateData(SKUMetadataInputSchema, metadata);
+
+        const { data, error } = await supabase
+            .from('sku_metadata')
+            .upsert([validated], { onConflict: 'sku' })
+            .select()
+            .single();
+
+        if (error) throw error;
+        return validateData(SKUMetadataSchema, data);
     },
 
     /**

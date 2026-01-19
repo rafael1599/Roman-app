@@ -362,6 +362,48 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
                         />
                     </div>
 
+                    {/* Length (ft) */}
+                    <div>
+                        <label className="block text-sm font-semibold text-muted mb-2">
+                            Length (ft)
+                        </label>
+                        <input
+                            type="number"
+                            value={formData.length_ft || ''}
+                            onChange={(e) => setFormData(prev => ({ ...prev, length_ft: parseFloat(e.target.value) || 0 }))}
+                            className="w-full px-4 py-3 bg-main border border-subtle rounded-lg text-content focus:border-accent focus:outline-none transition-colors"
+                            placeholder="e.g. 44.0"
+                        />
+                    </div>
+
+                    {/* Bike Line */}
+                    <div>
+                        <label className="block text-sm font-semibold text-muted mb-2">
+                            Bike Line
+                        </label>
+                        <input
+                            type="number"
+                            value={formData.bike_line || ''}
+                            onChange={(e) => setFormData(prev => ({ ...prev, bike_line: parseInt(e.target.value) || 0 }))}
+                            className="w-full px-4 py-3 bg-main border border-subtle rounded-lg text-content focus:border-accent focus:outline-none transition-colors"
+                            placeholder="e.g. 55"
+                        />
+                    </div>
+
+                    {/* Total Bikes */}
+                    <div>
+                        <label className="block text-sm font-semibold text-muted mb-2">
+                            Total Bikes
+                        </label>
+                        <input
+                            type="number"
+                            value={formData.total_bikes || ''}
+                            onChange={(e) => setFormData(prev => ({ ...prev, total_bikes: parseInt(e.target.value) || 0 }))}
+                            className="w-full px-4 py-3 bg-main border border-subtle rounded-lg text-content focus:border-accent focus:outline-none transition-colors"
+                            placeholder="e.g. 275"
+                        />
+                    </div>
+
                     {/* Notas */}
                     <div>
                         <label className="block text-sm font-semibold text-muted mb-2">

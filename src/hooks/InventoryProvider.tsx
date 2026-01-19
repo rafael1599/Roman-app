@@ -5,8 +5,11 @@ import { useInventoryLogs } from './useInventoryLogs';
 import { useLocationManagement } from './useLocationManagement';
 import { inventoryService, InventoryServiceContext } from '../services/inventoryService';
 import {
-    type InventoryItem
+    type InventoryItem,
+    type InventoryItemWithMetadata
 } from '../schemas/inventory.schema';
+import { inventoryApi } from '../services/inventoryApi';
+import { type SKUMetadataInput } from '../schemas/skuMetadata.schema';
 
 interface InventoryContextType {
     inventoryData: InventoryItem[];
@@ -31,12 +34,17 @@ interface InventoryContextType {
     updateInventory: (newData: InventoryItem[]) => void;
     updateLudlowInventory: (newData: InventoryItem[]) => void;
     updateAtsInventory: (newData: InventoryItem[]) => void;
+    updateSKUMetadata: (metadata: SKUMetadataInput) => Promise<void>;
+    isAdmin: boolean;
+    user: any;
+    profile: any;
 }
 
 const InventoryContext = createContext<InventoryContextType | undefined>(undefined);
 
 export const InventoryProvider = ({ children }: { children: ReactNode }) => {
-    const [inventoryData, setInventoryData] = useState<InventoryItem[]>([]);
+    const [inventoryData, setInventoryData] = useState<InventoryItemWithMetadata[]>([]);
+    const [skuMetadataMap, setSkuMetadataMap] = useState<Record<string, any>>({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -57,25 +65,42 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
 
     // Initial Load
     useEffect(() => {
-        const loadInventory = async () => {
+        const loadAllData = async () => {
             try {
                 setLoading(true);
-                const { data, error } = await supabase
-                    .from('inventory')
-                    .select('*')
-                    .order('created_at', { ascending: false });
+                // Fetch inventory and metadata in parallel
+                const [inv, meta] = await Promise.all([
+                    inventoryApi.fetchInventory(),
+                    inventoryApi.fetchAllMetadata()
+                ]);
 
-                if (error) throw error;
-                setInventoryData(data || []);
+                // Create metadata map for quick enrichment
+                const metaMap: Record<string, any> = {};
+                meta.forEach(m => { metaMap[m.sku] = m; });
+                setSkuMetadataMap(metaMap);
+
+                // Enrich inventory with metadata
+                const enriched = inv.map(item => ({
+                    ...item,
+                    sku_metadata: metaMap[item.SKU] || item.sku_metadata
+                }));
+
+                setInventoryData(enriched || []);
             } catch (err: any) {
-                console.error('Error loading inventory:', err);
+                console.error('Error loading inventory data:', err);
                 setError(err.message);
             } finally {
                 setLoading(false);
             }
         };
-        loadInventory();
+        loadAllData();
     }, []);
+
+    // Helper to enrich a single item
+    const enrichItem = useCallback((item: any) => ({
+        ...item,
+        sku_metadata: skuMetadataMap[item.SKU] || item.sku_metadata
+    }), [skuMetadataMap]);
 
     // Real-time Subscription
     useEffect(() => {
@@ -83,10 +108,10 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
             .channel('inventory_changes')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory' }, (payload) => {
                 if (payload.eventType === 'INSERT') {
-                    setInventoryData(prev => [payload.new as InventoryItem, ...prev]);
+                    setInventoryData(prev => [enrichItem(payload.new), ...prev]);
                 } else if (payload.eventType === 'UPDATE') {
                     setInventoryData(prev => prev.map(item =>
-                        item.id === payload.new.id ? payload.new as InventoryItem : item
+                        item.id === payload.new.id ? enrichItem(payload.new) : item
                     ));
                 } else if (payload.eventType === 'DELETE') {
                     setInventoryData(prev => prev.filter(item => item.id !== payload.old.id));
@@ -279,6 +304,23 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
         return await inventoryService.syncInventoryLocations(inventoryData, locations);
     }, [inventoryData, locations]);
 
+    const updateSKUMetadata = useCallback(async (metadata: SKUMetadataInput) => {
+        try {
+            const updated = await inventoryApi.upsertMetadata(metadata);
+
+            // Update metadata map
+            setSkuMetadataMap(prev => ({ ...prev, [metadata.sku]: updated }));
+
+            // Update local state for all items with this SKU
+            setInventoryData(prev => prev.map(item =>
+                item.SKU === metadata.sku ? { ...item, sku_metadata: updated } : item
+            ));
+        } catch (err: any) {
+            console.error('Error updating SKU metadata:', err);
+            throw err;
+        }
+    }, []);
+
     const exportData = useCallback(() => {
         if (!inventoryData.length) return;
         const cleanData = inventoryData.map(({ id, created_at, ...rest }) => rest);
@@ -318,8 +360,12 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
             setInventoryData(prev => [...prev.filter(i => i.Warehouse !== 'LUDLOW'), ...newData]);
         },
         updateAtsInventory: (newData) => {
-            setInventoryData(prev => [...prev.filter(i => i.Warehouse !== 'ATS'), ...newData]);
-        }
+            setInventoryData(prev => [...prev.filter(i => i.Warehouse !== 'ATS'), ...newData] as InventoryItemWithMetadata[]);
+        },
+        updateSKUMetadata,
+        isAdmin: !!isAdmin,
+        user,
+        profile
     }), [
         inventoryData,
         locationCapacities,
@@ -333,7 +379,11 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
         undoAction,
         deleteItem,
         exportData,
-        syncInventoryLocations
+        syncInventoryLocations,
+        updateSKUMetadata,
+        isAdmin,
+        user,
+        profile
     ]);
 
     return (

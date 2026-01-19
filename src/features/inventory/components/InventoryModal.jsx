@@ -6,13 +6,15 @@ import toast from 'react-hot-toast';
 import { useConfirmation } from '../../../context/ConfirmationContext';
 
 export const InventoryModal = ({ isOpen, onClose, onSave, onDelete, initialData, mode = 'add', screenType }) => {
-    const { ludlowData, atsData } = useInventory();
+    const { ludlowData, atsData, isAdmin, updateSKUMetadata } = useInventory();
     const [formData, setFormData] = useState({
         SKU: '',
         Location: '',
         Quantity: 0,
         Location_Detail: '',
-        Warehouse: screenType || 'LUDLOW'
+        Warehouse: screenType || 'LUDLOW',
+        length_ft: 5,
+        width_in: 6
     });
     const { showConfirmation } = useConfirmation();
 
@@ -66,7 +68,9 @@ export const InventoryModal = ({ isOpen, onClose, onSave, onDelete, initialData,
                     Location: initialData.Location || '',
                     Quantity: initialData.Quantity || 0,
                     Location_Detail: initialData.Location_Detail || '',
-                    Warehouse: initialData.Warehouse || screenType || 'LUDLOW'
+                    Warehouse: initialData.Warehouse || screenType || 'LUDLOW',
+                    length_ft: initialData.sku_metadata?.length_ft ?? 5,
+                    width_in: initialData.sku_metadata?.width_in ?? 6
                 });
             } else {
                 setFormData({
@@ -74,7 +78,9 @@ export const InventoryModal = ({ isOpen, onClose, onSave, onDelete, initialData,
                     Location: '',
                     Quantity: 0,
                     Location_Detail: '',
-                    Warehouse: screenType || 'LUDLOW'
+                    Warehouse: screenType || 'LUDLOW',
+                    length_ft: 5,
+                    width_in: 6
                 });
             }
         }
@@ -108,6 +114,17 @@ export const InventoryModal = ({ isOpen, onClose, onSave, onDelete, initialData,
                 'Cancel'
             );
             return; // Prevent default submit after showing confirmation
+        }
+
+        if (isAdmin) {
+            updateSKUMetadata({
+                sku: formData.SKU,
+                length_ft: formData.length_ft,
+                width_in: formData.width_in
+            }).catch(err => {
+                console.error("Failed to save metadata:", err);
+                toast.error("Note: Item saved but dimensions failed to update.");
+            });
         }
 
         onSave(formData);
@@ -220,19 +237,49 @@ export const InventoryModal = ({ isOpen, onClose, onSave, onDelete, initialData,
                         />
                     </div>
 
+                    {/* Admin-Only Dimension Fields */}
+                    {isAdmin && (
+                        <div className="grid grid-cols-2 gap-4 p-4 bg-accent/5 rounded-xl border border-accent/10">
+                            <div>
+                                <label className="block text-[10px] font-black text-accent mb-2 uppercase tracking-widest">Length (ft) [ADMIN]</label>
+                                <input
+                                    type="number"
+                                    name="length_ft"
+                                    value={formData.length_ft}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, length_ft: parseFloat(e.target.value) || 0 }))}
+                                    className="w-full bg-main border border-subtle rounded-lg px-4 py-2 text-content focus:border-accent focus:outline-none transition-colors font-mono"
+                                    placeholder="5"
+                                    step="0.1"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-accent mb-2 uppercase tracking-widest">Width (in) [ADMIN]</label>
+                                <input
+                                    type="number"
+                                    name="width_in"
+                                    value={formData.width_in}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, width_in: parseFloat(e.target.value) || 0 }))}
+                                    className="w-full bg-main border border-subtle rounded-lg px-4 py-2 text-content focus:border-accent focus:outline-none transition-colors font-mono"
+                                    placeholder="6"
+                                    step="0.1"
+                                />
+                            </div>
+                        </div>
+                    )}
+
                     <div className="flex gap-3 mt-6">
                         {mode === 'edit' && onDelete && (
                             <button
                                 type="button"
                                 onClick={() => {
-                                showConfirmation(
-                                    'Delete Item',
-                                    'Are you sure you want to delete this item?',
-                                    () => {
-                                        onDelete();
-                                        onClose();
-                                    }
-                                );
+                                    showConfirmation(
+                                        'Delete Item',
+                                        'Are you sure you want to delete this item?',
+                                        () => {
+                                            onDelete();
+                                            onClose();
+                                        }
+                                    );
                                 }}
                                 className="flex-1 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-500 font-bold py-4 rounded-lg flex items-center justify-center gap-2 transition-all active:scale-95 touch-manipulation"
                             >
