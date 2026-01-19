@@ -11,6 +11,8 @@ export const SearchInput = ({ value, onChange, placeholder = "Search SKU or Loca
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                     placeholder={placeholder}
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     className="w-full bg-surface border border-subtle text-content rounded-lg pl-10 pr-12 py-3 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors placeholder:text-muted/50 text-lg"
                 />
 

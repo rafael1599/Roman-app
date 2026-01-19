@@ -14,7 +14,6 @@ export const LocationSchema = z.object({
     created_at: z.string().datetime(),
     length_ft: z.coerce.number().positive().nullable(),
     bike_line: z.coerce.number().int().positive().nullable(),
-    total_bikes: z.coerce.number().int().positive().nullable(),
 });
 
 /**
@@ -29,7 +28,6 @@ export const LocationInputSchema = z.object({
     is_active: z.boolean().optional(),
     length_ft: z.coerce.number().positive().optional(),
     bike_line: z.coerce.number().int().positive().optional(),
-    total_bikes: z.coerce.number().int().positive().optional(),
 });
 
 // Type exports

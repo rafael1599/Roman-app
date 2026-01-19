@@ -275,7 +275,7 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
                     <div className="mx-6 mt-6 p-3 bg-gray-800/50 border border-gray-700/50 rounded-lg flex items-start gap-3">
                         <AlertTriangle className="text-gray-400 flex-shrink-0 mt-0.5" size={16} />
                         <p className="text-gray-400 text-xs">
-                        This location has {locationInventory.length} SKU(s) with {totalUnits} total units
+                            This location has {locationInventory.length} SKU(s) with {totalUnits} total units
                         </p>
                     </div>
                 )}
@@ -390,19 +390,6 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
                         />
                     </div>
 
-                    {/* Total Bikes */}
-                    <div>
-                        <label className="block text-sm font-semibold text-muted mb-2">
-                            Total Bikes
-                        </label>
-                        <input
-                            type="number"
-                            value={formData.total_bikes || ''}
-                            onChange={(e) => setFormData(prev => ({ ...prev, total_bikes: parseInt(e.target.value) || 0 }))}
-                            className="w-full px-4 py-3 bg-main border border-subtle rounded-lg text-content focus:border-accent focus:outline-none transition-colors"
-                            placeholder="e.g. 275"
-                        />
-                    </div>
 
                     {/* Notas */}
                     <div>

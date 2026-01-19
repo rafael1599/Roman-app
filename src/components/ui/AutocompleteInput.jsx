@@ -153,6 +153,7 @@ export default function AutocompleteInput({
                             setShowSuggestions(true);
                         }
                     }}
+                    inputMode="numeric"
                     placeholder={placeholder}
                     disabled={disabled}
                     className={className || "w-full px-4 py-3 bg-main border border-subtle rounded-lg text-content placeholder-muted/50 focus:border-accent focus:outline-none transition-colors"}
