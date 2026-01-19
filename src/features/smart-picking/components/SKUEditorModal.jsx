@@ -126,12 +126,14 @@ export default function SKUEditorModal({ items, inventory, onConfirm, onCancel }
                             {/* Manual Input with Autocomplete */}
                             <div className="mb-3">
                                 <AutocompleteInput
+                                    id="inventory_sku"
                                     value={item.edited}
                                     onChange={(newValue) => updateSKU(index, newValue)}
                                     suggestions={skuSuggestions}
                                     placeholder="Enter or search SKU..."
                                     label="Corrected SKU:"
                                     minChars={1}
+                                    initialKeyboardMode="numeric"
                                     className={`w-full px-4 py-3 bg-main border rounded-lg text-content placeholder-muted/50 focus:outline-none transition-colors ${item.isValid
                                         ? 'border-green-500 focus:border-green-500'
                                         : 'border-subtle focus:border-accent'

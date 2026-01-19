@@ -1,8 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Scan, Type, Hash } from 'lucide-react';
 
 export const SearchInput = ({ value, onChange, placeholder = "Search SKU or Location...", mode = 'stock', onScanClick }) => {
-    const [isNumericMode, setIsNumericMode] = useState(true);
+    const [keyboardMode, setKeyboardMode] = useState(() => {
+        const saved = localStorage.getItem('kb_pref_main_search');
+        return saved || 'numeric';
+    });
+
+    const toggleMode = () => {
+        const newMode = keyboardMode === 'text' ? 'numeric' : 'text';
+        setKeyboardMode(newMode);
+        localStorage.setItem('kb_pref_main_search', newMode);
+    };
 
     return (
         <div className="sticky top-0 z-40 bg-main/80 backdrop-blur-md p-4 border-b border-subtle">
@@ -14,9 +23,11 @@ export const SearchInput = ({ value, onChange, placeholder = "Search SKU or Loca
                         value={value}
                         onChange={(e) => onChange(e.target.value)}
                         placeholder={placeholder}
-                        inputMode={isNumericMode ? "numeric" : "text"}
-                        pattern={isNumericMode ? "[0-9]*" : undefined}
-                        className="w-full bg-surface border border-subtle text-content rounded-lg pl-10 pr-12 py-3 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors placeholder:text-muted/50 text-lg"
+                        inputMode={keyboardMode}
+                        autoCapitalize="characters"
+                        autoCorrect="off"
+                        spellCheck="false"
+                        className="w-full bg-surface border border-subtle text-content rounded-lg pl-10 pr-12 py-3 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors placeholder:text-muted/50 text-lg font-mono"
                     />
 
                     {mode === 'picking' && (
@@ -29,11 +40,14 @@ export const SearchInput = ({ value, onChange, placeholder = "Search SKU or Loca
                     )}
                 </div>
                 <button
-                    onClick={() => setIsNumericMode(!isNumericMode)}
-                    className="flex items-center justify-center w-12 bg-surface border border-subtle text-muted hover:text-accent rounded-lg active:scale-95 transition-all"
-                    title={isNumericMode ? "Switch to Text Keyboard" : "Switch to Numeric Keyboard"}
+                    onClick={toggleMode}
+                    className={`flex items-center justify-center w-12 border rounded-lg active:scale-95 transition-all ${keyboardMode === 'numeric'
+                            ? 'bg-accent/10 border-accent/30 text-accent'
+                            : 'bg-surface border-subtle text-muted'
+                        }`}
+                    title={keyboardMode === 'numeric' ? "Switch to Text Keyboard" : "Switch to Numeric Keyboard"}
                 >
-                    {isNumericMode ? <Type size={20} /> : <Hash size={20} />}
+                    {keyboardMode === 'numeric' ? <Type size={20} /> : <Hash size={20} />}
                 </button>
             </div>
         </div>

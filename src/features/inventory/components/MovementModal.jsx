@@ -253,12 +253,14 @@ export const MovementModal = ({ isOpen, onClose, onMove, initialSourceItem }) =>
                             )}
 
                             <AutocompleteInput
+                                id="inventory_location"
                                 label="Target Location"
                                 value={formData.targetLocation}
                                 onChange={(val) => setField('targetLocation', val)}
                                 onBlur={handleBlur}
                                 suggestions={displaySuggestions.filter(s => s.value !== initialSourceItem?.Location)}
                                 placeholder="Scan or type location (e.g. '9')"
+                                initialKeyboardMode="numeric"
                                 renderItem={(suggestion) => (
                                     <div className="py-2.5 px-1">
                                         <div className="flex justify-between items-center mb-1.5">

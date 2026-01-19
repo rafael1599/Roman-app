@@ -86,7 +86,14 @@ export const InventoryModal = ({ isOpen, onClose, onSave, onDelete, initialData,
 
     // Generate Location suggestions based on the SELECTED warehouse (PLUS strict matches)
     const locationSuggestions = useMemo(() => {
-        // ... existing legacy suggestion logic (freq based) ...
+        // If user is typing, prioritize predictive matches
+        if (formData.Location && formData.Location.length > 0 && prediction.matches.length > 0) {
+            return prediction.matches.map(locName => ({
+                value: locName,
+                info: `Database Location`
+            }));
+        }
+
         const locationMap = new Map();
         currentInventory.forEach(item => {
             if (item.Location) {
@@ -101,15 +108,12 @@ export const InventoryModal = ({ isOpen, onClose, onSave, onDelete, initialData,
                 loc.totalQty += parseInt(item.Quantity) || 0;
             }
         });
-        const legacy = Array.from(locationMap.entries()).map(([location, data]) => ({
+
+        return Array.from(locationMap.entries()).map(([location, data]) => ({
             value: location,
             info: `${data.count} item${data.count !== 1 ? 's' : ''} • ${data.totalQty} total units`
         }));
-
-        // If strict match logic has results, prioritize them? 
-        // For now, let's keep legacy suggestions but maybe add predictive later.
-        return legacy;
-    }, [currentInventory]);
+    }, [currentInventory, formData.Location, prediction.matches]);
 
     useEffect(() => {
         if (isOpen) {
@@ -140,10 +144,6 @@ export const InventoryModal = ({ isOpen, onClose, onSave, onDelete, initialData,
 
     if (!isOpen) return null;
 
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
-    };
 
     const handleWarehouseChange = (wh) => {
         setFormData(prev => ({ ...prev, Warehouse: wh }));
@@ -249,12 +249,14 @@ export const InventoryModal = ({ isOpen, onClose, onSave, onDelete, initialData,
 
                     {/* SKU with Autocomplete */}
                     <AutocompleteInput
+                        id="inventory_sku"
                         label="SKU"
                         value={formData.SKU}
                         onChange={(value) => setFormData(prev => ({ ...prev, SKU: value }))}
                         suggestions={skuSuggestions}
                         placeholder="Enter SKU..."
                         minChars={2}
+                        initialKeyboardMode="numeric"
                         onSelect={(suggestion) => {
                             const item = currentInventory.find(i => i.SKU === suggestion.value);
                             if (item && mode === 'add') {
@@ -272,6 +274,7 @@ export const InventoryModal = ({ isOpen, onClose, onSave, onDelete, initialData,
                         {/* Location with Autocomplete & Strict Validation */}
                         <div className="flex flex-col gap-2">
                             <AutocompleteInput
+                                id="inventory_location"
                                 label="Location"
                                 value={formData.Location}
                                 onChange={(value) => setFormData(prev => ({ ...prev, Location: value }))}
@@ -279,6 +282,7 @@ export const InventoryModal = ({ isOpen, onClose, onSave, onDelete, initialData,
                                 suggestions={locationSuggestions}
                                 placeholder="Row/Bin..."
                                 minChars={1}
+                                initialKeyboardMode="numeric"
                             />
 
                             {/* New Location Warning with Explicit Confirmation */}
@@ -326,19 +330,15 @@ export const InventoryModal = ({ isOpen, onClose, onSave, onDelete, initialData,
                     </div>
 
                     {/* Location Detail */}
-                    <div>
-                        <label className="block text-sm font-semibold text-accent mb-2 flex justify-between">
-                            <span>Location Detail</span>
-                            <span className="text-xs text-muted font-bold uppercase">Optional</span>
-                        </label>
-                        <input
-                            name="Location_Detail"
-                            value={formData.Location_Detail}
-                            onChange={handleChange}
-                            className="w-full bg-main border border-subtle rounded-lg px-4 py-3 text-content focus:border-accent focus:outline-none transition-colors font-mono text-accent"
-                            placeholder="e.g. A6-19..."
-                        />
-                    </div>
+                    <AutocompleteInput
+                        id="location_detail"
+                        label="Location Detail"
+                        value={formData.Location_Detail}
+                        onChange={(value) => setFormData(prev => ({ ...prev, Location_Detail: value }))}
+                        suggestions={[]}
+                        placeholder="e.g. A6-19..."
+                        initialKeyboardMode="text"
+                    />
 
                     {/* Admin-Only Dimension Fields */}
                     {isAdmin && (

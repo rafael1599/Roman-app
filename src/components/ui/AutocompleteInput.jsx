@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, X } from 'lucide-react';
+import { Search, X, Hash, Type } from 'lucide-react';
 
 /**
  * Autocomplete Input Component
@@ -8,6 +8,7 @@ import { Search, X } from 'lucide-react';
  * Desktop: Shows dropdown below input
  */
 export default function AutocompleteInput({
+    id, // Added for persistence
     value,
     onChange,
     suggestions = [],
@@ -18,13 +19,22 @@ export default function AutocompleteInput({
     disabled = false,
     className = '',
     renderItem = null,
-    onBlur
+    onBlur,
+    initialKeyboardMode = 'text' // 'text' or 'numeric'
 }) {
     const [inputValue, setInputValue] = useState(value || '');
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [filteredSuggestions, setFilteredSuggestions] = useState([]);
     const [selectedIndex, setSelectedIndex] = useState(-1);
     const [isMobile, setIsMobile] = useState(false);
+
+    // Keyboard mode persistence logic
+    const [keyboardMode, setKeyboardMode] = useState(() => {
+        if (!id) return initialKeyboardMode;
+        const saved = localStorage.getItem(`kb_pref_${id}`);
+        return saved || initialKeyboardMode;
+    });
+
     const inputRef = useRef(null);
     const dropdownRef = useRef(null);
 
@@ -132,6 +142,30 @@ export default function AutocompleteInput({
         inputRef.current?.focus();
     };
 
+    const toggleKeyboardMode = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const newMode = keyboardMode === 'text' ? 'numeric' : 'text';
+        setKeyboardMode(newMode);
+
+        if (id) {
+            localStorage.setItem(`kb_pref_${id}`, newMode);
+        }
+
+        // Force mobile keyboard refresh by cycling focus
+        if (inputRef.current && isMobile) {
+            const currentVal = inputRef.current.value;
+            inputRef.current.blur();
+            // Micro-task to ensure OS registers the blur
+            setTimeout(() => {
+                inputRef.current.focus();
+                // Maintain cursor position at the end
+                inputRef.current.setSelectionRange(currentVal.length, currentVal.length);
+            }, 50);
+        }
+    };
+
     return (
         <div className="relative">
             {/* Label */}
@@ -160,26 +194,50 @@ export default function AutocompleteInput({
                             if (onBlur) onBlur(e.target.value);
                         }, 200);
                     }}
-                    inputMode="numeric"
+                    inputMode={keyboardMode}
+                    autoCapitalize="characters"
+                    autoCorrect="off"
+                    spellCheck="false"
                     placeholder={placeholder}
                     disabled={disabled}
-                    className={className || "w-full px-4 py-3 bg-main border border-subtle rounded-lg text-content placeholder-muted/50 focus:border-accent focus:outline-none transition-colors"}
+                    className={`${className || "w-full px-4 py-3 bg-main border border-subtle rounded-lg text-content placeholder-muted/50 focus:border-accent focus:outline-none transition-colors font-mono"} ${isMobile ? 'pr-20' : 'pr-10'}`}
                 />
 
-                {/* Clear button */}
-                {inputValue && !disabled && (
-                    <button
-                        onClick={handleClear}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
-                    >
-                        <X size={18} />
-                    </button>
-                )}
+                {/* Control Actions Container */}
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                    {/* Keyboard Mode Toggle (Mobile Only) */}
+                    {isMobile && !disabled && (
+                        <button
+                            type="button"
+                            onClick={toggleKeyboardMode}
+                            className={`p-2 rounded-md transition-all active:scale-90 ${keyboardMode === 'numeric'
+                                ? 'bg-accent/20 text-accent border border-accent/30'
+                                : 'bg-surface text-muted border border-subtle'
+                                }`}
+                            title={`Switch to ${keyboardMode === 'text' ? 'Numeric' : 'Text'} keyboard`}
+                        >
+                            {keyboardMode === 'text' ? <Hash size={18} /> : <Type size={18} />}
+                        </button>
+                    )}
 
-                {/* Search icon when empty */}
-                {!inputValue && (
-                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-muted" size={18} />
-                )}
+                    {/* Clear button */}
+                    {inputValue && !disabled && (
+                        <button
+                            type="button"
+                            onClick={handleClear}
+                            className="p-2 text-muted hover:text-content transition-colors"
+                        >
+                            <X size={18} />
+                        </button>
+                    )}
+
+                    {/* Search icon when empty and not mobile (or if search is preferred) */}
+                    {!inputValue && !isMobile && (
+                        <div className="p-2 text-muted pointer-events-none">
+                            <Search size={18} />
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* Desktop Dropdown */}
@@ -210,7 +268,7 @@ export default function AutocompleteInput({
 
             {/* Mobile Modal */}
             {showSuggestions && isMobile && filteredSuggestions.length > 0 && (
-                <div className="fixed inset-0 bg-black/95 z-50 flex flex-col">
+                <div className="fixed inset-0 bg-black/95 z-[100] flex flex-col">
                     {/* Header */}
                     <div className="bg-main border-b border-subtle p-4 flex items-center justify-between">
                         <div className="flex items-center gap-2">
