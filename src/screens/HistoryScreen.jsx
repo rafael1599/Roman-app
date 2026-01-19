@@ -16,7 +16,9 @@ import {
     Search,
     Filter,
     Mail,
-    Package
+    Package,
+    User,
+    Users
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 // jspdf and autoTable are imported dynamically in handleDownloadReport
@@ -33,6 +35,7 @@ export const HistoryScreen = () => {
     const [logs, setLogs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('ALL');
+    const [userFilter, setUserFilter] = useState('ALL');
     const [searchQuery, setSearchQuery] = useState('');
     const [error, setError] = useState(null);
 
@@ -101,9 +104,15 @@ export const HistoryScreen = () => {
         return logs;
     }, [isDemoMode, demoLogs, logs]);
 
+    const uniqueUsers = useMemo(() => {
+        const users = new Set(workingLogs.map(log => log.performed_by).filter(Boolean));
+        return Array.from(users).sort();
+    }, [workingLogs]);
+
     const filteredLogs = useMemo(() => {
         return workingLogs
             .filter(log => filter === 'ALL' || log.action_type === filter)
+            .filter(log => userFilter === 'ALL' || log.performed_by === userFilter)
             .filter(log => {
                 // If not admin, hide undone (reversed) actions
                 if (!isAdmin && log.is_reversed) return false;
@@ -475,6 +484,35 @@ export const HistoryScreen = () => {
                                 }`}
                         >
                             {f === 'DEDUCT' ? 'Picking' : f}
+                        </button>
+                    ))}
+                </div>
+
+                {/* User Filters */}
+                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide items-center">
+                    <div className="shrink-0 p-2 bg-surface/50 rounded-full border border-subtle">
+                        <Users size={14} className="text-muted" />
+                    </div>
+                    <button
+                        onClick={() => setUserFilter('ALL')}
+                        className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border shrink-0 ${userFilter === 'ALL'
+                            ? 'bg-content text-main border-content'
+                            : 'bg-surface text-muted border-subtle hover:border-muted/30'
+                            }`}
+                    >
+                        All Users
+                    </button>
+                    {uniqueUsers.map(user => (
+                        <button
+                            key={user}
+                            onClick={() => setUserFilter(user)}
+                            className={`px-4 py-2 rounded-full text-[10px] font-bold transition-all border shrink-0 flex items-center gap-2 ${userFilter === user
+                                ? 'bg-content text-main border-content shadow-lg'
+                                : 'bg-surface text-muted border-subtle hover:border-muted/30'
+                                }`}
+                        >
+                            <User size={10} />
+                            {user}
                         </button>
                     ))}
                 </div>
