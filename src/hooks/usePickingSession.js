@@ -9,6 +9,7 @@ export const usePickingSession = () => {
     const { user, isDemoMode } = useAuth();
     const [cartItems, setCartItems] = useState([]);
     const [activeListId, setActiveListId] = useState(null);
+    const [orderNumber, setOrderNumber] = useState(null);
     const [isLoaded, setIsLoaded] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [lastSaved, setLastSaved] = useState(null);
@@ -26,6 +27,8 @@ export const usePickingSession = () => {
                     try {
                         const parsed = JSON.parse(localData);
                         setCartItems(parsed || []);
+                        const localOrder = localStorage.getItem('picking_order_number');
+                        if (localOrder) setOrderNumber(localOrder);
                     } catch (e) { }
                 }
                 setIsLoaded(true);
@@ -41,7 +44,7 @@ export const usePickingSession = () => {
                 // Fetch active list from DB
                 const { data, error } = await supabase
                     .from('picking_lists')
-                    .select('id, items')
+                    .select('id, items, order_number')
                     .eq('user_id', user.id)
                     .eq('status', 'active')
                     .order('updated_at', { ascending: false })
@@ -55,6 +58,7 @@ export const usePickingSession = () => {
                 if (data) {
                     setCartItems(data.items || []);
                     setActiveListId(data.id);
+                    setOrderNumber(data.order_number);
                 } else {
                     // Check LocalStorage for migration or new session
                     const localData = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -81,7 +85,7 @@ export const usePickingSession = () => {
     }, [user]);
 
     // 2. Sync Logic (Debounced)
-    const saveToDb = async (items, userId, listId) => {
+    const saveToDb = async (items, userId, listId, orderNum) => {
         if (!userId || isSyncingRef.current || isDemoMode) return;
         isSyncingRef.current = true;
         setIsSaving(true);
@@ -90,14 +94,14 @@ export const usePickingSession = () => {
                 // Update existing
                 const { error } = await supabase
                     .from('picking_lists')
-                    .update({ items: items })
+                    .update({ items: items, order_number: orderNum })
                     .eq('id', listId);
                 if (error) throw error;
             } else if (items.length > 0) {
                 // Create new active list
                 const { data, error } = await supabase
                     .from('picking_lists')
-                    .insert({ user_id: userId, items: items, status: 'active' })
+                    .insert({ user_id: userId, items: items, status: 'active', order_number: orderNum })
                     .select()
                     .single();
 
@@ -123,6 +127,11 @@ export const usePickingSession = () => {
         } else {
             localStorage.removeItem(LOCAL_STORAGE_KEY);
         }
+        if (orderNumber) {
+            localStorage.setItem('picking_order_number', orderNumber);
+        } else {
+            localStorage.removeItem('picking_order_number');
+        }
 
         // Skip DB sync if nothing to sync and we haven't synced before
         if (cartItems.length === 0 && !activeListId && isInitialSyncRef.current) {
@@ -133,12 +142,12 @@ export const usePickingSession = () => {
         if (pendingSaveRef.current) clearTimeout(pendingSaveRef.current);
 
         pendingSaveRef.current = setTimeout(() => {
-            saveToDb(cartItems, user.id, activeListId);
+            saveToDb(cartItems, user.id, activeListId, orderNumber);
             isInitialSyncRef.current = false;
         }, SYNC_DEBOUNCE_MS);
 
         return () => clearTimeout(pendingSaveRef.current);
-    }, [cartItems, isLoaded, user, activeListId]);
+    }, [cartItems, isLoaded, user, activeListId, orderNumber]);
 
     // 3. Actions
     // Helper to match items (by ID if available, otherwise SKU+Loc)
@@ -230,6 +239,8 @@ export const usePickingSession = () => {
         cartItems,
         setCartItems,
         activeListId,
+        orderNumber,
+        setOrderNumber,
         addToCart,
         updateCartQty,
         setCartQty,

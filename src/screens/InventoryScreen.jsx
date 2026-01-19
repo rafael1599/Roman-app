@@ -71,6 +71,8 @@ export const InventoryScreen = () => {
     const {
         cartItems,
         activeListId,
+        orderNumber,
+        setOrderNumber,
         setCartItems,
         addToCart,
         updateCartQty,
@@ -471,6 +473,8 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
                     <PickingCartDrawer
                         cartItems={cartItems}
                         activeListId={activeListId}
+                        orderNumber={orderNumber}
+                        onUpdateOrderNumber={setOrderNumber}
                         onUpdateQty={updateCartQty}
                         onSetQty={setCartQty}
                         onRemoveItem={removeFromCart}
@@ -480,7 +484,7 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
                             try {
                                 await Promise.all(items.map(item => {
                                     const delta = -(item.pickingQty || 0);
-                                    return updateQuantity(item.SKU, delta, item.Warehouse, item.Location, false, activeListId);
+                                    return updateQuantity(item.SKU, delta, item.Warehouse, item.Location, false, activeListId, orderNumber);
                                 }));
 
                                 await completeList();

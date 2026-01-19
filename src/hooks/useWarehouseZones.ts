@@ -237,17 +237,10 @@ export const useWarehouseZones = () => {
                 a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
             );
 
-            const thirdSize = Math.ceil(sorted.length / 3);
-
-            sorted.forEach((location, index) => {
+            sorted.forEach((location) => {
                 let zone: ZoneType;
-                if (index < thirdSize) {
-                    zone = 'COLD'; // First third = farthest = picked first
-                } else if (index < thirdSize * 2) {
-                    zone = 'WARM'; // Middle third
-                } else {
-                    zone = 'HOT'; // Last third = nearest = picked last
-                }
+                // Temporarily disabled: Route all to UNASSIGNED until full logic is complete
+                zone = 'UNASSIGNED';
 
                 updates.push({ warehouse: warehouse as 'LUDLOW' | 'ATS', location, zone });
             });

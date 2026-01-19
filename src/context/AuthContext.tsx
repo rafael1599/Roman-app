@@ -97,6 +97,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         };
     }, []);
 
+    // Force disable demo mode for non-admins
+    useEffect(() => {
+        if (role && role !== 'admin' && isDemoMode) {
+            console.warn('Unauthorized Demo Mode detected. Force disabling.');
+            setIsDemoMode(false);
+            localStorage.removeItem('is_demo_mode');
+        }
+    }, [role, isDemoMode]);
+
     // Update last seen
     useEffect(() => {
         if (user && !isDemoMode) {
@@ -135,6 +144,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 setRole(profileData.role);
                 setProfile(profileData);
                 localStorage.setItem(`role_${userId}`, profileData.role);
+
+                // FORCE DISABLE DEMO MODE FOR NON-ADMINS
+                if (profileData.role !== 'admin' && isDemoMode) {
+                    setIsDemoMode(false);
+                    localStorage.removeItem('is_demo_mode');
+                }
             } else {
                 if (!isBackground) setRole('staff');
             }
@@ -189,11 +204,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     const toggleDemoMode = () => {
+        if (role !== 'admin') {
+            console.error('Only admins can toggle demo mode');
+            return;
+        }
         setIsDemoMode(prev => {
             const newValue = !prev;
             localStorage.setItem('is_demo_mode', String(newValue));
-            // When entering/exiting demo mode, we might want to refresh the page to reset providers
-            // but for now we'll rely on the providers reacting to the change.
             return newValue;
         });
     };

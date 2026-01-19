@@ -43,16 +43,22 @@ export const HistoryScreen = () => {
         try {
             setLoading(true);
             setError(null);
-            // Fetch logs for "Today" specifically for the report, or just all recent
-            // For the screen, we limit to 100. For the report, we might need all of today.
+
             const { data, error: sbError } = await supabase
                 .from('inventory_logs')
-                .select('*')
+                .select('*, picking_lists(order_number)')
                 .order('created_at', { ascending: false })
-                .limit(200); // Increased limit slightly
+                .limit(200);
 
             if (sbError) throw sbError;
-            setLogs(data || []);
+
+            // Flatten the structure for easier usage
+            const formattedLogs = (data || []).map(log => ({
+                ...log,
+                order_number: log.picking_lists?.order_number
+            }));
+
+            setLogs(formattedLogs);
         } catch (err) {
             console.error('Fetch logs failed:', err);
             setError(err.message);
@@ -127,9 +133,11 @@ export const HistoryScreen = () => {
                 return !searchQuery ||
                     log.sku?.toLowerCase().includes(query) ||
                     log.from_location?.toLowerCase().includes(query) ||
-                    log.to_location?.toLowerCase().includes(query);
+                    log.to_location?.toLowerCase().includes(query) ||
+                    log.order_number?.toLowerCase().includes(query) ||
+                    (log.list_id && log.list_id.toLowerCase().includes(query));
             });
-    }, [workingLogs, filter, searchQuery, isAdmin]);
+    }, [workingLogs, filter, userFilter, searchQuery, isAdmin]);
 
     const groupedLogs = useMemo(() => {
         const groups = {};
@@ -176,7 +184,11 @@ export const HistoryScreen = () => {
         switch (type) {
             case 'MOVE': return { icon: <MoveIcon size={14} />, color: 'text-blue-500', bg: 'bg-blue-500/10', label: 'Relocate' };
             case 'ADD': return { icon: <Plus size={14} />, color: 'text-green-500', bg: 'bg-green-500/10', label: 'Restock' };
-            case 'DEDUCT': return { icon: <Minus size={14} />, color: 'text-red-500', bg: 'bg-red-500/10', label: log.list_id ? 'Order Pick' : 'Manual Pick' };
+            case 'DEDUCT':
+                const orderLabel = log.order_number
+                    ? `ORDER #${log.order_number}`
+                    : (log.list_id ? `ORDER #${log.list_id.slice(-6).toUpperCase()}` : 'Manual Pick');
+                return { icon: <Minus size={14} />, color: 'text-red-500', bg: 'bg-red-500/10', label: orderLabel };
             case 'DELETE': return { icon: <Trash2 size={14} />, color: 'text-muted', bg: 'bg-surface', label: 'Remove' };
             default: return { icon: <Clock size={14} />, color: 'text-muted', bg: 'bg-surface', label: 'Update' };
         }
@@ -628,18 +640,12 @@ export const HistoryScreen = () => {
                                             {(log.prev_quantity !== null && log.new_quantity !== null && isAdmin) && (
                                                 <div className="mt-4 flex gap-4 text-[8px] font-black uppercase tracking-widest opacity-20 border-t border-subtle pt-2 text-muted">
                                                     <span>Stock: {log.prev_quantity} → {log.new_quantity}</span>
-                                                    {log.list_id && (
-                                                        <span className="text-accent opacity-100 flex items-center gap-1 font-mono">
-                                                            <Package size={8} /> LIST ID: {log.list_id.slice(-6).toUpperCase()}
-                                                        </span>
-                                                    )}
+                                                    <span className="text-accent opacity-100 flex items-center gap-1 font-mono">
+                                                        {/* Details moved to header */}
+                                                    </span>
                                                 </div>
                                             )}
-                                            {log.list_id && !isAdmin && (
-                                                <div className="mt-4 flex gap-4 text-[8px] font-black uppercase tracking-widest opacity-40 border-t border-subtle pt-2 text-accent font-mono">
-                                                    <Package size={8} className="translate-y-[1px]" /> SESIÓN DE PICKING: #{log.list_id.slice(-6).toUpperCase()}
-                                                </div>
-                                            )}
+                                            {/* Order details removed from here as they are now in the header label */}
                                         </div>
                                     );
                                 })}

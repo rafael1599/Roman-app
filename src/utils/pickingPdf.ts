@@ -4,7 +4,10 @@ import autoTable from 'jspdf-autotable';
 /**
  * Generates a Picking List PDF grouped by pallets.
  */
-export const generatePickingPdf = (pallets: any[]) => {
+/**
+ * Generates a Picking List PDF based on a pre-ordered sequence.
+ */
+export const generatePickingPdf = (finalSequence: any[], orderNumber?: string, totalPallets: number = 0) => {
     const doc = new jsPDF('p', 'mm', 'a4');
     const today = new Intl.DateTimeFormat('en-US', {
         year: 'numeric',
@@ -23,47 +26,59 @@ export const generatePickingPdf = (pallets: any[]) => {
     doc.setFontSize(10);
     doc.setTextColor(100, 100, 100);
     doc.text(`Generated: ${today}`, 15, 27);
-    doc.text(`Total Pallets: ${pallets.length}`, 15, 32);
 
     let startY = 40;
+    if (orderNumber) {
+        doc.text(`Order Number: #${orderNumber}`, 15, 32);
+        doc.text(`Total Pallets: ${totalPallets}`, 15, 37);
+        startY = 45;
+    } else {
+        doc.text(`Total Pallets: ${totalPallets}`, 15, 32);
+    }
 
-    pallets.forEach((pallet) => {
-        // Check if we need a new page
-        if (startY > 250) {
-            doc.addPage();
-            startY = 20;
-        }
+    // --- Picking Sequence Table ---
+    const verifiedCount = finalSequence.filter(item => item.isPicked).length;
 
+    const sequenceData = finalSequence.map((item, idx) => [
+        (idx + 1).toString(),
+        item.SKU,
+        item.Location,
+        item.Warehouse || '',
+        `P${item.palletId}`,
+        item.pickingQty?.toString() || '0',
+        item.isPicked ? 'Yes' : ''
+    ]);
+
+    if (sequenceData.length > 0) {
         doc.setFontSize(14);
         doc.setTextColor(0, 0, 0);
-        doc.text(`PALLET #${pallet.id} (${pallet.totalUnits} items)`, 15, startY);
+        doc.text(`PICKING SEQUENCE (Verified: ${verifiedCount}/${finalSequence.length})`, 15, startY);
         startY += 5;
-
-        const tableData = pallet.items.map((item: any) => [
-            item.SKU,
-            item.Location,
-            item.Warehouse,
-            item.pickingQty,
-            '' // Checkbox column
-        ]);
 
         autoTable(doc, {
             startY: startY,
-            head: [['SKU', 'Location', 'Warehouse', 'Qty', 'Picked']],
-            body: tableData,
-            theme: 'grid',
-            headStyles: { fillColor: [52, 152, 219], textColor: 255 },
-            styles: { fontSize: 10, cellPadding: 3 },
+            head: [['#', 'SKU', 'Location', 'Warehouse', 'Pallet', 'Qty', 'Picked']],
+            body: sequenceData,
+            theme: 'striped',
+            headStyles: { fillColor: [40, 40, 40], textColor: 255 },
+            styles: { fontSize: 9, cellPadding: 3 },
             columnStyles: {
-                0: { fontStyle: 'bold' },
-                3: { halign: 'center', fontStyle: 'bold' },
-                4: { cellWidth: 20 }
+                0: { cellWidth: 10, halign: 'center' },
+                1: { fontStyle: 'bold' },
+                4: { halign: 'center' },
+                5: { halign: 'center', fontStyle: 'bold' },
+                6: { fontStyle: 'bold', halign: 'center' }
             },
             margin: { left: 15, right: 15 }
         });
 
         startY = (doc as any).lastAutoTable.finalY + 15;
-    });
+    }
+
+    // Optional: Group by pallets if needed, but the user asked for "filament by filament" based on finalSequence.
+    // However, for clarity, we can still show a summary or just stick to the sequence as requested.
+    // The user said: "Simplemente recibirá esta finalSequence y la imprimirá tal cual fila por fila."
+    // So I will stop here to keep it "dumb".
 
     doc.save(`picking_list_${new Date().toISOString().replace(/[:.]/g, '-')}.pdf`);
 };

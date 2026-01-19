@@ -85,13 +85,10 @@ export const sortByZoneThenAlpha = (locations, getZone) => {
 /**
  * Calculate the zone based on index and total count (1/3 division)
  */
-export const calculateZoneFromIndex = (index, total) => {
-    if (total === 0) return 'UNASSIGNED';
-    const thirdSize = Math.ceil(total / 3);
+export const calculateZoneFromIndex = () => {
 
-    if (index < thirdSize) return 'COLD';
-    if (index < thirdSize * 2) return 'WARM';
-    return 'HOT';
+    // Temporarily disabled: Route all to UNASSIGNED until full logic is complete
+    return 'UNASSIGNED';
 };
 
 /**

@@ -1,18 +1,22 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { Package, Warehouse, MapPin, Printer, Minus, Plus, Trash2, ChevronDown } from 'lucide-react';
+import { Package, Warehouse, MapPin, Printer, Minus, Plus, Trash2, ChevronDown, Check } from 'lucide-react';
 import { getOptimizedPickingPath, calculatePallets } from '../../../utils/pickingLogic';
 import { generatePickingPdf } from '../../../utils/pickingPdf';
 import { useLocationManagement } from '../../../hooks/useLocationManagement';
 import { SlideToConfirm } from '../../../components/ui/SlideToConfirm';
 import { useError } from '../../../context/ErrorContext';
 
-export const PickingSessionView = ({ cartItems, activeListId, onDeduct, onUpdateQty, onRemoveItem, onClose }) => {
+export const PickingSessionView = ({ cartItems, activeListId, orderNumber, onUpdateOrderNumber, onDeduct, onUpdateQty, onRemoveItem, onClose }) => {
     const { locations } = useLocationManagement();
     const { showError } = useError();
     const [isDeducting, setIsDeducting] = useState(false);
     const [editingItemKey, setEditingItemKey] = useState(null);
     const [editingQuantity, setEditingQuantity] = useState('');
+    const [isEditingOrder, setIsEditingOrder] = useState(false);
+    const [tempOrder, setTempOrder] = useState('');
+    const [checkedItems, setCheckedItems] = useState(new Set());
     const inputRef = useRef(null);
+    const orderInputRef = useRef(null);
 
     const optimizedItems = useMemo(() => {
         return getOptimizedPickingPath(cartItems, locations);
@@ -32,6 +36,13 @@ export const PickingSessionView = ({ cartItems, activeListId, onDeduct, onUpdate
             inputRef.current.select();
         }
     }, [editingItemKey]);
+
+    useEffect(() => {
+        if (isEditingOrder && orderInputRef.current) {
+            orderInputRef.current.focus();
+            orderInputRef.current.select();
+        }
+    }, [isEditingOrder]);
 
     const getItemKey = (palletId, item) => `${palletId}-${item.SKU}-${item.Location}`;
 
@@ -69,6 +80,60 @@ export const PickingSessionView = ({ cartItems, activeListId, onDeduct, onUpdate
         }
     };
 
+    const handleOrderClick = () => {
+        setTempOrder(orderNumber || activeListId?.slice(-6).toUpperCase() || '');
+        setIsEditingOrder(true);
+    };
+
+    const handleOrderSubmit = () => {
+        if (tempOrder.trim()) {
+            onUpdateOrderNumber(tempOrder.trim());
+        }
+        setIsEditingOrder(false);
+    };
+
+    const handleOrderKeyDown = (e) => {
+        if (e.key === 'Enter') {
+            handleOrderSubmit();
+        } else if (e.key === 'Escape') {
+            setIsEditingOrder(false);
+        }
+    };
+
+    const toggleCheck = (item, palletId) => {
+        const key = getItemKey(palletId, item);
+
+        setCheckedItems(prev => {
+            const next = new Set(prev);
+            if (next.has(key)) {
+                next.delete(key);
+            } else {
+                next.add(key);
+            }
+            return next;
+        });
+    };
+
+    const finalSequence = useMemo(() => {
+        const sequence = [];
+        cartItems.forEach(cartItem => {
+            // Find all instances of this item across all pallets (in case it was split)
+            pallets.forEach(p => {
+                const palletItem = p.items.find(pi => pi.SKU === cartItem.SKU && pi.Location === cartItem.Location);
+                if (palletItem) {
+                    const key = getItemKey(p.id, palletItem);
+                    sequence.push({
+                        ...palletItem,
+                        key,
+                        palletId: p.id,
+                        isPicked: checkedItems.has(key)
+                    });
+                }
+            });
+        });
+        return sequence;
+    }, [cartItems, pallets, checkedItems]);
+
     const handleConfirm = async () => {
         setIsDeducting(true);
         try {
@@ -94,9 +159,23 @@ export const PickingSessionView = ({ cartItems, activeListId, onDeduct, onUpdate
                 <div className="flex-1 mx-2">
                     <div className="flex items-center justify-center gap-2">
                         <h2 className="text-base font-black text-content uppercase tracking-tight">Review Pick List</h2>
-                        {activeListId && (
-                            <span className="text-[9px] font-mono bg-accent/10 text-accent px-1.5 py-0.5 rounded border border-accent/20">
-                                #{activeListId.slice(-6).toUpperCase()}
+                        {isEditingOrder ? (
+                            <input
+                                ref={orderInputRef}
+                                type="text"
+                                value={tempOrder}
+                                onChange={(e) => setTempOrder(e.target.value)}
+                                onBlur={handleOrderSubmit}
+                                onKeyDown={handleOrderKeyDown}
+                                className="text-[9px] font-mono bg-accent/10 text-accent px-1.5 py-0.5 rounded border border-accent/20 w-20 focus:outline-none focus:border-accent"
+                                placeholder="#"
+                            />
+                        ) : (
+                            <span
+                                onClick={handleOrderClick}
+                                className="text-[9px] font-mono bg-accent/10 text-accent px-1.5 py-0.5 rounded border border-accent/20 cursor-pointer hover:bg-accent/20 transition-colors"
+                            >
+                                {orderNumber ? `#${orderNumber}` : (activeListId ? `#${activeListId.slice(-6).toUpperCase()}` : 'SET ORDER #')}
                             </span>
                         )}
                     </div>
@@ -105,7 +184,7 @@ export const PickingSessionView = ({ cartItems, activeListId, onDeduct, onUpdate
                     </p>
                 </div>
                 <button
-                    onClick={() => generatePickingPdf(pallets)}
+                    onClick={() => generatePickingPdf(finalSequence, orderNumber, pallets.length)}
                     className="p-2 bg-surface border border-subtle text-content rounded-xl hover:border-accent transition-all shrink-0"
                     title="Download PDF"
                 >
@@ -147,28 +226,38 @@ export const PickingSessionView = ({ cartItems, activeListId, onDeduct, onUpdate
                                         key={`${pallet.id}-${item.SKU}-${item.Location}`}
                                         className="bg-surface/50 border border-subtle rounded-xl p-2 hover:border-accent/30 transition-all"
                                     >
-                                        {/* Location Badge - Most Prominent */}
-                                        <div className="flex items-center justify-between mb-2 pb-2 border-b border-accent/20">
+                                        <div className="flex items-center justify-between gap-2 mb-1">
                                             <span className="text-[10px] text-muted font-bold uppercase tracking-widest">{item.Warehouse}</span>
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-lg font-black text-accent uppercase tracking-tight">{item.Location}</span>
-                                                <div className="w-7 h-7 bg-accent/10 rounded-lg flex items-center justify-center border border-accent/30">
-                                                    <MapPin className="w-4 h-4 text-accent" />
-                                                </div>
+                                            <div className="flex items-center gap-1 px-1.5 py-0.5 bg-accent/10 border border-accent/20 rounded">
+                                                <MapPin size={10} className="text-accent" />
+                                                <span className="text-[10px] text-accent font-black uppercase">{item.Location}</span>
                                             </div>
                                         </div>
 
                                         {/* SKU and Stock Info */}
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <div className="w-8 h-8 bg-main rounded-lg flex items-center justify-center border border-subtle shrink-0">
-                                                <Package className="w-4 h-4 text-muted" />
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="font-bold text-content text-sm truncate">{item.SKU}</div>
-                                                <div className="text-[9px] text-muted font-bold uppercase tracking-tighter">
-                                                    Stock: {maxStock}
+                                        <div className="flex items-center justify-between gap-2 mb-2">
+                                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                                                <div className="w-8 h-8 bg-main rounded-lg flex items-center justify-center border border-subtle shrink-0">
+                                                    <Package className="w-4 h-4 text-muted" />
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <div className="font-bold text-content text-sm truncate">{item.SKU}</div>
+                                                    <div className="text-[9px] text-muted font-bold uppercase tracking-tighter">
+                                                        Stock: {maxStock}
+                                                    </div>
                                                 </div>
                                             </div>
+
+                                            {/* Ergonomic Right-Side Checkbox */}
+                                            <button
+                                                onClick={() => toggleCheck(item, pallet.id)}
+                                                className={`w-12 h-10 rounded-xl border flex items-center justify-center transition-all active:scale-95 ${checkedItems.has(getItemKey(pallet.id, item))
+                                                    ? 'bg-green-500 border-green-500 text-white shadow-lg shadow-green-500/20'
+                                                    : 'bg-surface border-green-500/20 text-transparent'
+                                                    }`}
+                                            >
+                                                <Check size={20} strokeWidth={4} />
+                                            </button>
                                         </div>
 
                                         {/* Quantity Controls */}

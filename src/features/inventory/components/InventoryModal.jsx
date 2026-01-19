@@ -1,12 +1,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Save, Trash2, Plus } from 'lucide-react';
+import { X, Save, Trash2, Plus, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useInventory } from '../../../hooks/useInventoryData';
 import AutocompleteInput from '../../../components/ui/AutocompleteInput';
 import toast from 'react-hot-toast';
 import { useConfirmation } from '../../../context/ConfirmationContext';
+import { useLocationManagement } from '../../../hooks/useLocationManagement';
+import { predictLocation } from '../../../utils/locationPredictor';
 
 export const InventoryModal = ({ isOpen, onClose, onSave, onDelete, initialData, mode = 'add', screenType }) => {
     const { ludlowData, atsData, isAdmin, updateSKUMetadata } = useInventory();
+    const { locations } = useLocationManagement(); // Added for validation
+
     const [formData, setFormData] = useState({
         SKU: '',
         Location: '',
@@ -16,6 +20,49 @@ export const InventoryModal = ({ isOpen, onClose, onSave, onDelete, initialData,
         length_ft: 5,
         width_in: 6
     });
+
+    // --- Smart Location Logic (Copied/Adapted from MovementModal) ---
+    const [confirmCreateNew, setConfirmCreateNew] = useState(false);
+
+    // 1. Valid names in current warehouse (Case Insensitive Safety)
+    const validLocationNames = useMemo(() => {
+        if (!locations || locations.length === 0) return [];
+        return locations
+            .filter(l => (l.warehouse || '').toUpperCase() === (formData.Warehouse || '').toUpperCase())
+            .map(l => l.location);
+    }, [locations, formData.Warehouse]);
+
+    // 2. Predictions based on current input
+    const prediction = useMemo(() =>
+        predictLocation(formData.Location, validLocationNames),
+        [formData.Location, validLocationNames]
+    );
+
+    // 3. New Location Warning State (Strict)
+    const isNewLocation = useMemo(() => {
+        if (!formData.Location) return false;
+        return !prediction.exactMatch;
+    }, [formData.Location, prediction]);
+
+    // Reset confirmation when location changes
+    useEffect(() => {
+        setConfirmCreateNew(false);
+    }, [formData.Location]);
+
+    // Debugging
+    useEffect(() => {
+        console.log('InventoryModal Debug:', {
+            input: formData.Location,
+            warehouse: formData.Warehouse,
+            totalLocations: locations.length,
+            validNamesCount: validLocationNames.length,
+            isNewLocation,
+            exactMatch: prediction.exactMatch
+        });
+    }, [formData.Location, formData.Warehouse, locations.length, validLocationNames.length, isNewLocation, prediction]);
+
+    // -------------------------------------------------------------
+
     const { showConfirmation } = useConfirmation();
 
     // Get current inventory based on the warehouse selected IN THE MODAL
@@ -37,8 +84,9 @@ export const InventoryModal = ({ isOpen, onClose, onSave, onDelete, initialData,
         return Array.from(uniqueSKUs.values());
     }, [currentInventory]);
 
-    // Generate Location suggestions based on the SELECTED warehouse
+    // Generate Location suggestions based on the SELECTED warehouse (PLUS strict matches)
     const locationSuggestions = useMemo(() => {
+        // ... existing legacy suggestion logic (freq based) ...
         const locationMap = new Map();
         currentInventory.forEach(item => {
             if (item.Location) {
@@ -53,15 +101,19 @@ export const InventoryModal = ({ isOpen, onClose, onSave, onDelete, initialData,
                 loc.totalQty += parseInt(item.Quantity) || 0;
             }
         });
-
-        return Array.from(locationMap.entries()).map(([location, data]) => ({
+        const legacy = Array.from(locationMap.entries()).map(([location, data]) => ({
             value: location,
             info: `${data.count} item${data.count !== 1 ? 's' : ''} • ${data.totalQty} total units`
         }));
+
+        // If strict match logic has results, prioritize them? 
+        // For now, let's keep legacy suggestions but maybe add predictive later.
+        return legacy;
     }, [currentInventory]);
 
     useEffect(() => {
         if (isOpen) {
+            setConfirmCreateNew(false); // Reset on open
             if (mode === 'edit' && initialData) {
                 setFormData({
                     SKU: initialData.SKU || '',
@@ -97,8 +149,29 @@ export const InventoryModal = ({ isOpen, onClose, onSave, onDelete, initialData,
         setFormData(prev => ({ ...prev, Warehouse: wh }));
     };
 
+    // Auto-Correction on Blur (Similar to MovementModal)
+    const handleLocationBlur = (val) => {
+        if (!val) return;
+        if (prediction.bestGuess && prediction.bestGuess !== val) {
+            setFormData(prev => ({ ...prev, Location: prediction.bestGuess }));
+            toast.success(
+                <span className="flex flex-col">
+                    <span>Auto-selected <b>{prediction.bestGuess}</b></span>
+                    <span className="text-xs opacity-80">Matched from "{val}"</span>
+                </span>,
+                { icon: '✨', duration: 3000 }
+            );
+        }
+    };
+
     const handleSubmit = (e) => {
         e.preventDefault();
+
+        // STRICT VALIDATION BLOCKER
+        if (isNewLocation && !confirmCreateNew) {
+            toast.error("Please confirm creating the new location.");
+            return;
+        }
 
         // Warning for SKU Change
         if (mode === 'edit' && initialData && formData.SKU !== initialData.SKU) {
@@ -196,16 +269,46 @@ export const InventoryModal = ({ isOpen, onClose, onSave, onDelete, initialData,
                     />
 
                     <div className="grid grid-cols-2 gap-4">
-                        {/* Location with Autocomplete */}
-                        <div>
+                        {/* Location with Autocomplete & Strict Validation */}
+                        <div className="flex flex-col gap-2">
                             <AutocompleteInput
                                 label="Location"
                                 value={formData.Location}
                                 onChange={(value) => setFormData(prev => ({ ...prev, Location: value }))}
+                                onBlur={handleLocationBlur}
                                 suggestions={locationSuggestions}
                                 placeholder="Row/Bin..."
                                 minChars={1}
                             />
+
+                            {/* New Location Warning with Explicit Confirmation */}
+                            {isNewLocation && formData.Location && (
+                                <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg animate-in fade-in slide-in-from-top-2">
+                                    <div className="flex items-start gap-2">
+                                        <AlertCircle className="text-yellow-500 shrink-0 mt-0.5" size={16} />
+                                        <div>
+                                            <p className="text-xs font-bold text-yellow-500">Unrecognized Location</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-2 pt-2 border-t border-yellow-500/10">
+                                        <label className="flex items-center gap-2 cursor-pointer group">
+                                            <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${confirmCreateNew ? 'bg-yellow-500 border-yellow-500' : 'border-neutral-500 group-hover:border-yellow-500'}`}>
+                                                {confirmCreateNew && <CheckCircle2 size={12} className="text-black" />}
+                                            </div>
+                                            <input
+                                                type="checkbox"
+                                                className="hidden"
+                                                checked={confirmCreateNew}
+                                                onChange={(e) => setConfirmCreateNew(e.target.checked)}
+                                            />
+                                            <span className={`text-[10px] font-bold uppercase tracking-wide ${confirmCreateNew ? 'text-content' : 'text-muted'}`}>
+                                                Confirm New Location
+                                            </span>
+                                        </label>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         <div>

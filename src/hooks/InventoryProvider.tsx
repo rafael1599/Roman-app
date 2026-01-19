@@ -21,7 +21,7 @@ interface InventoryContextType {
     fetchLogs: () => Promise<any[]>;
     loading: boolean;
     error: string | null;
-    updateQuantity: (sku: string, delta: number, warehouse?: string | null, location?: string | null, isReversal?: boolean, listId?: string) => Promise<void>;
+    updateQuantity: (sku: string, delta: number, warehouse?: string | null, location?: string | null, isReversal?: boolean, listId?: string, orderNumber?: string) => Promise<void>;
     updateLudlowQuantity: (sku: string, delta: number, location?: string | null) => Promise<void>;
     updateAtsQuantity: (sku: string, delta: number, location?: string | null) => Promise<void>;
     addItem: (warehouse: string, newItem: any) => Promise<void>;
@@ -202,7 +202,7 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
 
     // --- ACTIONS ---
 
-    const updateQuantity = useCallback(async (sku: string, delta: number, warehouse: string | null = null, location: string | null = null, isReversal = false, listId?: string) => {
+    const updateQuantity = useCallback(async (sku: string, delta: number, warehouse: string | null = null, location: string | null = null, isReversal = false, listId?: string, orderNumber?: string) => {
         const item = findItem(sku, warehouse || '', location || '');
         if (!item) return;
 
@@ -217,7 +217,7 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
             // Add to demo logs
             const action = delta > 0 ? 'ADD' : 'DEDUCT';
             setDemoLogs(prev => [{
-                id: `demo-${Date.now()}`,
+                id: `demo-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
                 sku,
                 from_warehouse: warehouse as any,
                 from_location: location as any,
@@ -227,7 +227,9 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
                 action_type: action,
                 created_at: new Date().toISOString(),
                 performed_by: userName,
-                is_demo: true
+                is_demo: true,
+                list_id: listId,
+                order_number: orderNumber
             }, ...prev]);
             return;
         }
@@ -298,11 +300,11 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
 
     const addItem = useCallback(async (warehouse: string, newItem: any) => {
         if (isDemoMode) {
-            const id = `demo-item-${Date.now()}`;
+            const id = `demo-item-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
             const item = { ...newItem, id, Warehouse: warehouse, created_at: new Date().toISOString() };
             setDemoInventoryData(prev => [item, ...prev]);
             setDemoLogs(prev => [{
-                id: `demo-log-${Date.now()}`,
+                id: `demo-log-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
                 sku: newItem.SKU,
                 to_warehouse: warehouse,
                 to_location: newItem.Location,
@@ -330,7 +332,7 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
                     : i
             ));
             setDemoLogs(prev => [{
-                id: `demo-upd-log-${Date.now()}`,
+                id: `demo-upd-log-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
                 sku: updatedFormData.SKU || originalSku,
                 from_warehouse: warehouse as any,
                 action_type: 'UPDATE',
@@ -371,7 +373,7 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
                 } else {
                     updated.push({
                         ...sourceItem,
-                        id: `demo-move-${Date.now()}`,
+                        id: `demo-move-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
                         Warehouse: targetWarehouse as any,
                         Location: targetLocation,
                         Quantity: qty,
@@ -382,7 +384,7 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
             });
 
             setDemoLogs(prev => [{
-                id: `demo-move-log-${Date.now()}`,
+                id: `demo-move-log-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
                 sku: sourceItem.SKU,
                 from_warehouse: sourceItem.Warehouse as any,
                 from_location: sourceItem.Location as any,
@@ -411,7 +413,7 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
         if (isDemoMode) {
             setDemoInventoryData(prev => prev.filter(i => i.id !== item.id));
             setDemoLogs(prev => [{
-                id: `demo-del-log-${Date.now()}`,
+                id: `demo-del-log-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
                 sku,
                 from_warehouse: warehouse as any,
                 from_location: item.Location as any,

@@ -1,24 +1,121 @@
-import { useState, useEffect } from 'react';
-import { X, ArrowRightLeft, Move, CheckCircle2, AlertTriangle, Zap } from 'lucide-react';
-import { useInventory } from '../../../hooks/InventoryProvider';
+import { useState, useEffect, useMemo } from 'react';
+import { X, ArrowRightLeft, Move, CheckCircle2, AlertTriangle, Zap, AlertCircle } from 'lucide-react';
+import { useInventory } from '../../../hooks/useInventoryData'; // Corrected import path based on file tree
 import { useMovementForm } from '../../../hooks/useMovementForm';
 import { useLocationSuggestions } from '../../../hooks/useLocationSuggestions';
 import AutocompleteInput from '../../../components/ui/AutocompleteInput';
 import { CapacityBar } from '../../../components/ui/CapacityBar';
+import { useLocationManagement } from '../../../hooks/useLocationManagement';
+import { predictLocation } from '../../../utils/locationPredictor';
+import toast from 'react-hot-toast';
 
 export const MovementModal = ({ isOpen, onClose, onMove, initialSourceItem }) => {
     // Hooks
     const { formData, setField, validate, setFormData } = useMovementForm(initialSourceItem);
+    const { locations } = useLocationManagement();
+    const { locationCapacities } = useInventory(); // To show capacity for typed locations
 
     const excludeLoc = (initialSourceItem?.Warehouse === formData.targetWarehouse) ? initialSourceItem?.Location : null;
-    const { suggestions, skuVelocity, mergeOpportunity } = useLocationSuggestions(
+
+    // Strategy suggestions (Velocity-based, Merge ops)
+    const { suggestions: strategySuggestions, skuVelocity, mergeOpportunity } = useLocationSuggestions(
         formData.targetLocation ? null : initialSourceItem?.SKU,
         formData.targetWarehouse,
         excludeLoc
     );
 
+    // --- Smart Location Logic ---
+    const [confirmCreateNew, setConfirmCreateNew] = useState(false);
+
+    // 1. Valid names in current warehouse (Case Insensitive Safety)
+    const validLocationNames = useMemo(() => {
+        if (!locations || locations.length === 0) return [];
+        return locations
+            .filter(l => (l.warehouse || '').toUpperCase() === (formData.targetWarehouse || '').toUpperCase())
+            .map(l => l.location);
+    }, [locations, formData.targetWarehouse]);
+
+    // 2. Predictions based on current input
+    const prediction = useMemo(() =>
+        predictLocation(formData.targetLocation, validLocationNames),
+        [formData.targetLocation, validLocationNames]
+    );
+
+    // 3. New Location Warning State
+    const isNewLocation = useMemo(() => {
+        if (!formData.targetLocation) return false;
+        // Strict check: It is a NEW location if it is NOT an exact match.
+        // We do *not* care if there is a bestGuess; if the user hasn't accepted the guess, it's a new location.
+        return !prediction.exactMatch;
+    }, [formData.targetLocation, prediction]);
+
+    // Reset confirmation when location changes
+    useEffect(() => {
+        setConfirmCreateNew(false);
+    }, [formData.targetLocation]);
+
+    // Debugging
+    useEffect(() => {
+        console.log('MovementModal Debug:', {
+            input: formData.targetLocation,
+            warehouse: formData.targetWarehouse,
+            totalLocations: locations.length,
+            validNamesCount: validLocationNames.length,
+            isNewLocation,
+            exactMatch: prediction.exactMatch
+        });
+    }, [formData.targetLocation, formData.targetWarehouse, locations.length, validLocationNames.length, isNewLocation, prediction]);
+
+
+    // 4. Combined Suggestions for Autocomplete
+    const displaySuggestions = useMemo(() => {
+        // If user is typing, prioritize our text predictions
+        if (formData.targetLocation && formData.targetLocation.length > 0) {
+            return prediction.matches.map(locName => {
+                // Enrich with capacity info
+                // Note: We need to find the location object again to get details, using case-insensitive match if needed or the raw name from validLocationNames
+                // validLocationNames are exact strings from DB.
+                const locObj = locations.find(l =>
+                    (l.warehouse || '').toUpperCase() === (formData.targetWarehouse || '').toUpperCase() &&
+                    l.location === locName
+                );
+                const cap = locationCapacities[`${formData.targetWarehouse}-${locName}`];
+
+                return {
+                    value: locName,
+                    priorityLabel: 'Match',
+                    score: 100,
+                    current: cap?.current || 0,
+                    max: cap?.max || locObj?.max_capacity || 550,
+                    zone: locObj?.zone || 'UNKNOWN'
+                };
+            });
+        }
+        // If empty, show strategy suggestions
+        return strategySuggestions;
+    }, [formData.targetLocation, formData.targetWarehouse, prediction, strategySuggestions, locationCapacities, locations]);
+
+
+    // 5. Auto-Correction on Blur
+    const handleBlur = (val) => {
+        if (!val) return;
+
+        // If we have a single high-confidence guess (e.g. user typed "9", we found "Row 09")
+        if (prediction.bestGuess && prediction.bestGuess !== val) {
+            setField('targetLocation', prediction.bestGuess);
+            toast.success(
+                <span className="flex flex-col">
+                    <span>Auto-selected <b>{prediction.bestGuess}</b></span>
+                    <span className="text-xs opacity-80">Matched from "{val}"</span>
+                </span>,
+                { icon: '✨', duration: 3000 }
+            );
+        }
+    };
+
     // Derived
-    const isValid = validate().isValid;
+    // Valid checks: Form constraints AND (Existing Location OR Confirmed New Creation)
+    const isValid = validate().isValid && (!isNewLocation || (isNewLocation && confirmCreateNew));
 
     if (!isOpen) return null;
 
@@ -123,7 +220,7 @@ export const MovementModal = ({ isOpen, onClose, onMove, initialSourceItem }) =>
                                         type="button"
                                         onClick={() => {
                                             setField('targetWarehouse', wh);
-                                            setField('targetLocation', ''); // Clear location on warehouse change
+                                            setField('targetLocation', ''); // Clear on switch
                                         }}
                                         className={`px-4 py-2 rounded-lg font-bold text-xs transition-all border ${formData.targetWarehouse === wh
                                             ? 'bg-accent text-main border-accent shadow-[0_0_15px_rgba(var(--accent-rgb),0.3)]'
@@ -159,8 +256,9 @@ export const MovementModal = ({ isOpen, onClose, onMove, initialSourceItem }) =>
                                 label="Target Location"
                                 value={formData.targetLocation}
                                 onChange={(val) => setField('targetLocation', val)}
-                                suggestions={suggestions.filter(s => s.value !== initialSourceItem?.Location)} // Exclude current
-                                placeholder="Scan or type location..."
+                                onBlur={handleBlur}
+                                suggestions={displaySuggestions.filter(s => s.value !== initialSourceItem?.Location)}
+                                placeholder="Scan or type location (e.g. '9')"
                                 renderItem={(suggestion) => (
                                     <div className="py-2.5 px-1">
                                         <div className="flex justify-between items-center mb-1.5">
@@ -180,9 +278,39 @@ export const MovementModal = ({ isOpen, onClose, onMove, initialSourceItem }) =>
                                     </div>
                                 )}
                             />
+
+                            {/* New Location Warning with Explicit Confirmation */}
+                            {isNewLocation && formData.targetLocation && (
+                                <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl animate-in fade-in slide-in-from-top-2">
+                                    <div className="flex items-start gap-3">
+                                        <AlertCircle className="text-yellow-500 shrink-0 mt-0.5" size={20} />
+                                        <div>
+                                            <p className="text-sm font-bold text-yellow-500">Unrecognized Location</p>
+                                            <p className="text-xs text-muted mt-1 leading-relaxed">
+                                                "<strong>{formData.targetLocation}</strong>" is not in the database.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-4 pt-4 border-t border-yellow-500/10">
+                                        <label className="flex items-center gap-3 cursor-pointer group">
+                                            <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${confirmCreateNew ? 'bg-yellow-500 border-yellow-500' : 'border-neutral-500 group-hover:border-yellow-500'}`}>
+                                                {confirmCreateNew && <CheckCircle2 size={14} className="text-black" />}
+                                            </div>
+                                            <input
+                                                type="checkbox"
+                                                className="hidden"
+                                                checked={confirmCreateNew}
+                                                onChange={(e) => setConfirmCreateNew(e.target.checked)}
+                                            />
+                                            <span className={`text-xs font-bold uppercase tracking-wide ${confirmCreateNew ? 'text-content' : 'text-muted'}`}>
+                                                I want to create this location
+                                            </span>
+                                        </label>
+                                    </div>
+                                </div>
+                            )}
                         </div>
-
-
                     </div>
                 </div>
 
@@ -191,13 +319,14 @@ export const MovementModal = ({ isOpen, onClose, onMove, initialSourceItem }) =>
                     <button
                         onClick={handleSubmit}
                         disabled={!isValid}
-                        className="w-full py-4 bg-content hover:opacity-90 disabled:opacity-20 text-main font-black uppercase tracking-wider rounded-xl transition-all shadow-lg active:scale-[0.98] flex items-center justify-center gap-2"
+                        className="w-full py-4 bg-content hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-main font-black uppercase tracking-wider rounded-xl transition-all shadow-lg active:scale-[0.98] flex items-center justify-center gap-2"
                     >
                         <CheckCircle2 size={20} />
-                        Confirm Move
+                        {isNewLocation ? 'Create & Move' : 'Confirm Move'}
                     </button>
                 </div>
             </div>
         </div>
     );
 };
+

@@ -85,19 +85,7 @@ export const SLOTTING_CONFIG: SlottingConfig = {
 /**
  * Fallback: Infer zone by location name/order when not explicitly set
  */
-export const inferZoneByAlphabetical = (allLocations: string[], targetLocation: string): string => {
-    if (!allLocations || allLocations.length === 0) return 'COLD';
-
-    const sorted = [...allLocations].sort((a, b) =>
-        a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
-    );
-
-    const index = sorted.indexOf(targetLocation);
-    if (index === -1) return 'COLD';
-
-    const percentile = index / sorted.length;
-
-    if (percentile < 0.20) return 'HOT';
-    if (percentile < 0.50) return 'WARM';
-    return 'COLD';
+export const inferZoneByAlphabetical = (_allLocations: string[], _targetLocation: string): string => {
+    // Temporarily disabled: Route all to UNASSIGNED until full logic is complete
+    return 'UNASSIGNED';
 };

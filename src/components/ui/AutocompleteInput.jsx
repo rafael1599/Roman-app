@@ -17,7 +17,8 @@ export default function AutocompleteInput({
     onSelect,
     disabled = false,
     className = '',
-    renderItem = null
+    renderItem = null,
+    onBlur
 }) {
     const [inputValue, setInputValue] = useState(value || '');
     const [showSuggestions, setShowSuggestions] = useState(false);
@@ -152,6 +153,12 @@ export default function AutocompleteInput({
                         if (inputValue.length >= minChars && filteredSuggestions.length > 0) {
                             setShowSuggestions(true);
                         }
+                    }}
+                    onBlur={(e) => {
+                        // Small delay to allow click on dropdown items to register first
+                        setTimeout(() => {
+                            if (onBlur) onBlur(e.target.value);
+                        }, 200);
                     }}
                     inputMode="numeric"
                     placeholder={placeholder}

@@ -253,15 +253,33 @@ export const inventoryService = {
         if (!newSku) throw new Error("SKU cannot be empty.");
 
         // 2. Fetch Source Item (Race Condition Verification)
-        const { data: sourceItemData, error: fetchError } = await supabase
+        console.log(`[InventoryService] Fetching source item for update: SKU=${originalSku}, Warehouse=${warehouse}`);
+        const { data: sourceItems, error: fetchError } = await supabase
             .from('inventory')
             .select('*')
             .eq('SKU', originalSku)
-            .eq('Warehouse', warehouse)
-            .single();
+            .eq('Warehouse', warehouse);
 
-        if (fetchError || !sourceItemData) {
-            throw new Error(`Original item "${originalSku}" not found. It may have been deleted by another user.`);
+        if (fetchError) {
+            console.error('[InventoryService] Fetch Error:', fetchError);
+            throw fetchError;
+        }
+
+        let sourceItemData;
+
+        if (!sourceItems || sourceItems.length === 0) {
+            console.error(`[InventoryService] Item not found: SKU=${originalSku}, Warehouse=${warehouse}`);
+            // Attempt to find ANY item with that SKU to give a better hint
+            const { count } = await supabase.from('inventory').select('*', { count: 'exact', head: true }).eq('SKU', originalSku);
+            if (count && count > 0) {
+                throw new Error(`Item "${originalSku}" found in database but not in "${warehouse}". Verify the warehouse.`);
+            }
+            throw new Error(`Original item "${originalSku}" not found in "${warehouse}". It may have been deleted or moved.`);
+        } else if (sourceItems.length > 1) {
+            console.warn(`[InventoryService] Warning: Multiple rows found for SKU=${originalSku} in ${warehouse}. Using the first one.`);
+            sourceItemData = sourceItems[0];
+        } else {
+            sourceItemData = sourceItems[0];
         }
 
         const sourceItem = validateData(InventoryItemSchema, sourceItemData);

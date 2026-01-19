@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ChevronUp, ChevronDown } from 'lucide-react';
 import { PickingSessionView } from './PickingSessionView';
 
-export const PickingCartDrawer = ({ cartItems, activeListId, onUpdateQty, onRemoveItem, onSetQty, onDeduct }) => {
+export const PickingCartDrawer = ({ cartItems, activeListId, orderNumber, onUpdateOrderNumber, onUpdateQty, onRemoveItem, onSetQty, onDeduct }) => {
     const [isOpen, setIsOpen] = useState(false);
 
     const totalItems = cartItems.length;
@@ -45,6 +45,8 @@ export const PickingCartDrawer = ({ cartItems, activeListId, onUpdateQty, onRemo
                     <div className="bg-card border-t border-subtle h-[80vh] flex flex-col shadow-2xl rounded-t-2xl overflow-hidden">
                         <PickingSessionView
                             activeListId={activeListId}
+                            orderNumber={orderNumber}
+                            onUpdateOrderNumber={onUpdateOrderNumber}
                             cartItems={cartItems}
                             onDeduct={onDeduct}
                             onUpdateQty={onUpdateQty}
