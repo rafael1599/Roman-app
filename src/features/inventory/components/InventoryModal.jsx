@@ -270,63 +270,61 @@ export const InventoryModal = ({ isOpen, onClose, onSave, onDelete, initialData,
                         }}
                     />
 
-                    <div className="grid grid-cols-2 gap-4">
-                        {/* Location with Autocomplete & Strict Validation */}
-                        <div className="flex flex-col gap-2">
-                            <AutocompleteInput
-                                id="inventory_location"
-                                label="Location"
-                                value={formData.Location}
-                                onChange={(value) => setFormData(prev => ({ ...prev, Location: value }))}
-                                onBlur={handleLocationBlur}
-                                suggestions={locationSuggestions}
-                                placeholder="Row/Bin..."
-                                minChars={1}
-                                initialKeyboardMode="numeric"
-                            />
+                    {/* Location with Autocomplete & Strict Validation */}
+                    <div className="flex flex-col gap-2">
+                        <AutocompleteInput
+                            id="inventory_location"
+                            label="Location"
+                            value={formData.Location}
+                            onChange={(value) => setFormData(prev => ({ ...prev, Location: value }))}
+                            onBlur={handleLocationBlur}
+                            suggestions={locationSuggestions}
+                            placeholder="Row/Bin..."
+                            minChars={1}
+                            initialKeyboardMode="numeric"
+                        />
 
-                            {/* New Location Warning with Explicit Confirmation */}
-                            {isNewLocation && formData.Location && (
-                                <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg animate-in fade-in slide-in-from-top-2">
-                                    <div className="flex items-start gap-2">
-                                        <AlertCircle className="text-yellow-500 shrink-0 mt-0.5" size={16} />
-                                        <div>
-                                            <p className="text-xs font-bold text-yellow-500">Unrecognized Location</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="mt-2 pt-2 border-t border-yellow-500/10">
-                                        <label className="flex items-center gap-2 cursor-pointer group">
-                                            <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${confirmCreateNew ? 'bg-yellow-500 border-yellow-500' : 'border-neutral-500 group-hover:border-yellow-500'}`}>
-                                                {confirmCreateNew && <CheckCircle2 size={12} className="text-black" />}
-                                            </div>
-                                            <input
-                                                type="checkbox"
-                                                className="hidden"
-                                                checked={confirmCreateNew}
-                                                onChange={(e) => setConfirmCreateNew(e.target.checked)}
-                                            />
-                                            <span className={`text-[10px] font-bold uppercase tracking-wide ${confirmCreateNew ? 'text-content' : 'text-muted'}`}>
-                                                Confirm New Location
-                                            </span>
-                                        </label>
+                        {/* New Location Warning with Explicit Confirmation */}
+                        {isNewLocation && formData.Location && (
+                            <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg animate-in fade-in slide-in-from-top-2">
+                                <div className="flex items-start gap-2">
+                                    <AlertCircle className="text-yellow-500 shrink-0 mt-0.5" size={16} />
+                                    <div>
+                                        <p className="text-xs font-bold text-yellow-500">Unrecognized Location</p>
                                     </div>
                                 </div>
-                            )}
-                        </div>
 
-                        <div>
-                            <label className="block text-sm font-semibold text-accent mb-2">Quantity</label>
-                            <input
-                                type="number"
-                                name="Quantity"
-                                value={formData.Quantity}
-                                onChange={(e) => setFormData(prev => ({ ...prev, Quantity: parseInt(e.target.value) || 0 }))}
-                                onFocus={(e) => e.target.select()}
-                                className="w-full bg-main border border-subtle rounded-lg px-4 py-3 text-content focus:border-accent focus:outline-none transition-colors font-mono text-center text-lg"
-                                required
-                            />
-                        </div>
+                                <div className="mt-2 pt-2 border-t border-yellow-500/10">
+                                    <label className="flex items-center gap-2 cursor-pointer group">
+                                        <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${confirmCreateNew ? 'bg-yellow-500 border-yellow-500' : 'border-neutral-500 group-hover:border-yellow-500'}`}>
+                                            {confirmCreateNew && <CheckCircle2 size={12} className="text-black" />}
+                                        </div>
+                                        <input
+                                            type="checkbox"
+                                            className="hidden"
+                                            checked={confirmCreateNew}
+                                            onChange={(e) => setConfirmCreateNew(e.target.checked)}
+                                        />
+                                        <span className={`text-[10px] font-bold uppercase tracking-wide ${confirmCreateNew ? 'text-content' : 'text-muted'}`}>
+                                            Confirm New Location
+                                        </span>
+                                    </label>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-semibold text-accent mb-2">Quantity</label>
+                        <input
+                            type="number"
+                            name="Quantity"
+                            value={formData.Quantity}
+                            onChange={(e) => setFormData(prev => ({ ...prev, Quantity: parseInt(e.target.value) || 0 }))}
+                            onFocus={(e) => e.target.select()}
+                            className="w-full bg-main border border-subtle rounded-lg px-4 py-3 text-content focus:border-accent focus:outline-none transition-colors font-mono text-center text-lg"
+                            required
+                        />
                     </div>
 
                     {/* Location Detail */}
@@ -371,7 +369,7 @@ export const InventoryModal = ({ isOpen, onClose, onSave, onDelete, initialData,
                     )}
 
                     <div className="flex gap-3 mt-6">
-                        {mode === 'edit' && onDelete && (
+                        {mode === 'edit' && onDelete && isAdmin && (
                             <button
                                 type="button"
                                 onClick={() => {

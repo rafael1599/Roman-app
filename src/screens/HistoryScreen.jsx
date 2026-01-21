@@ -55,7 +55,8 @@ export const HistoryScreen = () => {
             // Flatten the structure for easier usage
             const formattedLogs = (data || []).map(log => ({
                 ...log,
-                order_number: log.picking_lists?.order_number
+                // Prioritize local order_number, fallback to joined data for legacy logs
+                order_number: log.order_number || log.picking_lists?.order_number
             }));
 
             setLogs(formattedLogs);
@@ -77,6 +78,8 @@ export const HistoryScreen = () => {
                 'postgres_changes',
                 { event: 'INSERT', schema: 'public', table: 'inventory_logs' },
                 (payload) => {
+                    // For new inserts, we might not have the order_number join immediately,
+                    // but since we now store it in the table, it will be in payload.new
                     setLogs(prev => [payload.new, ...prev].slice(0, 200));
                 }
             )
@@ -574,7 +577,7 @@ export const HistoryScreen = () => {
                                                     <div>
                                                         <div className="flex items-center gap-2">
                                                             <span className="text-lg font-black tracking-tighter uppercase">{log.sku}</span>
-                                                            <span className={`text-[8px] font-black px-2 py-0.5 rounded-full border ${info.bg} ${info.color} border-current/20`}>
+                                                            <span className={`text-[10px] font-black px-2 py-1 rounded-none border ${info.bg} ${info.color} border-current/20`}>
                                                                 {info.label}
                                                             </span>
                                                         </div>

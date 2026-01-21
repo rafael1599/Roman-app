@@ -40,7 +40,7 @@ export const InventoryScreen = () => {
     const [showWelcome, setShowWelcome] = useState(false);
     const welcomeTimerRef = useRef(null);
     const { isAdmin } = useAuth();
-    const { showError } = useError(); // Initialize useError
+    const { showError } = useError();
     const { showConfirmation } = useConfirmation();
     const { locations: allMappedLocations, createLocation, updateLocation, deactivateLocation, refresh: refreshLocations } = useLocationManagement();
 
@@ -53,7 +53,6 @@ export const InventoryScreen = () => {
 
             if (!hasBeenShown && currentTime >= releaseTime) {
                 setShowWelcome(true);
-                // Auto-dismiss after 5 seconds
                 welcomeTimerRef.current = setTimeout(() => {
                     setShowWelcome(false);
                     localStorage.setItem('roman_welcome_genesis_shown', 'true');
@@ -67,7 +66,7 @@ export const InventoryScreen = () => {
         };
     }, []);
 
-    // Picking Mode State (Now Server-Side)
+    // Picking Mode State
     const {
         cartItems,
         activeListId,
@@ -80,8 +79,20 @@ export const InventoryScreen = () => {
         removeFromCart,
         clearCart,
         completeList,
+        markAsReady,
+        lockForCheck,
+        releaseCheck,
+        returnToPicker,
+        loadExternalList,
+        sessionMode,
+        setSessionMode,
+        checkedBy,
+        ownerId,
+        revertToPicking,
         isSaving
     } = usePickingSession();
+
+    const { externalDoubleCheckId, setExternalDoubleCheckId } = useViewMode();
 
     const [showScanner, setShowScanner] = useState(false);
     const [isProcessingDeduction, setIsProcessingDeduction] = useState(false);
@@ -123,10 +134,9 @@ export const InventoryScreen = () => {
             console.error('Error moving stock:', err);
             showError('Move failed', err.message);
         }
-    }, [moveItem]);
+    }, [moveItem, showError]);
 
     const handleQuickMove = useCallback((item) => {
-        // We reuse the MovementModal but skip step 1 in the future or just pre-fill it
         setEditingItem(item);
         setIsMovementModalOpen(true);
     }, []);
@@ -134,29 +144,19 @@ export const InventoryScreen = () => {
 
     const handleOpenLocationEditor = useCallback((warehouse, locationName, locationId) => {
         if (!isAdmin || viewMode !== 'stock') return;
-
-        // 1. Prioridad: Intento de coincidencia por ID exacto de la base de datos
-        // (Esto resuelve problemas de duplicados como "9" vs "Row 9")
         let loc = null;
         if (locationId) {
             loc = allMappedLocations.find(l => l.id === locationId);
         }
-
-        // 2. Coincidencia por Nombre Exacto
         if (!loc) {
             loc = allMappedLocations.find(l =>
                 l.warehouse === warehouse &&
                 l.location.toLowerCase() === locationName.toLowerCase()
             );
         }
-
         if (loc) {
             setLocationBeingEdited(loc);
         } else {
-            // 3. Fallback: Si no existe en la base de datos de configuraciones, 
-            // permitimos crearla al vuelo usando los datos del inventario como base.
-            console.warn(`No DB record found for location "${locationName}" (Warehouse: ${warehouse}).`);
-
             setLocationBeingEdited({
                 warehouse,
                 location: locationName,
@@ -171,11 +171,9 @@ export const InventoryScreen = () => {
     const handleSaveLocation = useCallback(async (formData) => {
         let result;
         if (locationBeingEdited?.isNew) {
-            // Crear nueva ubicación
             const { isNew, ...dataToCreate } = formData;
             result = await createLocation(dataToCreate);
         } else {
-            // Actualizar existente
             result = await updateLocation(locationBeingEdited.id, formData);
         }
 
@@ -185,13 +183,10 @@ export const InventoryScreen = () => {
         } else {
             showError('Error saving location', result.error);
         }
-    }, [locationBeingEdited, createLocation, updateLocation]);
+    }, [locationBeingEdited, createLocation, updateLocation, showError]);
 
     const handleDeleteLocation = useCallback(async (id) => {
         if (locationBeingEdited?.isNew) {
-            // Caso especial: La ubicación no existe en la DB de configuraciones, 
-            // pero el usuario quiere "eliminarla" de la vista de inventario.
-            // Esto implica borrar o mover todos los SKUs que tengan ese string.
             const totalUnits = inventoryData
                 .filter(i => i.Warehouse === locationBeingEdited.warehouse && i.Location === locationBeingEdited.location)
                 .reduce((sum, i) => sum + (i.Quantity || 0), 0);
@@ -207,11 +202,9 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
                         i.Warehouse === locationBeingEdited.warehouse &&
                         i.Location === locationBeingEdited.location
                     );
-
                     for (const item of itemsToDelete) {
                         await deleteItem(item.Warehouse, item.SKU);
                     }
-
                     setLocationBeingEdited(null);
                     window.location.reload();
                 },
@@ -227,50 +220,25 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
             setLocationBeingEdited(null);
             window.location.reload();
         }
-    }, [locationBeingEdited, inventoryData, deleteItem, deactivateLocation]);
+    }, [locationBeingEdited, inventoryData, deleteItem, deactivateLocation, showConfirmation]);
 
     // --- Picking Mode Handlers ---
-
     const handleCardClick = useCallback((item) => {
         if (viewMode === 'stock') {
             handleEditItem(item);
         } else {
-            // Picking Mode: Add to Cart
             addToCart(item);
         }
     }, [viewMode, handleEditItem, addToCart]);
 
-    // Note: addToCart, updateCartQty, removeFromCart are now imported from hook
-    // We removed the local implementations.
-
-
     const handleScanComplete = (scannedLines) => {
-        // scannedLines is likely [{ sku, qty, ... }] (needs verification of structure)
-        // Check SmartPicking.jsx logic: it seems it just gets raw data and processes it.
-        // For now, let's assume it returns objects that we try to match against inventory.
-
-        // This is a simplified "Add to Cart" logic for scanned items
-        // We might not know location/warehouse yet if it's just a generated list.
-        // However, for Unified Screen, we ideally want to map them to real items immediately if possible,
-        // OR add them as "Pending Location Selection" items.
-        // Given the requirement is to use "Current Draft", let's map them to a generic cart item if not found?
-        // Actually, let's just create cart items with SKU and let the user resolve?
-        // Wait, the user said "same logic as interactive warehouse label".
-        // Let's create cart items. If we don't have location, we might need a way to resolve it.
-        // BUT, simplified assumption: We match to LUDLOW or first found for now, or just add as raw items.
-
         const newItems = scannedLines.map(line => {
-            // Try to find in current filtered data or global inventory to enrich?
             const match = inventoryData.find(i => i.SKU === line.sku);
             return match ? { ...match, pickingQty: line.qty || 1 } : { SKU: line.sku, pickingQty: line.qty || 1, Location: 'UNKNOWN', Warehouse: 'UNKNOWN' };
         });
-
         setCartItems(prev => [...prev, ...newItems]);
         setShowScanner(false);
     };
-
-    // Deduction logic moved to PickAndDeductScreen
-
 
     // --- Data Processing ---
     const filteredData = useMemo(() => {
@@ -283,10 +251,8 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
                 (item.Warehouse && item.Warehouse.toLowerCase().includes(lowerSearch));
 
             if (search) {
-                // When searching, ONLY show items that have stock AND match
                 return hasStock && matchesSearch;
             }
-            // When browsing, show all items (including 0 qty) so locations/headers stay
             return matchesSearch;
         });
     }, [inventoryData, search]);
@@ -306,7 +272,6 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
             }
 
             groups[wh][locName].items.push(item);
-            // Prefer items that have a location_id to define the block's ID
             if (item.location_id && !groups[wh][locName].locationId) {
                 groups[wh][locName].locationId = item.location_id;
             }
@@ -323,7 +288,6 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
         });
     }, [groupedData]);
 
-    // --- Pagination Logic ---
     const allLocationBlocks = useMemo(() => {
         return sortedWarehouses.flatMap(wh =>
             Object.keys(groupedData[wh]).sort(naturalSort).map(location => ({
@@ -369,7 +333,6 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
                                 <X size={20} />
                             </button>
                         </div>
-                        {/* Decorative background element */}
                         <div className="absolute -right-8 -bottom-8 opacity-[0.03] text-accent">
                             <Warehouse size={160} />
                         </div>
@@ -453,7 +416,6 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
                 )}
             </div>
 
-            {/* Floating Action Buttons (Stock Mode Only) */}
             {
                 viewMode === 'stock' && (
                     <div className="fixed bottom-24 right-4 flex flex-col gap-3 z-40">
@@ -474,25 +436,35 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
                         cartItems={cartItems}
                         activeListId={activeListId}
                         orderNumber={orderNumber}
+                        sessionMode={sessionMode}
+                        checkedBy={checkedBy}
+                        externalDoubleCheckId={externalDoubleCheckId}
+                        onClearExternalTrigger={() => setExternalDoubleCheckId(null)}
+                        onLoadExternalList={loadExternalList}
+                        onLockForCheck={lockForCheck}
+                        onReleaseCheck={releaseCheck}
+                        onReturnToPicker={returnToPicker}
+                        onRevertToPicking={revertToPicking}
+                        onMarkAsReady={markAsReady}
+                        ownerId={ownerId}
                         onUpdateOrderNumber={setOrderNumber}
                         onUpdateQty={updateCartQty}
                         onSetQty={setCartQty}
                         onRemoveItem={removeFromCart}
                         onDeduct={async (items) => {
-                            if (isProcessingDeduction) return;
+                            if (isProcessingDeduction) return false;
                             setIsProcessingDeduction(true);
                             try {
                                 await Promise.all(items.map(item => {
                                     const delta = -(item.pickingQty || 0);
                                     return updateQuantity(item.SKU, delta, item.Warehouse, item.Location, false, activeListId, orderNumber);
                                 }));
-
                                 await completeList();
-                                toast.success('Picking complete! Inventory updated.');
+                                toast.success('Deduction complete! Inventory updated.');
                                 return true;
                             } catch (error) {
                                 console.error("Deduction error:", error);
-                                showError("Failed to deduct inventory", "Some items might not have been updated. Check console.");
+                                showError("Failed to deduct inventory", "Some items might not have been updated.");
                                 throw error;
                             } finally {
                                 setIsProcessingDeduction(false);
@@ -502,7 +474,6 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
                 )
             }
 
-            {/* Modals */}
             <InventoryModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}

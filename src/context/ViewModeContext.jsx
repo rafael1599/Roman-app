@@ -4,9 +4,15 @@ const ViewModeContext = createContext();
 
 export const ViewModeProvider = ({ children }) => {
     const [viewMode, setViewMode] = useState('stock'); // 'stock' | 'picking'
+    const [externalDoubleCheckId, setExternalDoubleCheckId] = useState(null);
 
     return (
-        <ViewModeContext.Provider value={{ viewMode, setViewMode }}>
+        <ViewModeContext.Provider value={{
+            viewMode,
+            setViewMode,
+            externalDoubleCheckId,
+            setExternalDoubleCheckId
+        }}>
             {children}
         </ViewModeContext.Provider>
     );

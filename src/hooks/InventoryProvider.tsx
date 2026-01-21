@@ -18,6 +18,7 @@ interface InventoryContextType {
     ludlowInventory: InventoryItem[];
     atsInventory: InventoryItem[];
     locationCapacities: Record<string, { current: number; max: number }>;
+    reservedQuantities: Record<string, number>;
     fetchLogs: () => Promise<any[]>;
     loading: boolean;
     error: string | null;
@@ -51,6 +52,7 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
     const [demoInventoryData, setDemoInventoryData] = useState<InventoryItemWithMetadata[]>([]);
     const [demoLogs, setDemoLogs] = useState<any[]>([]);
     const [skuMetadataMap, setSkuMetadataMap] = useState<Record<string, any>>({});
+    const [reservedQuantities, setReservedQuantities] = useState<Record<string, number>>({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -123,7 +125,7 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
         sku_metadata: skuMetadataMap[item.SKU] || item.sku_metadata
     }), [skuMetadataMap]);
 
-    // Real-time Subscription
+    // Real-time Subscription (Inventory)
     useEffect(() => {
         const channel = supabase
             .channel('inventory_changes')
@@ -144,6 +146,54 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
             supabase.removeChannel(channel);
         };
     }, []);
+
+    // Reservation Logic
+    const calculateReservations = useCallback((lists: any[]) => {
+        const reservations: Record<string, number> = {};
+        lists.forEach(list => {
+            if (Array.isArray(list.items)) {
+                list.items.forEach((item: any) => {
+                    const key = `${item.SKU}|${item.Warehouse}|${item.Location}`;
+                    reservations[key] = (reservations[key] || 0) + (item.pickingQty || 0);
+                });
+            }
+        });
+        setReservedQuantities(reservations);
+    }, []);
+
+    const fetchReservations = useCallback(async () => {
+        try {
+            const { data, error } = await supabase
+                .from('picking_lists')
+                .select('id, items, status')
+                .in('status', ['active', 'ready_to_double_check', 'double_checking', 'needs_correction']);
+
+            if (error) throw error;
+            calculateReservations(data || []);
+        } catch (err) {
+            console.error('Error fetching reservations:', err);
+        }
+    }, [calculateReservations]);
+
+    // Real-time Subscription (Picking Lists for reservations)
+    useEffect(() => {
+        fetchReservations();
+
+        const channel = supabase
+            .channel('picking_lists_reservations')
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'picking_lists'
+            }, () => {
+                fetchReservations();
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [fetchReservations]);
 
     // Capacity calculations
     const locationCapacities = useMemo(() => {
@@ -251,6 +301,7 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
             item,
             isReversal,
             listId,
+            orderNumber,
             timer: setTimeout(async () => {
                 const finalBuffer = logBuffersRef.current[bufferKey];
                 delete logBuffersRef.current[bufferKey];
@@ -284,7 +335,8 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
                         new_quantity: finalQty,
                         action_type: action,
                         is_reversed: finalBuffer.isReversal,
-                        list_id: finalBuffer.listId
+                        list_id: finalBuffer.listId,
+                        order_number: finalBuffer.orderNumber
                     }, { performed_by: userName, user_id: user?.id });
 
                 } catch (err) {
@@ -520,6 +572,7 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
         ludlowInventory: activeData.filter(i => i.Warehouse === 'LUDLOW'),
         atsInventory: activeData.filter(i => i.Warehouse === 'ATS'),
         locationCapacities: activeCapacities,
+        reservedQuantities,
         fetchLogs,
         loading,
         error,
@@ -562,6 +615,7 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
     }), [
         activeData,
         activeCapacities,
+        reservedQuantities,
         fetchLogs,
         loading,
         error,

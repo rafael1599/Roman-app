@@ -42,11 +42,10 @@ export const generatePickingPdf = (finalSequence: any[], orderNumber?: string, t
     const sequenceData = finalSequence.map((item, idx) => [
         (idx + 1).toString(),
         item.SKU,
-        item.Location,
-        item.Warehouse || '',
+        `${item.Location}${item.Warehouse ? ` / ${item.Warehouse}` : ''}`,
         `P${item.palletId}`,
         item.pickingQty?.toString() || '0',
-        item.isPicked ? 'Yes' : ''
+        item.isPicked ? 'VERIFIED' : ''
     ]);
 
     if (sequenceData.length > 0) {
@@ -57,7 +56,7 @@ export const generatePickingPdf = (finalSequence: any[], orderNumber?: string, t
 
         autoTable(doc, {
             startY: startY,
-            head: [['#', 'SKU', 'Location', 'Warehouse', 'Pallet', 'Qty', 'Picked']],
+            head: [['#', 'SKU', 'Location / WH', 'Pallet', 'Qty', 'Double check']],
             body: sequenceData,
             theme: 'striped',
             headStyles: { fillColor: [40, 40, 40], textColor: 255 },
@@ -65,9 +64,25 @@ export const generatePickingPdf = (finalSequence: any[], orderNumber?: string, t
             columnStyles: {
                 0: { cellWidth: 10, halign: 'center' },
                 1: { fontStyle: 'bold' },
-                4: { halign: 'center' },
-                5: { halign: 'center', fontStyle: 'bold' },
-                6: { fontStyle: 'bold', halign: 'center' }
+                2: { cellWidth: 35 },
+                3: { halign: 'center' },
+                4: { halign: 'center', fontStyle: 'bold' },
+                5: { halign: 'center', cellWidth: 30 }
+            },
+            didDrawCell: (data) => {
+                if (data.section === 'body' && data.column.index === 5 && data.cell.text[0] === 'VERIFIED') {
+                    const x = data.cell.x + data.cell.width / 2;
+                    const y = data.cell.y + data.cell.height / 2;
+
+                    // Draw Green Checkmark manually
+                    doc.setDrawColor(22, 163, 74); // Green
+                    doc.setLineWidth(0.5);
+                    doc.line(x - 2, y + 0.5, x - 0.5, y + 2);
+                    doc.line(x - 0.5, y + 2, x + 2.5, y - 2);
+
+                    // Clear the placeholder text so it doesn't print
+                    data.cell.text[0] = '';
+                }
             },
             margin: { left: 15, right: 15 }
         });

@@ -7,7 +7,7 @@ import toast from 'react-hot-toast';
 import { useConfirmation } from '../../context/ConfirmationContext';
 
 export const UserMenu = ({ isOpen, onClose, onExport, onSync }) => {
-    const { profile, signOut, updateProfileName, isSystemAdmin, viewAsUser, toggleAdminView, isDemoMode, toggleDemoMode } = useAuth();
+    const { profile, signOut, updateProfileName, isAdmin, isSystemAdmin, viewAsUser, toggleAdminView, isDemoMode, toggleDemoMode } = useAuth();
     const { theme, toggleTheme } = useTheme();
     const [newName, setNewName] = useState(profile?.full_name || '');
     const [isEditing, setIsEditing] = useState(false);
@@ -142,7 +142,7 @@ export const UserMenu = ({ isOpen, onClose, onExport, onSync }) => {
 
                         {/* Actions */}
                         <div className="space-y-2">
-                            {onExport && (
+                            {onExport && isAdmin && (
                                 <button
                                     onClick={() => {
                                         onExport();

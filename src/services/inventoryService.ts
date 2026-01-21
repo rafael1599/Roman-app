@@ -337,13 +337,20 @@ export const inventoryService = {
 
                 if (updateError) throw updateError;
 
-                // B. Delete Source (it was "renamed" into the other)
-                const { error: deleteError } = await supabase
-                    .from('inventory')
-                    .delete()
-                    .eq('id', sourceItem.id);
-
-                if (deleteError) throw deleteError;
+                // B. Handle Source Removal (Staff can't DELETE, so we Update to 0)
+                if (isAdmin) {
+                    const { error: deleteError } = await supabase
+                        .from('inventory')
+                        .delete()
+                        .eq('id', sourceItem.id);
+                    if (deleteError) throw deleteError;
+                } else {
+                    const { error: zeroError } = await supabase
+                        .from('inventory')
+                        .update({ Quantity: 0 })
+                        .eq('id', sourceItem.id);
+                    if (zeroError) throw zeroError;
+                }
 
                 // C. Log the Merge (as an Edit/Transfer)
                 await trackLog({

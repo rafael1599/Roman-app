@@ -25,6 +25,7 @@ export const InventoryLogSchema = z.object({
     previous_sku: z.string().optional().nullable(),
     item_id: z.union([z.string(), z.number()]).optional().nullable(),
     list_id: z.string().uuid().optional().nullable(),
+    order_number: z.string().optional().nullable(),
 });
 
 /**
@@ -45,6 +46,7 @@ export const InventoryLogInputSchema = z.object({
     previous_sku: z.string().optional().nullable(),
     item_id: z.union([z.string(), z.number()]).optional().nullable(),
     list_id: z.string().uuid().optional().nullable(),
+    order_number: z.string().optional().nullable(),
 });
 
 // Type exports

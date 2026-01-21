@@ -12,6 +12,7 @@ const Settings = React.lazy(() => import('./screens/Settings'));
 
 
 import { ViewModeProvider } from './context/ViewModeContext';
+import { PickingProvider } from './context/PickingContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LoginScreen } from './screens/LoginScreen';
 import { Loader2 } from 'lucide-react';
@@ -69,7 +70,9 @@ const AuthGuard = () => {
   return (
     <>
       <InventoryProvider>
-        <AuthenticatedContent />
+        <PickingProvider>
+          <AuthenticatedContent />
+        </PickingProvider>
       </InventoryProvider>
       <ErrorModal
         isOpen={error.isOpen}

@@ -1,20 +1,19 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { Package, Warehouse, MapPin, Printer, Minus, Plus, Trash2, ChevronDown, Check } from 'lucide-react';
+import { Package, Warehouse, MapPin, Printer, Minus, Plus, Trash2, ChevronDown, Check, AlertCircle } from 'lucide-react';
 import { getOptimizedPickingPath, calculatePallets } from '../../../utils/pickingLogic';
 import { generatePickingPdf } from '../../../utils/pickingPdf';
 import { useLocationManagement } from '../../../hooks/useLocationManagement';
 import { SlideToConfirm } from '../../../components/ui/SlideToConfirm';
 import { useError } from '../../../context/ErrorContext';
 
-export const PickingSessionView = ({ cartItems, activeListId, orderNumber, onUpdateOrderNumber, onDeduct, onUpdateQty, onRemoveItem, onClose }) => {
+export const PickingSessionView = ({ cartItems, activeListId, orderNumber, correctionNotes, onUpdateOrderNumber, onGoToDoubleCheck, onUpdateQty, onRemoveItem, onClose }) => {
     const { locations } = useLocationManagement();
     const { showError } = useError();
     const [isDeducting, setIsDeducting] = useState(false);
     const [editingItemKey, setEditingItemKey] = useState(null);
     const [editingQuantity, setEditingQuantity] = useState('');
     const [isEditingOrder, setIsEditingOrder] = useState(false);
-    const [tempOrder, setTempOrder] = useState('');
-    const [checkedItems, setCheckedItems] = useState(new Set());
+    const [tempOrder, setTempOrder] = useState(orderNumber || '');
     const inputRef = useRef(null);
     const orderInputRef = useRef(null);
 
@@ -43,6 +42,13 @@ export const PickingSessionView = ({ cartItems, activeListId, orderNumber, onUpd
             orderInputRef.current.select();
         }
     }, [isEditingOrder]);
+
+    // Sync tempOrder when orderNumber prop changes (e.g. from database sync)
+    useEffect(() => {
+        if (!isEditingOrder) {
+            setTempOrder(orderNumber || '');
+        }
+    }, [orderNumber, isEditingOrder]);
 
     const getItemKey = (palletId, item) => `${palletId}-${item.SKU}-${item.Location}`;
 
@@ -100,19 +106,6 @@ export const PickingSessionView = ({ cartItems, activeListId, orderNumber, onUpd
         }
     };
 
-    const toggleCheck = (item, palletId) => {
-        const key = getItemKey(palletId, item);
-
-        setCheckedItems(prev => {
-            const next = new Set(prev);
-            if (next.has(key)) {
-                next.delete(key);
-            } else {
-                next.add(key);
-            }
-            return next;
-        });
-    };
 
     const finalSequence = useMemo(() => {
         const sequence = [];
@@ -126,23 +119,17 @@ export const PickingSessionView = ({ cartItems, activeListId, orderNumber, onUpd
                         ...palletItem,
                         key,
                         palletId: p.id,
-                        isPicked: checkedItems.has(key)
+                        isPicked: false // Redundant in Review Picking list
                     });
                 }
             });
         });
         return sequence;
-    }, [cartItems, pallets, checkedItems]);
+    }, [cartItems, pallets]);
 
-    const handleConfirm = async () => {
-        setIsDeducting(true);
-        try {
-            await onDeduct(cartItems);
-        } catch (error) {
-            console.error(error);
-        } finally {
-            setIsDeducting(false);
-        }
+    const handleConfirm = () => {
+        // Use the very latest tempOrder value as the source of truth
+        onGoToDoubleCheck(tempOrder.trim());
     };
 
     return (
@@ -158,7 +145,7 @@ export const PickingSessionView = ({ cartItems, activeListId, orderNumber, onUpd
                 </button>
                 <div className="flex-1 mx-2">
                     <div className="flex items-center justify-center gap-2">
-                        <h2 className="text-base font-black text-content uppercase tracking-tight">Review Pick List</h2>
+                        <h2 className="text-base font-black text-content uppercase tracking-tight">Review Picking</h2>
                         {isEditingOrder ? (
                             <input
                                 ref={orderInputRef}
@@ -194,6 +181,19 @@ export const PickingSessionView = ({ cartItems, activeListId, orderNumber, onUpd
 
             {/* Scrollable Content */}
             <div className="flex-1 overflow-y-auto p-3">
+                {/* Correction Notes Banner */}
+                {correctionNotes && (
+                    <div className="mb-4 p-4 bg-amber-500/5 border border-amber-500/10 rounded-2xl flex items-start gap-3 animate-in fade-in slide-in-from-top-2 duration-500">
+                        <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500 shrink-0">
+                            <AlertCircle size={18} />
+                        </div>
+                        <div className="flex-1">
+                            <p className="text-[10px] font-black text-amber-500/70 uppercase tracking-widest mb-1">Review Note</p>
+                            <p className="text-sm font-medium text-content italic leading-relaxed">"{correctionNotes}"</p>
+                        </div>
+                    </div>
+                )}
+
                 {pallets.map((pallet, pIdx) => (
                     <section key={pallet.id} className="mb-4">
                         <div className="flex items-center justify-between mb-3 sticky top-0 bg-card z-10 py-2">
@@ -234,9 +234,9 @@ export const PickingSessionView = ({ cartItems, activeListId, orderNumber, onUpd
                                             </div>
                                         </div>
 
-                                        {/* SKU and Stock Info */}
-                                        <div className="flex items-center justify-between gap-2 mb-2">
-                                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                                        {/* SKU, Stock Info and Controls */}
+                                        <div className="flex items-center justify-between gap-2">
+                                            <div className="flex items-center gap-2 min-w-0">
                                                 <div className="w-8 h-8 bg-main rounded-lg flex items-center justify-center border border-subtle shrink-0">
                                                     <Package className="w-4 h-4 text-muted" />
                                                 </div>
@@ -248,22 +248,7 @@ export const PickingSessionView = ({ cartItems, activeListId, orderNumber, onUpd
                                                 </div>
                                             </div>
 
-                                            {/* Ergonomic Right-Side Checkbox */}
-                                            <button
-                                                onClick={() => toggleCheck(item, pallet.id)}
-                                                className={`w-12 h-10 rounded-xl border flex items-center justify-center transition-all active:scale-95 ${checkedItems.has(getItemKey(pallet.id, item))
-                                                    ? 'bg-green-500 border-green-500 text-white shadow-lg shadow-green-500/20'
-                                                    : 'bg-surface border-green-500/20 text-transparent'
-                                                    }`}
-                                            >
-                                                <Check size={20} strokeWidth={4} />
-                                            </button>
-                                        </div>
-
-                                        {/* Quantity Controls */}
-                                        <div className="flex items-center justify-between mt-2 pt-2 border-t border-subtle/50">
-                                            <span className="text-[9px] text-muted font-black uppercase tracking-wider">Pick Qty</span>
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex items-center gap-2 shrink-0">
                                                 <div className="flex items-center bg-main rounded-lg p-0.5 gap-0.5 border border-subtle">
                                                     <button
                                                         onClick={() => onUpdateQty(item, -1)}
@@ -328,8 +313,8 @@ export const PickingSessionView = ({ cartItems, activeListId, orderNumber, onUpd
                 <SlideToConfirm
                     onConfirm={handleConfirm}
                     isLoading={isDeducting}
-                    text="SLIDE TO DEDUCT"
-                    confirmedText="DEDUCTING..."
+                    text="READY TO DOUBLE CHECK"
+                    confirmedText="PREPARING..."
                 />
             </div>
         </div>
