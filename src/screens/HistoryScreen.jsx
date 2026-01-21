@@ -418,7 +418,10 @@ export const HistoryScreen = () => {
         }
     }, [logs]);
 
-    // Automated 6 PM Check
+    // OPTIMIZED: Removed duplicate polling - realtime subscription handles updates
+    // Automated 6 PM Check (DISABLED - this caused duplicate updates)
+    // If you need 6PM email automation, implement via Edge Function cron job instead
+    /*
     useEffect(() => {
         const checkTime = () => {
             const now = new Date();
@@ -439,6 +442,7 @@ export const HistoryScreen = () => {
 
         return () => clearInterval(interval);
     }, [sendDailyEmail]); // Dependency on logs so we have data to send
+    */
 
     return (
         <div className="flex flex-col h-full bg-main text-content p-4 max-w-2xl mx-auto w-full">

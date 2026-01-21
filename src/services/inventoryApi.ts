@@ -51,6 +51,23 @@ export const inventoryApi = {
     },
 
     /**
+     * OPTIMIZED: Fetch inventory with metadata in single query (reduces round-trips)
+     * Use this instead of calling fetchInventory() + fetchAllMetadata() separately
+     */
+    async fetchInventoryWithMetadata(): Promise<any[]> {
+        const { data, error } = await supabase
+            .from('inventory')
+            .select(`
+                *,
+                sku_metadata (*)
+            `)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        return data || [];
+    },
+
+    /**
      * Update or create SKU metadata
      */
     async upsertMetadata(metadata: SKUMetadataInput): Promise<SKUMetadata> {

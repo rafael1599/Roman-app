@@ -10,6 +10,7 @@ import {
 } from '../schemas/inventory.schema';
 import { inventoryApi } from '../services/inventoryApi';
 import { type SKUMetadataInput } from '../schemas/skuMetadata.schema';
+import { debounce } from '../utils/debounce';
 
 interface InventoryContextType {
     inventoryData: InventoryItem[];
@@ -74,11 +75,12 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
 
     const logBuffersRef = useRef<Record<string, any>>({});
 
-    // Initial Load
+    // Initial Load - Parallel queries (JOIN not possible without FK relationship)
     useEffect(() => {
         const loadAllData = async () => {
             try {
                 setLoading(true);
+
                 // Fetch inventory and metadata in parallel
                 const [inv, meta] = await Promise.all([
                     inventoryApi.fetchInventory(),
@@ -176,8 +178,12 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
     }, [calculateReservations]);
 
     // Real-time Subscription (Picking Lists for reservations)
+    // OPTIMIZATION: Debounced to prevent mass refetches when multiple lists change rapidly
     useEffect(() => {
         fetchReservations();
+
+        // Create debounced version to throttle realtime updates
+        const debouncedFetchReservations = debounce(fetchReservations, 1000);
 
         const channel = supabase
             .channel('picking_lists_reservations')
@@ -186,7 +192,7 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
                 schema: 'public',
                 table: 'picking_lists'
             }, () => {
-                fetchReservations();
+                debouncedFetchReservations(); // Max 1 call per second
             })
             .subscribe();
 
