@@ -22,7 +22,7 @@ interface UndoActions {
     }) => Promise<any>;
     moveItem: (item: any, toWarehouse: string, toLocation: string, qty: number, isReversal?: boolean) => Promise<any>;
     updateQuantity: (sku: string, delta: number, warehouse: string, location: string, isReversal?: boolean) => Promise<any>;
-    updateItem: (warehouse: string, originalSku: string, updatedFormData: any) => Promise<any>;
+    updateItem: (originalItem: any, updatedFormData: any) => Promise<any>;
 }
 
 /**
@@ -278,10 +278,20 @@ export const useInventoryLogs = () => {
             } else if (log.action_type === 'EDIT') {
                 if (log.previous_sku && log.previous_sku !== targetSku) {
                     // UNDO RENAME: Rename back from Current (targetSku) to Old (log.previous_sku)
-                    await updateItem(targetWarehouse, targetSku, {
+                    const { data: itemToUpdate, error: itemError } = await supabase
+                        .from('inventory')
+                        .select('*')
+                        .eq('id', log.item_id)
+                        .single();
+                    
+                    if(itemError || !itemToUpdate) {
+                        throw new Error(`Cannot undo rename: Item with ID ${log.item_id} not found.`);
+                    }
+
+                    await updateItem(itemToUpdate, {
                         SKU: log.previous_sku,
                         Quantity: log.prev_quantity,
-                        Warehouse: targetWarehouse,
+                        Warehouse: log.from_warehouse,
                         Location: log.from_location,
                         isReversal: true
                     });

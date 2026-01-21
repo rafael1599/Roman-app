@@ -237,8 +237,7 @@ export const inventoryService = {
     },
 
     async updateItem(
-        warehouse: string,
-        originalSku: string,
+        originalItem: InventoryItem,
         updatedFormData: any,
         locations: Location[],
         ctx: InventoryServiceContext
@@ -253,33 +252,20 @@ export const inventoryService = {
         if (!newSku) throw new Error("SKU cannot be empty.");
 
         // 2. Fetch Source Item (Race Condition Verification)
-        console.log(`[InventoryService] Fetching source item for update: SKU=${originalSku}, Warehouse=${warehouse}`);
-        const { data: sourceItems, error: fetchError } = await supabase
+        console.log(`[InventoryService] Fetching source item for update: ID=${originalItem.id}`);
+        const { data: sourceItemData, error: fetchError } = await supabase
             .from('inventory')
             .select('*')
-            .eq('SKU', originalSku)
-            .eq('Warehouse', warehouse);
+            .eq('id', originalItem.id)
+            .single();
 
         if (fetchError) {
             console.error('[InventoryService] Fetch Error:', fetchError);
             throw fetchError;
         }
 
-        let sourceItemData;
-
-        if (!sourceItems || sourceItems.length === 0) {
-            console.error(`[InventoryService] Item not found: SKU=${originalSku}, Warehouse=${warehouse}`);
-            // Attempt to find ANY item with that SKU to give a better hint
-            const { count } = await supabase.from('inventory').select('*', { count: 'exact', head: true }).eq('SKU', originalSku);
-            if (count && count > 0) {
-                throw new Error(`Item "${originalSku}" found in database but not in "${warehouse}". Verify the warehouse.`);
-            }
-            throw new Error(`Original item "${originalSku}" not found in "${warehouse}". It may have been deleted or moved.`);
-        } else if (sourceItems.length > 1) {
-            console.warn(`[InventoryService] Warning: Multiple rows found for SKU=${originalSku} in ${warehouse}. Using the first one.`);
-            sourceItemData = sourceItems[0];
-        } else {
-            sourceItemData = sourceItems[0];
+        if (!sourceItemData) {
+            throw new Error(`Original item with ID "${originalItem.id}" not found. It may have been deleted or moved.`);
         }
 
         const sourceItem = validateData(InventoryItemSchema, sourceItemData);
@@ -325,9 +311,14 @@ export const inventoryService = {
             if (existingTargetData) {
                 // MERGE SCENARIO
                 const existingTarget = validateData(InventoryItemSchema, existingTargetData);
-                const finalQty = (existingTarget.Quantity || 0) + newQty;
+                // **BUG FIX**: The quantity to be merged is the quantity of the item being moved/edited,
+                // not the new quantity from the form. We are merging the entire stock.
+                // The user's intent in the "Edit" modal is to define the new state of a single item,
+                // but a merge implies combining two existing stocks. Summing the original quantity
+                // of the source with the target is the correct way to preserve inventory totals.
+                const finalQty = (existingTarget.Quantity || 0) + (sourceItem.Quantity || 0);
 
-                console.log(`[Merge] Merging ${sourceItem.SKU} (${newQty}) into existing ${existingTarget.SKU} (${existingTarget.Quantity}) -> Total ${finalQty}`);
+                console.log(`[Merge] Merging ${sourceItem.SKU} (Qty: ${sourceItem.Quantity}) into existing ${existingTarget.SKU} (Qty: ${existingTarget.Quantity}) -> Total ${finalQty}`);
 
                 // A. Update Target with Sum
                 const { error: updateError } = await supabase
@@ -352,7 +343,7 @@ export const inventoryService = {
                     from_location: sourceItem.Location, // Was here
                     to_warehouse: targetWarehouse,
                     to_location: targetLocation, // Is now here (merged)
-                    quantity: newQty, // Amount added/merged
+                    quantity: sourceItem.Quantity, // Amount added/merged
                     prev_quantity: existingTarget.Quantity, // What target had before
                     new_quantity: finalQty, // What target has now
                     action_type: 'EDIT', // Log as Edit to preserve "Renamed" semantics in history

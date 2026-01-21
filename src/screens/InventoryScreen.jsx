@@ -111,7 +111,7 @@ export const InventoryScreen = () => {
         if (modalMode === 'add') {
             addItem(targetWarehouse, formData);
         } else {
-            updateItem(editingItem.Warehouse, editingItem.SKU, formData);
+            updateItem(editingItem, formData);
         }
     }, [modalMode, addItem, updateItem, editingItem]);
 

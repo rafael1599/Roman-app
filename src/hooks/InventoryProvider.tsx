@@ -25,7 +25,7 @@ interface InventoryContextType {
     updateLudlowQuantity: (sku: string, delta: number, location?: string | null) => Promise<void>;
     updateAtsQuantity: (sku: string, delta: number, location?: string | null) => Promise<void>;
     addItem: (warehouse: string, newItem: any) => Promise<void>;
-    updateItem: (warehouse: string, originalSku: string, updatedFormData: any) => Promise<void>;
+    updateItem: (originalItem: InventoryItem, updatedFormData: any) => Promise<void>;
     moveItem: (sourceItem: InventoryItem, targetWarehouse: string, targetLocation: string, qty: number, isReversal?: boolean) => Promise<void>;
     undoAction: (logId: string) => Promise<void>;
     deleteItem: (warehouse: string, sku: string) => Promise<void>;
@@ -324,17 +324,17 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
         }
     }, [isDemoMode, locations, getServiceContext, userName]);
 
-    const updateItem = useCallback(async (warehouse: string, originalSku: string, updatedFormData: any) => {
+    const updateItem = useCallback(async (originalItem: InventoryItem, updatedFormData: any) => {
         if (isDemoMode) {
             setDemoInventoryData(prev => prev.map(i =>
-                (i.SKU === originalSku && i.Warehouse === warehouse)
+                (i.SKU === originalItem.SKU && i.Warehouse === originalItem.Warehouse) // Use originalItem for matching
                     ? { ...i, ...updatedFormData }
                     : i
             ));
             setDemoLogs(prev => [{
                 id: `demo-upd-log-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-                sku: updatedFormData.SKU || originalSku,
-                from_warehouse: warehouse as any,
+                sku: updatedFormData.SKU || originalItem.SKU,
+                from_warehouse: originalItem.Warehouse as any,
                 action_type: 'UPDATE',
                 created_at: new Date().toISOString(),
                 performed_by: userName,
@@ -345,8 +345,7 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
         try {
             const ctx = getServiceContext();
             const result = await inventoryService.updateItem(
-                warehouse,
-                originalSku,
+                originalItem,
                 updatedFormData,
                 locations,
                 ctx
