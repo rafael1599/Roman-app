@@ -1,9 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import { Package, Printer, Check, ChevronLeft, RotateCcw, MessageSquare, X, Send, ChevronDown } from 'lucide-react';
 import { getOptimizedPickingPath, calculatePallets } from '../../../utils/pickingLogic';
+import { CorrectionNotesTimeline } from './CorrectionNotesTimeline';
 import { generatePickingPdf } from '../../../utils/pickingPdf';
 import { SlideToConfirm } from '../../../components/ui/SlideToConfirm';
 import { useLocationManagement } from '../../../hooks/useLocationManagement';
+import { useConfirmation } from '../../../context/ConfirmationContext';
+import toast from 'react-hot-toast';
 
 export const DoubleCheckView = ({
     cartItems,
@@ -16,9 +19,13 @@ export const DoubleCheckView = ({
     onBack,
     onRelease,
     onReturnToPicker,
-    isOwner
+    isOwner,
+    notes = [],
+    isNotesLoading = false,
+    onAddNote
 }) => {
     const { locations } = useLocationManagement();
+    const { showConfirmation } = useConfirmation();
     const [isDeducting, setIsDeducting] = useState(false);
     const [correctionNotes, setCorrectionNotes] = useState('');
     const [isNotesExpanded, setIsNotesExpanded] = useState(false);
@@ -46,12 +53,29 @@ export const DoubleCheckView = ({
         }
     };
 
-    const handleReturnToPicker = () => {
+    const handleReturnToPicker = async () => {
         if (!correctionNotes.trim()) return;
-        if (window.confirm('Are you sure you want to return this order to the picker for correction?')) {
-            onReturnToPicker(correctionNotes.trim());
-            onClose();
-        }
+
+        showConfirmation(
+            'Confirm Return',
+            'Are you sure you want to return this order to the picker? This will release the order from your verification queue.',
+            async () => {
+                try {
+                    await onAddNote(correctionNotes.trim());
+                    onReturnToPicker(correctionNotes.trim());
+                    setCorrectionNotes('');
+                    setIsNotesExpanded(false);
+                    onClose();
+                    toast.success('Order returned for correction');
+                } catch (error) {
+                    console.error('Failed to send for correction:', error);
+                    toast.error('Failed to return order');
+                }
+            },
+            () => { },
+            'Return to Picker',
+            'Cancel'
+        );
     };
 
     const finalSequence = useMemo(() => {
@@ -100,15 +124,7 @@ export const DoubleCheckView = ({
                 <div className="flex items-center gap-1">
                     {!correctionNotes.trim() && (
                         <button
-                            onClick={() => {
-                                if (checkedCount > 0) {
-                                    if (window.confirm('You have checked items. Are you sure you want to release this order to the queue? Your progress will be saved.')) {
-                                        onRelease();
-                                    }
-                                } else {
-                                    onRelease();
-                                }
-                            }}
+                            onClick={onRelease}
                             className="flex items-center gap-1.5 px-3 py-2 bg-surface border border-subtle text-muted rounded-xl hover:text-accent hover:border-accent transition-all shrink-0"
                             title="Release to Queue"
                         >
@@ -182,15 +198,23 @@ export const DoubleCheckView = ({
                         </div>
                     </section>
                 ))}
+
+                {/* Notes History */}
+                <div className="mt-8 mb-6 mx-1">
+                    <CorrectionNotesTimeline notes={notes} isLoading={isNotesLoading} />
+                </div>
+
                 {/* Correction Section */}
-                <section className={`mt-8 mb-12 border rounded-2xl mx-1 transition-all duration-300 ${isNotesExpanded ? 'bg-amber-500/5 border-amber-500/20' : 'bg-surface border-subtle'}`}>
+                <section className={`mt-4 mb-12 border rounded-2xl mx-1 transition-all duration-300 ${isNotesExpanded ? 'bg-amber-500/5 border-amber-500/20' : 'bg-surface border-subtle'}`}>
                     <button
                         onClick={() => setIsNotesExpanded(!isNotesExpanded)}
                         className="w-full flex items-center justify-between p-4"
                     >
                         <div className="flex items-center gap-2">
                             <MessageSquare size={16} className={isNotesExpanded ? 'text-amber-500' : 'text-muted'} />
-                            <h3 className={`text-[11px] font-black uppercase tracking-widest ${isNotesExpanded ? 'text-amber-500/70' : 'text-muted'}`}>Verification Notes</h3>
+                            <h3 className={`text-[11px] font-black uppercase tracking-widest ${isNotesExpanded ? 'text-amber-500/70' : 'text-muted'}`}>
+                                {notes.length > 0 ? 'Add Another Note' : 'Add Verification Notes'}
+                            </h3>
                         </div>
                         <ChevronDown size={14} className={`text-muted transition-transform duration-300 ${isNotesExpanded ? 'rotate-180' : ''}`} />
                     </button>
@@ -200,20 +224,32 @@ export const DoubleCheckView = ({
                             <textarea
                                 value={correctionNotes}
                                 onChange={(e) => setCorrectionNotes(e.target.value)}
-                                placeholder="Add notes for the picker if adjustments are needed..."
+                                placeholder="Explain what needs to be fixed..."
                                 className="w-full h-24 bg-card border border-subtle rounded-xl p-3 text-sm text-content focus:outline-none focus:border-amber-500/30 resize-none transition-all mb-3 placeholder:text-muted/50"
                                 autoFocus
                             />
-                            <button
-                                onClick={handleReturnToPicker}
-                                disabled={!correctionNotes.trim()}
-                                className="w-full py-3 bg-amber-500 text-main font-black uppercase tracking-widest text-[10px] rounded-xl shadow-lg shadow-amber-500/10 active:scale-95 transition-all disabled:opacity-30 disabled:active:scale-100 flex items-center justify-center gap-2"
-                            >
-                                <Send size={14} />
-                                Send to Picker
-                            </button>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => {
+                                        onAddNote(correctionNotes.trim());
+                                        setCorrectionNotes('');
+                                    }}
+                                    disabled={!correctionNotes.trim()}
+                                    className="flex-1 py-3 bg-surface border border-subtle text-muted font-black uppercase tracking-widest text-[9px] rounded-xl active:scale-95 transition-all disabled:opacity-30"
+                                >
+                                    Save Note Only
+                                </button>
+                                <button
+                                    onClick={handleReturnToPicker}
+                                    disabled={!correctionNotes.trim()}
+                                    className="flex-[2] py-3 bg-amber-500 text-main font-black uppercase tracking-widest text-[9px] rounded-xl shadow-lg shadow-amber-500/10 active:scale-95 transition-all disabled:opacity-30 flex items-center justify-center gap-2"
+                                >
+                                    <Send size={14} />
+                                    Return to Picker
+                                </button>
+                            </div>
                             <p className="text-[9px] text-muted font-bold text-center mt-3 uppercase tracking-tighter italic">
-                                The order will be moved back for review
+                                Notes help pickers avoid the same mistakes
                             </p>
                         </div>
                     )}

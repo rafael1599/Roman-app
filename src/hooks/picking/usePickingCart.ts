@@ -62,12 +62,22 @@ export const usePickingCart = ({ sessionMode, reservedQuantities }: UsePickingCa
         const key = `${item.SKU}|${item.Warehouse}|${item.Location}`;
         const totalReserved = reservedQuantities[key] || 0;
         const currentInMyCart = cartItems.find(i => isSameItem(i, item))?.pickingQty || 0;
-        const reservedByOthers = Math.max(0, totalReserved - currentInMyCart); // Safety max(0)
+        const reservedByOthers = Math.max(0, totalReserved - currentInMyCart);
         const stock = item.Quantity || 0;
         const available = stock - reservedByOthers;
 
+        // Block completely if no stock available
+        if (available <= 0) {
+            toast.error(`This item is fully reserved by other active orders. 🚫`, {
+                icon: '📦',
+                duration: 4000
+            });
+            return;
+        }
+
+        // Check if adding one more would exceed
         if (currentInMyCart + 1 > available) {
-            toast.error(`Only ${available} units available. ${reservedByOthers} units are reserved in other orders.`, {
+            toast.error(`Only ${available} units available. ${reservedByOthers} units are reserved.`, {
                 icon: '🚨',
                 duration: 4000
             });
@@ -88,6 +98,23 @@ export const usePickingCart = ({ sessionMode, reservedQuantities }: UsePickingCa
             }
         });
     }, [cartItems, reservedQuantities, isSameItem, sessionMode]);
+
+    // Helper to get available stock for an item (exported for UI usage)
+    const getAvailableStock = useCallback((item: Partial<InventoryItem>) => {
+        const key = `${item.SKU}|${item.Warehouse}|${item.Location}`;
+        const totalReserved = reservedQuantities[key] || 0;
+        const currentInMyCart = cartItems.find(i => isSameItem(i, item))?.pickingQty || 0;
+        const reservedByOthers = Math.max(0, totalReserved - currentInMyCart);
+        const stock = item.Quantity || 0;
+        const available = stock - reservedByOthers;
+
+        return {
+            available,
+            reservedByOthers,
+            totalStock: stock,
+            inMyCart: currentInMyCart
+        };
+    }, [cartItems, reservedQuantities, isSameItem]);
 
     const updateCartQty = useCallback((item: InventoryItem, change: number) => {
         if (sessionMode !== 'picking') return;
@@ -160,6 +187,7 @@ export const usePickingCart = ({ sessionMode, reservedQuantities }: UsePickingCa
         setCartQty,
         removeFromCart,
         clearCart,
-        loadFromLocalStorage
+        loadFromLocalStorage,
+        getAvailableStock
     };
 };

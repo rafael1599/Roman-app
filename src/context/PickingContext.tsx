@@ -5,6 +5,7 @@ import { useError } from './ErrorContext';
 import { usePickingCart, CartItem } from '../hooks/picking/usePickingCart';
 import { usePickingSync } from '../hooks/picking/usePickingSync';
 import { usePickingActions } from '../hooks/picking/usePickingActions';
+import { usePickingNotes, PickingNote } from '../hooks/picking/usePickingNotes';
 
 interface PickingContextType {
     cartItems: CartItem[];
@@ -17,6 +18,9 @@ interface PickingContextType {
     checkedBy: string | null;
     ownerId: string | null;
     correctionNotes: string | null;
+    notes: PickingNote[];
+    isNotesLoading: boolean;
+    addNote: (message: string) => Promise<void>;
     sessionMode: 'picking' | 'double_checking';
     setSessionMode: (mode: 'picking' | 'double_checking') => void;
 
@@ -25,6 +29,7 @@ interface PickingContextType {
     setCartQty: (item: any, qty: number) => void;
     removeFromCart: (item: any) => void;
     clearCart: () => void;
+    getAvailableStock: (item: any) => { available: number; reservedByOthers: number; totalStock: number; inMyCart: number };
 
     completeList: (id?: string) => void;
     markAsReady: (items?: any[], orderNum?: string) => Promise<string | null>;
@@ -39,6 +44,7 @@ interface PickingContextType {
     isLoaded: boolean;
     isSaving: boolean;
     lastSaved: Date | null;
+    resetSession: () => void;
 }
 
 const PickingContext = createContext<PickingContextType | undefined>(undefined);
@@ -69,7 +75,8 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
         setCartQty,
         removeFromCart,
         clearCart,
-        loadFromLocalStorage
+        loadFromLocalStorage,
+        getAvailableStock
     } = usePickingCart({
         sessionMode,
         reservedQuantities
@@ -130,6 +137,37 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
         // I would need to lift isSaving state to Provider.
     });
 
+    const { notes, isLoading: isNotesLoading, addNote: addNoteRaw } = usePickingNotes(activeListId);
+
+    const addNote = async (message: string) => {
+        if (!user) return;
+        await addNoteRaw(user.id, message);
+    };
+
+    const resetSession = () => {
+        clearCart();
+        setActiveListId(null);
+        setListStatus('active');
+        setCheckedBy(null);
+        setOwnerId(null);
+        setCorrectionNotes(null);
+        setSessionMode('picking');
+
+        // Comprehensive localStorage cleanup
+        localStorage.removeItem('picking_cart_items');
+        localStorage.removeItem('picking_order_number');
+        localStorage.removeItem('active_picking_list_id');
+        localStorage.removeItem('picking_session_mode');
+
+        // Also clean up double check progress if any
+        const keys = Object.keys(localStorage);
+        keys.forEach(key => {
+            if (key.startsWith('double_check_progress_')) {
+                localStorage.removeItem(key);
+            }
+        });
+    };
+
     // We need to bridge isSaving. The hooks currently have their own useState for isSaving.
     // Ideally, isSaving should be in the Provider.
     // For this refactor, I'll rely on the hooks managing their own async flow and maybe use a simplified version,
@@ -147,6 +185,9 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
         checkedBy,
         ownerId,
         correctionNotes,
+        notes,
+        isNotesLoading,
+        addNote,
         sessionMode,
         setSessionMode,
         addToCart,
@@ -154,6 +195,7 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
         setCartQty,
         removeFromCart,
         clearCart,
+        getAvailableStock,
         completeList,
         markAsReady,
         lockForCheck,
@@ -164,7 +206,8 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
         loadExternalList,
         isLoaded,
         isSaving, // From Sync hook
-        lastSaved
+        lastSaved,
+        resetSession
     };
 
     return (

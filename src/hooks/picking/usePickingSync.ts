@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { debounce } from '../../utils/debounce';
+import toast from 'react-hot-toast';
 import type { CartItem } from './usePickingCart';
 
 interface UsePickingSyncProps {
@@ -54,6 +55,18 @@ export const usePickingSync = ({
 
     const isInitialSyncRef = useRef(true);
     const isSyncingRef = useRef(false);
+    const takeoverSyncRef = useRef<string | null>(null);
+
+    // Refs to keep subscription stable
+    const sessionModeRef = useRef(sessionMode);
+    const listStatusRef = useRef(listStatus);
+    const correctionNotesRef = useRef(correctionNotes);
+    const checkedByRef = useRef(checkedBy);
+
+    useEffect(() => { sessionModeRef.current = sessionMode; }, [sessionMode]);
+    useEffect(() => { listStatusRef.current = listStatus; }, [listStatus]);
+    useEffect(() => { correctionNotesRef.current = correctionNotes; }, [correctionNotes]);
+    useEffect(() => { checkedByRef.current = checkedBy; }, [checkedBy]);
 
     // 1. Initial Load Logic
     useEffect(() => {
@@ -131,6 +144,68 @@ export const usePickingSync = ({
     useEffect(() => {
         if (!activeListId || isDemoMode || !user) return;
 
+        // Helper function to handle takeover alerts
+        // Helper function to handle takeover alerts
+        const showTakeoverAlert = async (takerId: string) => {
+            // Prevent duplicate alerts for the same takeover event
+            if (takeoverSyncRef.current === activeListId) return;
+            takeoverSyncRef.current = activeListId;
+
+            try {
+                // Fetch the name of the user who took control
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('full_name')
+                    .eq('id', takerId)
+                    .single();
+
+                const takerName = profile?.full_name || 'Another user';
+
+                // Show informative toast instead of error
+                toast(`${takerName} has taken over this order.\nYour session is being reset.`, {
+                    icon: 'ℹ️',
+                    duration: 4000,
+                    style: {
+                        border: '1px solid #3b82f6',
+                        padding: '16px',
+                        color: '#1e293b',
+                    },
+                });
+
+                // Reset session with enough time to read message
+                setTimeout(() => {
+                    setCartItems([]);
+                    setActiveListId(null);
+                    setOrderNumber(null);
+                    setListStatus('active');
+                    setCheckedBy(null);
+                    setOwnerId(null);
+                    setCorrectionNotes(null);
+                    setSessionMode('picking');
+
+                    // Comprehensive localStorage cleanup
+                    localStorage.removeItem('picking_cart_items');
+                    localStorage.removeItem('picking_order_number');
+                    localStorage.removeItem('active_picking_list_id');
+                    localStorage.removeItem('picking_session_mode');
+
+                    // Clean up double check progress
+                    const keys = Object.keys(localStorage);
+                    keys.forEach(key => {
+                        if (key.startsWith('double_check_progress_')) {
+                            localStorage.removeItem(key);
+                        }
+                    });
+
+                    takeoverSyncRef.current = null;
+                    console.log('✅ [Takeover] Sesión reseteada completamente');
+                }, 1500); // Reduced to 1.5s for faster feedback
+            } catch (err) {
+                takeoverSyncRef.current = null;
+                console.error('Error showing takeover alert:', err);
+            }
+        };
+
         const channel = supabase
             .channel(`list_status_sync_${activeListId}`)
             .on('postgres_changes', {
@@ -141,12 +216,25 @@ export const usePickingSync = ({
             }, (payload) => {
                 const newData = payload.new;
 
-                if (newData.status !== listStatus) setListStatus(newData.status);
-                if (newData.correction_notes !== correctionNotes) setCorrectionNotes(newData.correction_notes);
-                if (newData.checked_by !== checkedBy) setCheckedBy(newData.checked_by);
+                // Detect takeover during picking
+                if (sessionModeRef.current === 'picking' && newData.user_id && newData.user_id !== user.id) {
+                    showTakeoverAlert(newData.user_id);
+                    return;
+                }
+
+                // Detect takeover during double-checking
+                if (sessionModeRef.current === 'double_checking' && newData.checked_by && newData.checked_by !== user.id) {
+                    showTakeoverAlert(newData.checked_by);
+                    return;
+                }
+
+                // Normal state synchronization
+                if (newData.status !== listStatusRef.current) setListStatus(newData.status);
+                if (newData.correction_notes !== correctionNotesRef.current) setCorrectionNotes(newData.correction_notes);
+                if (newData.checked_by !== checkedByRef.current) setCheckedBy(newData.checked_by);
 
                 // Auto-switch mode if returned to picker
-                if (sessionMode === 'double_checking' && (newData.status === 'active' || newData.status === 'needs_correction')) {
+                if (sessionModeRef.current === 'double_checking' && (newData.status === 'active' || newData.status === 'needs_correction')) {
                     if (newData.user_id === user.id) {
                         setSessionMode('picking');
                     }
@@ -157,7 +245,7 @@ export const usePickingSync = ({
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [activeListId, listStatus, correctionNotes, checkedBy, sessionMode, user, isDemoMode]);
+    }, [activeListId, user?.id, isDemoMode]);
 
     // 3. Save Logic (Client to Server) - Encapsulated
     const saveToDb = async (items: CartItem[], userId: string, listId: string | null, orderNum: string | null) => {
@@ -201,7 +289,7 @@ export const usePickingSync = ({
 
     useEffect(() => {
         if (!debouncedSaveRef.current) {
-            debouncedSaveRef.current = debounce((...args) => saveToDb(...args), SYNC_DEBOUNCE_MS);
+            debouncedSaveRef.current = debounce((items: CartItem[], userId: string, listId: string | null, orderNum: string | null) => saveToDb(items, userId, listId, orderNum), SYNC_DEBOUNCE_MS);
         }
     }, []);
 

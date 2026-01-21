@@ -1,18 +1,26 @@
-import React, { useMemo, useState, useRef, useEffect } from 'react';
+import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import { Package, Warehouse, MapPin, Printer, Minus, Plus, Trash2, ChevronDown, Check, AlertCircle } from 'lucide-react';
 import { getOptimizedPickingPath, calculatePallets } from '../../../utils/pickingLogic';
 import { generatePickingPdf } from '../../../utils/pickingPdf';
 import { useLocationManagement } from '../../../hooks/useLocationManagement';
 import { SlideToConfirm } from '../../../components/ui/SlideToConfirm';
 import { useError } from '../../../context/ErrorContext';
+import { useConfirmation } from '../../../context/ConfirmationContext';
+import { useAuth } from '../../../context/AuthContext';
+import { supabase } from '../../../lib/supabaseClient';
+import { CorrectionNotesTimeline } from './CorrectionNotesTimeline';
+import toast from 'react-hot-toast';
 
-export const PickingSessionView = ({ cartItems, activeListId, orderNumber, correctionNotes, onUpdateOrderNumber, onGoToDoubleCheck, onUpdateQty, onRemoveItem, onClose }) => {
+export const PickingSessionView = ({ cartItems, activeListId, orderNumber, correctionNotes, notes = [], isNotesLoading = false, onUpdateOrderNumber, onGoToDoubleCheck, onUpdateQty, onRemoveItem, onClose }) => {
     const { locations } = useLocationManagement();
     const { showError } = useError();
+    const { showConfirmation } = useConfirmation();
+    const { user } = useAuth();
     const [isDeducting, setIsDeducting] = useState(false);
     const [editingItemKey, setEditingItemKey] = useState(null);
     const [editingQuantity, setEditingQuantity] = useState('');
     const [isEditingOrder, setIsEditingOrder] = useState(false);
+    const [isValidatingOrder, setIsValidatingOrder] = useState(false);
     const [tempOrder, setTempOrder] = useState(orderNumber || '');
     const inputRef = useRef(null);
     const orderInputRef = useRef(null);
@@ -91,10 +99,81 @@ export const PickingSessionView = ({ cartItems, activeListId, orderNumber, corre
         setIsEditingOrder(true);
     };
 
-    const handleOrderSubmit = () => {
-        if (tempOrder.trim()) {
-            onUpdateOrderNumber(tempOrder.trim());
+    // Check if order number is already in use by another user
+    const checkOrderAvailability = useCallback(async (orderNum) => {
+        if (!orderNum || orderNum.trim() === '' || !user) return true;
+
+        setIsValidatingOrder(true);
+        try {
+            const { data, error } = await supabase
+                .from('picking_lists')
+                .select('id, user_id, profiles(full_name)')
+                .eq('order_number', orderNum.trim())
+                .in('status', ['active', 'needs_correction', 'ready_to_double_check', 'double_checking'])
+                .neq('user_id', user.id) // Excluir nuestras propias sesiones
+                .maybeSingle();
+
+            if (error) throw error;
+
+            if (data) {
+                // Another session is active with this order number
+                const ownerName = data.profiles?.full_name || 'Another user';
+
+                const confirmed = await new Promise((resolve) => {
+                    showConfirmation(
+                        'Order In Use',
+                        `${ownerName} is currently working on order #${orderNum}. Do you want to take over? This will reset their session.`,
+                        () => resolve(true),
+                        () => resolve(false),
+                        'Take Over',
+                        'Cancel'
+                    );
+                });
+
+                if (confirmed) {
+                    // Transfer session: update user_id to current user
+                    await supabase
+                        .from('picking_lists')
+                        .update({ user_id: user.id })
+                        .eq('id', data.id);
+
+                    toast.success('You took control of the order');
+                    return true;
+                }
+
+                return false; // User cancelled
+            }
+
+            return true; // No hay conflicto
+        } catch (err) {
+            console.error('Error checking order:', err);
+            showError('Error', 'Could not verify order availability');
+            return false;
+        } finally {
+            setIsValidatingOrder(false);
         }
+    }, [user, showConfirmation, showError]);
+
+    const handleOrderSubmit = async () => {
+        if (!tempOrder.trim()) {
+            setIsEditingOrder(false);
+            return;
+        }
+
+        // Prevent double submission
+        if (isValidatingOrder) return;
+
+        // Validate availability before updating
+        const isAvailable = await checkOrderAvailability(tempOrder.trim());
+        if (!isAvailable) {
+            // User cancelled or error occurred
+            setTempOrder(orderNumber || ''); // Restore previous value
+            setIsEditingOrder(false);
+            return;
+        }
+
+        // Proceed with update
+        onUpdateOrderNumber(tempOrder.trim());
         setIsEditingOrder(false);
     };
 
@@ -147,16 +226,24 @@ export const PickingSessionView = ({ cartItems, activeListId, orderNumber, corre
                     <div className="flex items-center justify-center gap-2">
                         <h2 className="text-base font-black text-content uppercase tracking-tight">Review Picking</h2>
                         {isEditingOrder ? (
-                            <input
-                                ref={orderInputRef}
-                                type="text"
-                                value={tempOrder}
-                                onChange={(e) => setTempOrder(e.target.value)}
-                                onBlur={handleOrderSubmit}
-                                onKeyDown={handleOrderKeyDown}
-                                className="text-[9px] font-mono bg-accent/10 text-accent px-1.5 py-0.5 rounded border border-accent/20 w-20 focus:outline-none focus:border-accent"
-                                placeholder="#"
-                            />
+                            <div className="relative">
+                                <input
+                                    ref={orderInputRef}
+                                    type="text"
+                                    value={tempOrder}
+                                    onChange={(e) => setTempOrder(e.target.value)}
+                                    onBlur={handleOrderSubmit}
+                                    onKeyDown={handleOrderKeyDown}
+                                    className="text-[9px] font-mono bg-accent/10 text-accent px-1.5 py-0.5 rounded border border-accent/20 w-20 focus:outline-none focus:border-accent"
+                                    placeholder="#"
+                                    disabled={isValidatingOrder}
+                                />
+                                {isValidatingOrder && (
+                                    <div className="absolute right-0 top-0 w-3 h-3">
+                                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-accent"></div>
+                                    </div>
+                                )}
+                            </div>
                         ) : (
                             <span
                                 onClick={handleOrderClick}
@@ -182,15 +269,27 @@ export const PickingSessionView = ({ cartItems, activeListId, orderNumber, corre
             {/* Scrollable Content */}
             <div className="flex-1 overflow-y-auto p-3">
                 {/* Correction Notes Banner */}
-                {correctionNotes && (
-                    <div className="mb-4 p-4 bg-amber-500/5 border border-amber-500/10 rounded-2xl flex items-start gap-3 animate-in fade-in slide-in-from-top-2 duration-500">
-                        <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500 shrink-0">
-                            <AlertCircle size={18} />
-                        </div>
-                        <div className="flex-1">
-                            <p className="text-[10px] font-black text-amber-500/70 uppercase tracking-widest mb-1">Review Note</p>
-                            <p className="text-sm font-medium text-content italic leading-relaxed">"{correctionNotes}"</p>
-                        </div>
+                {(correctionNotes || notes.length > 0) && (
+                    <div className="mb-6 space-y-4 animate-in fade-in slide-in-from-top-2 duration-500">
+                        {/* Summary of last note if exists as legacy flag */}
+                        {correctionNotes && (
+                            <div className="p-4 bg-amber-500/5 border border-amber-500/10 rounded-2xl flex items-start gap-3">
+                                <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500 shrink-0">
+                                    <AlertCircle size={18} />
+                                </div>
+                                <div className="flex-1">
+                                    <p className="text-[10px] font-black text-amber-500/70 uppercase tracking-widest mb-1">Latest Instruction</p>
+                                    <p className="text-sm font-medium text-content italic leading-relaxed">"{correctionNotes}"</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Detailed Timeline */}
+                        {notes.length > 0 && (
+                            <div className="px-1 pt-2">
+                                <CorrectionNotesTimeline notes={notes} isLoading={isNotesLoading} />
+                            </div>
+                        )}
                     </div>
                 )}
 

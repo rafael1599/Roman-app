@@ -4,6 +4,7 @@ import { useViewMode } from '../../../context/ViewModeContext';
 import { ClipboardCheck, ChevronDown, AlertCircle, Clock, CheckCircle2, Trash2 } from 'lucide-react';
 import { usePickingSession } from '../../../hooks/usePickingSession';
 import { useAuth } from '../../../context/AuthContext';
+import { useConfirmation } from '../../../context/ConfirmationContext';
 import toast from 'react-hot-toast';
 
 export const DoubleCheckHeader = () => {
@@ -11,6 +12,7 @@ export const DoubleCheckHeader = () => {
     const { setExternalDoubleCheckId, setViewMode } = useViewMode();
     const { cartItems, sessionMode, deleteList } = usePickingSession();
     const { isAdmin } = useAuth();
+    const { showConfirmation } = useConfirmation();
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef(null);
 
@@ -98,9 +100,14 @@ export const DoubleCheckHeader = () => {
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    if (window.confirm('Delete this order permanently?')) {
-                                                        deleteList(order.id);
-                                                    }
+                                                    showConfirmation(
+                                                        'Delete Order',
+                                                        'Are you sure you want to delete this order permanently? This action cannot be undone.',
+                                                        () => deleteList(order.id),
+                                                        () => { },
+                                                        'Delete',
+                                                        'Cancel'
+                                                    );
                                                 }}
                                                 className="p-2 text-muted hover:text-red-500 transition-colors"
                                                 title="Delete Order"
@@ -145,9 +152,14 @@ export const DoubleCheckHeader = () => {
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                if (window.confirm('Delete this order permanently?')) {
-                                                    deleteList(order.id);
-                                                }
+                                                showConfirmation(
+                                                    'Delete Order',
+                                                    'Are you sure you want to delete this order permanently? This action cannot be undone.',
+                                                    () => deleteList(order.id),
+                                                    () => { },
+                                                    'Delete',
+                                                    'Cancel'
+                                                );
                                             }}
                                             className="p-2 text-muted hover:text-red-500 transition-colors"
                                             title="Delete Order"

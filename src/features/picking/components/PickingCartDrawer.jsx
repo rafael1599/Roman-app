@@ -4,6 +4,7 @@ import { PickingSessionView } from './PickingSessionView';
 import { DoubleCheckView } from './DoubleCheckView';
 import { useAuth } from '../../../context/AuthContext';
 import { supabase } from '../../../lib/supabaseClient';
+import { useConfirmation } from '../../../context/ConfirmationContext';
 import toast from 'react-hot-toast';
 
 export const PickingCartDrawer = ({
@@ -26,13 +27,19 @@ export const PickingCartDrawer = ({
     onUpdateQty,
     onRemoveItem,
     onSetQty,
-    onDeduct
+    onDeduct,
+    notes,
+    isNotesLoading,
+    onAddNote,
+    onResetSession
 }) => {
     const { user } = useAuth();
+    const { showConfirmation } = useConfirmation();
     const [isOpen, setIsOpen] = useState(false);
     const [currentView, setCurrentView] = useState('picking');
     const [checkedItems, setCheckedItems] = useState(new Set());
     const isOwner = user?.id === ownerId;
+    const isConfirmingRef = React.useRef(false);
 
     const totalItems = cartItems.length;
     const totalQty = cartItems.reduce((acc, item) => acc + (item.pickingQty || 0), 0);
@@ -58,11 +65,42 @@ export const PickingCartDrawer = ({
                 if (list) {
                     // Check for takeover
                     if (list.checked_by && list.checked_by !== user.id) {
-                        const confirm = window.confirm(`This order is currently being checked by another user. Do you want to take over?`);
-                        if (!confirm) {
-                            onClearExternalTrigger();
-                            return;
-                        }
+                        // Prevent double confirmation
+                        if (isConfirmingRef.current) return;
+                        isConfirmingRef.current = true;
+
+                        showConfirmation(
+                            'Takeover Order',
+                            `This order is currently being checked by another user. Do you want to take over?`,
+                            async () => {
+                                // Lock it for us
+                                await onLockForCheck(externalDoubleCheckId);
+
+                                // Load local progress for this specific list
+                                const savedProgress = localStorage.getItem(`double_check_progress_${externalDoubleCheckId}`);
+                                if (savedProgress) {
+                                    try {
+                                        setCheckedItems(new Set(JSON.parse(savedProgress)));
+                                    } catch (e) {
+                                        setCheckedItems(new Set());
+                                    }
+                                } else {
+                                    setCheckedItems(new Set());
+                                }
+
+                                setCurrentView('double-check');
+                                setIsOpen(true);
+                                onClearExternalTrigger();
+                                isConfirmingRef.current = false;
+                            },
+                            () => {
+                                onClearExternalTrigger();
+                                isConfirmingRef.current = false;
+                            },
+                            'Takeover',
+                            'Cancel'
+                        );
+                        return; // Wait for confirmation
                     }
 
                     // Lock it for us
@@ -89,34 +127,8 @@ export const PickingCartDrawer = ({
         }
     }, [externalDoubleCheckId, user.id, onLoadExternalList, onLockForCheck, onClearExternalTrigger]);
 
-    // 2. Real-time Takeover Protection (Kick-out)
-    useEffect(() => {
-        if (!activeListId || sessionMode !== 'double_checking') return;
-
-        const channel = supabase
-            .channel(`list_monitor_${activeListId}`)
-            .on('postgres_changes', {
-                event: 'UPDATE',
-                schema: 'public',
-                table: 'picking_lists',
-                filter: `id=eq.${activeListId}`
-            }, (payload) => {
-                const newCheckedBy = payload.new.checked_by;
-                if (newCheckedBy && newCheckedBy !== user.id) {
-                    toast.error('This order has been taken over by another user.', {
-                        icon: '⚠️',
-                        duration: 5000
-                    });
-                    setIsOpen(false);
-                    setCurrentView('picking');
-                }
-            })
-            .subscribe();
-
-        return () => {
-            supabase.removeChannel(channel);
-        };
-    }, [activeListId, user.id, sessionMode]);
+    // Note: Takeover protection is now handled in usePickingSync hook
+    // This subscription was removed to avoid duplication and improve performance
 
     // 3. Persist local progress for double check
     useEffect(() => {
@@ -191,6 +203,8 @@ export const PickingCartDrawer = ({
                                 onUpdateOrderNumber={onUpdateOrderNumber}
                                 cartItems={cartItems}
                                 correctionNotes={correctionNotes}
+                                notes={notes}
+                                isNotesLoading={isNotesLoading}
                                 onGoToDoubleCheck={handleMarkAsReady}
                                 onUpdateQty={onUpdateQty}
                                 onRemoveItem={onRemoveItem}
@@ -213,6 +227,9 @@ export const PickingCartDrawer = ({
                                 }}
                                 onReturnToPicker={(notes) => onReturnToPicker(activeListId, notes)}
                                 isOwner={isOwner}
+                                notes={notes}
+                                isNotesLoading={isNotesLoading}
+                                onAddNote={onAddNote}
                                 onBack={async () => {
                                     if (isOwner) {
                                         await onRevertToPicking();

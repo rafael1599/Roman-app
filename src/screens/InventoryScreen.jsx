@@ -89,7 +89,12 @@ export const InventoryScreen = () => {
         checkedBy,
         ownerId,
         revertToPicking,
-        isSaving
+        isSaving,
+        notes,
+        isNotesLoading,
+        addNote,
+        resetSession,
+        getAvailableStock
     } = usePickingSession();
 
     const { externalDoubleCheckId, setExternalDoubleCheckId } = useViewMode();
@@ -377,6 +382,10 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
                                 .filter(item => (parseInt(item.Quantity) || 0) > 0)
                                 .map((item, idx) => {
                                     const isInCart = cartItems.some(c => c.SKU === item.SKU && c.Warehouse === item.Warehouse && c.Location === item.Location);
+
+                                    // Calculate availability for picking mode
+                                    const stockInfo = viewMode === 'picking' ? getAvailableStock(item) : null;
+
                                     return (
                                         <div key={item.id || `${item.SKU}-${item.Warehouse}-${item.Location}`} className={isInCart && viewMode === 'picking' ? 'ring-1 ring-accent rounded-lg' : ''}>
                                             <InventoryCard
@@ -389,6 +398,8 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
                                                 onMove={() => handleQuickMove(item)}
                                                 onClick={() => handleCardClick(item)}
                                                 mode={viewMode}
+                                                reservedByOthers={stockInfo?.reservedByOthers || 0}
+                                                available={stockInfo?.available}
                                             />
                                         </div>
                                     );
@@ -446,6 +457,10 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
                         onReturnToPicker={returnToPicker}
                         onRevertToPicking={revertToPicking}
                         onMarkAsReady={markAsReady}
+                        notes={notes}
+                        isNotesLoading={isNotesLoading}
+                        onAddNote={addNote}
+                        onResetSession={resetSession}
                         ownerId={ownerId}
                         onUpdateOrderNumber={setOrderNumber}
                         onUpdateQty={updateCartQty}

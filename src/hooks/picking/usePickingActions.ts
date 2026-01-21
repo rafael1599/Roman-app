@@ -81,6 +81,18 @@ export const usePickingActions = ({
 
         setIsSaving(true);
         try {
+            // Enforcement: Release any other list this user might be checking
+            const { error: releaseError } = await supabase
+                .from('picking_lists')
+                .update({
+                    status: 'ready_to_double_check',
+                    checked_by: null
+                })
+                .eq('checked_by', user.id)
+                .neq('id', activeListId); // Don't release the one we are about to lock
+
+            if (releaseError) console.error('Error releasing previous locks:', releaseError);
+
             // Transition to double_checking immediately
             const { error } = await supabase
                 .from('picking_lists')
@@ -116,6 +128,17 @@ export const usePickingActions = ({
     const lockForCheck = useCallback(async (listId: string) => {
         if (isDemoMode || !user) return;
         try {
+            const { error: releaseError } = await supabase
+                .from('picking_lists')
+                .update({
+                    status: 'ready_to_double_check',
+                    checked_by: null
+                })
+                .eq('checked_by', user.id)
+                .neq('id', listId);
+
+            if (releaseError) console.error('Error releasing previous locks:', releaseError);
+
             const { error } = await supabase
                 .from('picking_lists')
                 .update({
@@ -124,6 +147,11 @@ export const usePickingActions = ({
                 })
                 .eq('id', listId);
             if (error) throw error;
+
+            if (releaseError === null) {
+                // We only show toast if we successfully locked and there was potential cleanup
+                // (Though we don't know for sure if it updated rows without checking count)
+            }
         } catch (err) {
             console.error('Failed to lock list:', err);
         }

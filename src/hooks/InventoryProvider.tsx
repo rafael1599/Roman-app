@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, useRef, useMemo, useCallback, ReactNode } from 'react';
+import toast from 'react-hot-toast';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { useInventoryLogs } from './useInventoryLogs';
@@ -168,9 +169,10 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
             const { data, error } = await supabase
                 .from('picking_lists')
                 .select('id, items, status')
-                .in('status', ['active', 'ready_to_double_check', 'double_checking', 'needs_correction']);
+                .in('status', ['ready_to_double_check', 'double_checking', 'needs_correction']);
 
             if (error) throw error;
+            console.log('🔄 [Reservations] Recalculating reserved stock...', { count: data?.length });
             calculateReservations(data || []);
         } catch (err) {
             console.error('Error fetching reservations:', err);
@@ -183,7 +185,7 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
         fetchReservations();
 
         // Create debounced version to throttle realtime updates
-        const debouncedFetchReservations = debounce(fetchReservations, 1000);
+        const debouncedFetchReservations = debounce(fetchReservations, 200);
 
         const channel = supabase
             .channel('picking_lists_reservations')
@@ -378,7 +380,7 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
             await inventoryService.addItem(warehouse, newItem, locations, getServiceContext());
         } catch (err: any) {
             console.error('Error adding item:', err);
-            alert(err.message);
+            toast.error(err.message);
         }
     }, [isDemoMode, locations, getServiceContext, userName]);
 
@@ -411,11 +413,11 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
             );
 
             if (result && result.action === 'merged') {
-                alert(`🚀 Dynamic Merge: Internal stock of "${result.source}" has been consolidated into existing SKU "${result.target}".`);
+                toast.success(`🚀 Dynamic Merge: Internal stock of "${result.source}" has been consolidated into existing SKU "${result.target}".`);
             }
         } catch (err: any) {
             console.error('Error updating item:', err);
-            alert(err.message);
+            toast.error(err.message);
         }
     }, [isDemoMode, locations, getServiceContext, userName]);
 
@@ -460,7 +462,7 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
             await inventoryService.moveItem(sourceItem, targetWarehouse, targetLocation, qty, locations, getServiceContext(), isReversal);
         } catch (err: any) {
             console.error('Error moving item:', err);
-            alert(err.message);
+            toast.error(err.message);
         }
     }, [isDemoMode, locations, getServiceContext, userName]);
 
@@ -508,9 +510,9 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
             if (logId.startsWith('demo-')) {
                 // TODO: Implement local undo for demo actions if needed.
                 // For now, we block it to avoid complexity/confusion or modifying the real DB logic.
-                alert('Undo is currently not supported for simulated actions in Demo Mode.');
+                toast.error('Undo is currently not supported for simulated actions in Demo Mode.');
             } else {
-                alert('Cannot undo real production actions while in Demo Mode.');
+                toast.error('Cannot undo real production actions while in Demo Mode.');
             }
             return;
         }
@@ -520,7 +522,7 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
             updateQuantity,
             updateItem
         });
-        if (!result.success) alert('Undo failed: ' + result.error);
+        if (!result.success) toast.error('Undo failed: ' + result.error);
     }, [performUndo, addItem, moveItem, updateQuantity, updateItem, isDemoMode]);
 
     const syncInventoryLocations = useCallback(async () => {
