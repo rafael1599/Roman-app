@@ -31,7 +31,8 @@ export const PickingCartDrawer = ({
     notes,
     isNotesLoading,
     onAddNote,
-    onResetSession
+    onResetSession,
+    ...restProps
 }) => {
     const { user } = useAuth();
     const { showConfirmation } = useConfirmation();
@@ -138,8 +139,9 @@ export const PickingCartDrawer = ({
     }, [checkedItems, activeListId, sessionMode]);
 
     // Reset when cart becomes empty (for picker)
+    // Reset when cart becomes empty (for picker)
     useEffect(() => {
-        if (totalItems === 0 && sessionMode === 'picking') {
+        if (totalItems === 0 && (sessionMode === 'picking' || sessionMode === 'building')) {
             setIsOpen(false);
             setCurrentView('picking');
             setCheckedItems(new Set());
@@ -167,7 +169,48 @@ export const PickingCartDrawer = ({
         });
     };
 
-    if (totalItems === 0 && sessionMode === 'picking') return null;
+    // Drag Logic
+    const [dragY, setDragY] = useState(0);
+    const [isDragging, setIsDragging] = useState(false);
+    const startYRef = React.useRef(0);
+    const currentYRef = React.useRef(0);
+
+    const handleTouchStart = (e) => {
+        // Only allow dragging from header handle
+        if (!e.target.closest('[data-drag-handle="true"]')) return;
+
+        startYRef.current = e.touches[0].clientY;
+        currentYRef.current = e.touches[0].clientY;
+        setIsDragging(true);
+    };
+
+    const handleTouchMove = (e) => {
+        if (!isDragging) return;
+        const y = e.touches[0].clientY;
+        const delta = y - startYRef.current;
+
+        // Only allow dragging down
+        if (delta > 0) {
+            setDragY(delta);
+            // Prevent scrolling background if needed, but usually redundant with strict handler check
+            if (e.cancelable) e.preventDefault();
+        }
+    };
+
+    const handleTouchEnd = () => {
+        if (!isDragging) return;
+        setIsDragging(false);
+
+        if (dragY > 150) { // Threshold to close
+            setIsOpen(false);
+        }
+        setDragY(0);
+    };
+
+    // If we have items OR we have an active session (even if empty), showing the bar is important
+    // so the user knows they are 'in' an order.
+    // However, if there are 0 items and NO active session, hide it.
+    if (totalItems === 0 && !activeListId && (sessionMode === 'picking' || sessionMode === 'building')) return null;
 
     return (
         <>
@@ -175,27 +218,43 @@ export const PickingCartDrawer = ({
                 <div
                     className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity duration-300"
                     onClick={() => setIsOpen(false)}
+                    style={{ opacity: 1 - (dragY / 600) }} // Fade out backdrop on drag
                 />
             )}
-            <div className={`fixed left-0 right-0 z-[60] transition-all duration-300 ease-in-out ${isOpen ? 'bottom-0' : 'bottom-20'
-                }`}>
+            <div
+                className={`fixed left-0 right-0 z-[60] transition-all duration-300 ease-in-out ${isOpen ? 'bottom-0' : 'bottom-20'}`}
+                style={isOpen ? {
+                    transform: `translateY(${dragY}px)`,
+                    transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)'
+                } : undefined}
+            >
                 {/* Collapsed State - Mini Bar */}
                 {!isOpen && (
                     <div
                         onClick={() => setIsOpen(true)}
-                        className={`mx-4 p-3 rounded-t-2xl shadow-2xl flex items-center justify-center gap-2 cursor-pointer active:opacity-90 transition-colors ${sessionMode === 'double_checking' ? 'bg-orange-500 text-white' : 'bg-accent text-main'
+                        className={`mx-4 p-3 rounded-t-2xl shadow-2xl flex items-center justify-center gap-2 cursor-pointer active:opacity-90 transition-colors ${sessionMode === 'double_checking' ? 'bg-orange-500 text-white' : (sessionMode === 'building' ? 'bg-blue-600 text-white' : 'bg-accent text-main')
                             }`}
                     >
                         <ChevronUp size={20} />
                         <div className="font-bold uppercase tracking-tight text-sm">
-                            {sessionMode === 'double_checking' ? `Verifying Order #${orderNumber || activeListId?.slice(-6).toUpperCase()}` : `${totalQty} Units to Pick`}
+                            {sessionMode === 'double_checking'
+                                ? `Verifying Order #${orderNumber || activeListId?.slice(-6).toUpperCase()}`
+                                : sessionMode === 'building'
+                                    ? `Review Order • ${totalItems} Items`
+                                    : `${totalQty} Units to Pick`
+                            }
                         </div>
                     </div>
                 )}
 
                 {/* Expanded Content */}
                 {isOpen && (
-                    <div className="bg-card border-t border-subtle h-[90vh] flex flex-col shadow-2xl rounded-t-2xl overflow-hidden">
+                    <div
+                        className="bg-card border-t border-subtle h-[90vh] flex flex-col shadow-2xl rounded-t-2xl overflow-hidden"
+                        onTouchStart={handleTouchStart}
+                        onTouchMove={handleTouchMove}
+                        onTouchEnd={handleTouchEnd}
+                    >
                         {currentView === 'picking' ? (
                             <PickingSessionView
                                 activeListId={activeListId}
@@ -209,6 +268,7 @@ export const PickingCartDrawer = ({
                                 onUpdateQty={onUpdateQty}
                                 onRemoveItem={onRemoveItem}
                                 onClose={() => setIsOpen(false)}
+                                onDelete={restProps.onDelete}
                             />
                         ) : (
                             <DoubleCheckView
@@ -231,10 +291,9 @@ export const PickingCartDrawer = ({
                                 isNotesLoading={isNotesLoading}
                                 onAddNote={onAddNote}
                                 onBack={async () => {
-                                    if (isOwner) {
-                                        await onRevertToPicking();
-                                        setCurrentView('picking');
-                                    }
+                                    // Removed isOwner check to allow anyone to go back
+                                    await onRevertToPicking();
+                                    setCurrentView('picking');
                                 }}
                                 onRelease={() => {
                                     onReleaseCheck(activeListId);

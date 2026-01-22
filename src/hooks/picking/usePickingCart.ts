@@ -10,7 +10,7 @@ const LOCAL_STORAGE_KEY = 'picking_cart_items';
 const LOCAL_STORAGE_ORDER_KEY = 'picking_order_number';
 
 interface UsePickingCartProps {
-    sessionMode: 'picking' | 'double_checking';
+    sessionMode: 'building' | 'picking' | 'double_checking';
     reservedQuantities: Record<string, number>;
 }
 
@@ -57,30 +57,43 @@ export const usePickingCart = ({ sessionMode, reservedQuantities }: UsePickingCa
     }, []);
 
     const addToCart = useCallback((item: InventoryItem) => {
-        if (sessionMode !== 'picking') return;
+        // Allow in both 'picking' and 'building' modes
+        if (sessionMode !== 'picking' && sessionMode !== 'building') return;
 
         const key = `${item.SKU}|${item.Warehouse}|${item.Location}`;
         const totalReserved = reservedQuantities[key] || 0;
         const currentInMyCart = cartItems.find(i => isSameItem(i, item))?.pickingQty || 0;
-        const reservedByOthers = Math.max(0, totalReserved - currentInMyCart);
-        const stock = item.Quantity || 0;
-        const available = stock - reservedByOthers;
 
-        // Block completely if no stock available
-        if (available <= 0) {
-            toast.error(`This item is fully reserved by other active orders. 🚫`, {
-                icon: '📦',
-                duration: 4000
-            });
+        // In Building Mode: We ignore *current* reservations because we might be stealing them (race condition handled at commit).
+        // But we must respect total physical stock.
+        const stock = item.Quantity || 0;
+
+        let available = 0;
+        if (sessionMode === 'building') {
+            available = stock; // In building, you can select anything that physically exists
+        } else {
+            const reservedByOthers = Math.max(0, totalReserved - currentInMyCart);
+            available = stock - reservedByOthers;
+        }
+
+        // Block completely if no stock available (physically)
+        if (stock <= 0) {
+            toast.error(`This item is out of stock. 🚫`);
+            return;
+        }
+
+        // If in Picking mode, do stricter check
+        if (sessionMode === 'picking' && available <= 0) {
+            toast.error(`This item is fully reserved by other active orders. 🚫`);
             return;
         }
 
         // Check if adding one more would exceed
         if (currentInMyCart + 1 > available) {
-            toast.error(`Only ${available} units available. ${reservedByOthers} units are reserved.`, {
-                icon: '🚨',
-                duration: 4000
-            });
+            toast.error(sessionMode === 'building'
+                ? `Only ${stock} total units in stock.`
+                : `Only ${available} available (others reserved).`
+            );
             return;
         }
 
@@ -117,14 +130,21 @@ export const usePickingCart = ({ sessionMode, reservedQuantities }: UsePickingCa
     }, [cartItems, reservedQuantities, isSameItem]);
 
     const updateCartQty = useCallback((item: InventoryItem, change: number) => {
-        if (sessionMode !== 'picking') return;
+        if (sessionMode !== 'picking' && sessionMode !== 'building') return;
 
         const key = `${item.SKU}|${item.Warehouse}|${item.Location}`;
         const totalReserved = reservedQuantities[key] || 0;
         const currentInMyCart = cartItems.find(i => isSameItem(i, item))?.pickingQty || 0;
-        const reservedByOthers = Math.max(0, totalReserved - currentInMyCart);
+
         const stock = item.Quantity || 0;
-        const available = stock - reservedByOthers;
+        let available = 0;
+
+        if (sessionMode === 'building') {
+            available = stock;
+        } else {
+            const reservedByOthers = Math.max(0, totalReserved - currentInMyCart);
+            available = stock - reservedByOthers;
+        }
 
         setCartItems(prev => prev.map(i => {
             if (isSameItem(i, item)) {
@@ -144,14 +164,21 @@ export const usePickingCart = ({ sessionMode, reservedQuantities }: UsePickingCa
     }, [cartItems, reservedQuantities, isSameItem, sessionMode]);
 
     const setCartQty = useCallback((item: InventoryItem, newAbsoluteQty: number) => {
-        if (sessionMode !== 'picking') return;
+        if (sessionMode !== 'picking' && sessionMode !== 'building') return;
 
         const key = `${item.SKU}|${item.Warehouse}|${item.Location}`;
         const totalReserved = reservedQuantities[key] || 0;
         const currentInMyCart = cartItems.find(i => isSameItem(i, item))?.pickingQty || 0;
-        const reservedByOthers = Math.max(0, totalReserved - currentInMyCart);
+
         const stock = item.Quantity || 0;
-        const available = stock - reservedByOthers;
+        let available = 0;
+
+        if (sessionMode === 'building') {
+            available = stock;
+        } else {
+            const reservedByOthers = Math.max(0, totalReserved - currentInMyCart);
+            available = stock - reservedByOthers;
+        }
 
         setCartItems(prev => prev.map(i => {
             if (isSameItem(i, item)) {
@@ -166,7 +193,7 @@ export const usePickingCart = ({ sessionMode, reservedQuantities }: UsePickingCa
     }, [cartItems, reservedQuantities, isSameItem, sessionMode]);
 
     const removeFromCart = useCallback((item: Partial<InventoryItem>) => {
-        if (sessionMode !== 'picking') return;
+        if (sessionMode !== 'picking' && sessionMode !== 'building') return;
         setCartItems(prev => prev.filter(i => !isSameItem(i, item)));
     }, [isSameItem, sessionMode]);
 

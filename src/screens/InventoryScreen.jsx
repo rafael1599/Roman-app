@@ -19,6 +19,7 @@ import { useLocationManagement } from '../hooks/useLocationManagement';
 import LocationEditorModal from '../features/warehouse-management/components/LocationEditorModal';
 import { useError } from '../context/ErrorContext';
 import { useConfirmation } from '../context/ConfirmationContext';
+import { SessionInitializationModal } from '../features/picking/components/SessionInitializationModal';
 
 export const InventoryScreen = () => {
     const { inventoryData, locationCapacities, updateQuantity, addItem, updateItem, moveItem, deleteItem, loading } = useInventory();
@@ -94,7 +95,8 @@ export const InventoryScreen = () => {
         isNotesLoading,
         addNote,
         resetSession,
-        getAvailableStock
+        getAvailableStock,
+        deleteList
     } = usePickingSession();
 
     const { externalDoubleCheckId, setExternalDoubleCheckId } = useViewMode();
@@ -312,6 +314,8 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
 
     return (
         <div className="pb-4 relative">
+            <SessionInitializationModal />
+
             {showWelcome && (
                 <div className="mx-4 mt-4 relative group animate-in fade-in slide-in-from-top-4 duration-1000">
                     <div className="absolute -inset-0.5 bg-gradient-to-r from-accent to-blue-600 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
@@ -397,7 +401,7 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
                                                 onDecrement={() => updateQuantity(item.SKU, -1, item.Warehouse, item.Location)}
                                                 onMove={() => handleQuickMove(item)}
                                                 onClick={() => handleCardClick(item)}
-                                                mode={viewMode}
+                                                mode={viewMode === 'picking' ? sessionMode : 'stock'}
                                                 reservedByOthers={stockInfo?.reservedByOthers || 0}
                                                 available={stockInfo?.available}
                                             />
@@ -466,6 +470,7 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
                         onUpdateQty={updateCartQty}
                         onSetQty={setCartQty}
                         onRemoveItem={removeFromCart}
+                        onDelete={deleteList}
                         onDeduct={async (items) => {
                             if (isProcessingDeduction) return false;
                             setIsProcessingDeduction(true);

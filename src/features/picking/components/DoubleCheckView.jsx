@@ -100,16 +100,17 @@ export const DoubleCheckView = ({
     return (
         <div className="flex flex-col h-full bg-card relative">
             {/* Header */}
-            <div className="px-4 py-2 border-b border-subtle flex items-center justify-between shrink-0 bg-surface/50 backdrop-blur-sm sticky top-0 z-10">
-                {isOwner && (
-                    <button
-                        onClick={onBack}
-                        className="p-2 hover:bg-surface rounded-lg text-muted transition-colors shrink-0"
-                        title="Back to Picking"
-                    >
-                        <ChevronLeft size={24} />
-                    </button>
-                )}
+            <div
+                data-drag-handle="true"
+                className="px-4 py-2 border-b border-subtle flex items-center justify-between shrink-0 bg-surface/50 backdrop-blur-sm sticky top-0 z-10 touch-none"
+            >
+                <button
+                    onClick={onBack}
+                    className="p-2 hover:bg-surface rounded-lg text-muted transition-colors shrink-0"
+                    title="Back to Picking"
+                >
+                    <ChevronLeft size={24} />
+                </button>
                 <div className="flex-1 mx-2">
                     <div className="flex flex-col items-center">
                         <h2 className="text-base font-black text-content uppercase tracking-tight">Double Check</h2>

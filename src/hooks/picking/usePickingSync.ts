@@ -7,7 +7,7 @@ import type { CartItem } from './usePickingCart';
 interface UsePickingSyncProps {
     user: any;
     isDemoMode: boolean;
-    sessionMode: 'picking' | 'double_checking';
+    sessionMode: 'building' | 'picking' | 'double_checking';
     cartItems: CartItem[];
     orderNumber: string | null;
     activeListId: string | null;
@@ -19,9 +19,10 @@ interface UsePickingSyncProps {
     setOrderNumber: (num: string | null) => void;
     setListStatus: (status: string) => void;
     setCheckedBy: (id: string | null) => void;
+    ownerId: string | null;  // New Prop
     setOwnerId: (id: string | null) => void;
     setCorrectionNotes: (notes: string | null) => void;
-    setSessionMode: (mode: 'picking' | 'double_checking') => void;
+    setSessionMode: (mode: 'building' | 'picking' | 'double_checking') => void;
     loadFromLocalStorage: () => void;
     showError: (title: string, msg: string) => void;
 }
@@ -43,6 +44,7 @@ export const usePickingSync = ({
     setOrderNumber,
     setListStatus,
     setCheckedBy,
+    ownerId, // Destructure ownerId
     setOwnerId,
     setCorrectionNotes,
     setSessionMode,
@@ -63,10 +65,8 @@ export const usePickingSync = ({
     const correctionNotesRef = useRef(correctionNotes);
     const checkedByRef = useRef(checkedBy);
 
-    useEffect(() => { sessionModeRef.current = sessionMode; }, [sessionMode]);
-    useEffect(() => { listStatusRef.current = listStatus; }, [listStatus]);
-    useEffect(() => { correctionNotesRef.current = correctionNotes; }, [correctionNotes]);
-    useEffect(() => { checkedByRef.current = checkedBy; }, [checkedBy]);
+    const ownerIdRef = useRef(ownerId);
+    useEffect(() => { ownerIdRef.current = ownerId; }, [ownerId]);
 
     // 1. Initial Load Logic
     useEffect(() => {
@@ -181,7 +181,7 @@ export const usePickingSync = ({
                     setCheckedBy(null);
                     setOwnerId(null);
                     setCorrectionNotes(null);
-                    setSessionMode('picking');
+                    setSessionMode('building');
 
                     // Comprehensive localStorage cleanup
                     localStorage.removeItem('picking_cart_items');
@@ -217,7 +217,15 @@ export const usePickingSync = ({
                 const newData = payload.new;
 
                 // Detect takeover during picking
-                if (sessionModeRef.current === 'picking' && newData.user_id && newData.user_id !== user.id) {
+                // Alert if:
+                // 1. Session is picking
+                // 2. New user_id is defined and is NOT me
+                // 3. New user_id is NOT the same as the previous owner (i.e. real ownership change)
+                if (sessionModeRef.current === 'picking' &&
+                    newData.user_id &&
+                    newData.user_id !== user.id &&
+                    newData.user_id !== ownerIdRef.current
+                ) {
                     showTakeoverAlert(newData.user_id);
                     return;
                 }
@@ -232,6 +240,7 @@ export const usePickingSync = ({
                 if (newData.status !== listStatusRef.current) setListStatus(newData.status);
                 if (newData.correction_notes !== correctionNotesRef.current) setCorrectionNotes(newData.correction_notes);
                 if (newData.checked_by !== checkedByRef.current) setCheckedBy(newData.checked_by);
+                if (newData.user_id !== ownerIdRef.current) setOwnerId(newData.user_id); // Sync owner if changed
 
                 // Auto-switch mode if returned to picker
                 if (sessionModeRef.current === 'double_checking' && (newData.status === 'active' || newData.status === 'needs_correction')) {
@@ -249,6 +258,9 @@ export const usePickingSync = ({
 
     // 3. Save Logic (Client to Server) - Encapsulated
     const saveToDb = async (items: CartItem[], userId: string, listId: string | null, orderNum: string | null) => {
+        // DO NOT SAVE if in building mode. Building is local until committed.
+        if (sessionMode === 'building') return;
+
         if (!userId || isSyncingRef.current || isDemoMode || sessionMode !== 'picking') return;
 
         isSyncingRef.current = true;
@@ -291,10 +303,13 @@ export const usePickingSync = ({
         if (!debouncedSaveRef.current) {
             debouncedSaveRef.current = debounce((items: CartItem[], userId: string, listId: string | null, orderNum: string | null) => saveToDb(items, userId, listId, orderNum), SYNC_DEBOUNCE_MS);
         }
-    }, []);
+    }, [sessionMode]); // Re-create debounce if mode changes to ensure closure captures latest mode? No, relying on param passing or ref.
 
     // Trigger Save on changes
     useEffect(() => {
+        // Skip save if in building mode
+        if (sessionMode === 'building') return;
+
         if (!isLoaded || !user || sessionMode !== 'picking') return;
 
         // Skip initial empty check to avoid clearing DB on first render

@@ -23,15 +23,23 @@ export const InventoryCard = memo(({
         }
     };
 
-    const isFullyReserved = mode === 'picking' && available !== null && available <= 0;
-    const hasReservations = mode === 'picking' && reservedByOthers > 0;
+    const isPicking = mode === 'picking';
+    const isBuilding = mode === 'building';
+
+    // In building mode, we only care if physical stock is 0. 
+    // In picking mode, we care if available (stock - reserved) is 0.
+    const isFullyReserved = isPicking && available !== null && available <= 0;
+    const isOutOfStock = (isBuilding || mode === 'stock') && quantity <= 0;
+
+    const isDisabled = isFullyReserved || isOutOfStock;
+    const hasReservations = isPicking && reservedByOthers > 0;
 
     return (
         <div
-            onClick={isFullyReserved ? undefined : onClick}
-            className={`bg-card border rounded-lg p-4 mb-3 flex flex-col shadow-sm transition-colors ${isFullyReserved
-                    ? 'opacity-50 cursor-not-allowed border-red-500/30'
-                    : 'border-subtle active:border-accent/30 cursor-pointer'
+            onClick={isDisabled ? undefined : onClick}
+            className={`bg-card border rounded-lg p-4 mb-3 flex flex-col shadow-sm transition-colors ${isDisabled
+                ? 'opacity-50 cursor-not-allowed border-red-500/30'
+                : 'border-subtle active:border-accent/30 cursor-pointer'
                 }`}
         >
             <div className="flex justify-between items-start mb-2">
@@ -54,23 +62,34 @@ export const InventoryCard = memo(({
                 <div className="text-2xl font-black text-accent flex flex-col items-end">
                     <span className="text-[10px] text-muted uppercase tracking-widest mb-0.5">Stock</span>
                     <span className="tabular-nums leading-none">{quantity}</span>
-                    {mode === 'picking' && available !== null && (
-                        <div className="flex flex-col items-end gap-1 mt-1">
-                            {hasReservations && (
-                                <span className="text-[9px] font-black uppercase tracking-widest text-orange-500 bg-orange-500/10 px-1.5 py-0.5 rounded border border-orange-500/20">
-                                    {reservedByOthers} Reserved
-                                </span>
-                            )}
-                            {available > 0 ? (
-                                <span className="text-[9px] font-black uppercase tracking-widest text-green-500">
-                                    {available} Available
-                                </span>
-                            ) : (
+
+                    {/* Picking Mode: Show Available vs Reserved */}
+                    {isPicking && available !== null && (
+                        <div className="flex flex-col items-center gap-1 mt-1">
+                            {available <= 0 ? (
                                 <span className="text-[9px] font-black uppercase tracking-widest text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded border border-red-500/20">
                                     🚫 Fully Reserved
                                 </span>
+                            ) : (
+                                <div className="flex items-center gap-2">
+                                    {hasReservations && (
+                                        <span className="text-[9px] font-black uppercase tracking-widest text-orange-500 bg-orange-500/10 px-1.5 py-0.5 rounded border border-orange-500/20">
+                                            {reservedByOthers} Res
+                                        </span>
+                                    )}
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-green-500">
+                                        {available} Avail
+                                    </span>
+                                </div>
                             )}
                         </div>
+                    )}
+
+                    {/* Building Mode: Simple Out of Stock Indicator */}
+                    {isBuilding && quantity <= 0 && (
+                        <span className="text-[9px] font-black uppercase tracking-widest text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded border border-red-500/20 mt-1">
+                            Out of Stock
+                        </span>
                     )}
                 </div>
             </div>

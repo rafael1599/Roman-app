@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
+import toast from 'react-hot-toast';
 import { useAuth } from './AuthContext';
 import { useInventory } from '../hooks/useInventoryData';
 import { useError } from './ErrorContext';
@@ -21,8 +22,8 @@ interface PickingContextType {
     notes: PickingNote[];
     isNotesLoading: boolean;
     addNote: (message: string) => Promise<void>;
-    sessionMode: 'picking' | 'double_checking';
-    setSessionMode: (mode: 'picking' | 'double_checking') => void;
+    sessionMode: 'building' | 'picking' | 'double_checking';
+    setSessionMode: (mode: 'building' | 'picking' | 'double_checking') => void;
 
     addToCart: (item: any) => void;
     updateCartQty: (item: any, change: number) => void;
@@ -37,14 +38,24 @@ interface PickingContextType {
     releaseCheck: (id: string) => Promise<void>;
     returnToPicker: (id: string, notes: string) => Promise<void>;
     revertToPicking: () => Promise<void>;
-    deleteList: (id: string) => Promise<void>;
+    deleteList: (id: string | null, keepLocalState?: boolean) => Promise<void>;
 
     loadExternalList: (id: string) => Promise<any>;
+
+    generatePickingPath: () => Promise<void>;
+
+    returnToBuilding: () => Promise<void>;
 
     isLoaded: boolean;
     isSaving: boolean;
     lastSaved: Date | null;
     resetSession: () => void;
+
+    isInitializing: boolean;
+    setIsInitializing: (val: boolean) => void;
+    startNewSession: (strategy: 'auto' | 'manual' | 'resume', manualOrderNumber?: string, resumeId?: string) => Promise<void>;
+    pendingItem: any;
+    cancelInitialization: () => void;
 }
 
 const PickingContext = createContext<PickingContextType | undefined>(undefined);
@@ -56,13 +67,16 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
     const { showError } = useError();
 
     // 2. Shared/Lifted State
-    // Some state needs to be lifted here to bridge the hooks
     const [activeListId, setActiveListId] = useState<string | null>(null);
     const [listStatus, setListStatus] = useState<string>('active');
     const [checkedBy, setCheckedBy] = useState<string | null>(null);
     const [ownerId, setOwnerId] = useState<string | null>(null);
     const [correctionNotes, setCorrectionNotes] = useState<string | null>(null);
-    const [sessionMode, setSessionMode] = useState<'picking' | 'double_checking'>('picking');
+    const [sessionMode, setSessionMode] = useState<'building' | 'picking' | 'double_checking'>('building');
+
+    // New Session Initialization State
+    const [isInitializing, setIsInitializing] = useState(false);
+    const [pendingItem, setPendingItem] = useState<any>(null);
 
     // 3. Hook Integration
     const {
@@ -70,7 +84,7 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
         setCartItems,
         orderNumber,
         setOrderNumber,
-        addToCart,
+        addToCart: addToCartInternal,
         updateCartQty,
         setCartQty,
         removeFromCart,
@@ -97,12 +111,46 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
         setOrderNumber,
         setListStatus,
         setCheckedBy,
+        setCheckedBy,
+        ownerId,
         setOwnerId,
         setCorrectionNotes,
         setSessionMode,
         loadFromLocalStorage,
         showError
     });
+
+    // Moved resetSession UP so it can be passed to usePickingActions
+    const resetSession = (skipState = false) => {
+        // Atomic Reset
+        if (!skipState) {
+            clearCart();
+            setActiveListId(null);
+            setListStatus('active');
+            setCheckedBy(null);
+            setOwnerId(null);
+            setCorrectionNotes(null);
+            setSessionMode('building');
+            setOrderNumber(null);
+        }
+
+        // Comprehensive localStorage cleanup
+        const keysToRemove = [
+            'picking_cart_items',
+            'picking_order_number',
+            'active_picking_list_id',
+            'picking_session_mode'
+        ];
+
+        keysToRemove.forEach(k => localStorage.removeItem(k));
+
+        // Also clean up double check progress if any
+        Object.keys(localStorage).forEach(key => {
+            if (key.startsWith('double_check_progress_')) {
+                localStorage.removeItem(key);
+            }
+        });
+    };
 
     const {
         completeList,
@@ -111,7 +159,8 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
         releaseCheck,
         returnToPicker,
         revertToPicking,
-        deleteList
+        deleteList,
+        generatePickingPath
     } = usePickingActions({
         user,
         isDemoMode,
@@ -124,17 +173,11 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
         setOrderNumber,
         setListStatus,
         setCheckedBy,
+        setOwnerId,
         setCorrectionNotes,
         setSessionMode,
-        setIsSaving: () => { } // Sync hook handles saving state mostly, but actions trigger it too. 
-        // Ideally we should merge saving state, but for now actions set it via self-contained logic
-        // or we can pass a no-op if actions manage their own loading state internally (which they do via local vars, 
-        // but they don't expose it up. Let's fix this in iteration 2 if needed).
-        // Actually, usePickingSync exposes isSaving. Actions might need to set it.
-        // For now, I'll let actions run without updating the global 'isSaving' context used for UI spinner, 
-        // or I should lift setIsSaving.
-        // Correction: usePickingSync owns isSaving. To allow actions to update it, 
-        // I would need to lift isSaving state to Provider.
+        setIsSaving: () => { },
+        resetSession
     });
 
     const { notes, isLoading: isNotesLoading, addNote: addNoteRaw } = usePickingNotes(activeListId);
@@ -144,35 +187,92 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
         await addNoteRaw(user.id, message);
     };
 
-    const resetSession = () => {
-        clearCart();
-        setActiveListId(null);
-        setListStatus('active');
-        setCheckedBy(null);
-        setOwnerId(null);
-        setCorrectionNotes(null);
-        setSessionMode('picking');
+    // Return to Building: Revert from Picking mode back to Building mode
+    const returnToBuilding = async () => {
+        if (!activeListId) {
+            toast.error('No active picking session to return from.');
+            return;
+        }
 
-        // Comprehensive localStorage cleanup
-        localStorage.removeItem('picking_cart_items');
-        localStorage.removeItem('picking_order_number');
-        localStorage.removeItem('active_picking_list_id');
-        localStorage.removeItem('picking_session_mode');
+        try {
+            // Delete the picking list from database (releases reservations)
+            await deleteList(activeListId, true);
 
-        // Also clean up double check progress if any
-        const keys = Object.keys(localStorage);
-        keys.forEach(key => {
-            if (key.startsWith('double_check_progress_')) {
-                localStorage.removeItem(key);
-            }
-        });
+            // Change back to building mode
+            setSessionMode('building');
+            setActiveListId(null);
+
+            // Keep cartItems intact (user doesn't lose work)
+            // Update localStorage
+            localStorage.setItem('picking_session_mode', 'building');
+            localStorage.removeItem('active_picking_list_id');
+
+            toast('Returned to building mode. Stock reservations released.', {
+                icon: '↩️',
+                duration: 3000
+            });
+        } catch (err) {
+            console.error('Failed to return to building:', err);
+            toast.error('Failed to return to building mode');
+        }
     };
 
-    // We need to bridge isSaving. The hooks currently have their own useState for isSaving.
-    // Ideally, isSaving should be in the Provider.
-    // For this refactor, I'll rely on the hooks managing their own async flow and maybe use a simplified version,
-    // or just accept that 'isSaving' from sync hook reflects purely data sync.
-    // Actions usually have their own spinners or toast.
+    // Intercept Add to Cart to ensure session is initialized
+    const addToCart = async (item: any) => {
+        // Block adding items in picking mode
+        if (sessionMode === 'picking') {
+            toast.error('Cannot add items in picking mode. Use "Return to Building" to make changes.', { icon: '🔒' });
+            return;
+        }
+
+        // Allow adding if we have an active list OR if we're building and have an order number
+        if (activeListId || orderNumber) {
+            addToCartInternal(item);
+            return;
+        }
+
+        // Otherwise, need to initialize session first
+        setPendingItem(item);
+        setIsInitializing(true);
+    };
+
+    const startNewSession = async (strategy: 'auto' | 'manual' | 'resume', manualOrderNumber?: string, resumeId?: string) => {
+        setIsInitializing(false);
+        const itemToAdd = pendingItem;
+        setPendingItem(null);
+
+        if (strategy === 'resume' && resumeId) {
+            await loadExternalList(resumeId);
+            if (itemToAdd) {
+                addToCartInternal(itemToAdd);
+            }
+            return;
+        }
+
+        // Clean slate for new session
+        resetSession(true);
+
+        let newOrderNumber = manualOrderNumber;
+
+        if (strategy === 'auto') {
+            const dateStr = new Date().toISOString().slice(2, 10).replace(/-/g, '');
+            const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+            newOrderNumber = `ORD-${dateStr}-${random}`;
+        }
+
+        if (newOrderNumber) {
+            setOrderNumber(newOrderNumber);
+            localStorage.setItem('picking_order_number', newOrderNumber);
+        }
+
+        // Start in Building Mode
+        setSessionMode('building');
+        localStorage.setItem('picking_session_mode', 'building');
+
+        if (itemToAdd) {
+            addToCartInternal(itemToAdd);
+        }
+    };
 
     const value: PickingContextType = {
         cartItems,
@@ -204,10 +304,21 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
         revertToPicking,
         deleteList,
         loadExternalList,
+        generatePickingPath,
+        returnToBuilding,
         isLoaded,
-        isSaving, // From Sync hook
+        isSaving,
         lastSaved,
-        resetSession
+        resetSession,
+
+        isInitializing,
+        setIsInitializing,
+        startNewSession,
+        pendingItem,
+        cancelInitialization: () => {
+            setIsInitializing(false);
+            setPendingItem(null);
+        }
     };
 
     return (
