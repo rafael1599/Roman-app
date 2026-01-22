@@ -214,7 +214,7 @@ export const InventoryModal = ({ isOpen, onClose, onSave, onDelete, initialData,
 
     return createPortal(
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200">
-            <div className="bg-surface border border-subtle rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden scale-100 animate-in zoom-in-95 duration-200">
+            <div className="bg-surface border border-subtle rounded-3xl w-full shadow-2xl overflow-hidden scale-100 animate-in zoom-in-95 duration-200">
                 {/* Header */}
                 <div className="px-6 py-4 border-b border-subtle bg-main/50 flex items-center justify-between">
                     <div>
@@ -332,6 +332,17 @@ export const InventoryModal = ({ isOpen, onClose, onSave, onDelete, initialData,
                             )}
                         </div>
 
+                        {/* Location Detail */}
+                        <AutocompleteInput
+                            id="location_detail"
+                            label="Location Detail"
+                            value={formData.Location_Detail}
+                            onChange={(value) => setFormData(prev => ({ ...prev, Location_Detail: value }))}
+                            suggestions={[]}
+                            placeholder="e.g. A6-19..."
+                            initialKeyboardMode="text"
+                        />
+
                         <div>
                             <label className="block text-[10px] font-black text-accent mb-2 uppercase tracking-widest">Quantity</label>
                             <input
@@ -344,17 +355,6 @@ export const InventoryModal = ({ isOpen, onClose, onSave, onDelete, initialData,
                                 required
                             />
                         </div>
-
-                        {/* Location Detail */}
-                        <AutocompleteInput
-                            id="location_detail"
-                            label="Location Detail"
-                            value={formData.Location_Detail}
-                            onChange={(value) => setFormData(prev => ({ ...prev, Location_Detail: value }))}
-                            suggestions={[]}
-                            placeholder="e.g. A6-19..."
-                            initialKeyboardMode="text"
-                        />
 
                         {/* Admin-Only Dimension Fields */}
                         {isAdmin && (
