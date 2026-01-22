@@ -225,15 +225,15 @@ export const PickingSessionView = ({ cartItems, activeListId, orderNumber, corre
                 {/* Header for Order Builder */}
                 <div
                     data-drag-handle="true"
-                    className="bg-white px-4 py-3 border-b border-slate-200 flex items-center justify-between sticky top-0 z-50 touch-none"
+                    className="bg-surface px-4 py-3 border-b border-subtle flex items-center justify-between sticky top-0 z-50 touch-none"
                 >
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-900/20">
+                        <div className="w-10 h-10 bg-accent rounded-xl flex items-center justify-center shadow-lg shadow-accent/20">
                             <span className="text-white font-black text-lg">#</span>
                         </div>
                         <div>
-                            <h2 className="text-lg font-black text-slate-900 leading-none">{orderNumber || 'NEW ORDER'}</h2>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">BUILDING ORDER</p>
+                            <h2 className="text-lg font-black text-content leading-none">{orderNumber || 'NEW ORDER'}</h2>
+                            <p className="text-[10px] font-bold text-muted uppercase tracking-widest mt-1">BUILDING ORDER</p>
                         </div>
                     </div>
 

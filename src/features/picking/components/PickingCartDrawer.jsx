@@ -232,7 +232,7 @@ export const PickingCartDrawer = ({
                 {!isOpen && (
                     <div
                         onClick={() => setIsOpen(true)}
-                        className={`mx-4 p-3 rounded-t-2xl shadow-2xl flex items-center justify-center gap-2 cursor-pointer active:opacity-90 transition-colors ${sessionMode === 'double_checking' ? 'bg-orange-500 text-white' : (sessionMode === 'building' ? 'bg-blue-600 text-white' : 'bg-accent text-main')
+                        className={`mx-4 p-3 rounded-t-2xl shadow-2xl flex items-center justify-center gap-2 cursor-pointer active:opacity-90 transition-colors ${sessionMode === 'double_checking' ? 'bg-orange-500 text-white' : (sessionMode === 'building' ? 'bg-slate-800 text-white' : 'bg-accent text-main')
                             }`}
                     >
                         <ChevronUp size={20} />
@@ -240,7 +240,7 @@ export const PickingCartDrawer = ({
                             {sessionMode === 'double_checking'
                                 ? `Verifying Order #${orderNumber || activeListId?.slice(-6).toUpperCase()}`
                                 : sessionMode === 'building'
-                                    ? `Review Order • ${totalItems} Items`
+                                    ? `Review Order • ${totalItems} SKUs • ${totalQty} Units`
                                     : `${totalQty} Units to Pick`
                             }
                         </div>
