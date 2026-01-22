@@ -311,16 +311,14 @@ export const inventoryService = {
             if (existingTargetData) {
                 // MERGE SCENARIO
                 const existingTarget = validateData(InventoryItemSchema, existingTargetData);
-                // **BUG FIX**: The quantity to be merged is the quantity of the item being moved/edited,
-                // not the new quantity from the form. We are merging the entire stock.
-                // The user's intent in the "Edit" modal is to define the new state of a single item,
-                // but a merge implies combining two existing stocks. Summing the original quantity
-                // of the source with the target is the correct way to preserve inventory totals.
-                const finalQty = (existingTarget.Quantity || 0) + (sourceItem.Quantity || 0);
 
-                console.log(`[Merge] Merging ${sourceItem.SKU} (Qty: ${sourceItem.Quantity}) into existing ${existingTarget.SKU} (Qty: ${existingTarget.Quantity}) -> Total ${finalQty}`);
+                // FIXED: When editing an item, use the quantity from updatedFormData as the final state.
+                // The user's edit represents the TOTAL they want, not an addition.
+                const finalQty = newQty;
 
-                // A. Update Target with Sum
+                console.log(`[Merge] Updating ${sourceItem.SKU} (Qty: ${sourceItem.Quantity}) at ${sourceItem.Location} to match existing ${existingTarget.SKU} (Qty: ${existingTarget.Quantity}) at ${targetLocation} -> Setting to ${finalQty}`);
+
+                // A. Update Target with User's Desired Quantity
                 const { error: updateError } = await supabase
                     .from('inventory')
                     .update({ Quantity: finalQty })

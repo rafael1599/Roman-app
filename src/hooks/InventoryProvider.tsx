@@ -265,7 +265,8 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
         if (!item) return;
 
         const currentQty = Number(item.Quantity || 0);
-        if (delta < 0 && currentQty <= 0) return;
+        // Don't allow negative deltas on items with no stock, UNLESS this is a reversal operation
+        if (delta < 0 && currentQty <= 0 && !isReversal) return;
 
         const newQty = Math.max(0, currentQty + delta);
         if (newQty === currentQty) return;

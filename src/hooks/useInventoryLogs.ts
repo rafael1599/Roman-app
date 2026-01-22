@@ -266,7 +266,14 @@ export const useInventoryLogs = () => {
                     isReversal: true
                 });
             } else if (log.action_type === 'ADD') {
-                await updateQuantity(targetSku, -log.quantity, log.to_warehouse || '', log.to_location || '', true);
+                // UNDO ADD: Reduce quantity where it was added
+                await updateQuantity(
+                    targetSku,
+                    -log.quantity,
+                    log.to_warehouse || log.from_warehouse || '',
+                    log.to_location || log.from_location || '',
+                    true // isReversal
+                );
             } else if (log.action_type === 'DELETE') {
                 // UNDO DELETE: Recreate the item with its original ID
                 console.log(`[Undo] Restoring deleted item ${targetSku} with ID ${log.item_id}`);
@@ -285,8 +292,8 @@ export const useInventoryLogs = () => {
                         .select('*')
                         .eq('id', log.item_id)
                         .single();
-                    
-                    if(itemError || !itemToUpdate) {
+
+                    if (itemError || !itemToUpdate) {
                         throw new Error(`Cannot undo rename: Item with ID ${log.item_id} not found.`);
                     }
 
