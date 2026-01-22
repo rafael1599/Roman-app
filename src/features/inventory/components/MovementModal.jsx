@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { X, ArrowRightLeft, Move, CheckCircle2, AlertTriangle, Zap, AlertCircle } from 'lucide-react';
 import { useInventory } from '../../../hooks/useInventoryData'; // Corrected import path based on file tree
 import { useMovementForm } from '../../../hooks/useMovementForm';
@@ -7,6 +8,7 @@ import AutocompleteInput from '../../../components/ui/AutocompleteInput';
 import { CapacityBar } from '../../../components/ui/CapacityBar';
 import { useLocationManagement } from '../../../hooks/useLocationManagement';
 import { predictLocation } from '../../../utils/locationPredictor';
+import { useViewMode } from '../../../context/ViewModeContext';
 import toast from 'react-hot-toast';
 
 export const MovementModal = ({ isOpen, onClose, onMove, initialSourceItem }) => {
@@ -14,6 +16,7 @@ export const MovementModal = ({ isOpen, onClose, onMove, initialSourceItem }) =>
     const { formData, setField, validate, setFormData } = useMovementForm(initialSourceItem);
     const { locations } = useLocationManagement();
     const { locationCapacities } = useInventory(); // To show capacity for typed locations
+    const { setIsNavHidden } = useViewMode();
 
     const excludeLoc = (initialSourceItem?.Warehouse === formData.targetWarehouse) ? initialSourceItem?.Location : null;
 
@@ -51,8 +54,14 @@ export const MovementModal = ({ isOpen, onClose, onMove, initialSourceItem }) =>
 
     // Reset confirmation when location changes
     useEffect(() => {
+        if (isOpen) {
+            setIsNavHidden(true);
+        } else {
+            setIsNavHidden(false);
+        }
         setConfirmCreateNew(false);
-    }, [formData.targetLocation]);
+        return () => setIsNavHidden(false);
+    }, [formData.targetLocation, isOpen, setIsNavHidden]);
 
     // Debugging
     useEffect(() => {
@@ -138,14 +147,14 @@ export const MovementModal = ({ isOpen, onClose, onMove, initialSourceItem }) =>
         return 'text-blue-500';
     };
 
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-card border border-subtle rounded-2xl w-full max-w-md shadow-2xl relative flex flex-col max-h-[90vh]">
+    return createPortal(
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200">
+            <div className="bg-surface border border-subtle rounded-3xl w-full max-w-sm shadow-2xl relative flex flex-col max-h-[90vh] overflow-hidden scale-100 animate-in zoom-in-95 duration-200">
 
                 {/* Header */}
-                <div className="p-5 border-b border-subtle flex items-start justify-between bg-surface/50 rounded-t-2xl">
+                <div className="px-6 py-4 border-b border-subtle bg-main/50 flex items-start justify-between">
                     <div>
-                        <h2 className="text-xl font-black text-content flex items-center gap-2 uppercase tracking-tighter">
+                        <h2 className="text-xl font-black text-content flex items-center gap-2 uppercase tracking-tight">
                             <ArrowRightLeft className="text-accent" size={24} />
                             Relocate Stock
                         </h2>
@@ -165,20 +174,20 @@ export const MovementModal = ({ isOpen, onClose, onMove, initialSourceItem }) =>
 
                 <div className="p-6 overflow-y-auto space-y-6">
                     {/* Source Info Card */}
-                    <div className="bg-surface border border-subtle rounded-xl p-4 flex justify-between items-center group relative overflow-hidden">
+                    <div className="bg-main border border-subtle rounded-2xl p-4 flex justify-between items-center group relative overflow-hidden">
                         <div className="absolute top-0 left-0 w-1 h-full bg-accent" />
                         <div>
                             <h3 className="text-lg font-black text-content flex gap-2">
-                                <span className="text-muted font-bold uppercase tracking-widest text-[10px] self-center">Moving</span>
+                                <span className="text-muted font-bold uppercase tracking-widest text-[9px] self-center">Moving</span>
                                 {initialSourceItem?.SKU}
                             </h3>
-                            <p className="text-xs text-muted font-medium mt-0.5">
-                                From: <span className="text-content font-bold">{initialSourceItem?.Location}</span> • {initialSourceItem?.Warehouse}
+                            <p className="text-[10px] text-muted font-bold mt-0.5 uppercase tracking-tight">
+                                From: <span className="text-content">{initialSourceItem?.Location}</span> • {initialSourceItem?.Warehouse}
                             </p>
                         </div>
                         <div className="text-right">
-                            <p className="text-2xl font-black text-content">{initialSourceItem?.Quantity}</p>
-                            <p className="text-[9px] text-muted uppercase font-black tracking-widest">Available</p>
+                            <p className="text-2xl font-black text-content leading-none">{initialSourceItem?.Quantity}</p>
+                            <p className="text-[9px] text-muted uppercase font-black tracking-widest mt-1">Available</p>
                         </div>
                     </div>
 
@@ -196,7 +205,7 @@ export const MovementModal = ({ isOpen, onClose, onMove, initialSourceItem }) =>
                                 />
                                 <button
                                     onClick={() => setField('quantity', initialSourceItem?.Quantity)}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black uppercase bg-surface text-muted px-2 py-1 rounded hover:opacity-80 transition-colors"
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black uppercase bg-surface border border-subtle text-muted px-2 py-1 rounded hover:opacity-80 transition-colors"
                                 >
                                     Max
                                 </button>
@@ -244,7 +253,7 @@ export const MovementModal = ({ isOpen, onClose, onMove, initialSourceItem }) =>
                                         <AlertTriangle size={16} />
                                     </div>
                                     <div>
-                                        <p className="text-xs font-bold text-accent group-hover:opacity-80">Merge Opportunity</p>
+                                        <p className="text-[10px] font-bold text-accent group-hover:opacity-80 uppercase tracking-widest">Merge Opportunity</p>
                                         <p className="text-[10px] text-muted leading-tight mt-0.5">
                                             Item already exists at <strong className="text-content">{mergeOpportunity}</strong> in <strong className="text-content">{formData.targetWarehouse}</strong>. Click to merge.
                                         </p>
@@ -287,10 +296,7 @@ export const MovementModal = ({ isOpen, onClose, onMove, initialSourceItem }) =>
                                     <div className="flex items-start gap-3">
                                         <AlertCircle className="text-yellow-500 shrink-0 mt-0.5" size={20} />
                                         <div>
-                                            <p className="text-sm font-bold text-yellow-500">Unrecognized Location</p>
-                                            <p className="text-xs text-muted mt-1 leading-relaxed">
-                                                "<strong>{formData.targetLocation}</strong>" is not in the database.
-                                            </p>
+                                            <p className="text-[10px] font-black uppercase text-yellow-500 tracking-widest">Unrecognized Location</p>
                                         </div>
                                     </div>
 
@@ -305,8 +311,8 @@ export const MovementModal = ({ isOpen, onClose, onMove, initialSourceItem }) =>
                                                 checked={confirmCreateNew}
                                                 onChange={(e) => setConfirmCreateNew(e.target.checked)}
                                             />
-                                            <span className={`text-xs font-bold uppercase tracking-wide ${confirmCreateNew ? 'text-content' : 'text-muted'}`}>
-                                                I want to create this location
+                                            <span className={`text-[10px] font-black uppercase tracking-wide ${confirmCreateNew ? 'text-content' : 'text-muted'}`}>
+                                                Confirm New Location
                                             </span>
                                         </label>
                                     </div>
@@ -317,18 +323,19 @@ export const MovementModal = ({ isOpen, onClose, onMove, initialSourceItem }) =>
                 </div>
 
                 {/* Footer */}
-                <div className="p-5 border-t border-subtle bg-surface/50 rounded-b-2xl">
+                <div className="p-6 border-t border-subtle bg-main/50">
                     <button
                         onClick={handleSubmit}
                         disabled={!isValid}
-                        className="w-full py-4 bg-content hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-main font-black uppercase tracking-wider rounded-xl transition-all shadow-lg active:scale-[0.98] flex items-center justify-center gap-2"
+                        className="w-full h-14 bg-accent hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-main font-black uppercase tracking-widest rounded-2xl transition-all shadow-lg shadow-accent/20 flex items-center justify-center gap-2 active:scale-95"
                     >
                         <CheckCircle2 size={20} />
                         {isNewLocation ? 'Create & Move' : 'Confirm Move'}
                     </button>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 

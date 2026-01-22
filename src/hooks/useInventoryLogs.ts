@@ -60,7 +60,8 @@ export const useInventoryLogs = () => {
                     const isSameContext = !typedCandidate.is_reversed &&
                         typedCandidate.sku === logData.sku &&
                         (typedCandidate.from_location || null) === (logData.from_location || null) &&
-                        (typedCandidate.to_location || null) === (logData.to_location || null);
+                        (typedCandidate.to_location || null) === (logData.to_location || null) &&
+                        (typedCandidate.order_number || null) === (logData.order_number || null);
 
                     if (isSameContext) {
                         targetLog = typedCandidate;
@@ -86,7 +87,8 @@ export const useInventoryLogs = () => {
                     !lastLog.is_reversed &&
                     (lastLog.from_location || null) === (logData.from_location || null) &&
                     (lastLog.to_location || null) === (logData.to_location || null) &&
-                    (lastLog.to_warehouse || null) === (logData.to_warehouse || null)) {
+                    (lastLog.to_warehouse || null) === (logData.to_warehouse || null) &&
+                    (lastLog.order_number || null) === (logData.order_number || null)) {
                     targetLog = lastLog;
                 }
             }

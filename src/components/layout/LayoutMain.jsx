@@ -4,6 +4,7 @@ import { BottomNavigation } from './BottomNavigation';
 import { Download, Save, Settings, User as UserIcon } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { UserMenu } from './UserMenu';
+import { DoubleCheckHeader } from '../../features/picking/components/DoubleCheckHeader';
 
 export const LayoutMain = ({ children, onExport }) => {
     const navigate = useNavigate();
@@ -13,7 +14,6 @@ export const LayoutMain = ({ children, onExport }) => {
 
     React.useEffect(() => {
         const handleScroll = () => {
-            // Umbral de scroll para mostrar el botón flotante (cuando la cabecera ya no es visible)
             setIsScrolled(window.scrollY > 80);
         };
         window.addEventListener('scroll', handleScroll, { passive: true });
@@ -44,11 +44,13 @@ export const LayoutMain = ({ children, onExport }) => {
                     </div>
 
                     <div className="flex items-center gap-2">
-                        {onExport && (
+                        {onExport && isAdmin && (
                             <button onClick={onExport} className="p-2 bg-surface border border-subtle rounded-md text-accent active:bg-surface/80 transition-colors" aria-label="Export Data">
                                 <Save className="w-5 h-5" />
                             </button>
                         )}
+
+                        <DoubleCheckHeader />
 
                         <button
                             onClick={() => setIsUserMenuOpen(true)}
@@ -77,8 +79,6 @@ export const LayoutMain = ({ children, onExport }) => {
                 </div>
             )}
 
-            {/* Floating Action Button (REMOVED as it overlapped search) */}
-
             <UserMenu
                 isOpen={isUserMenuOpen}
                 onClose={() => setIsUserMenuOpen(false)}
@@ -94,3 +94,4 @@ export const LayoutMain = ({ children, onExport }) => {
         </div>
     );
 };
+

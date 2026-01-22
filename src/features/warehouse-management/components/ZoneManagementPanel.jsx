@@ -1,12 +1,15 @@
 import { useState, useMemo } from 'react';
 import { Search, Info, Wand2 } from 'lucide-react';
 import { useError } from '../../context/ErrorContext';
+import { useConfirmation } from '../../../context/ConfirmationContext';
+import toast from 'react-hot-toast';
 
 export const ZoneManagementPanel = ({ locations, zones, getZone, updateZone, autoAssignZones }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filterZone, setFilterZone] = useState('ALL');
     const [isAutoAssigning, setIsAutoAssigning] = useState(false);
     const { showError } = useError();
+    const { showConfirmation } = useConfirmation();
 
     const filteredLocations = useMemo(() => {
         let result = locations;
@@ -27,17 +30,24 @@ export const ZoneManagementPanel = ({ locations, zones, getZone, updateZone, aut
     }, [locations, searchTerm, filterZone, getZone, zones]); // Re-calc when zones changes
 
     const handleAutoAssign = async () => {
-        if (!confirm("This will overwrite UNASSIGNED zones based on alphabetical order. Continue?")) return;
-
-        setIsAutoAssigning(true);
-        try {
-            await autoAssignZones();
-            // Optional: toast success
-        } catch (err) {
-            showError('Auto-assign failed', err.message);
-        } finally {
-            setIsAutoAssigning(false);
-        }
+        showConfirmation(
+            'Auto-Assign Zones',
+            'This will overwrite UNASSIGNED zones based on alphabetical order. Do you want to continue?',
+            async () => {
+                setIsAutoAssigning(true);
+                try {
+                    await autoAssignZones();
+                    toast.success('Zones auto-assigned successfully');
+                } catch (err) {
+                    showError('Auto-assign failed', err.message);
+                } finally {
+                    setIsAutoAssigning(false);
+                }
+            },
+            () => { },
+            'Assign zones',
+            'Cancel'
+        );
     };
 
     return (

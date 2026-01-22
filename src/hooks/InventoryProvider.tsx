@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, useRef, useMemo, useCallback, ReactNode } from 'react';
+import toast from 'react-hot-toast';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { useInventoryLogs } from './useInventoryLogs';
@@ -10,6 +11,7 @@ import {
 } from '../schemas/inventory.schema';
 import { inventoryApi } from '../services/inventoryApi';
 import { type SKUMetadataInput } from '../schemas/skuMetadata.schema';
+import { debounce } from '../utils/debounce';
 
 interface InventoryContextType {
     inventoryData: InventoryItem[];
@@ -18,6 +20,7 @@ interface InventoryContextType {
     ludlowInventory: InventoryItem[];
     atsInventory: InventoryItem[];
     locationCapacities: Record<string, { current: number; max: number }>;
+    reservedQuantities: Record<string, number>;
     fetchLogs: () => Promise<any[]>;
     loading: boolean;
     error: string | null;
@@ -51,6 +54,7 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
     const [demoInventoryData, setDemoInventoryData] = useState<InventoryItemWithMetadata[]>([]);
     const [demoLogs, setDemoLogs] = useState<any[]>([]);
     const [skuMetadataMap, setSkuMetadataMap] = useState<Record<string, any>>({});
+    const [reservedQuantities, setReservedQuantities] = useState<Record<string, number>>({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -72,11 +76,12 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
 
     const logBuffersRef = useRef<Record<string, any>>({});
 
-    // Initial Load
+    // Initial Load - Parallel queries (JOIN not possible without FK relationship)
     useEffect(() => {
         const loadAllData = async () => {
             try {
                 setLoading(true);
+
                 // Fetch inventory and metadata in parallel
                 const [inv, meta] = await Promise.all([
                     inventoryApi.fetchInventory(),
@@ -123,7 +128,7 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
         sku_metadata: skuMetadataMap[item.SKU] || item.sku_metadata
     }), [skuMetadataMap]);
 
-    // Real-time Subscription
+    // Real-time Subscription (Inventory)
     useEffect(() => {
         const channel = supabase
             .channel('inventory_changes')
@@ -144,6 +149,59 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
             supabase.removeChannel(channel);
         };
     }, []);
+
+    // Reservation Logic
+    const calculateReservations = useCallback((lists: any[]) => {
+        const reservations: Record<string, number> = {};
+        lists.forEach(list => {
+            if (Array.isArray(list.items)) {
+                list.items.forEach((item: any) => {
+                    const key = `${item.SKU}|${item.Warehouse}|${item.Location}`;
+                    reservations[key] = (reservations[key] || 0) + (item.pickingQty || 0);
+                });
+            }
+        });
+        setReservedQuantities(reservations);
+    }, []);
+
+    const fetchReservations = useCallback(async () => {
+        try {
+            const { data, error } = await supabase
+                .from('picking_lists')
+                .select('id, items, status')
+                .in('status', ['ready_to_double_check', 'double_checking', 'needs_correction']);
+
+            if (error) throw error;
+            console.log('🔄 [Reservations] Recalculating reserved stock...', { count: data?.length });
+            calculateReservations(data || []);
+        } catch (err) {
+            console.error('Error fetching reservations:', err);
+        }
+    }, [calculateReservations]);
+
+    // Real-time Subscription (Picking Lists for reservations)
+    // OPTIMIZATION: Debounced to prevent mass refetches when multiple lists change rapidly
+    useEffect(() => {
+        fetchReservations();
+
+        // Create debounced version to throttle realtime updates
+        const debouncedFetchReservations = debounce(fetchReservations, 200);
+
+        const channel = supabase
+            .channel('picking_lists_reservations')
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'picking_lists'
+            }, () => {
+                debouncedFetchReservations(); // Max 1 call per second
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [fetchReservations]);
 
     // Capacity calculations
     const locationCapacities = useMemo(() => {
@@ -251,6 +309,7 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
             item,
             isReversal,
             listId,
+            orderNumber,
             timer: setTimeout(async () => {
                 const finalBuffer = logBuffersRef.current[bufferKey];
                 delete logBuffersRef.current[bufferKey];
@@ -284,7 +343,8 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
                         new_quantity: finalQty,
                         action_type: action,
                         is_reversed: finalBuffer.isReversal,
-                        list_id: finalBuffer.listId
+                        list_id: finalBuffer.listId,
+                        order_number: finalBuffer.orderNumber
                     }, { performed_by: userName, user_id: user?.id });
 
                 } catch (err) {
@@ -320,7 +380,7 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
             await inventoryService.addItem(warehouse, newItem, locations, getServiceContext());
         } catch (err: any) {
             console.error('Error adding item:', err);
-            alert(err.message);
+            toast.error(err.message);
         }
     }, [isDemoMode, locations, getServiceContext, userName]);
 
@@ -352,11 +412,11 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
             );
 
             if (result && result.action === 'merged') {
-                alert(`🚀 Dynamic Merge: Internal stock of "${result.source}" has been consolidated into existing SKU "${result.target}".`);
+                toast.success(`🚀 Dynamic Merge: Internal stock of "${result.source}" has been consolidated into existing SKU "${result.target}".`);
             }
         } catch (err: any) {
             console.error('Error updating item:', err);
-            alert(err.message);
+            toast.error(err.message);
         }
     }, [isDemoMode, locations, getServiceContext, userName]);
 
@@ -401,7 +461,7 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
             await inventoryService.moveItem(sourceItem, targetWarehouse, targetLocation, qty, locations, getServiceContext(), isReversal);
         } catch (err: any) {
             console.error('Error moving item:', err);
-            alert(err.message);
+            toast.error(err.message);
         }
     }, [isDemoMode, locations, getServiceContext, userName]);
 
@@ -449,9 +509,9 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
             if (logId.startsWith('demo-')) {
                 // TODO: Implement local undo for demo actions if needed.
                 // For now, we block it to avoid complexity/confusion or modifying the real DB logic.
-                alert('Undo is currently not supported for simulated actions in Demo Mode.');
+                toast.error('Undo is currently not supported for simulated actions in Demo Mode.');
             } else {
-                alert('Cannot undo real production actions while in Demo Mode.');
+                toast.error('Cannot undo real production actions while in Demo Mode.');
             }
             return;
         }
@@ -461,7 +521,7 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
             updateQuantity,
             updateItem
         });
-        if (!result.success) alert('Undo failed: ' + result.error);
+        if (!result.success) toast.error('Undo failed: ' + result.error);
     }, [performUndo, addItem, moveItem, updateQuantity, updateItem, isDemoMode]);
 
     const syncInventoryLocations = useCallback(async () => {
@@ -519,6 +579,7 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
         ludlowInventory: activeData.filter(i => i.Warehouse === 'LUDLOW'),
         atsInventory: activeData.filter(i => i.Warehouse === 'ATS'),
         locationCapacities: activeCapacities,
+        reservedQuantities,
         fetchLogs,
         loading,
         error,
@@ -561,6 +622,7 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
     }), [
         activeData,
         activeCapacities,
+        reservedQuantities,
         fetchLogs,
         loading,
         error,
