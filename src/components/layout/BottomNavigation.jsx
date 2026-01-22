@@ -18,9 +18,11 @@ const NavItem = ({ icon: Icon, label, isActive, onClick }) => (
 );
 
 export const BottomNavigation = () => {
-    const { viewMode, setViewMode } = useViewMode();
+    const { viewMode, setViewMode, isNavHidden } = useViewMode();
     const navigate = useNavigate();
     const location = useLocation();
+
+    if (isNavHidden) return null;
 
     const handleStockClick = () => {
         setViewMode('stock');

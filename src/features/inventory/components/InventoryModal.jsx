@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Save, Trash2, Plus, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useInventory } from '../../../hooks/useInventoryData';
 import AutocompleteInput from '../../../components/ui/AutocompleteInput';
@@ -6,10 +7,12 @@ import toast from 'react-hot-toast';
 import { useConfirmation } from '../../../context/ConfirmationContext';
 import { useLocationManagement } from '../../../hooks/useLocationManagement';
 import { predictLocation } from '../../../utils/locationPredictor';
+import { useViewMode } from '../../../context/ViewModeContext';
 
 export const InventoryModal = ({ isOpen, onClose, onSave, onDelete, initialData, mode = 'add', screenType }) => {
     const { ludlowData, atsData, isAdmin, updateSKUMetadata } = useInventory();
     const { locations } = useLocationManagement(); // Added for validation
+    const { setIsNavHidden } = useViewMode();
 
     const [formData, setFormData] = useState({
         SKU: '',
@@ -117,6 +120,7 @@ export const InventoryModal = ({ isOpen, onClose, onSave, onDelete, initialData,
 
     useEffect(() => {
         if (isOpen) {
+            setIsNavHidden(true);
             setConfirmCreateNew(false); // Reset on open
             if (mode === 'edit' && initialData) {
                 setFormData({
@@ -139,8 +143,12 @@ export const InventoryModal = ({ isOpen, onClose, onSave, onDelete, initialData,
                     width_in: 6
                 });
             }
+        } else {
+            setIsNavHidden(false);
         }
-    }, [isOpen, initialData, mode, screenType]);
+
+        return () => setIsNavHidden(false);
+    }, [isOpen, initialData, mode, screenType, setIsNavHidden]);
 
     if (!isOpen) return null;
 
@@ -204,200 +212,213 @@ export const InventoryModal = ({ isOpen, onClose, onSave, onDelete, initialData,
         onClose();
     };
 
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-card border border-subtle rounded-xl w-full max-w-md shadow-2xl p-6 relative animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
-                <button
-                    onClick={onClose}
-                    className="absolute top-4 right-4 text-muted hover:text-content transition-colors z-10"
-                >
-                    <X className="w-6 h-6" />
-                </button>
-
-                <h2 className="text-xl font-bold text-content mb-6">
-                    {mode === 'edit' ? 'Edit Item' : 'Add New Item'}
-                </h2>
-
-                <form onSubmit={handleSubmit} className="space-y-6">
-                    {/* Warehouse Selector */}
+    return createPortal(
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200">
+            <div className="bg-surface border border-subtle rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden scale-100 animate-in zoom-in-95 duration-200">
+                {/* Header */}
+                <div className="px-6 py-4 border-b border-subtle bg-main/50 flex items-center justify-between">
                     <div>
-                        <label className="block text-sm font-semibold text-accent mb-3 uppercase tracking-wider">Select Warehouse</label>
-                        <div className="flex flex-wrap gap-2">
-                            {['LUDLOW', 'ATS'].map((wh) => (
-                                <button
-                                    key={wh}
-                                    type="button"
-                                    onClick={() => handleWarehouseChange(wh)}
-                                    className={`px-4 py-2 rounded-lg font-bold text-xs transition-all border ${formData.Warehouse === wh
-                                        ? 'bg-accent text-main border-accent shadow-[0_0_15px_rgba(var(--accent-rgb),0.3)]'
-                                        : 'bg-surface text-muted border-subtle hover:border-muted'
-                                        }`}
-                                >
-                                    {wh}
-                                </button>
-                            ))}
-                            <button
-                                type="button"
-                                onClick={() => toast.info('Coming Soon: You will be able to add custom warehouses here.')}
-                                className="w-9 h-9 flex items-center justify-center rounded-lg bg-surface border border-dashed border-subtle text-muted hover:border-accent hover:text-accent transition-all"
-                                title="Add New Warehouse"
-                            >
-                                <Plus className="w-5 h-5" />
-                            </button>
-                        </div>
+                        <h2 className="text-xl font-black text-content uppercase tracking-tight">
+                            {mode === 'edit' ? 'Edit Item' : 'Add New Item'}
+                        </h2>
+                        {initialData?.SKU && mode === 'edit' && (
+                            <p className="text-[10px] text-muted font-bold uppercase tracking-widest mt-0.5">
+                                Original: <span className="text-accent">{initialData.SKU}</span>
+                            </p>
+                        )}
                     </div>
+                    <button
+                        onClick={onClose}
+                        className="p-2 -mr-2 text-muted hover:text-content transition-colors z-10"
+                    >
+                        <X className="w-6 h-6" />
+                    </button>
+                </div>
 
-                    {/* SKU with Autocomplete */}
-                    <AutocompleteInput
-                        id="inventory_sku"
-                        label="SKU"
-                        value={formData.SKU}
-                        onChange={(value) => setFormData(prev => ({ ...prev, SKU: value }))}
-                        suggestions={skuSuggestions}
-                        placeholder="Enter SKU..."
-                        minChars={2}
-                        initialKeyboardMode="numeric"
-                        onSelect={(suggestion) => {
-                            const item = currentInventory.find(i => i.SKU === suggestion.value);
-                            if (item && mode === 'add') {
-                                setFormData(prev => ({
-                                    ...prev,
-                                    SKU: suggestion.value,
-                                    Location: item.Location || prev.Location,
-                                    Location_Detail: item.Location_Detail || prev.Location_Detail
-                                }));
-                            }
-                        }}
-                    />
+                <div className="max-h-[70vh] overflow-y-auto">
+                    <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                        {/* Warehouse Selector */}
+                        <div>
+                            <label className="block text-[10px] font-black text-accent mb-3 uppercase tracking-widest">Select Warehouse</label>
+                            <div className="flex flex-wrap gap-2">
+                                {['LUDLOW', 'ATS'].map((wh) => (
+                                    <button
+                                        key={wh}
+                                        type="button"
+                                        onClick={() => handleWarehouseChange(wh)}
+                                        className={`px-4 py-2 rounded-lg font-bold text-xs transition-all border ${formData.Warehouse === wh
+                                            ? 'bg-accent text-main border-accent shadow-[0_0_15px_rgba(var(--accent-rgb),0.3)]'
+                                            : 'bg-surface text-muted border-subtle hover:border-muted'
+                                            }`}
+                                    >
+                                        {wh}
+                                    </button>
+                                ))}
+                                <button
+                                    type="button"
+                                    onClick={() => toast.info('Coming Soon: You will be able to add custom warehouses here.')}
+                                    className="w-9 h-9 flex items-center justify-center rounded-lg bg-surface border border-dashed border-subtle text-muted hover:border-accent hover:text-accent transition-all"
+                                    title="Add New Warehouse"
+                                >
+                                    <Plus className="w-5 h-5" />
+                                </button>
+                            </div>
+                        </div>
 
-                    {/* Location with Autocomplete & Strict Validation */}
-                    <div className="flex flex-col gap-2">
+                        {/* SKU with Autocomplete */}
                         <AutocompleteInput
-                            id="inventory_location"
-                            label="Location"
-                            value={formData.Location}
-                            onChange={(value) => setFormData(prev => ({ ...prev, Location: value }))}
-                            onBlur={handleLocationBlur}
-                            suggestions={locationSuggestions}
-                            placeholder="Row/Bin..."
-                            minChars={1}
+                            id="inventory_sku"
+                            label="SKU"
+                            value={formData.SKU}
+                            onChange={(value) => setFormData(prev => ({ ...prev, SKU: value }))}
+                            suggestions={skuSuggestions}
+                            placeholder="Enter SKU..."
+                            minChars={2}
                             initialKeyboardMode="numeric"
+                            onSelect={(suggestion) => {
+                                const item = currentInventory.find(i => i.SKU === suggestion.value);
+                                if (item && mode === 'add') {
+                                    setFormData(prev => ({
+                                        ...prev,
+                                        SKU: suggestion.value,
+                                        Location: item.Location || prev.Location,
+                                        Location_Detail: item.Location_Detail || prev.Location_Detail
+                                    }));
+                                }
+                            }}
                         />
 
-                        {/* New Location Warning with Explicit Confirmation */}
-                        {isNewLocation && formData.Location && (
-                            <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg animate-in fade-in slide-in-from-top-2">
-                                <div className="flex items-start gap-2">
-                                    <AlertCircle className="text-yellow-500 shrink-0 mt-0.5" size={16} />
-                                    <div>
-                                        <p className="text-xs font-bold text-yellow-500">Unrecognized Location</p>
+                        {/* Location with Autocomplete & Strict Validation */}
+                        <div className="flex flex-col gap-2">
+                            <AutocompleteInput
+                                id="inventory_location"
+                                label="Location"
+                                value={formData.Location}
+                                onChange={(value) => setFormData(prev => ({ ...prev, Location: value }))}
+                                onBlur={handleLocationBlur}
+                                suggestions={locationSuggestions}
+                                placeholder="Row/Bin..."
+                                minChars={1}
+                                initialKeyboardMode="numeric"
+                            />
+
+                            {/* New Location Warning with Explicit Confirmation */}
+                            {isNewLocation && formData.Location && (
+                                <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-xl animate-in fade-in slide-in-from-top-2">
+                                    <div className="flex items-start gap-2">
+                                        <AlertCircle className="text-yellow-500 shrink-0 mt-0.5" size={16} />
+                                        <div>
+                                            <p className="text-[10px] font-black text-yellow-500 uppercase">Unrecognized Location</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-2 pt-2 border-t border-yellow-500/10">
+                                        <label className="flex items-center gap-2 cursor-pointer group">
+                                            <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${confirmCreateNew ? 'bg-yellow-500 border-yellow-500' : 'border-neutral-500 group-hover:border-yellow-500'}`}>
+                                                {confirmCreateNew && <CheckCircle2 size={12} className="text-black" />}
+                                            </div>
+                                            <input
+                                                type="checkbox"
+                                                className="hidden"
+                                                checked={confirmCreateNew}
+                                                onChange={(e) => setConfirmCreateNew(e.target.checked)}
+                                            />
+                                            <span className={`text-[10px] font-black uppercase tracking-wide ${confirmCreateNew ? 'text-content' : 'text-muted'}`}>
+                                                Confirm New Location
+                                            </span>
+                                        </label>
                                     </div>
                                 </div>
+                            )}
+                        </div>
 
-                                <div className="mt-2 pt-2 border-t border-yellow-500/10">
-                                    <label className="flex items-center gap-2 cursor-pointer group">
-                                        <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${confirmCreateNew ? 'bg-yellow-500 border-yellow-500' : 'border-neutral-500 group-hover:border-yellow-500'}`}>
-                                            {confirmCreateNew && <CheckCircle2 size={12} className="text-black" />}
-                                        </div>
-                                        <input
-                                            type="checkbox"
-                                            className="hidden"
-                                            checked={confirmCreateNew}
-                                            onChange={(e) => setConfirmCreateNew(e.target.checked)}
-                                        />
-                                        <span className={`text-[10px] font-bold uppercase tracking-wide ${confirmCreateNew ? 'text-content' : 'text-muted'}`}>
-                                            Confirm New Location
-                                        </span>
-                                    </label>
+                        <div>
+                            <label className="block text-[10px] font-black text-accent mb-2 uppercase tracking-widest">Quantity</label>
+                            <input
+                                type="number"
+                                name="Quantity"
+                                value={formData.Quantity}
+                                onChange={(e) => setFormData(prev => ({ ...prev, Quantity: parseInt(e.target.value) || 0 }))}
+                                onFocus={(e) => e.target.select()}
+                                className="w-full bg-main border border-subtle rounded-xl px-4 py-4 text-content focus:border-accent focus:outline-none transition-colors font-mono text-center text-2xl font-black"
+                                required
+                            />
+                        </div>
+
+                        {/* Location Detail */}
+                        <AutocompleteInput
+                            id="location_detail"
+                            label="Location Detail"
+                            value={formData.Location_Detail}
+                            onChange={(value) => setFormData(prev => ({ ...prev, Location_Detail: value }))}
+                            suggestions={[]}
+                            placeholder="e.g. A6-19..."
+                            initialKeyboardMode="text"
+                        />
+
+                        {/* Admin-Only Dimension Fields */}
+                        {isAdmin && (
+                            <div className="grid grid-cols-2 gap-4 p-4 bg-accent/5 rounded-2xl border border-accent/10">
+                                <div>
+                                    <label className="block text-[10px] font-black text-accent mb-2 uppercase tracking-widest">Length (ft)</label>
+                                    <input
+                                        type="number"
+                                        name="length_ft"
+                                        value={formData.length_ft}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, length_ft: parseFloat(e.target.value) || 0 }))}
+                                        className="w-full bg-main border border-subtle rounded-lg px-4 py-2 text-content focus:border-accent focus:outline-none transition-colors font-mono"
+                                        placeholder="5"
+                                        step="0.1"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-black text-accent mb-2 uppercase tracking-widest">Width (in)</label>
+                                    <input
+                                        type="number"
+                                        name="width_in"
+                                        value={formData.width_in}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, width_in: parseFloat(e.target.value) || 0 }))}
+                                        className="w-full bg-main border border-subtle rounded-lg px-4 py-2 text-content focus:border-accent focus:outline-none transition-colors font-mono"
+                                        placeholder="6"
+                                        step="0.1"
+                                    />
                                 </div>
                             </div>
                         )}
-                    </div>
+                    </form>
+                </div>
 
-                    <div>
-                        <label className="block text-sm font-semibold text-accent mb-2">Quantity</label>
-                        <input
-                            type="number"
-                            name="Quantity"
-                            value={formData.Quantity}
-                            onChange={(e) => setFormData(prev => ({ ...prev, Quantity: parseInt(e.target.value) || 0 }))}
-                            onFocus={(e) => e.target.select()}
-                            className="w-full bg-main border border-subtle rounded-lg px-4 py-3 text-content focus:border-accent focus:outline-none transition-colors font-mono text-center text-lg"
-                            required
-                        />
-                    </div>
-
-                    {/* Location Detail */}
-                    <AutocompleteInput
-                        id="location_detail"
-                        label="Location Detail"
-                        value={formData.Location_Detail}
-                        onChange={(value) => setFormData(prev => ({ ...prev, Location_Detail: value }))}
-                        suggestions={[]}
-                        placeholder="e.g. A6-19..."
-                        initialKeyboardMode="text"
-                    />
-
-                    {/* Admin-Only Dimension Fields */}
-                    {isAdmin && (
-                        <div className="grid grid-cols-2 gap-4 p-4 bg-accent/5 rounded-xl border border-accent/10">
-                            <div>
-                                <label className="block text-[10px] font-black text-accent mb-2 uppercase tracking-widest">Length (ft) [ADMIN]</label>
-                                <input
-                                    type="number"
-                                    name="length_ft"
-                                    value={formData.length_ft}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, length_ft: parseFloat(e.target.value) || 0 }))}
-                                    className="w-full bg-main border border-subtle rounded-lg px-4 py-2 text-content focus:border-accent focus:outline-none transition-colors font-mono"
-                                    placeholder="5"
-                                    step="0.1"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-[10px] font-black text-accent mb-2 uppercase tracking-widest">Width (in) [ADMIN]</label>
-                                <input
-                                    type="number"
-                                    name="width_in"
-                                    value={formData.width_in}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, width_in: parseFloat(e.target.value) || 0 }))}
-                                    className="w-full bg-main border border-subtle rounded-lg px-4 py-2 text-content focus:border-accent focus:outline-none transition-colors font-mono"
-                                    placeholder="6"
-                                    step="0.1"
-                                />
-                            </div>
-                        </div>
-                    )}
-
-                    <div className="flex gap-3 mt-6">
-                        {mode === 'edit' && onDelete && isAdmin && (
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    showConfirmation(
-                                        'Delete Item',
-                                        'Are you sure you want to delete this item?',
-                                        () => {
-                                            onDelete();
-                                            onClose();
-                                        }
-                                    );
-                                }}
-                                className="flex-1 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-500 font-bold py-4 rounded-lg flex items-center justify-center gap-2 transition-all active:scale-95 touch-manipulation"
-                            >
-                                <Trash2 className="w-5 h-5" />
-                                Delete
-                            </button>
-                        )}
+                {/* Footer */}
+                <div className="p-6 border-t border-subtle bg-main/50 flex gap-3">
+                    {mode === 'edit' && onDelete && isAdmin && (
                         <button
-                            type="submit"
-                            className="flex-1 bg-content hover:opacity-90 text-main font-bold py-4 rounded-lg flex items-center justify-center gap-2 transition-transform active:scale-95 touch-manipulation"
+                            type="button"
+                            onClick={() => {
+                                showConfirmation(
+                                    'Delete Item',
+                                    'Are you sure you want to delete this item?',
+                                    () => {
+                                        onDelete();
+                                        onClose();
+                                    }
+                                );
+                            }}
+                            className="w-14 h-14 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-500 rounded-2xl flex items-center justify-center transition-all active:scale-95 shrink-0"
+                            title="Delete Item"
                         >
-                            <Save className="w-5 h-5" />
-                            Save
+                            <Trash2 className="w-6 h-6" />
                         </button>
-                    </div>
-                </form>
+                    )}
+                    <button
+                        onClick={handleSubmit}
+                        className="flex-1 bg-accent hover:opacity-90 text-main font-black uppercase tracking-widest h-14 rounded-2xl flex items-center justify-center gap-2 transition-transform active:scale-95 shadow-lg shadow-accent/20"
+                    >
+                        <Save className="w-5 h-5" />
+                        {mode === 'edit' ? 'Update' : 'Save'}
+                    </button>
+                </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };

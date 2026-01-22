@@ -11,6 +11,7 @@ import {
     calculateLocationChangeImpact
 } from '../../../utils/locationValidations';
 import { DEFAULT_MAX_CAPACITY } from '../../../utils/capacityUtils';
+import { useViewMode } from '../../../context/ViewModeContext';
 
 export default function LocationEditorModal({ location, onSave, onCancel, onDelete }) {
     const { ludlowData, atsData } = useInventory();
@@ -29,6 +30,12 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
     const [isDeleting, setIsDeleting] = useState(false);
     const { showError } = useError();
     const { showConfirmation } = useConfirmation();
+    const { setIsNavHidden } = useViewMode();
+
+    useEffect(() => {
+        setIsNavHidden(true);
+        return () => setIsNavHidden(false);
+    }, [setIsNavHidden]);
 
     // Obtener inventario de esta ubicación (Prefer ID match, fallback to name match)
     const inventory = location?.warehouse === 'ATS' ? atsData : ludlowData;
@@ -136,17 +143,19 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
     };
 
     return createPortal(
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-card border-2 border-accent rounded-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200">
+            <div className="bg-surface border border-subtle rounded-3xl w-full max-w-md shadow-2xl relative flex flex-col max-h-[90vh] overflow-hidden scale-100 animate-in zoom-in-95 duration-200">
                 {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-subtle">
+                <div className="px-6 py-4 border-b border-subtle bg-main/50 flex items-start justify-between">
                     <div>
-                        <h2 className="text-2xl font-bold text-accent flex items-center gap-2">
-                            <Edit3 size={24} />
-                            Edit Location
+                        <h2 className="text-xl font-black text-content uppercase tracking-tight flex items-center gap-2">
+                            <Edit3 size={20} className="text-accent" />
+                            Location Settings
                         </h2>
-                        <p className="text-muted text-sm mt-1">
-                            {location?.warehouse} • {location?.location}
+                        <p className="text-[10px] items-center gap-1.5 font-bold uppercase tracking-widest text-muted mt-1 flex">
+                            Zone: <span className="text-content">{location?.zone || 'None'}</span>
+                            <span className="w-1 h-1 rounded-full bg-subtle" />
+                            Bin: <span className="text-accent">{location?.location}</span>
                         </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -156,7 +165,7 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
                                 className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
                                 title="Delete location"
                             >
-                                <X size={20} className="rotate-45" />
+                                <Trash2 size={24} />
                             </button>
                         )}
                         <button onClick={onCancel} className="text-muted hover:text-content p-2">
@@ -404,27 +413,27 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
                 </form>
 
                 {/* Footer */}
-                <div className="flex gap-3 p-6 border-t border-subtle">
+                <div className="p-6 border-t border-subtle bg-main/50 flex gap-3">
                     <button
                         type="button"
                         onClick={onCancel}
-                        className="flex-1 px-6 py-3 bg-surface hover:opacity-80 text-content rounded-lg transition-colors border border-subtle"
+                        className="flex-1 px-6 py-4 bg-surface hover:opacity-80 text-muted font-black uppercase tracking-widest text-xs rounded-2xl transition-colors border border-subtle"
                     >
                         Cancel
                     </button>
                     <button
                         onClick={handleSubmit}
                         disabled={validation.errors.length > 0 || (validation.warnings.length > 0 && !overrideWarnings)}
-                        className={`flex-1 px-6 py-3 rounded-lg font-bold transition-all flex items-center justify-center gap-2 ${validation.errors.length > 0
+                        className={`flex-[2] h-14 rounded-2xl font-black uppercase tracking-widest text-xs transition-all flex items-center justify-center gap-2 ${validation.errors.length > 0
                             ? 'bg-surface text-muted cursor-not-allowed border border-subtle'
                             : validation.warnings.length > 0 && !overrideWarnings
                                 ? 'bg-surface text-muted cursor-not-allowed border border-subtle'
-                                : 'bg-accent hover:opacity-90 text-main'
+                                : 'bg-accent hover:opacity-90 text-main shadow-lg shadow-accent/20'
                             }`}
                     >
                         <Save size={20} />
                         {validation.warnings.length > 0 && !overrideWarnings
-                            ? 'Confirm risks to continue'
+                            ? 'Confirm Risks'
                             : 'Save Changes'}
                     </button>
                 </div>
