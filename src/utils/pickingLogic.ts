@@ -40,48 +40,64 @@ export const getOptimizedPickingPath = (items: any[], locations: Location[]) => 
  * - Max units per pallet: 12
  */
 export const calculatePallets = (items: any[]): Pallet[] => {
+    // 1. Calculate Total UNITS (Physical boxes/items)
+    const totalUnits = items.reduce((sum, item) => sum + (item.pickingQty || 0), 0);
+
+    // 2. Logic: Determine Capacity Per Pallet
+    let limitPerPallet = 10; // Standard Default
+
+    if (totalUnits < 13) {
+        // If less than 13 units total, we fit EVERYTHING in one pallet path
+        // effectively infinite capacity for the first pallet
+        limitPerPallet = 10000;
+    } else {
+        // Optimization Logic: 10 vs 12
+        const palletsneededStd = Math.ceil(totalUnits / 10);
+        const palletsneededDens = Math.ceil(totalUnits / 12);
+
+        // Only switch to 12 (dense) if it ACTUALLY saves a pallet
+        // Example: 20 units -> 10/p = 2 pallets vs 12/p = 2 pallets. (TIE -> Keep 10)
+        // Example: 24 units -> 10/p = 3 pallets vs 12/p = 2 pallets. (WINNER -> Use 12)
+        if (palletsneededDens < palletsneededStd) {
+            limitPerPallet = 12;
+        }
+    }
+
+    // 3. Distribute Units into Pallets (Physical Splitting)
     const pallets: Pallet[] = [];
     let currentPallet: Pallet = { id: 1, items: [], totalUnits: 0, footprint_in2: 0 };
-
-    const MAX_UNITS = 12;
 
     items.forEach(item => {
         let remainingToProcess = item.pickingQty || 0;
 
         while (remainingToProcess > 0) {
-            const spaceInPallet = MAX_UNITS - currentPallet.totalUnits;
+            const spaceInPallet = limitPerPallet - currentPallet.totalUnits;
             const take = Math.min(remainingToProcess, spaceInPallet);
 
             if (take > 0) {
-                // Check if SKU already in current pallet to avoid duplication
+                // Check if SKU already in current pallet (merge split batches)
                 const existingItem = currentPallet.items.find(i => i.SKU === item.SKU && i.Location === item.Location);
                 if (existingItem) {
                     existingItem.pickingQty += take;
                 } else {
+                    // Clone item to avoid mutating original reference
                     currentPallet.items.push({ ...item, pickingQty: take });
                 }
 
                 currentPallet.totalUnits += take;
                 remainingToProcess -= take;
-
-                // Calculate estimated footprint
-                // Fallback to average box/roll size (5ft x 0.5ft) if metadata is missing or invalid
-                const length = Math.max(1, item.sku_metadata?.length_ft ?? 5);
-                const width = Math.max(1, item.sku_metadata?.width_in ?? 6);
-
-                // Assuming base layer is ~40% of units (4 for 10 units, 5 for 12 units)
-                const baseUnits = Math.max(1, Math.min(5, Math.ceil(currentPallet.totalUnits * 0.4)));
-                currentPallet.footprint_in2 = (length * 12) * (width * baseUnits);
             }
 
-            if (currentPallet.totalUnits >= MAX_UNITS) {
+            // If pallet is full, seal it and start new one
+            if (currentPallet.totalUnits >= limitPerPallet) {
                 pallets.push(currentPallet);
                 currentPallet = { id: pallets.length + 1, items: [], totalUnits: 0, footprint_in2: 0 };
             }
         }
     });
 
-    if (currentPallet.items.length > 0) {
+    // Push the last partially filled pallet
+    if (currentPallet.totalUnits > 0) {
         pallets.push(currentPallet);
     }
 

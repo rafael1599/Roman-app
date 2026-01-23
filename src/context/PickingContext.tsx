@@ -111,7 +111,6 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
         setOrderNumber,
         setListStatus,
         setCheckedBy,
-        setCheckedBy,
         ownerId,
         setOwnerId,
         setCorrectionNotes,

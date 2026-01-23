@@ -220,12 +220,11 @@ export const usePickingSync = ({
                 // Alert if:
                 // 1. Session is picking
                 // 2. New user_id is defined and is NOT me
-                // 3. New user_id is NOT the same as the previous owner (i.e. real ownership change)
                 if (sessionModeRef.current === 'picking' &&
                     newData.user_id &&
-                    newData.user_id !== user.id &&
-                    newData.user_id !== ownerIdRef.current
+                    newData.user_id !== user.id
                 ) {
+                    console.log('🚨 Takeover detected! New owner:', newData.user_id);
                     showTakeoverAlert(newData.user_id);
                     return;
                 }

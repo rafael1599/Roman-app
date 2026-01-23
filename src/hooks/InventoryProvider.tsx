@@ -172,7 +172,7 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
                 .in('status', ['ready_to_double_check', 'double_checking', 'needs_correction']);
 
             if (error) throw error;
-            console.log('🔄 [Reservations] Recalculating reserved stock...', { count: data?.length });
+            // console.log('🔄 [Reservations] Recalculating reserved stock...', { count: data?.length });
             calculateReservations(data || []);
         } catch (err) {
             console.error('Error fetching reservations:', err);
