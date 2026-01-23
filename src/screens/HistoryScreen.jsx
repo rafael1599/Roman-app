@@ -21,6 +21,7 @@ import {
   User,
   Users,
 } from 'lucide-react';
+import { getUserColor, getUserBgColor } from '../utils/userUtils';
 import toast from 'react-hot-toast';
 // jspdf and autoTable are imported dynamically in handleDownloadReport
 import { useAuth } from '../context/AuthContext';
@@ -257,12 +258,19 @@ export const HistoryScreen = () => {
           bg: 'bg-surface',
           label: 'Remove',
         };
+      case 'EDIT':
+        return {
+          icon: <Clock size={14} />,
+          color: 'text-amber-500',
+          bg: 'bg-amber-500/10',
+          label: 'Update',
+        };
       default:
         return {
           icon: <Clock size={14} />,
           color: 'text-muted',
           bg: 'bg-surface',
-          label: 'Update',
+          label: log.action_type || 'Update',
         };
     }
   };
@@ -664,10 +672,12 @@ export const HistoryScreen = () => {
             <button
               key={user}
               onClick={() => setUserFilter(user)}
-              className={`px-4 py-2 rounded-full text-[10px] font-bold transition-all border shrink-0 flex items-center gap-2 ${userFilter === user
-                ? 'bg-content text-main border-content shadow-lg'
-                : 'bg-surface text-muted border-subtle hover:border-muted/30'
-                }`}
+              style={{
+                borderColor: userFilter === user ? getUserColor(user) : undefined,
+                color: userFilter === user ? 'white' : getUserColor(user),
+                backgroundColor: userFilter === user ? getUserColor(user) : getUserBgColor(user),
+              }}
+              className={`px-4 py-2 rounded-full text-[10px] font-bold transition-all border shrink-0 flex items-center gap-2 ${userFilter === user ? 'shadow-lg' : 'hover:border-muted/30'}`}
             >
               <User size={10} />
               {user}
@@ -755,13 +765,24 @@ export const HistoryScreen = () => {
                               >
                                 {info.label}
                               </span>
+                              {log.previous_sku && (
+                                <span className="text-[8px] font-bold text-muted uppercase italic">
+                                  (Was: {log.previous_sku})
+                                </span>
+                              )}
                             </div>
                             <p className="text-[10px] text-muted font-bold uppercase tracking-wider">
                               {new Date(log.created_at).toLocaleTimeString([], {
                                 hour: '2-digit',
                                 minute: '2-digit',
                               })}{' '}
-                              • {log.performed_by || 'Unknown'}{' '}
+                              •{' '}
+                              <span
+                                style={{ color: getUserColor(log.performed_by) }}
+                                className="font-black"
+                              >
+                                {log.performed_by || 'Unknown'}
+                              </span>{' '}
                               {log.is_demo && <span className="text-accent ml-2">DEMO</span>}
                             </p>
                           </div>
@@ -836,7 +857,7 @@ export const HistoryScreen = () => {
                             Qty
                           </p>
                           <p className="text-2xl font-black leading-none text-content">
-                            {log.quantity !== null && log.quantity !== undefined ? log.quantity : '??'}
+                            {typeof log.quantity === 'number' ? log.quantity : '??'}
                           </p>
                         </div>
                       </div>

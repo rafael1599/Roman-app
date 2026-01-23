@@ -300,7 +300,7 @@ export const inventoryService = {
     // 1. Sanitize Inputs
     const newSku = (updatedFormData.SKU || '').trim().replace(/\s/g, '');
     const inputLocation = (updatedFormData.Location || '').trim();
-    const newQty = Number(updatedFormData.Quantity);
+    const newQty = Math.max(0, parseInt(updatedFormData.Quantity) || 0);
 
     if (!newSku) throw new Error('SKU cannot be empty.');
 
@@ -456,8 +456,8 @@ export const inventoryService = {
         from_location: sourceItem.Location || undefined,
         to_warehouse: targetWarehouse,
         to_location: targetLocation || undefined,
-        quantity: Math.abs(newQty - sourceItem.Quantity),
-        prev_quantity: sourceItem.Quantity,
+        quantity: Math.abs(newQty - (parseInt(sourceItem.Quantity as any) || 0)),
+        prev_quantity: parseInt(sourceItem.Quantity as any) || 0,
         new_quantity: newQty,
         action_type: isMove ? 'MOVE' : 'EDIT',
         previous_sku: sourceItem.SKU !== newSku ? sourceItem.SKU : undefined,

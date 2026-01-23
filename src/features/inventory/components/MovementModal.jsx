@@ -156,8 +156,19 @@ export const MovementModal = ({ isOpen, onClose, onMove, initialSourceItem }) =>
   };
 
   // Derived
-  // Valid checks: Form constraints AND (Existing Location OR Confirmed New Creation)
-  const isValid = validate().isValid && (!isNewLocation || (isNewLocation && confirmCreateNew));
+  const isSameLocation = useMemo(() => {
+    if (!formData.targetLocation || !initialSourceItem) return false;
+    return (
+      formData.targetLocation.trim().toUpperCase() === initialSourceItem.Location.toUpperCase() &&
+      formData.targetWarehouse === initialSourceItem.Warehouse
+    );
+  }, [formData.targetLocation, formData.targetWarehouse, initialSourceItem]);
+
+  // Valid checks: Form constraints AND (Existing Location OR Confirmed New Creation) AND Not Same Location
+  const isValid =
+    validate().isValid &&
+    (!isNewLocation || (isNewLocation && confirmCreateNew)) &&
+    !isSameLocation;
 
   if (!isOpen) return null;
 
@@ -358,6 +369,24 @@ export const MovementModal = ({ isOpen, onClose, onMove, initialSourceItem }) =>
                 )}
               />
 
+              {/* Same Location Error */}
+              {isSameLocation && (
+                <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl animate-in fade-in slide-in-from-top-2">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="text-red-500 shrink-0 mt-0.5" size={20} />
+                    <div>
+                      <p className="text-[10px] font-black uppercase text-red-500 tracking-widest">
+                        Invalid Destination
+                      </p>
+                      <p className="text-[10px] text-muted leading-tight mt-0.5">
+                        Target location is the same as source. Please choose a different location or
+                        warehouse.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* New Location Warning with Explicit Confirmation */}
               {isNewLocation && formData.targetLocation && (
                 <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl animate-in fade-in slide-in-from-top-2">
@@ -401,7 +430,10 @@ export const MovementModal = ({ isOpen, onClose, onMove, initialSourceItem }) =>
           <button
             onClick={handleSubmit}
             disabled={!isValid}
-            className="w-full h-14 bg-accent hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-main font-black uppercase tracking-widest rounded-2xl transition-all shadow-lg shadow-accent/20 flex items-center justify-center gap-2 active:scale-95"
+            className={`w-full h-14 font-black uppercase tracking-widest rounded-2xl transition-all flex items-center justify-center gap-2 active:scale-95 ${isValid
+              ? 'bg-accent text-main shadow-lg shadow-accent/20 hover:opacity-90'
+              : 'bg-neutral-800 text-muted opacity-60 cursor-not-allowed border border-subtle'
+              }`}
           >
             <CheckCircle2 size={20} />
             {isNewLocation ? 'Create & Move' : 'Confirm Move'}
