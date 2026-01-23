@@ -331,6 +331,18 @@ export const usePickingActions = ({
 
         if (isDemoMode) return;
         try {
+            // First, delete all related inventory_logs entries to prevent foreign key constraint violation
+            const { error: logsError } = await supabase
+                .from('inventory_logs')
+                .delete()
+                .eq('list_id', listId);
+
+            if (logsError) {
+                console.error('Failed to delete related inventory logs:', logsError);
+                throw logsError;
+            }
+
+            // Now we can safely delete the picking list
             const { error } = await supabase
                 .from('picking_lists')
                 .delete()

@@ -76,6 +76,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     if (cachedRole && mounted) {
                         setRole(cachedRole);
                         setLoading(false);
+
+                        // Auto-reset viewAsUser for admins on sign-in
+                        if (cachedRole === 'admin') {
+                            setViewAsUser(false);
+                            localStorage.setItem('view_as_user', 'false');
+                        }
+
                         fetchProfileWithTimeout(session.user.id, true);
                     } else {
                         await fetchProfileWithTimeout(session.user.id, false);
@@ -144,6 +151,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 setRole(profileData.role);
                 setProfile(profileData);
                 localStorage.setItem(`role_${userId}`, profileData.role);
+
+                // Auto-reset viewAsUser for admins on sign-in
+                if (profileData.role === 'admin') {
+                    setViewAsUser(false);
+                    localStorage.setItem('view_as_user', 'false');
+                }
 
                 // FORCE DISABLE DEMO MODE FOR NON-ADMINS
                 if (profileData.role !== 'admin' && isDemoMode) {
