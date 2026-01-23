@@ -38,9 +38,10 @@ export const InventoryModal = ({
   // 1. Valid names in current warehouse (Case Insensitive Safety)
   const validLocationNames = useMemo(() => {
     if (!locations || locations.length === 0) return [];
-    return locations
+    const names = locations
       .filter((l) => (l.warehouse || '').toUpperCase() === (formData.Warehouse || '').toUpperCase())
       .map((l) => l.location);
+    return [...new Set(names)];
   }, [locations, formData.Warehouse]);
 
   // 2. Predictions based on current input
@@ -91,9 +92,10 @@ export const InventoryModal = ({
     const uniqueSKUs = new Map();
     currentInventory.forEach((item) => {
       if (item.SKU) {
-        if (!uniqueSKUs.has(item.SKU)) {
-          uniqueSKUs.set(item.SKU, {
-            value: item.SKU,
+        const skuStr = String(item.SKU).trim();
+        if (!uniqueSKUs.has(skuStr)) {
+          uniqueSKUs.set(skuStr, {
+            value: skuStr,
             info: `${item.Quantity || 0} units${item.Location ? ` • ${item.Location}` : ''}${item.Location_Detail ? ` • ${item.Location_Detail}` : ''}`,
           });
         }
@@ -106,7 +108,8 @@ export const InventoryModal = ({
   const locationSuggestions = useMemo(() => {
     // If user is typing, prioritize predictive matches
     if (formData.Location && formData.Location.length > 0 && prediction.matches.length > 0) {
-      return prediction.matches.map((locName) => ({
+      // deduplicate matches just in case
+      return [...new Set(prediction.matches)].map((locName) => ({
         value: locName,
         info: `Database Location`,
       }));
@@ -115,13 +118,14 @@ export const InventoryModal = ({
     const locationMap = new Map();
     currentInventory.forEach((item) => {
       if (item.Location) {
-        if (!locationMap.has(item.Location)) {
-          locationMap.set(item.Location, {
+        const locStr = String(item.Location).trim();
+        if (!locationMap.has(locStr)) {
+          locationMap.set(locStr, {
             count: 0,
             totalQty: 0,
           });
         }
-        const loc = locationMap.get(item.Location);
+        const loc = locationMap.get(locStr);
         loc.count++;
         loc.totalQty += parseInt(item.Quantity) || 0;
       }
@@ -264,11 +268,10 @@ export const InventoryModal = ({
                     key={wh}
                     type="button"
                     onClick={() => handleWarehouseChange(wh)}
-                    className={`px-4 py-2 rounded-lg font-bold text-xs transition-all border ${
-                      formData.Warehouse === wh
-                        ? 'bg-accent text-main border-accent shadow-[0_0_15px_rgba(var(--accent-rgb),0.3)]'
-                        : 'bg-surface text-muted border-subtle hover:border-muted'
-                    }`}
+                    className={`px-4 py-2 rounded-lg font-bold text-xs transition-all border ${formData.Warehouse === wh
+                      ? 'bg-accent text-main border-accent shadow-[0_0_15px_rgba(var(--accent-rgb),0.3)]'
+                      : 'bg-surface text-muted border-subtle hover:border-muted'
+                      }`}
                   >
                     {wh}
                   </button>
@@ -435,7 +438,7 @@ export const InventoryModal = ({
 
         {/* Footer */}
         <div className="p-6 border-t border-subtle bg-main/50 flex gap-3">
-          {mode === 'edit' && onDelete && isAdmin && (
+          {mode === 'edit' && onDelete && (
             <button
               type="button"
               onClick={() => {

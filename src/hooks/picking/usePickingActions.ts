@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import toast from 'react-hot-toast';
-import { supabase } from '../../lib/supabaseClient';
+import { supabase } from '../../lib/supabase';
 import type { CartItem } from './usePickingCart';
 
 interface UsePickingActionsProps {

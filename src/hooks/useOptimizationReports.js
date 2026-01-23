@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabaseClient';
+import { supabase } from '../lib/supabase';
 import { useInventory } from './useInventoryData';
 import { useWarehouseZones } from './useWarehouseZones';
 import { SLOTTING_CONFIG } from '../config/slotting';

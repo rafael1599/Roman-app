@@ -8,8 +8,10 @@ import {
   useCallback,
   ReactNode,
 } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { supabase } from '../lib/supabaseClient';
+import { inventoryKeys } from '../lib/query-keys';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { useInventoryLogs } from './useInventoryLogs';
 import { useLocationManagement } from './useLocationManagement';
@@ -77,6 +79,7 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
   const [reservedQuantities, setReservedQuantities] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
   // Identity & permissions
   const { isAdmin, isDemoMode, toggleDemoMode, user, profile } = useAuth();
@@ -401,6 +404,9 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
               },
               { performed_by: userName, user_id: user?.id }
             );
+
+            // Invalidate the infinite query to refresh the list
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.lists() });
           } catch (err) {
             console.error('Failed to update quantity (debounced):', err);
             // Revert to initial state on error
@@ -438,6 +444,7 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
       }
       try {
         await inventoryService.addItem(warehouse, newItem, locations, getServiceContext());
+        queryClient.invalidateQueries({ queryKey: inventoryKeys.lists() });
       } catch (err: any) {
         console.error('Error adding item:', err);
         toast.error(err.message);
@@ -478,6 +485,7 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
           locations,
           ctx
         );
+        queryClient.invalidateQueries({ queryKey: inventoryKeys.lists() });
 
         if (result && result.action === 'merged') {
           toast.success(
@@ -558,6 +566,7 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
           getServiceContext(),
           isReversal
         );
+        queryClient.invalidateQueries({ queryKey: inventoryKeys.lists() });
       } catch (err: any) {
         console.error('Error moving item:', err);
         toast.error(err.message);
@@ -607,6 +616,7 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
           },
           { performed_by: userName, user_id: user?.id }
         );
+        queryClient.invalidateQueries({ queryKey: inventoryKeys.lists() });
       } catch (err) {
         console.error('Error deleting item:', err);
       }

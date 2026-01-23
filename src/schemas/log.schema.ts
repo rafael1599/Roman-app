@@ -37,7 +37,7 @@ export const InventoryLogInputSchema = z.object({
   from_location: z.string().optional(),
   to_warehouse: z.string().optional(),
   to_location: z.string().optional(),
-  quantity: z.coerce.number().int().positive(),
+  quantity: z.coerce.number().int().nonnegative(),
   prev_quantity: z.coerce.number().int().nonnegative().optional(),
   new_quantity: z.coerce.number().int().nonnegative().optional(),
   is_reversed: z.boolean().optional(),

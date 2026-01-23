@@ -7,12 +7,12 @@ import { ConfirmationProvider, useConfirmation } from './context/ConfirmationCon
 import { ErrorModal } from './components/ui/ErrorModal'; // Import ErrorModal
 import { ConfirmationModal } from './components/ui/ConfirmationModal'; // Import ConfirmationModal
 const InventoryScreen = React.lazy(() =>
-  import('./screens/InventoryScreen').then((m) => ({ default: m.InventoryScreen }))
+  import('./screens/InventoryScreen.tsx').then((m) => ({ default: m.InventoryScreen }))
 );
 const HistoryScreen = React.lazy(() =>
-  import('./screens/HistoryScreen').then((m) => ({ default: m.HistoryScreen }))
+  import('./screens/HistoryScreen.jsx').then((m) => ({ default: m.HistoryScreen }))
 );
-const Settings = React.lazy(() => import('./screens/Settings'));
+const Settings = React.lazy(() => import('./screens/Settings.jsx'));
 
 import { ViewModeProvider } from './context/ViewModeContext';
 import { PickingProvider } from './context/PickingContext';

@@ -1,5 +1,5 @@
 import { resolveLocationName } from '../utils/locationUtils';
-import { supabase } from '../lib/supabaseClient';
+import { supabase } from '../lib/supabase';
 import { type InventoryItem, InventoryItemSchema } from '../schemas/inventory.schema';
 import { type Location } from '../schemas/location.schema';
 import { validateData } from '../utils/validate';
@@ -400,20 +400,12 @@ export const inventoryService = {
 
         if (updateError) throw updateError;
 
-        // B. Handle Source Removal (Staff can't DELETE, so we Update to 0)
-        if (isAdmin) {
-          const { error: deleteError } = await supabase
-            .from('inventory')
-            .delete()
-            .eq('id', sourceItem.id);
-          if (deleteError) throw deleteError;
-        } else {
-          const { error: zeroError } = await supabase
-            .from('inventory')
-            .update({ Quantity: 0 })
-            .eq('id', sourceItem.id);
-          if (zeroError) throw zeroError;
-        }
+        // B. Handle Source Removal (Staff can now DELETE)
+        const { error: deleteError } = await supabase
+          .from('inventory')
+          .delete()
+          .eq('id', sourceItem.id);
+        if (deleteError) throw deleteError;
 
         // C. Log the Merge (as an Edit/Transfer)
         await trackLog(
@@ -464,7 +456,7 @@ export const inventoryService = {
         from_location: sourceItem.Location || undefined,
         to_warehouse: targetWarehouse,
         to_location: targetLocation || undefined,
-        quantity: newQty,
+        quantity: Math.abs(newQty - sourceItem.Quantity),
         prev_quantity: sourceItem.Quantity,
         new_quantity: newQty,
         action_type: isMove ? 'MOVE' : 'EDIT',

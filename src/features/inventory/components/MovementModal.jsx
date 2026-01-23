@@ -46,11 +46,12 @@ export const MovementModal = ({ isOpen, onClose, onMove, initialSourceItem }) =>
   // 1. Valid names in current warehouse (Case Insensitive Safety)
   const validLocationNames = useMemo(() => {
     if (!locations || locations.length === 0) return [];
-    return locations
+    const names = locations
       .filter(
         (l) => (l.warehouse || '').toUpperCase() === (formData.targetWarehouse || '').toUpperCase()
       )
       .map((l) => l.location);
+    return [...new Set(names)];
   }, [locations, formData.targetWarehouse]);
 
   // 2. Predictions based on current input
@@ -279,11 +280,10 @@ export const MovementModal = ({ isOpen, onClose, onMove, initialSourceItem }) =>
                       setField('targetWarehouse', wh);
                       setField('targetLocation', ''); // Clear on switch
                     }}
-                    className={`px-4 py-2 rounded-lg font-bold text-xs transition-all border ${
-                      formData.targetWarehouse === wh
+                    className={`px-4 py-2 rounded-lg font-bold text-xs transition-all border ${formData.targetWarehouse === wh
                         ? 'bg-accent text-main border-accent shadow-[0_0_15px_rgba(var(--accent-rgb),0.3)]'
                         : 'bg-surface text-muted border-subtle hover:border-muted'
-                    }`}
+                      }`}
                   >
                     {wh}
                   </button>

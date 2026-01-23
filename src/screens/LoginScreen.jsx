@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { supabase } from '../lib/supabaseClient';
+import { supabase } from '../lib/supabase';
 import { Loader2, KeyRound, Mail, ArrowRight } from 'lucide-react';
 
 export const LoginScreen = () => {

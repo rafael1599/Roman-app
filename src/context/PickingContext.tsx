@@ -49,7 +49,7 @@ interface PickingContextType {
 
   generatePickingPath: () => Promise<void>;
 
-  returnToBuilding: () => Promise<void>;
+  returnToBuilding: (id?: string | null) => Promise<void>;
 
   isLoaded: boolean;
   isSaving: boolean;
@@ -186,7 +186,7 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
     setOwnerId,
     setCorrectionNotes,
     setSessionMode,
-    setIsSaving: () => {},
+    setIsSaving: () => { },
     resetSession,
   });
 
@@ -198,15 +198,20 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // Return to Building: Revert from Picking mode back to Building mode
-  const returnToBuilding = async () => {
-    if (!activeListId) {
-      toast.error('No active picking session to return from.');
+  const returnToBuilding = async (id?: string | null) => {
+    const targetId = id || activeListId;
+
+    if (!targetId) {
+      // If we really have no ID but we have items in cart, we might already be in building mode
+      // or in a transition state. Let's force mode to building.
+      setSessionMode('building');
+      localStorage.setItem('picking_session_mode', 'building');
       return;
     }
 
     try {
       // Delete the picking list from database (releases reservations)
-      await deleteList(activeListId, true);
+      await deleteList(targetId, true);
 
       // Change back to building mode
       setSessionMode('building');

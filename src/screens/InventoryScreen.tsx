@@ -1,14 +1,15 @@
-import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { useInventory } from '../hooks/useInventoryData';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useInventory } from '../hooks/InventoryProvider';
+import { useInventoryInfinite } from '../hooks/queries/useInventoryInfinite';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useViewMode } from '../context/ViewModeContext';
 import { SearchInput } from '../components/ui/SearchInput';
 import { InventoryCard } from '../features/inventory/components/InventoryCard';
 import { InventoryModal } from '../features/inventory/components/InventoryModal';
 import { PickingCartDrawer } from '../features/picking/components/PickingCartDrawer';
 import CamScanner from '../features/smart-picking/components/CamScanner';
-import { useOrderProcessing } from '../features/smart-picking/hooks/useOrderProcessing';
 import { naturalSort } from '../utils/sortUtils';
-import { Plus, Warehouse, ArrowRightLeft, Sparkles, X } from 'lucide-react';
+import { Plus, Warehouse, Sparkles, X } from 'lucide-react';
 import { MovementModal } from '../features/inventory/components/MovementModal';
 import { CapacityBar } from '../components/ui/CapacityBar';
 import toast from 'react-hot-toast';
@@ -30,25 +31,35 @@ export const InventoryScreen = () => {
     updateItem,
     moveItem,
     deleteItem,
-    loading,
   } = useInventory();
-  const { viewMode } = useViewMode(); // 'stock' | 'picking'
-  const { processOrder, executeDeduction, currentOrder } = useOrderProcessing();
 
   const [search, setSearch] = useState('');
-  useEffect(() => {
-    setVisibleGroups(20);
-  }, [search]);
+
+  // New Infinite Query Hook
+  const {
+    inventory,
+    remaining,
+    loadMore,
+    hasNextPage,
+    isLoading,
+    isFetchingNextPage,
+    isError,
+    error
+  } = useInventoryInfinite(search);
+
+  const isOnline = useOnlineStatus();
+
+  const { viewMode } = useViewMode(); // 'stock' | 'picking'
+
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState(null);
+  const [editingItem, setEditingItem] = useState<any>(null);
   const [modalMode, setModalMode] = useState('add');
-  const [visibleGroups, setVisibleGroups] = useState(20);
   const [selectedWarehouseForAdd, setSelectedWarehouseForAdd] = useState('LUDLOW');
   const [isMovementModalOpen, setIsMovementModalOpen] = useState(false);
-  const [locationBeingEdited, setLocationBeingEdited] = useState(null);
+  const [locationBeingEdited, setLocationBeingEdited] = useState<any>(null);
 
   const [showWelcome, setShowWelcome] = useState(false);
-  const welcomeTimerRef = useRef(null);
+  const welcomeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { isAdmin } = useAuth();
   const { showError } = useError();
   const { showConfirmation } = useConfirmation();
@@ -57,7 +68,6 @@ export const InventoryScreen = () => {
     createLocation,
     updateLocation,
     deactivateLocation,
-    refresh: refreshLocations,
   } = useLocationManagement();
 
   // Welcome Message Logic
@@ -93,7 +103,6 @@ export const InventoryScreen = () => {
     updateCartQty,
     setCartQty,
     removeFromCart,
-    clearCart,
     completeList,
     markAsReady,
     lockForCheck,
@@ -101,17 +110,16 @@ export const InventoryScreen = () => {
     returnToPicker,
     loadExternalList,
     sessionMode,
-    setSessionMode,
     checkedBy,
     ownerId,
     revertToPicking,
-    isSaving,
     notes,
     isNotesLoading,
     addNote,
     resetSession,
     getAvailableStock,
     deleteList,
+    returnToBuilding,
   } = usePickingSession();
 
   const { externalDoubleCheckId, setExternalDoubleCheckId } = useViewMode();
@@ -291,27 +299,14 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
     setShowScanner(false);
   };
 
-  // --- Data Processing ---
-  const filteredData = useMemo(() => {
-    const lowerSearch = search.toLowerCase();
-    return inventoryData.filter((item) => {
-      const hasStock = (parseInt(item.Quantity) || 0) > 0;
-      const matchesSearch =
-        !search ||
-        (item.SKU && item.SKU.toLowerCase().includes(lowerSearch)) ||
-        (item.Location && item.Location.toLowerCase().includes(lowerSearch)) ||
-        (item.Warehouse && item.Warehouse.toLowerCase().includes(lowerSearch));
-
-      if (search) {
-        return hasStock && matchesSearch;
-      }
-      return matchesSearch;
-    });
-  }, [inventoryData, search]);
+  const processedData = useMemo(() => {
+    // We can now trust the inventory from server already filters Quantity > 0
+    return inventory;
+  }, [inventory]);
 
   const groupedData = useMemo(() => {
     const groups = {};
-    filteredData.forEach((item) => {
+    processedData.forEach((item) => {
       const wh = item.Warehouse || 'UNKNOWN';
       const locName = item.Location || 'Unknown Location';
 
@@ -329,7 +324,7 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
       }
     });
     return groups;
-  }, [filteredData]);
+  }, [processedData]);
 
   const sortedWarehouses = useMemo(() => {
     const warehouses = Object.keys(groupedData);
@@ -340,7 +335,7 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
     });
   }, [groupedData]);
 
-  const allLocationBlocks = useMemo(() => {
+  const locationBlocks = useMemo(() => {
     return sortedWarehouses.flatMap((wh) =>
       Object.keys(groupedData[wh])
         .sort(naturalSort)
@@ -353,14 +348,17 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
     );
   }, [sortedWarehouses, groupedData]);
 
-  const paginatedBlocks = useMemo(() => {
-    return allLocationBlocks.slice(0, visibleGroups);
-  }, [allLocationBlocks, visibleGroups]);
-
-  if (loading)
+  if (isLoading && !inventory.length)
     return (
       <div className="p-8 text-center text-muted font-bold uppercase tracking-widest animate-pulse">
         Loading Global Inventory...
+      </div>
+    );
+
+  if (isError)
+    return (
+      <div className="p-8 text-center text-red-500 font-bold uppercase tracking-widest">
+        Error loading inventory data: {error?.message}
       </div>
     );
 
@@ -411,7 +409,7 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
       />
 
       <div className="p-4 space-y-12">
-        {paginatedBlocks.map(({ wh, location, items, locationId }) => (
+        {locationBlocks.map(({ wh, location, items, locationId }) => (
           <div key={`${wh}-${location}`} className="space-y-4">
             <div className="sticky top-[84px] bg-main/95 backdrop-blur-sm z-30 py-3 border-b border-subtle group">
               <div className="flex items-center gap-4 px-1">
@@ -435,58 +433,70 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
             </div>
 
             <div className="grid grid-cols-1 gap-1">
-              {items
-                .filter((item) => (parseInt(item.Quantity) || 0) > 0)
-                .map((item, idx) => {
-                  const isInCart = cartItems.some(
-                    (c) =>
-                      c.SKU === item.SKU &&
-                      c.Warehouse === item.Warehouse &&
-                      c.Location === item.Location
-                  );
+              {items.map((item) => {
+                const isInCart = cartItems.some(
+                  (c) =>
+                    c.SKU === item.SKU &&
+                    c.Warehouse === item.Warehouse &&
+                    c.Location === item.Location
+                );
 
-                  // Calculate availability for picking mode
-                  const stockInfo = viewMode === 'picking' ? getAvailableStock(item) : null;
+                // Calculate availability for picking mode
+                const stockInfo = viewMode === 'picking' ? getAvailableStock(item) : null;
 
-                  return (
-                    <div
-                      key={item.id || `${item.SKU}-${item.Warehouse}-${item.Location}`}
-                      className={
-                        isInCart && viewMode === 'picking' ? 'ring-1 ring-accent rounded-lg' : ''
+                return (
+                  <div
+                    key={`inv-row-${item.id}-${item.SKU}`}
+                    className={
+                      isInCart && viewMode === 'picking' ? 'ring-1 ring-accent rounded-lg' : ''
+                    }
+                  >
+                    <InventoryCard
+                      sku={item.SKU}
+                      quantity={item.Quantity}
+                      detail={item.Location_Detail}
+                      warehouse={item.Warehouse}
+                      onIncrement={() =>
+                        updateQuantity(item.SKU, 1, item.Warehouse, item.Location)
                       }
-                    >
-                      <InventoryCard
-                        sku={item.SKU}
-                        quantity={item.Quantity}
-                        detail={item.Location_Detail}
-                        warehouse={item.Warehouse}
-                        onIncrement={() =>
-                          updateQuantity(item.SKU, 1, item.Warehouse, item.Location)
-                        }
-                        onDecrement={() =>
-                          updateQuantity(item.SKU, -1, item.Warehouse, item.Location)
-                        }
-                        onMove={() => handleQuickMove(item)}
-                        onClick={() => handleCardClick(item)}
-                        mode={viewMode === 'picking' ? sessionMode : 'stock'}
-                        reservedByOthers={stockInfo?.reservedByOthers || 0}
-                        available={stockInfo?.available}
-                      />
-                    </div>
-                  );
-                })}
+                      onDecrement={() =>
+                        updateQuantity(item.SKU, -1, item.Warehouse, item.Location)
+                      }
+                      onMove={() => handleQuickMove(item)}
+                      onClick={() => handleCardClick(item)}
+                      mode={viewMode === 'picking' ? sessionMode : 'stock'}
+                      reservedByOthers={stockInfo?.reservedByOthers || 0}
+                      available={stockInfo?.available}
+                    />
+                  </div>
+                );
+              })}
             </div>
           </div>
         ))}
 
-        {allLocationBlocks.length > visibleGroups && (
-          <div className="flex justify-center py-8">
+        {hasNextPage && (
+          <div className="flex flex-col items-center gap-4 py-8">
             <button
-              onClick={() => setVisibleGroups((prev) => prev + 20)}
-              className="px-8 py-4 bg-subtle text-accent font-black uppercase tracking-widest rounded-2xl hover:bg-accent hover:text-white transition-all active:scale-95 shadow-lg"
+              onClick={() => isOnline && loadMore()}
+              disabled={isFetchingNextPage || !isOnline}
+              className={`px-8 py-4 font-black uppercase tracking-widest rounded-2xl transition-all active:scale-95 shadow-lg ${!isOnline
+                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                : 'bg-subtle text-accent hover:bg-accent hover:text-white'
+                }`}
             >
-              Load More Locations ({allLocationBlocks.length - visibleGroups} remaining)
+              {!isOnline
+                ? "Offline - Connect to load more"
+                : isFetchingNextPage
+                  ? 'Loading...'
+                  : `Load More Locations (${remaining} remaining)`}
             </button>
+
+            {(isError && isOnline) && (
+              <p className="text-red-500 text-sm font-bold animate-bounce">
+                No pudimos cargar más items. Revisa tu conexión.
+              </p>
+            )}
           </div>
         )}
 
@@ -537,7 +547,17 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
           onSetQty={setCartQty}
           onRemoveItem={removeFromCart}
           onDelete={deleteList}
-          onDeduct={async (items) => {
+          onReturnToBuilding={returnToBuilding}
+          onDeduct={async (items, isVerified: boolean) => {
+            if (!isVerified) {
+              await releaseCheck(activeListId!);
+              toast('Order sent to verification queue', {
+                icon: '📋',
+                duration: 4000,
+              });
+              return true;
+            }
+
             if (isProcessingDeduction) return false;
             setIsProcessingDeduction(true);
             try {

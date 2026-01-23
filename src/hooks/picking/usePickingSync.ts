@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { supabase } from '../../lib/supabaseClient';
+import { supabase } from '../../lib/supabase';
 import { debounce } from '../../utils/debounce';
 import toast from 'react-hot-toast';
 import type { CartItem } from './usePickingCart';

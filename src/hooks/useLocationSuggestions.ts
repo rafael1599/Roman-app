@@ -101,13 +101,13 @@ export const useLocationSuggestions = (
         // Override max with DB value if available locally
         capData.max = maxCapacity;
 
-        const zone = getZone(item.Warehouse, item.Location) as ZoneType; // getZone returns ZoneType
-
-        if (!locationMap.has(item.Location)) {
+        const locName = String(item.Location).trim();
+        const zone = getZone(item.Warehouse, item.Location) as ZoneType;
+        if (!locationMap.has(locName)) {
           // Calculate Hybrid Score
           const score = calculateHybridLocationScore(
             {
-              name: item.Location,
+              name: locName,
               current: capData.current,
               max: capData.max,
               zone,
@@ -117,8 +117,8 @@ export const useLocationSuggestions = (
             allVelocities
           );
 
-          locationMap.set(item.Location, {
-            value: item.Location,
+          locationMap.set(locName, {
+            value: locName,
             current: capData.current,
             max: capData.max,
             zone: zone,

@@ -3,7 +3,7 @@ import { ChevronUp, ChevronDown, AlertTriangle } from 'lucide-react';
 import { PickingSessionView } from './PickingSessionView';
 import { DoubleCheckView } from './DoubleCheckView';
 import { useAuth } from '../../../context/AuthContext';
-import { supabase } from '../../../lib/supabaseClient';
+import { supabase } from '../../../lib/supabase';
 import { useConfirmation } from '../../../context/ConfirmationContext';
 import toast from 'react-hot-toast';
 
@@ -32,6 +32,7 @@ export const PickingCartDrawer = ({
   isNotesLoading,
   onAddNote,
   onResetSession,
+  onReturnToBuilding,
   ...restProps
 }) => {
   const { user } = useAuth();
@@ -53,8 +54,11 @@ export const PickingCartDrawer = ({
       if (savedProgress) {
         try {
           setCheckedItems(new Set(JSON.parse(savedProgress)));
-        } catch (e) {}
+        } catch (e) { }
       }
+    } else if (sessionMode === 'building') {
+      setCurrentView('picking');
+      setCheckedItems(new Set());
     }
   }, [sessionMode, activeListId]);
 
@@ -239,9 +243,9 @@ export const PickingCartDrawer = ({
         style={
           isOpen
             ? {
-                transform: `translateY(${dragY}px)`,
-                transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)',
-              }
+              transform: `translateY(${dragY}px)`,
+              transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)',
+            }
             : undefined
         }
       >
@@ -249,13 +253,12 @@ export const PickingCartDrawer = ({
         {!isOpen && (
           <div
             onClick={() => setIsOpen(true)}
-            className={`mx-4 p-3 rounded-t-2xl shadow-2xl flex items-center justify-center gap-2 cursor-pointer active:opacity-90 transition-colors ${
-              sessionMode === 'double_checking'
-                ? 'bg-orange-500 text-white'
-                : sessionMode === 'building'
-                  ? 'bg-slate-800 text-white'
-                  : 'bg-accent text-main'
-            }`}
+            className={`mx-4 p-3 rounded-t-2xl shadow-2xl flex items-center justify-center gap-2 cursor-pointer active:opacity-90 transition-colors ${sessionMode === 'double_checking'
+              ? 'bg-orange-500 text-white'
+              : sessionMode === 'building'
+                ? 'bg-slate-800 text-white'
+                : 'bg-accent text-main'
+              }`}
           >
             <ChevronUp size={20} />
             <div className="font-bold uppercase tracking-tight text-sm">
@@ -298,8 +301,8 @@ export const PickingCartDrawer = ({
                 activeListId={activeListId}
                 checkedItems={checkedItems}
                 onToggleCheck={toggleCheck}
-                onDeduct={async (items) => {
-                  const success = await onDeduct(items);
+                onDeduct={async (items, isVerified) => {
+                  const success = await onDeduct(items, isVerified);
                   if (success) {
                     localStorage.removeItem(`double_check_progress_${activeListId}`);
                     setIsOpen(false);
@@ -312,9 +315,7 @@ export const PickingCartDrawer = ({
                 isNotesLoading={isNotesLoading}
                 onAddNote={onAddNote}
                 onBack={async () => {
-                  // Removed isOwner check to allow anyone to go back
-                  await onRevertToPicking();
-                  setCurrentView('picking');
+                  await onReturnToBuilding(activeListId);
                 }}
                 onRelease={() => {
                   onReleaseCheck(activeListId);

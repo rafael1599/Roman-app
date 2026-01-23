@@ -54,8 +54,9 @@ export const DoubleCheckView = ({
 
   const handleConfirm = async () => {
     setIsDeducting(true);
+    const isFullyVerified = checkedCount === totalCheckboxes;
     try {
-      await onDeduct(cartItems);
+      await onDeduct(cartItems, isFullyVerified);
     } catch (error) {
       console.error(error);
     } finally {
@@ -82,7 +83,7 @@ export const DoubleCheckView = ({
           toast.error('Failed to return order');
         }
       },
-      () => {},
+      () => { },
       'Return to Picker',
       'Cancel'
     );
@@ -185,19 +186,17 @@ export const DoubleCheckView = ({
                   <div
                     key={itemKey}
                     onClick={() => onToggleCheck(item, pallet.id)}
-                    className={`bg-card border transition-all duration-200 rounded-xl p-3 flex items-center justify-between gap-4 active:scale-[0.98] ${
-                      isChecked
+                    className={`bg-card border transition-all duration-200 rounded-xl p-3 flex items-center justify-between gap-4 active:scale-[0.98] ${isChecked
                         ? 'border-green-500/50 bg-green-500/5 shadow-sm'
                         : 'border-subtle hover:border-accent/30 shadow-sm'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center gap-3 min-w-0 flex-1">
                       <div
-                        className={`w-8 h-8 rounded-lg flex items-center justify-center border transition-colors ${
-                          isChecked
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center border transition-colors ${isChecked
                             ? 'bg-green-500/10 border-green-500/20'
                             : 'bg-surface border-subtle'
-                        }`}
+                          }`}
                       >
                         <Package
                           className={`w-4 h-4 ${isChecked ? 'text-green-500' : 'text-muted'}`}
@@ -219,11 +218,10 @@ export const DoubleCheckView = ({
                       </div>
 
                       <div
-                        className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-all ${
-                          isChecked
+                        className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-all ${isChecked
                             ? 'bg-green-500 border-green-500 text-white shadow-lg shadow-green-500/20'
                             : 'bg-surface border-subtle text-transparent'
-                        }`}
+                          }`}
                       >
                         <Check size={20} strokeWidth={4} />
                       </div>

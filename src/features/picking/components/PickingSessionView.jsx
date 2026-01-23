@@ -19,7 +19,7 @@ import { SlideToConfirm } from '../../../components/ui/SlideToConfirm';
 import { useError } from '../../../context/ErrorContext';
 import { useConfirmation } from '../../../context/ConfirmationContext';
 import { useAuth } from '../../../context/AuthContext';
-import { supabase } from '../../../lib/supabaseClient';
+import { supabase } from '../../../lib/supabase';
 import { CorrectionNotesTimeline } from './CorrectionNotesTimeline';
 import { OrderBuilderMode } from './OrderBuilderMode';
 import { usePickingSession } from '../../../context/PickingContext';
@@ -300,7 +300,7 @@ export const PickingSessionView = ({
         className="px-4 py-2 border-b border-subtle flex items-center justify-between shrink-0 bg-surface/50 backdrop-blur-sm sticky top-0 z-10 touch-none"
       >
         <button
-          onClick={returnToBuilding}
+          onClick={() => returnToBuilding(activeListId)}
           className="p-2 hover:bg-surface rounded-lg text-muted transition-colors shrink-0 mr-1"
           title="Return to Building"
         >
@@ -514,11 +514,10 @@ export const PickingSessionView = ({
                             <button
                               onClick={() => onUpdateQty(item, 1)}
                               disabled={isAtMax}
-                              className={`w-7 h-7 flex items-center justify-center rounded transition-colors ${
-                                isAtMax
+                              className={`w-7 h-7 flex items-center justify-center rounded transition-colors ${isAtMax
                                   ? 'text-subtle cursor-not-allowed'
                                   : 'text-muted hover:text-content active:bg-surface'
-                              } `}
+                                } `}
                             >
                               <Plus size={14} />
                             </button>

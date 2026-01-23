@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { supabase } from '../lib/supabaseClient';
+import { supabase } from '../lib/supabase';
 import { useInventory } from '../hooks/useInventoryData';
 import {
   Clock,
@@ -122,12 +122,8 @@ export const HistoryScreen = () => {
       .filter((log) => filter === 'ALL' || log.action_type === filter)
       .filter((log) => userFilter === 'ALL' || log.performed_by === userFilter)
       .filter((log) => {
-        // If not admin, hide undone (reversed) actions
+        // If not admin, hide undone (reversed) actions to keep the view clean
         if (!isAdmin && log.is_reversed) return false;
-        // If not admin, hide 'ADD' (Restock) and 'DELETE' (Remove) actions
-        if (!isAdmin && (log.action_type === 'ADD' || log.action_type === 'DELETE')) {
-          return false;
-        }
         return true;
       })
       .filter((log) => {
@@ -434,36 +430,36 @@ export const HistoryScreen = () => {
                     </thead>
                     <tbody>
                         ${todaysLogs
-                          .map((log) => {
-                            const locationStyle = 'font-weight: 600; color: #111827;';
-                            const secondaryColor = '#6b7280';
+          .map((log) => {
+            const locationStyle = 'font-weight: 600; color: #111827;';
+            const secondaryColor = '#6b7280';
 
-                            const fromLoc = log.from_location
-                              ? `<span style="${locationStyle}">${log.from_location}</span> <span style="color:${secondaryColor}; font-size: 0.8em;">(${log.from_warehouse || 'N/A'})</span>`
-                              : '';
-                            const toLoc = log.to_location
-                              ? `<span style="${locationStyle}">${log.to_location}</span> <span style="color:${secondaryColor}; font-size: 0.8em;">(${log.to_warehouse || 'N/A'})</span>`
-                              : '';
+            const fromLoc = log.from_location
+              ? `<span style="${locationStyle}">${log.from_location}</span> <span style="color:${secondaryColor}; font-size: 0.8em;">(${log.from_warehouse || 'N/A'})</span>`
+              : '';
+            const toLoc = log.to_location
+              ? `<span style="${locationStyle}">${log.to_location}</span> <span style="color:${secondaryColor}; font-size: 0.8em;">(${log.to_warehouse || 'N/A'})</span>`
+              : '';
 
-                            let description = '';
-                            switch (log.action_type) {
-                              case 'MOVE':
-                                description = `Relocated from ${fromLoc} to ${toLoc}`;
-                                break;
-                              case 'ADD':
-                                description = `Restocked inventory in ${toLoc || fromLoc || 'General'}`;
-                                break;
-                              case 'DEDUCT':
-                                description = `Picked stock from ${fromLoc || 'General'}`;
-                                break;
-                              case 'DELETE':
-                                description = `Removed item from ${fromLoc || 'Inventory'}`;
-                                break;
-                              default:
-                                description = `Updated record for ${fromLoc || toLoc || '-'}`;
-                            }
+            let description = '';
+            switch (log.action_type) {
+              case 'MOVE':
+                description = `Relocated from ${fromLoc} to ${toLoc}`;
+                break;
+              case 'ADD':
+                description = `Restocked inventory in ${toLoc || fromLoc || 'General'}`;
+                break;
+              case 'DEDUCT':
+                description = `Picked stock from ${fromLoc || 'General'}`;
+                break;
+              case 'DELETE':
+                description = `Removed item from ${fromLoc || 'Inventory'}`;
+                break;
+              default:
+                description = `Updated record for ${fromLoc || toLoc || '-'}`;
+            }
 
-                            return `
+            return `
                                 <tr style="border-bottom: 1px solid #f3f4f6;">
                                     <td style="padding: 12px; color: #6b7280; font-size: 0.9em;">
                                         ${new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -479,8 +475,8 @@ export const HistoryScreen = () => {
                                     </td>
                                 </tr>
                             `;
-                          })
-                          .join('')}
+          })
+          .join('')}
                     </tbody>
                 </table>
                 
@@ -605,11 +601,10 @@ export const HistoryScreen = () => {
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border shrink-0 ${
-                filter === f
-                  ? 'bg-accent border-accent/20 text-main shadow-lg shadow-accent/20'
-                  : 'bg-surface text-muted border-subtle hover:border-muted/30'
-              }`}
+              className={`px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border shrink-0 ${filter === f
+                ? 'bg-accent border-accent/20 text-main shadow-lg shadow-accent/20'
+                : 'bg-surface text-muted border-subtle hover:border-muted/30'
+                }`}
             >
               {f === 'DEDUCT' ? 'Picking' : f}
             </button>
@@ -623,11 +618,10 @@ export const HistoryScreen = () => {
           </div>
           <button
             onClick={() => setUserFilter('ALL')}
-            className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border shrink-0 ${
-              userFilter === 'ALL'
-                ? 'bg-content text-main border-content'
-                : 'bg-surface text-muted border-subtle hover:border-muted/30'
-            }`}
+            className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border shrink-0 ${userFilter === 'ALL'
+              ? 'bg-content text-main border-content'
+              : 'bg-surface text-muted border-subtle hover:border-muted/30'
+              }`}
           >
             All Users
           </button>
@@ -635,11 +629,10 @@ export const HistoryScreen = () => {
             <button
               key={user}
               onClick={() => setUserFilter(user)}
-              className={`px-4 py-2 rounded-full text-[10px] font-bold transition-all border shrink-0 flex items-center gap-2 ${
-                userFilter === user
-                  ? 'bg-content text-main border-content shadow-lg'
-                  : 'bg-surface text-muted border-subtle hover:border-muted/30'
-              }`}
+              className={`px-4 py-2 rounded-full text-[10px] font-bold transition-all border shrink-0 flex items-center gap-2 ${userFilter === user
+                ? 'bg-content text-main border-content shadow-lg'
+                : 'bg-surface text-muted border-subtle hover:border-muted/30'
+                }`}
             >
               <User size={10} />
               {user}
@@ -688,11 +681,10 @@ export const HistoryScreen = () => {
                   return (
                     <div
                       key={log.id}
-                      className={`group relative p-5 rounded-[2rem] border transition-all duration-300 hover:scale-[1.01] ${
-                        log.is_reversed
-                          ? 'bg-main border-subtle opacity-40 grayscale pointer-events-none'
-                          : 'bg-surface/40 border-subtle hover:border-accent/30 hover:bg-surface/60'
-                      }`}
+                      className={`group relative p-5 rounded-[2rem] border transition-all duration-300 hover:scale-[1.01] ${log.is_reversed
+                        ? 'bg-main border-subtle opacity-40 grayscale pointer-events-none'
+                        : 'bg-surface/40 border-subtle hover:border-accent/30 hover:bg-surface/60'
+                        }`}
                     >
                       <div className="flex justify-between items-start">
                         <div className="flex items-center gap-4">
@@ -721,7 +713,7 @@ export const HistoryScreen = () => {
                           </div>
                         </div>
 
-                        {!log.is_reversed && log.action_type !== 'DELETE' && isAdmin && (
+                        {!log.is_reversed && isAdmin && (
                           <button
                             onClick={() => handleUndo(log.id)}
                             className="p-3 bg-surface border border-subtle hover:bg-content hover:text-main rounded-2xl transition-all shadow-xl text-content"
@@ -790,7 +782,7 @@ export const HistoryScreen = () => {
                             Qty
                           </p>
                           <p className="text-2xl font-black leading-none text-content">
-                            {log.quantity > 0 ? log.quantity : '??'}
+                            {log.quantity !== null && log.quantity !== undefined ? log.quantity : '??'}
                           </p>
                         </div>
                       </div>

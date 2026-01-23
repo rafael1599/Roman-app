@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { type Location, type LocationInput, LocationSchema } from '../schemas/location.schema';
 import { validateData } from '../utils/validate';
 import { DEFAULT_MAX_CAPACITY } from '../utils/capacityUtils';
-import { supabase } from '../lib/supabaseClient';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 
 /**

@@ -56,11 +56,10 @@ export const DoubleCheckHeader = () => {
           setIsOpen(nextState);
           if (nextState) refresh();
         }}
-        className={`flex items-center gap-2 px-3 py-1.5 rounded-full transition-all active:scale-95 relative ${
-          totalActions > 0
+        className={`flex items-center gap-2 px-3 py-1.5 rounded-full transition-all active:scale-95 relative ${totalActions > 0
             ? 'bg-accent/10 text-accent border border-accent/30 shadow-lg shadow-accent/5'
             : 'bg-surface border border-subtle text-muted opacity-60'
-        }`}
+          }`}
       >
         <div className="relative">
           <ClipboardCheck size={18} className={totalActions > 0 ? 'text-accent' : ''} />
@@ -121,25 +120,23 @@ export const DoubleCheckHeader = () => {
                           className="-rotate-90 text-subtle group-hover:text-amber-500 transition-colors"
                         />
                       </button>
-                      {isAdmin && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            showConfirmation(
-                              'Delete Order',
-                              'Are you sure you want to delete this order permanently? This action cannot be undone.',
-                              () => deleteList(order.id),
-                              () => {},
-                              'Delete',
-                              'Cancel'
-                            );
-                          }}
-                          className="p-2 text-muted hover:text-red-500 transition-colors"
-                          title="Delete Order"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      )}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          showConfirmation(
+                            'Delete Order',
+                            'Are you sure you want to delete this order permanently? This action cannot be undone.',
+                            () => deleteList(order.id),
+                            () => { },
+                            'Delete',
+                            'Cancel'
+                          );
+                        }}
+                        className="p-2 text-muted hover:text-red-500 transition-colors"
+                        title="Delete Order"
+                      >
+                        <Trash2 size={16} />
+                      </button>
                     </div>
                   ))}
               </div>
@@ -165,11 +162,10 @@ export const DoubleCheckHeader = () => {
                     >
                       <div className="flex items-center gap-3">
                         <div
-                          className={`w-8 h-8 rounded-lg flex items-center justify-center border transition-colors ${
-                            order.status === 'double_checking'
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center border transition-colors ${order.status === 'double_checking'
                               ? 'bg-orange-500/10 text-orange-500 border-orange-500/20'
                               : 'bg-accent/10 text-accent border-accent/20'
-                          }`}
+                            }`}
                         >
                           {order.status === 'double_checking' ? (
                             <Clock size={16} />
@@ -193,25 +189,23 @@ export const DoubleCheckHeader = () => {
                         className="-rotate-90 text-subtle group-hover:text-accent transition-colors"
                       />
                     </button>
-                    {isAdmin && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          showConfirmation(
-                            'Delete Order',
-                            'Are you sure you want to delete this order permanently? This action cannot be undone.',
-                            () => deleteList(order.id),
-                            () => {},
-                            'Delete',
-                            'Cancel'
-                          );
-                        }}
-                        className="p-2 text-muted hover:text-red-500 transition-colors"
-                        title="Delete Order"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    )}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        showConfirmation(
+                          'Delete Order',
+                          'Are you sure you want to delete this order permanently? This action cannot be undone.',
+                          () => deleteList(order.id),
+                          () => { },
+                          'Delete',
+                          'Cancel'
+                        );
+                      }}
+                      className="p-2 text-muted hover:text-red-500 transition-colors"
+                      title="Delete Order"
+                    >
+                      <Trash2 size={16} />
+                    </button>
                   </div>
                 ))}
               {readyCount === 0 &&

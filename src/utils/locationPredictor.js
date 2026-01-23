@@ -94,7 +94,7 @@ export const predictLocation = (input, existingLocations = []) => {
   }
 
   return {
-    matches: potentialMatches,
+    matches: [...new Set(potentialMatches)],
     exactMatch: false,
     bestGuess,
   };
