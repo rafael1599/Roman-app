@@ -36,8 +36,8 @@ export const InventoryScreen = () => {
   const [localSearch, setLocalSearch] = useState('');
   const debouncedSearch = useDebounce(localSearch, 300);
 
-  // Client-side filtering and pagination logic
-  const [displayCount, setDisplayCount] = useState(100);
+  // Client-side filtering and pagination logic (by location)
+  const [displayLocationCount, setDisplayLocationCount] = useState(50);
 
   const filteredInventory = useMemo(() => {
     const s = debouncedSearch.toLowerCase().trim();
@@ -57,23 +57,67 @@ export const InventoryScreen = () => {
     });
   }, [inventoryData, debouncedSearch]);
 
-  const inventory = useMemo(() => {
-    return filteredInventory.slice(0, displayCount);
-  }, [filteredInventory, displayCount]);
+  const isLoading = loading;
 
-  const hasNextPage = displayCount < filteredInventory.length;
-  const remaining = Math.max(0, filteredInventory.length - inventory.length);
+  const allGroupedData = useMemo(() => {
+    const groups: any = {};
+    filteredInventory.forEach((item) => {
+      const wh = item.Warehouse || 'UNKNOWN';
+      const locName = item.Location || 'Unknown Location';
+
+      if (!groups[wh]) groups[wh] = {};
+      if (!groups[wh][locName]) {
+        groups[wh][locName] = {
+          items: [],
+          locationId: item.location_id,
+        };
+      }
+
+      groups[wh][locName].items.push(item);
+      if (item.location_id && !groups[wh][locName].locationId) {
+        groups[wh][locName].locationId = item.location_id;
+      }
+    });
+    return groups;
+  }, [filteredInventory]);
+
+  const allSortedWarehouses = useMemo(() => {
+    const warehouses = Object.keys(allGroupedData);
+    return warehouses.sort((a, b) => {
+      if (a === 'LUDLOW') return -1;
+      if (b === 'LUDLOW') return 1;
+      return a.localeCompare(b);
+    });
+  }, [allGroupedData]);
+
+  const allLocationBlocks = useMemo(() => {
+    return allSortedWarehouses.flatMap((wh) =>
+      Object.keys(allGroupedData[wh])
+        .sort(naturalSort)
+        .map((location) => ({
+          wh,
+          location,
+          items: allGroupedData[wh][location].items,
+          locationId: allGroupedData[wh][location].locationId,
+        }))
+    );
+  }, [allSortedWarehouses, allGroupedData]);
+
+  const locationBlocks = useMemo(() => {
+    return allLocationBlocks.slice(0, displayLocationCount);
+  }, [allLocationBlocks, displayLocationCount]);
+
+  const hasNextPage = displayLocationCount < allLocationBlocks.length;
+  const remaining = Math.max(0, allLocationBlocks.length - locationBlocks.length);
 
   const loadMore = useCallback(() => {
-    setDisplayCount((prev) => prev + 100);
+    setDisplayLocationCount((prev) => prev + 50);
   }, []);
-
-  const isLoading = loading; // Map provider loading to isLoading
 
   // Scroll to top when search changes
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    setDisplayCount(100); // Reset pagination on search
+    setDisplayLocationCount(50); // Reset pagination on search
   }, [debouncedSearch]);
 
   const { viewMode } = useViewMode(); // 'stock' | 'picking'
@@ -326,54 +370,6 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
     setShowScanner(false);
   };
 
-  const processedData = useMemo(() => {
-    return inventory;
-  }, [inventory]);
-
-  const groupedData = useMemo(() => {
-    const groups = {};
-    processedData.forEach((item) => {
-      const wh = item.Warehouse || 'UNKNOWN';
-      const locName = item.Location || 'Unknown Location';
-
-      if (!groups[wh]) groups[wh] = {};
-      if (!groups[wh][locName]) {
-        groups[wh][locName] = {
-          items: [],
-          locationId: item.location_id,
-        };
-      }
-
-      groups[wh][locName].items.push(item);
-      if (item.location_id && !groups[wh][locName].locationId) {
-        groups[wh][locName].locationId = item.location_id;
-      }
-    });
-    return groups;
-  }, [processedData]);
-
-  const sortedWarehouses = useMemo(() => {
-    const warehouses = Object.keys(groupedData);
-    return warehouses.sort((a, b) => {
-      if (a === 'LUDLOW') return -1;
-      if (b === 'LUDLOW') return 1;
-      return a.localeCompare(b);
-    });
-  }, [groupedData]);
-
-  const locationBlocks = useMemo(() => {
-    return sortedWarehouses.flatMap((wh) =>
-      Object.keys(groupedData[wh])
-        .sort(naturalSort)
-        .map((location) => ({
-          wh,
-          location,
-          items: groupedData[wh][location].items,
-          locationId: groupedData[wh][location].locationId,
-        }))
-    );
-  }, [sortedWarehouses, groupedData]);
-
   // REMOVED EARLY LOADING RETURN TO PREVENT KEYBOARD DISMISSAL
   // Layout must remain stable while charging
 
@@ -427,7 +423,7 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
       />
 
       <div className="p-4 space-y-12 min-h-[50vh]">
-        {isLoading && !inventory.length ? (
+        {isLoading && !locationBlocks.length ? (
           <div className="py-20 text-center text-muted font-bold uppercase tracking-widest animate-pulse">
             Searching Inventory...
           </div>
@@ -505,12 +501,12 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
               onClick={loadMore}
               className="px-8 py-4 font-black uppercase tracking-widest rounded-2xl transition-all active:scale-95 shadow-lg bg-subtle text-accent hover:bg-accent hover:text-white"
             >
-              Load More Results ({remaining} items remaining)
+              Load More Locations ({remaining} remaining)
             </button>
           </div>
         )}
 
-        {sortedWarehouses.length === 0 && (
+        {allLocationBlocks.length === 0 && (
           <div className="text-center text-muted mt-20 py-20 border-2 border-dashed border-subtle rounded-3xl">
             <Warehouse className="mx-auto mb-4 opacity-20" size={48} />
             <p className="text-xl font-black uppercase tracking-widest opacity-30">
