@@ -12,133 +12,143 @@ export const ZONE_CYCLE = ['COLD', 'WARM', 'HOT'];
  * Get the next zone in the cycle
  */
 export const getNextZone = (currentZone) => {
-    const currentIndex = ZONE_CYCLE.indexOf(currentZone);
-    if (currentIndex === -1) return 'COLD';
-    return ZONE_CYCLE[(currentIndex + 1) % ZONE_CYCLE.length];
+  const currentIndex = ZONE_CYCLE.indexOf(currentZone);
+  if (currentIndex === -1) return 'COLD';
+  return ZONE_CYCLE[(currentIndex + 1) % ZONE_CYCLE.length];
 };
 
 /**
  * Parse a location key (e.g., "LUDLOW-A1") into warehouse and location parts
  */
 export const parseLocationKey = (key) => {
-    if (!key) return { warehouse: '', location: '' };
-    const parts = key.split('-');
-    const warehouse = parts[0];
-    const location = parts.slice(1).join('-');
-    return { warehouse, location };
+  if (!key) return { warehouse: '', location: '' };
+  const parts = key.split('-');
+  const warehouse = parts[0];
+  const location = parts.slice(1).join('-');
+  return { warehouse, location };
 };
 
 /**
  * Get Tailwind CSS classes for a zone
  */
 export const getZoneStyle = (zone) => {
-    switch (zone) {
-        case 'HOT': return 'bg-red-500/20 border-red-500 text-red-400';
-        case 'WARM': return 'bg-orange-500/20 border-orange-500 text-orange-400';
-        case 'COLD': return 'bg-blue-500/20 border-blue-500 text-blue-400';
-        default: return 'bg-neutral-800 border-neutral-600 text-neutral-400';
-    }
+  switch (zone) {
+    case 'HOT':
+      return 'bg-red-500/20 border-red-500 text-red-400';
+    case 'WARM':
+      return 'bg-orange-500/20 border-orange-500 text-orange-400';
+    case 'COLD':
+      return 'bg-blue-500/20 border-blue-500 text-blue-400';
+    default:
+      return 'bg-neutral-800 border-neutral-600 text-neutral-400';
+  }
 };
 
 /**
  * Get emoji representation of a zone
  */
 export const getZoneEmoji = (zone) => {
-    switch (zone) {
-        case 'HOT': return '🔥';
-        case 'WARM': return '☀️';
-        case 'COLD': return '❄️';
-        default: return '❔';
-    }
+  switch (zone) {
+    case 'HOT':
+      return '🔥';
+    case 'WARM':
+      return '☀️';
+    case 'COLD':
+      return '❄️';
+    default:
+      return '❔';
+  }
 };
 
 /**
  * Get warehouse-specific button color classes
  */
 export const getWarehouseButtonStyle = (warehouse, isActive) => {
-    if (!isActive) return 'text-neutral-400 hover:text-white';
+  if (!isActive) return 'text-neutral-400 hover:text-white';
 
-    switch (warehouse?.toUpperCase()) {
-        case 'LUDLOW': return 'bg-green-500 text-black';
-        case 'ATS': return 'bg-blue-500 text-black';
-        default: return 'bg-white text-black';
-    }
+  switch (warehouse?.toUpperCase()) {
+    case 'LUDLOW':
+      return 'bg-green-500 text-black';
+    case 'ATS':
+      return 'bg-blue-500 text-black';
+    default:
+      return 'bg-white text-black';
+  }
 };
 
 /**
  * Sort locations by zone order, then alphabetically
  */
 export const sortByZoneThenAlpha = (locations, getZone) => {
-    return [...locations].sort((a, b) => {
-        const parsedA = parseLocationKey(a);
-        const parsedB = parseLocationKey(b);
-        const zoneA = getZone(parsedA.warehouse, parsedA.location);
-        const zoneB = getZone(parsedB.warehouse, parsedB.location);
+  return [...locations].sort((a, b) => {
+    const parsedA = parseLocationKey(a);
+    const parsedB = parseLocationKey(b);
+    const zoneA = getZone(parsedA.warehouse, parsedA.location);
+    const zoneB = getZone(parsedB.warehouse, parsedB.location);
 
-        if (ZONE_ORDER[zoneA] !== ZONE_ORDER[zoneB]) {
-            return ZONE_ORDER[zoneA] - ZONE_ORDER[zoneB];
-        }
-        return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
-    });
+    if (ZONE_ORDER[zoneA] !== ZONE_ORDER[zoneB]) {
+      return ZONE_ORDER[zoneA] - ZONE_ORDER[zoneB];
+    }
+    return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+  });
 };
 
 /**
  * Calculate the zone based on index and total count (1/3 division)
  */
 export const calculateZoneFromIndex = () => {
-
-    // Temporarily disabled: Route all to UNASSIGNED until full logic is complete
-    return 'UNASSIGNED';
+  // Temporarily disabled: Route all to UNASSIGNED until full logic is complete
+  return 'UNASSIGNED';
 };
 
 /**
  * Recalculate zones for a list of locations based on their current order
  */
 export const recalculateZonesFromOrder = (locations) => {
-    const total = locations.length;
-    return locations.map((locKey, index) => {
-        const { warehouse, location } = parseLocationKey(locKey);
-        return {
-            warehouse,
-            location,
-            zone: calculateZoneFromIndex(index, total)
-        };
-    });
+  const total = locations.length;
+  return locations.map((locKey, index) => {
+    const { warehouse, location } = parseLocationKey(locKey);
+    return {
+      warehouse,
+      location,
+      zone: calculateZoneFromIndex(index, total),
+    };
+  });
 };
 
 /**
  * Extract unique warehouses from a list of location keys
  */
 export const extractWarehouses = (locations) => {
-    const warehouses = new Set();
-    locations.forEach(loc => {
-        const { warehouse } = parseLocationKey(loc);
-        if (warehouse) warehouses.add(warehouse);
-    });
-    return Array.from(warehouses).sort();
+  const warehouses = new Set();
+  locations.forEach((loc) => {
+    const { warehouse } = parseLocationKey(loc);
+    if (warehouse) warehouses.add(warehouse);
+  });
+  return Array.from(warehouses).sort();
 };
 
 /**
  * Filter locations by warehouse, search term, and zone
  */
 export const filterLocations = (locations, { warehouse, searchTerm, zone, getZone }) => {
-    let result = locations;
+  let result = locations;
 
-    if (warehouse && warehouse !== 'ALL') {
-        result = result.filter(loc => parseLocationKey(loc).warehouse === warehouse);
-    }
+  if (warehouse && warehouse !== 'ALL') {
+    result = result.filter((loc) => parseLocationKey(loc).warehouse === warehouse);
+  }
 
-    if (searchTerm) {
-        const lower = searchTerm.toLowerCase();
-        result = result.filter(loc => loc.toLowerCase().includes(lower));
-    }
+  if (searchTerm) {
+    const lower = searchTerm.toLowerCase();
+    result = result.filter((loc) => loc.toLowerCase().includes(lower));
+  }
 
-    if (zone && zone !== 'ALL') {
-        result = result.filter(loc => {
-            const { warehouse: wh, location } = parseLocationKey(loc);
-            return getZone(wh, location) === zone;
-        });
-    }
+  if (zone && zone !== 'ALL') {
+    result = result.filter((loc) => {
+      const { warehouse: wh, location } = parseLocationKey(loc);
+      return getZone(wh, location) === zone;
+    });
+  }
 
-    return result;
+  return result;
 };

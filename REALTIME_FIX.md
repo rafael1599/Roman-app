@@ -3,6 +3,7 @@
 ## 🔴 Problema Actual
 
 El sistema de alertas de takeover **no está funcionando** porque:
+
 1. ✅ Código implementado correctamente
 2. ❌ Supabase Realtime NO está habilitado para la tabla `picking_lists`
 3. ❌ Posibles issues con Vercel + WebSockets
@@ -28,9 +29,9 @@ Ejecuta este comando en el SQL Editor de Supabase:
 ALTER PUBLICATION supabase_realtime ADD TABLE picking_lists;
 
 -- Verificar que se habilitó correctamente
-SELECT schemaname, tablename 
-FROM pg_publication_tables 
-WHERE pubname = 'supabase_realtime' 
+SELECT schemaname, tablename
+FROM pg_publication_tables
+WHERE pubname = 'supabase_realtime'
 AND tablename = 'picking_lists';
 ```
 
@@ -44,11 +45,12 @@ Ejecuta en SQL Editor:
 
 ```sql
 -- Verificar políticas RLS para picking_lists
-SELECT * FROM pg_policies 
+SELECT * FROM pg_policies
 WHERE tablename = 'picking_lists';
 ```
 
 **Importante**: Las políticas RLS pueden bloquear Realtime. Asegúrate de que:
+
 - `SELECT` está permitido para todos los usuarios autenticados
 - No hay políticas que bloqueen cambios de otros usuarios
 
@@ -59,12 +61,15 @@ WHERE tablename = 'picking_lists';
 He agregado logs detallados. Abre DevTools Console y busca:
 
 ### Usuario A (víctima del takeover):
+
 ```
 📡 [Realtime] Estado de suscripción: { status: "SUBSCRIBED", ... }
 ```
 
 ### Usuario B (quien hace takeover):
+
 Cuando hace takeover, debería disparar en Usuario A:
+
 ```
 🔔 [Realtime] Recibido UPDATE para picking_lists: { ... }
 🚨 [Takeover] Detectado takeover en picking: [user-b-id]
@@ -86,6 +91,7 @@ Cuando hace takeover, debería disparar en Usuario A:
 ### Check 2: Mensajes en WebSocket
 
 Filtra por `picking_lists` - deberías ver mensajes tipo:
+
 ```json
 {
   "event": "postgres_changes",
@@ -100,6 +106,7 @@ Filtra por `picking_lists` - deberías ver mensajes tipo:
 **Problema con Vercel**: Vercel puede bloquear WebSockets en ciertas regiones o planes.
 
 **Solución temporal**: Test en localhost primero:
+
 ```bash
 pnpm run dev
 ```
@@ -113,6 +120,7 @@ Abre 2 navegadores distintos (Chrome + Firefox) y prueba el takeover.
 ### Test 1: Usuario A crea orden
 
 Console de A:
+
 ```
 📡 [Realtime] Estado de suscripción: { status: "SUBSCRIBED", listId: "abc123" }
 ```
@@ -125,6 +133,7 @@ Console de A:
 1. B edita orderNumber a mismo valor que A
 2. B confirma el takeover
 3. Console de A debería mostrar:
+
 ```
 🔔 [Realtime] Recibido UPDATE para picking_lists
 🚨 [Takeover] Detectado takeover...
@@ -146,6 +155,7 @@ Console de A:
 ### Problema: "No aparece alerta al usuario original"
 
 **Causas posibles**:
+
 1. ❌ Realtime no habilitado (Step 1)
 2. ❌ RLS bloqueando SELECT (Step 2)
 3. ❌ WebSocket no conectado (Step 4)
@@ -154,6 +164,7 @@ Console de A:
 ### Problema: "WebSocket disconnected"
 
 **En Vercel**: WebSockets pueden tener timeouts. Si pasa:
+
 1. Usuario debe refrescar página para reconectar
 2. Considerar polling alternativo si es frecuente
 
@@ -202,12 +213,10 @@ Console de A:
    - Busca errores relacionados con `picking_lists`
 
 2. Ejecuta test directo de Realtime:
+
    ```javascript
    // En Console del navegador
-   const { data, error } = await supabase
-     .from('picking_lists')
-     .select('*')
-     .limit(1);
+   const { data, error } = await supabase.from('picking_lists').select('*').limit(1);
    console.log('Test query:', data, error);
    ```
 

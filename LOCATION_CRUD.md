@@ -13,12 +13,14 @@ The Map Builder now includes a **full CRUD** to manage warehouse locations.
 You can create locations that do not exist in your inventory:
 
 **Use cases:**
+
 - New locations that do not have products yet
 - Special areas (DOCK-1, STAGING, QC-AREA)
 - Temporary zones
 - Preparation locations
 
 **How to add:**
+
 1. Click on **"Add Location"** (blue button)
 2. Enter the name (e.g., "A-01", "DOCK-1", "STAGING")
 3. Click on **"Add"**
@@ -31,6 +33,7 @@ You can create locations that do not exist in your inventory:
 You can only edit **custom** locations (not those from the inventory):
 
 **How to edit:**
+
 1. Find the location with the **(Custom)** label
 2. Click on the **pencil** icon (Edit)
 3. Modify the name
@@ -43,6 +46,7 @@ You can only edit **custom** locations (not those from the inventory):
 You can only delete **custom** locations:
 
 **How to delete:**
+
 1. Find the location with the **(Custom)** label
 2. Click on the **trash** icon (Delete)
 3. Confirm the deletion
@@ -55,6 +59,7 @@ You can only delete **custom** locations:
 All locations (inventory + custom) can be reordered:
 
 **How to reorder:**
+
 1. Click and drag the **grip** icon (≡)
 2. Drop it in the new position
 3. Click on **"Save Map"**
@@ -64,6 +69,7 @@ All locations (inventory + custom) can be reordered:
 ## 🎨 Visual Interface
 
 ### **Inventory Locations**
+
 ```
 ┌─────────────────────────────┐
 │ ≡  A-01                     │
@@ -72,6 +78,7 @@ All locations (inventory + custom) can be reordered:
 ```
 
 ### **Custom Locations**
+
 ```
 ┌─────────────────────────────┐
 │ ≡  DOCK-1              ✏️ 🗑️│
@@ -80,6 +87,7 @@ All locations (inventory + custom) can be reordered:
 ```
 
 **Visual differences:**
+
 - 🟢 **Green** = Inventory location
 - 🔵 **Blue** = Custom location (in route preview)
 - ✏️ **Edit** = Only on custom locations
@@ -94,6 +102,7 @@ All locations (inventory + custom) can be reordered:
 Two types of data are saved in `localStorage`:
 
 1. **`custom_locations`** - Array of custom locations
+
    ```json
    ["DOCK-1", "STAGING", "QC-AREA"]
    ```
@@ -126,6 +135,7 @@ Two types of data are saved in `localStorage`:
 ```
 
 **Validations:**
+
 - ❌ Cannot be empty
 - ❌ Cannot duplicate existing locations
 - ✅ Accepts any format (letters, numbers, hyphens)
@@ -147,6 +157,7 @@ Two types of data are saved in `localStorage`:
 ```
 
 **Validations:**
+
 - ❌ Cannot duplicate existing locations
 - ✅ Updates references in the saved map
 
@@ -158,6 +169,7 @@ Two types of data are saved in `localStorage`:
 ```
 
 **Effects:**
+
 - ✅ It is deleted from `custom_locations`
 - ✅ It is deleted from `warehouse_map`
 - ✅ It is deleted from the visual list
@@ -215,11 +227,13 @@ Solution:
 ### **Nomenclature**
 
 ✅ **Recommended:**
+
 - `A-01`, `B-15`, `C-20` (Consistent format)
 - `DOCK-1`, `DOCK-2` (Special areas)
 - `STAGING`, `QC`, `RETURNS` (Functional zones)
 
 ❌ **Avoid:**
+
 - Very long names (makes visualization difficult)
 - Rare special characters
 - Duplicates with different capitalization
@@ -227,6 +241,7 @@ Solution:
 ### **Organization**
 
 1. **Group by zone**
+
    ```
    A-01, A-02, A-03
    B-01, B-02, B-03
@@ -234,6 +249,7 @@ Solution:
    ```
 
 2. **Order by workflow**
+
    ```
    RECEIVING → STAGING → A-ZONE → B-ZONE → SHIPPING
    ```
@@ -252,6 +268,7 @@ Solution:
 **Problem:** I added a location but I don't see it
 
 **Solution:**
+
 1. Verify that you clicked "Add" (not Cancel)
 2. Check the browser console
 3. Reload the page
@@ -319,14 +336,14 @@ Solution:
 
 ## 📚 Quick Reference
 
-| Action | Button/Icon | Available for |
-|--------|-------------|-----------------|
-| **Add** | `+ Add Location` | All |
-| **Edit** | ✏️ | Custom Only |
-| **Delete** | 🗑️ | Custom Only |
-| **Reorder** | ≡ (Grip) | All |
-| **Save** | `Save Map` | All |
-| **Reset** | `Reset` | All |
+| Action      | Button/Icon      | Available for |
+| ----------- | ---------------- | ------------- |
+| **Add**     | `+ Add Location` | All           |
+| **Edit**    | ✏️               | Custom Only   |
+| **Delete**  | 🗑️               | Custom Only   |
+| **Reorder** | ≡ (Grip)         | All           |
+| **Save**    | `Save Map`       | All           |
+| **Reset**   | `Reset`          | All           |
 
 ---
 

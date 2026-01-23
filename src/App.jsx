@@ -6,10 +6,13 @@ import { ErrorProvider, useError } from './context/ErrorContext'; // Import Erro
 import { ConfirmationProvider, useConfirmation } from './context/ConfirmationContext'; // Import ConfirmationProvider and useConfirmation
 import { ErrorModal } from './components/ui/ErrorModal'; // Import ErrorModal
 import { ConfirmationModal } from './components/ui/ConfirmationModal'; // Import ConfirmationModal
-const InventoryScreen = React.lazy(() => import('./screens/InventoryScreen').then(m => ({ default: m.InventoryScreen })));
-const HistoryScreen = React.lazy(() => import('./screens/HistoryScreen').then(m => ({ default: m.HistoryScreen })));
+const InventoryScreen = React.lazy(() =>
+  import('./screens/InventoryScreen').then((m) => ({ default: m.InventoryScreen }))
+);
+const HistoryScreen = React.lazy(() =>
+  import('./screens/HistoryScreen').then((m) => ({ default: m.HistoryScreen }))
+);
 const Settings = React.lazy(() => import('./screens/Settings'));
-
 
 import { ViewModeProvider } from './context/ViewModeContext';
 import { PickingProvider } from './context/PickingContext';
@@ -27,11 +30,13 @@ const AuthenticatedContent = () => {
   return (
     <ViewModeProvider>
       <LayoutMain onExport={exportData}>
-        <Suspense fallback={
-          <div className="min-h-[50vh] flex items-center justify-center">
-            <Loader2 className="animate-spin text-accent w-8 h-8 opacity-20" />
-          </div>
-        }>
+        <Suspense
+          fallback={
+            <div className="min-h-[50vh] flex items-center justify-center">
+              <Loader2 className="animate-spin text-accent w-8 h-8 opacity-20" />
+            </div>
+          }
+        >
           <Routes>
             <Route path="/" element={<InventoryScreen />} />
             <Route path="/history" element={<HistoryScreen />} />
@@ -102,7 +107,9 @@ function App() {
       <AuthProvider>
         <BrowserRouter>
           <ErrorProvider>
-            <ConfirmationProvider> {/* Wrap with ConfirmationProvider */}
+            <ConfirmationProvider>
+              {' '}
+              {/* Wrap with ConfirmationProvider */}
               <AuthGuard />
             </ConfirmationProvider>
           </ErrorProvider>

@@ -11,6 +11,7 @@ Autocomplete system with additional information for the SKU and Location fields 
 ### **1. SKU Autocomplete**
 
 **Behavior:**
+
 ```
 User types: "03-4"
 ↓
@@ -22,12 +23,14 @@ Shows suggestions:
 ```
 
 **Information displayed:**
+
 - ✅ Full SKU
 - ✅ Available quantity
 - ✅ Current location
 - ✅ Location Detail (if it exists)
 
 **Smart auto-fill:**
+
 - When selecting an existing SKU in "Add" mode, it automatically fills:
   - Location
   - Location_Detail
@@ -35,6 +38,7 @@ Shows suggestions:
 ### **2. Location Autocomplete**
 
 **Behavior:**
+
 ```
 User types: "Row"
 ↓
@@ -45,6 +49,7 @@ Shows suggestions:
 ```
 
 **Information displayed:**
+
 - ✅ Location name
 - ✅ Number of items in that location
 - ✅ Total units
@@ -54,6 +59,7 @@ Shows suggestions:
 ## 📱 Mobile vs Desktop Experience
 
 ### **Desktop:** Dropdown below the input
+
 ### **Mobile:** Fullscreen modal with touch list
 
 ---

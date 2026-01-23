@@ -3,6 +3,7 @@
 ## 🎯 Overview
 
 The Smart Picking system is an AI-powered warehouse picking solution that uses Google Gemini Vision API to:
+
 1. Scan order invoices automatically
 2. Deduct inventory in real-time
 3. Generate optimized picking routes
@@ -71,6 +72,7 @@ The Smart Picking system is an AI-powered warehouse picking solution that uses G
 ## 🔄 Rollback
 
 If you scanned the wrong order:
+
 1. Click "Cancel Order" button
 2. Confirm the action
 3. Inventory will be restored to previous state
@@ -170,22 +172,26 @@ src/
 ## 🐛 Troubleshooting
 
 ### "API key not configured"
+
 - Go to Settings → API Configuration
 - Enter your Gemini API key
 - Click "Test Connection"
 
 ### "No items detected"
+
 - Ensure good lighting
 - Keep invoice flat and in focus
 - Try a different angle
 - Upload a clearer image
 
 ### "Verification failed"
+
 - Use manual override option
 - Retake photo with better lighting
 - Ensure all boxes are visible
 
 ### Items not deducting from inventory
+
 - Check that backend server is running
 - Verify inventory has sufficient stock
 - Check browser console for errors

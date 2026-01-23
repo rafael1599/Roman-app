@@ -5,6 +5,7 @@ Offline-first Progressive Web App for inventory management with automatic CSV fi
 ## Features
 
 ### Core Inventory Management
+
 - 📱 **Mobile-First Design** - Optimized for iPhone/Safari
 - 🌐 **Network Access** - Access from any device on your local network
 - 💾 **Auto-Save** - Changes automatically saved to CSV files (1 second debounce)
@@ -14,6 +15,7 @@ Offline-first Progressive Web App for inventory management with automatic CSV fi
 - 🎨 **Dark Mode** - Industrial dark theme with Matrix green accents
 
 ### 🤖 Smart Picking (AI-Powered)
+
 - 📸 **AI Order Scanning** - Scan invoices with camera, AI extracts SKUs automatically
 - 🧠 **Powered by Gemini 2.5 Flash** - Best FREE model with hybrid reasoning
 - 🎯 **JSON Schema Validation** - Guaranteed accurate OCR results
@@ -47,11 +49,13 @@ You need to run **both** the frontend and backend servers:
 #### Option A: Run Both Servers Separately (Recommended)
 
 **Terminal 1 - Backend Server:**
+
 ```bash
 pnpm run dev:server
 ```
 
 **Terminal 2 - Frontend Server:**
+
 ```bash
 pnpm run dev
 ```
@@ -93,17 +97,20 @@ pnpm run dev:all
 ## Usage
 
 ### Ludlow Screen (General Inventory)
+
 - Grouped by Location (Row 1, Row 2, etc.)
 - Click any card to edit
 - Use +/- buttons to adjust quantity
 - Tap green "+" button (bottom right) to add new item
 
 ### ATS Screen (High Density)
+
 - Sorted by Location and Location_Detail
 - Location_Detail highlighted in yellow
 - Same editing capabilities as Ludlow
 
 ### Editing Items
+
 - Click any inventory card to open edit modal
 - Modify SKU, Location, Quantity, or Location_Detail
 - Click "Save" to confirm or "Delete" to remove item
@@ -121,6 +128,7 @@ The app is configured to be accessible from other devices on your local network:
 ## Tech Stack
 
 ### Core
+
 - **React 19** - UI framework
 - **Vite** - Build tool and dev server
 - **Tailwind CSS** - Styling
@@ -130,6 +138,7 @@ The app is configured to be accessible from other devices on your local network:
 - **React Router** - Navigation
 
 ### Smart Picking
+
 - **Google Gemini 2.5 Flash** - Best FREE model with hybrid reasoning
 - **JSON Schema Validation** - Ensures accurate OCR results
 - **@google/generative-ai** - Official Gemini SDK
@@ -145,16 +154,19 @@ The app is configured to be accessible from other devices on your local network:
 ## Troubleshooting
 
 **Q: Changes aren't saving to CSV?**
+
 - Make sure the backend server is running (`pnpm run dev:server`)
 - Check the browser console for API errors
 - Verify CSV files exist in `public/data/`
 
 **Q: Can't access from iPhone?**
+
 - Ensure both devices are on the same WiFi network
 - Use the Network URL shown in terminal (not localhost)
 - Check firewall settings on your Mac
 
 **Q: App shows "Loading Inventory..." forever?**
+
 - Backend server might not be running
 - Check if CSV files exist in `public/data/`
 - Open browser console to see error messages

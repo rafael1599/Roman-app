@@ -6,5 +6,5 @@ import { usePickingSession as usePickingContext } from '../context/PickingContex
  * but share the same state.
  */
 export const usePickingSession = () => {
-    return usePickingContext();
+  return usePickingContext();
 };

@@ -95,8 +95,8 @@ Continues with normal picking
 
 ```javascript
 const findInventoryItem = (sku) => {
-  const ludlowItem = ludlowInventory.find(i => i.SKU === sku);
-  const atsItem = atsInventory.find(i => i.SKU === sku);
+  const ludlowItem = ludlowInventory.find((i) => i.SKU === sku);
+  const atsItem = atsInventory.find((i) => i.SKU === sku);
 
   // Found in BOTH warehouses
   if (ludlowItem && atsItem) {
@@ -119,7 +119,7 @@ const findInventoryItem = (sku) => {
 
 ```javascript
 const validateOrder = (orderItems) => {
-  return orderItems.map(orderItem => {
+  return orderItems.map((orderItem) => {
     const inventoryItem = findInventoryItem(orderItem.sku);
 
     // Item in BOTH warehouses
@@ -153,15 +153,15 @@ export default function WarehouseSelectionModal({ items, onConfirm, onCancel }) 
   const [selections, setSelections] = useState({});
 
   const handleSelect = (sku, warehouse) => {
-    setSelections(prev => ({
+    setSelections((prev) => ({
       ...prev,
-      [sku]: warehouse
+      [sku]: warehouse,
     }));
   };
 
   const handleConfirm = () => {
     // Validate all items selected
-    const allSelected = items.every(item => selections[item.sku]);
+    const allSelected = items.every((item) => selections[item.sku]);
     if (!allSelected) {
       alert('Please select a warehouse for all items');
       return;
@@ -182,7 +182,7 @@ const handleScanComplete = (scannedItems) => {
 
   // Check for items needing selection
   const needsSelection = order.validatedItems.filter(
-    item => item.status === 'needs_warehouse_selection'
+    (item) => item.status === 'needs_warehouse_selection'
   );
 
   if (needsSelection.length > 0) {
@@ -258,21 +258,25 @@ Picking List:
 ## ✅ Advantages
 
 ### **1. Flexibility**
+
 - User decides based on convenience
 - Can choose the nearest warehouse
 - Can balance stock between warehouses
 
 ### **2. Transparency**
+
 - Shows available stock in both
 - Shows locations
 - Warns if there is a shortage
 
 ### **3. Optimization**
+
 - Minimize distances
 - Balance workload
 - Avoid depleting one warehouse
 
 ### **4. Control**
+
 - User has full control
 - Can change strategy as needed
 - Can prioritize based on urgency
@@ -281,12 +285,12 @@ Picking List:
 
 ## 🎯 Item Statuses
 
-| Status | Description | Action |
-|--------|-------------|--------|
-| `available` | In a single warehouse with stock | Process normally |
-| `shortage` | In a single warehouse without enough stock | Warn |
-| `not_found` | Not in any warehouse | Show suggestions |
-| `needs_warehouse_selection` | In both warehouses | Show modal |
+| Status                      | Description                                | Action           |
+| --------------------------- | ------------------------------------------ | ---------------- |
+| `available`                 | In a single warehouse with stock           | Process normally |
+| `shortage`                  | In a single warehouse without enough stock | Warn             |
+| `not_found`                 | Not in any warehouse                       | Show suggestions |
+| `needs_warehouse_selection` | In both warehouses                         | Show modal       |
 
 ---
 

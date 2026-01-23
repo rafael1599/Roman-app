@@ -8,18 +8,18 @@ import { ZodSchema, ZodError, ZodIssue } from 'zod';
  * @throws Error with detailed validation messages
  */
 export function validateData<T>(schema: ZodSchema<T>, data: unknown): T {
-    try {
-        return schema.parse(data);
-    } catch (error) {
-        if (error instanceof ZodError) {
-            const errorMessages = error.issues
-                .map((e: ZodIssue) => `${e.path.join('.')}: ${e.message}`)
-                .join(', ');
-            console.error('❌ Validation failed:', error.issues);
-            throw new Error(`Data validation error: ${errorMessages}`);
-        }
-        throw error;
+  try {
+    return schema.parse(data);
+  } catch (error) {
+    if (error instanceof ZodError) {
+      const errorMessages = error.issues
+        .map((e: ZodIssue) => `${e.path.join('.')}: ${e.message}`)
+        .join(', ');
+      console.error('❌ Validation failed:', error.issues);
+      throw new Error(`Data validation error: ${errorMessages}`);
     }
+    throw error;
+  }
 }
 
 /**
@@ -29,20 +29,20 @@ export function validateData<T>(schema: ZodSchema<T>, data: unknown): T {
  * @returns Object with success flag and either data or error
  */
 export function safeValidateData<T>(
-    schema: ZodSchema<T>,
-    data: unknown
+  schema: ZodSchema<T>,
+  data: unknown
 ): { success: true; data: T } | { success: false; error: string } {
-    const result = schema.safeParse(data);
+  const result = schema.safeParse(data);
 
-    if (result.success) {
-        return { success: true, data: result.data };
-    }
+  if (result.success) {
+    return { success: true, data: result.data };
+  }
 
-    const errorMessages = result.error.issues
-        .map((e: ZodIssue) => `${e.path.join('.')}: ${e.message}`)
-        .join(', ');
+  const errorMessages = result.error.issues
+    .map((e: ZodIssue) => `${e.path.join('.')}: ${e.message}`)
+    .join(', ');
 
-    return { success: false, error: errorMessages };
+  return { success: false, error: errorMessages };
 }
 
 /**
@@ -53,19 +53,19 @@ export function safeValidateData<T>(
  * @throws Error with detailed validation messages including item index
  */
 export function validateArray<T>(schema: ZodSchema<T>, data: unknown[]): T[] {
-    return data.map((item, index) => {
-        try {
-            return schema.parse(item);
-        } catch (error) {
-            if (error instanceof ZodError) {
-                const errorMessages = error.issues
-                    .map((e: ZodIssue) => `${e.path.join('.')}: ${e.message}`)
-                    .join(', ');
-                throw new Error(`Item ${index} validation failed: ${errorMessages}`);
-            }
-            throw error;
-        }
-    });
+  return data.map((item, index) => {
+    try {
+      return schema.parse(item);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        const errorMessages = error.issues
+          .map((e: ZodIssue) => `${e.path.join('.')}: ${e.message}`)
+          .join(', ');
+        throw new Error(`Item ${index} validation failed: ${errorMessages}`);
+      }
+      throw error;
+    }
+  });
 }
 
 /**
@@ -75,5 +75,5 @@ export function validateArray<T>(schema: ZodSchema<T>, data: unknown[]): T[] {
  * @returns Boolean indicating if data matches schema
  */
 export function isValidData<T>(schema: ZodSchema<T>, data: unknown): data is T {
-    return schema.safeParse(data).success;
+  return schema.safeParse(data).success;
 }

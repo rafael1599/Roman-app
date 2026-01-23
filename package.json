@@ -9,6 +9,7 @@
     "setup:db": "node scripts/apply-migration.js",
     "build": "vite build",
     "lint": "eslint .",
+    "format": "prettier --write .",
     "preview": "vite preview",
     "update:ludlow:capacity": "node scripts/update-ludlow-capacity.js"
   },
@@ -18,7 +19,11 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.89.0",
+    "@tanstack/react-query": "^5.90.19",
+    "@tanstack/react-query-devtools": "^5.91.2",
+    "@tanstack/react-query-persist-client": "^5.90.21",
     "clsx": "^2.1.1",
+    "idb-keyval": "^6.2.2",
     "jspdf": "^3.0.4",
     "jspdf-autotable": "^5.0.7",
     "lucide-react": "^0.555.0",
@@ -43,13 +48,16 @@
     "autoprefixer": "^10.4.22",
     "dotenv": "^17.2.3",
     "eslint": "^9.39.1",
+    "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
     "postcss": "^8.5.6",
+    "prettier": "^3.8.1",
     "supabase": "^2.71.0",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.9.3",
+    "typescript-eslint": "^8.53.1",
     "vite": "^7.2.4"
   }
 }

@@ -1,4 +1,3 @@
-
 import postgres from 'postgres';
 import * as dotenv from 'dotenv';
 
@@ -50,26 +49,26 @@ Row 49,43.0,52,260
 Row 50,43.0,52,260`;
 
 async function run() {
-    const connectionString = process.env.DATABASE_URL;
+  const connectionString = process.env.DATABASE_URL;
 
-    if (!connectionString) {
-        console.error('❌ Error: DATABASE_URL not found in .env');
-        process.exit(1);
-    }
+  if (!connectionString) {
+    console.error('❌ Error: DATABASE_URL not found in .env');
+    process.exit(1);
+  }
 
-    const sql = postgres(connectionString);
-    const lines = data.trim().split('\n').slice(1);
+  const sql = postgres(connectionString);
+  const lines = data.trim().split('\n').slice(1);
 
-    try {
-        console.log('🚀 Starting to update location data...');
+  try {
+    console.log('🚀 Starting to update location data...');
 
-        for (const line of lines) {
-            const [row, length_ft, bike_line, total_bikes] = line.split(',');
-            const locationName = row.trim();
+    for (const line of lines) {
+      const [row, length_ft, bike_line, total_bikes] = line.split(',');
+      const locationName = row.trim();
 
-            console.log(`Updating ${locationName}...`);
+      console.log(`Updating ${locationName}...`);
 
-            await sql`
+      await sql`
                 INSERT INTO locations (warehouse, location, length_ft, bike_line, total_bikes, zone)
                 VALUES ('LUDLOW', ${locationName}, ${length_ft}, ${bike_line}, ${total_bikes}, 'UNASSIGNED')
                 ON CONFLICT (warehouse, location) DO UPDATE SET
@@ -78,16 +77,15 @@ async function run() {
                     total_bikes = EXCLUDED.total_bikes,
                     updated_at = NOW();
             `;
-        }
-
-        console.log('✅ All locations updated successfully!');
-
-    } catch (err) {
-        console.error('❌ Data update failed:', err.message);
-    } finally {
-        await sql.end();
-        console.log('--- Data update script finished. ---');
     }
+
+    console.log('✅ All locations updated successfully!');
+  } catch (err) {
+    console.error('❌ Data update failed:', err.message);
+  } finally {
+    await sql.end();
+    console.log('--- Data update script finished. ---');
+  }
 }
 
 run();

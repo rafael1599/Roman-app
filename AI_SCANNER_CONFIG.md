@@ -40,11 +40,13 @@ VITE_OPENAI_API_KEY=sk-proj-...your_key_here
 ### 3. Get API Keys
 
 #### Google Gemini (Primary)
+
 1. Go to [Google AI Studio](https://makersuite.google.com/app/apikey)
 2. Click "Create API Key"
 3. Copy the key and paste it in `.env` as `VITE_GOOGLE_API_KEY`
 
 #### OpenAI (Fallback)
+
 1. Go to [OpenAI Platform](https://platform.openai.com/api-keys)
 2. Click "Create new secret key"
 3. Copy the key and paste it in `.env` as `VITE_OPENAI_API_KEY`

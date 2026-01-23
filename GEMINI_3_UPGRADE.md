@@ -5,6 +5,7 @@
 Gemini 3 Pro Preview **is NOT available in the free tier** of Google AI.
 
 ### Error you would get:
+
 ```
 [429] You exceeded your current quota
 Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests
@@ -16,6 +17,7 @@ limit: 0, model: gemini-3-pro
 We have configured the system to use **Gemini 1.5 Flash** which:
 
 ### ✨ Advantages
+
 - ✅ **100% FREE** - Generous free tier
 - ✅ **Structured Outputs** - Supports JSON Schema (same as Pro)
 - ✅ **Fast** - Optimized for speed
@@ -24,15 +26,15 @@ We have configured the system to use **Gemini 1.5 Flash** which:
 
 ### 📊 Model Comparison
 
-| Feature | Gemini 1.5 Flash (FREE) | Gemini 3 Pro (PAID) |
-|----------------|-------------------------|---------------------|
-| **Cost** | ✅ Free | ❌ Paid |
-| **JSON Schema** | ✅ Supported | ✅ Supported |
-| **Thinking Level** | ❌ Not available | ✅ Available |
-| **Speed** | ⚡ Very fast | 🐢 Slower (with thinking) |
-| **RPM (Free)** | 15 | 0 (not available) |
-| **TPM (Free)** | 1,000,000 | 0 (not available) |
-| **RPD (Free)** | 1,500 | 0 (not available) |
+| Feature            | Gemini 1.5 Flash (FREE) | Gemini 3 Pro (PAID)       |
+| ------------------ | ----------------------- | ------------------------- |
+| **Cost**           | ✅ Free                 | ❌ Paid                   |
+| **JSON Schema**    | ✅ Supported            | ✅ Supported              |
+| **Thinking Level** | ❌ Not available        | ✅ Available              |
+| **Speed**          | ⚡ Very fast            | 🐢 Slower (with thinking) |
+| **RPM (Free)**     | 15                      | 0 (not available)         |
+| **TPM (Free)**     | 1,000,000               | 0 (not available)         |
+| **RPD (Free)**     | 1,500                   | 0 (not available)         |
 
 ## 🎯 What we DO keep from Gemini 3
 
@@ -69,6 +71,7 @@ const result = await model.generateContent({
 ```
 
 **Benefits:**
+
 - ✅ Guaranteed valid JSON
 - ✅ Predictable structure
 - ✅ Automatic validation
@@ -77,8 +80,8 @@ const result = await model.generateContent({
 ### 2. **Optimized Temperature**
 
 ```javascript
-temperature: 0.1 // For scanning (more deterministic)
-temperature: 0.2 // For verification (more flexible)
+temperature: 0.1; // For scanning (more deterministic)
+temperature: 0.2; // For verification (more flexible)
 ```
 
 ### 3. **Improved Prompts**
@@ -88,11 +91,13 @@ Specific and detailed prompts for better accuracy.
 ## 📈 Free Tier Limits
 
 ### Gemini 1.5 Flash (FREE)
+
 - **RPM**: 15 requests per minute
 - **TPM**: 1,000,000 tokens per minute
 - **RPD**: 1,500 requests per day
 
 **For our use case:**
+
 - ✅ Enough for normal operation
 - ✅ You can scan ~1500 orders per day
 - ✅ Each scan takes ~1-2 seconds
@@ -109,6 +114,7 @@ Consider paying for Gemini 3 Pro if:
 ## 💡 Recommendation
 
 **For Roman's Warehouse:**
+
 - ✅ **Gemini 1.5 Flash is PERFECT**
 - ✅ Free and fast
 - ✅ Sufficient accuracy for OCR
