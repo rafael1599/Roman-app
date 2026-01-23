@@ -347,7 +347,23 @@ export const usePickingActions = ({
 
       if (isDemoMode) return;
       try {
+        // SAFETY CHECK: Prevent deleting history of completed orders
+        const { data: currentList } = await supabase
+          .from('picking_lists')
+          .select('status')
+          .eq('id', listId)
+          .maybeSingle();
+
+        if (currentList?.status === 'completed') {
+          console.log('🛡️ Blocked deletion of a completed order to protect inventory history.');
+          if (listId === activeListId && !keepLocalState) {
+            resetSession();
+          }
+          return;
+        }
+
         // First, delete all related inventory_logs entries to prevent foreign key constraint violation
+        // (Only if not completed, which we checked above)
         const { error: logsError } = await supabase
           .from('inventory_logs')
           .delete()

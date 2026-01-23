@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { useAuth } from './AuthContext';
 import { useInventory } from '../hooks/useInventoryData';
@@ -107,31 +107,7 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
     reservedQuantities,
   });
 
-  const { isLoaded, isSaving, lastSaved, loadExternalList } = usePickingSync({
-    user,
-    isDemoMode,
-    sessionMode,
-    cartItems,
-    orderNumber,
-    activeListId,
-    listStatus,
-    correctionNotes,
-    checkedBy,
-    setCartItems,
-    setActiveListId,
-    setOrderNumber,
-    setListStatus,
-    setCheckedBy,
-    ownerId,
-    setOwnerId,
-    setCorrectionNotes,
-    setSessionMode,
-    loadFromLocalStorage,
-    showError,
-  });
-
-  // Moved resetSession UP so it can be passed to usePickingActions
-  const resetSession = (skipState = false) => {
+  const resetSession = useCallback((skipState = false) => {
     // Atomic Reset
     if (!skipState) {
       clearCart();
@@ -160,7 +136,33 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
         localStorage.removeItem(key);
       }
     });
-  };
+
+    console.log('🧹 [Atomic Reset] Session cleared');
+  }, [clearCart, setOrderNumber]);
+
+  const { isLoaded, isSaving, lastSaved, loadExternalList } = usePickingSync({
+    user,
+    isDemoMode,
+    sessionMode,
+    cartItems,
+    orderNumber,
+    activeListId,
+    listStatus,
+    correctionNotes,
+    checkedBy,
+    setCartItems,
+    setActiveListId,
+    setOrderNumber,
+    setListStatus,
+    setCheckedBy,
+    ownerId,
+    setOwnerId,
+    setCorrectionNotes,
+    setSessionMode,
+    loadFromLocalStorage,
+    showError,
+    resetSession,
+  });
 
   const {
     completeList,

@@ -1,7 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useInventory } from '../hooks/InventoryProvider';
-import { useInventoryInfinite } from '../hooks/queries/useInventoryInfinite';
-import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useViewMode } from '../context/ViewModeContext';
 import { SearchInput } from '../components/ui/SearchInput';
 import { useDebounce } from '../hooks/useDebounce';
@@ -32,29 +30,51 @@ export const InventoryScreen = () => {
     updateItem,
     moveItem,
     deleteItem,
+    loading,
   } = useInventory();
 
   const [localSearch, setLocalSearch] = useState('');
   const debouncedSearch = useDebounce(localSearch, 300);
 
-  // New Infinite Query Hook
-  const {
-    inventory,
-    remaining,
-    loadMore,
-    hasNextPage,
-    isLoading,
-    isFetchingNextPage,
-    isError,
-    error
-  } = useInventoryInfinite(debouncedSearch);
+  // Client-side filtering and pagination logic
+  const [displayCount, setDisplayCount] = useState(100);
+
+  const filteredInventory = useMemo(() => {
+    const s = debouncedSearch.toLowerCase().trim();
+    return inventoryData.filter((item) => {
+      // Basic stock filter (match server behavior: Quantity > 0)
+      if ((item.Quantity || 0) <= 0) return false;
+
+      if (!s) return true;
+
+      // Multi-field search
+      return (
+        (item.SKU || '').toLowerCase().includes(s) ||
+        (item.Location || '').toLowerCase().includes(s) ||
+        (item.Location_Detail || '').toLowerCase().includes(s) ||
+        (item.Warehouse || '').toLowerCase().includes(s)
+      );
+    });
+  }, [inventoryData, debouncedSearch]);
+
+  const inventory = useMemo(() => {
+    return filteredInventory.slice(0, displayCount);
+  }, [filteredInventory, displayCount]);
+
+  const hasNextPage = displayCount < filteredInventory.length;
+  const remaining = Math.max(0, filteredInventory.length - inventory.length);
+
+  const loadMore = useCallback(() => {
+    setDisplayCount((prev) => prev + 100);
+  }, []);
+
+  const isLoading = loading; // Map provider loading to isLoading
 
   // Scroll to top when search changes
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    setDisplayCount(100); // Reset pagination on search
   }, [debouncedSearch]);
-
-  const isOnline = useOnlineStatus();
 
   const { viewMode } = useViewMode(); // 'stock' | 'picking'
 
@@ -307,7 +327,6 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
   };
 
   const processedData = useMemo(() => {
-    // We can now trust the inventory from server already filters Quantity > 0
     return inventory;
   }, [inventory]);
 
@@ -358,12 +377,8 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
   // REMOVED EARLY LOADING RETURN TO PREVENT KEYBOARD DISMISSAL
   // Layout must remain stable while charging
 
-  if (isError)
-    return (
-      <div className="p-8 text-center text-red-500 font-bold uppercase tracking-widest">
-        Error loading inventory data: {error?.message}
-      </div>
-    );
+  // Removed isError check as we are using local data now
+
 
   return (
     <div className="pb-4 relative">
@@ -487,25 +502,11 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
         {hasNextPage && (
           <div className="flex flex-col items-center gap-4 py-8">
             <button
-              onClick={() => isOnline && loadMore()}
-              disabled={isFetchingNextPage || !isOnline}
-              className={`px-8 py-4 font-black uppercase tracking-widest rounded-2xl transition-all active:scale-95 shadow-lg ${!isOnline
-                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                : 'bg-subtle text-accent hover:bg-accent hover:text-white'
-                }`}
+              onClick={loadMore}
+              className="px-8 py-4 font-black uppercase tracking-widest rounded-2xl transition-all active:scale-95 shadow-lg bg-subtle text-accent hover:bg-accent hover:text-white"
             >
-              {!isOnline
-                ? "Offline - Connect to load more"
-                : isFetchingNextPage
-                  ? 'Loading...'
-                  : `Load More Locations (${remaining} remaining)`}
+              Load More Results ({remaining} items remaining)
             </button>
-
-            {(isError && isOnline) && (
-              <p className="text-red-500 text-sm font-bold animate-bounce">
-                No pudimos cargar más items. Revisa tu conexión.
-              </p>
-            )}
           </div>
         )}
 

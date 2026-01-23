@@ -212,6 +212,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signOut = async () => {
     setLoading(true);
     await supabase.auth.signOut();
+
+    // Clear picking-related localStorage on Logout
+    localStorage.removeItem('picking_cart_items');
+    localStorage.removeItem('picking_order_number');
+    localStorage.removeItem('active_picking_list_id');
+    localStorage.removeItem('picking_session_mode');
+    Object.keys(localStorage).forEach((key) => {
+      if (key.startsWith('double_check_progress_')) {
+        localStorage.removeItem(key);
+      }
+    });
+
     setRole(null);
     setProfile(null);
     setUser(null);
