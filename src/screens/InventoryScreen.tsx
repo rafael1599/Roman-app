@@ -4,6 +4,7 @@ import { useInventoryInfinite } from '../hooks/queries/useInventoryInfinite';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useViewMode } from '../context/ViewModeContext';
 import { SearchInput } from '../components/ui/SearchInput';
+import { useDebounce } from '../hooks/useDebounce';
 import { InventoryCard } from '../features/inventory/components/InventoryCard';
 import { InventoryModal } from '../features/inventory/components/InventoryModal';
 import { PickingCartDrawer } from '../features/picking/components/PickingCartDrawer';
@@ -33,7 +34,8 @@ export const InventoryScreen = () => {
     deleteItem,
   } = useInventory();
 
-  const [search, setSearch] = useState('');
+  const [localSearch, setLocalSearch] = useState('');
+  const debouncedSearch = useDebounce(localSearch, 300);
 
   // New Infinite Query Hook
   const {
@@ -45,7 +47,12 @@ export const InventoryScreen = () => {
     isFetchingNextPage,
     isError,
     error
-  } = useInventoryInfinite(search);
+  } = useInventoryInfinite(debouncedSearch);
+
+  // Scroll to top when search changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [debouncedSearch]);
 
   const isOnline = useOnlineStatus();
 
@@ -348,12 +355,8 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
     );
   }, [sortedWarehouses, groupedData]);
 
-  if (isLoading && !inventory.length)
-    return (
-      <div className="p-8 text-center text-muted font-bold uppercase tracking-widest animate-pulse">
-        Loading Global Inventory...
-      </div>
-    );
+  // REMOVED EARLY LOADING RETURN TO PREVENT KEYBOARD DISMISSAL
+  // Layout must remain stable while charging
 
   if (isError)
     return (
@@ -401,79 +404,85 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
       )}
 
       <SearchInput
-        value={search}
-        onChange={setSearch}
+        value={localSearch}
+        onChange={setLocalSearch}
         placeholder="Search SKU, Loc, Warehouse..."
         mode={viewMode}
         onScanClick={() => setShowScanner(true)}
       />
 
-      <div className="p-4 space-y-12">
-        {locationBlocks.map(({ wh, location, items, locationId }) => (
-          <div key={`${wh}-${location}`} className="space-y-4">
-            <div className="sticky top-[84px] bg-main/95 backdrop-blur-sm z-30 py-3 border-b border-subtle group">
-              <div className="flex items-center gap-4 px-1">
-                <div className="flex-[3]">
-                  <CapacityBar
-                    current={locationCapacities[`${wh}-${location}`]?.current || 0}
-                    max={locationCapacities[`${wh}-${location}`]?.max || 550}
-                  />
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <h3
-                    className={`text-content text-xl font-black uppercase tracking-tighter truncate ${isAdmin && viewMode === 'stock' ? 'cursor-pointer hover:text-accent transition-colors' : ''}`}
-                    title={isAdmin && viewMode === 'stock' ? 'Click to edit location' : location}
-                    onClick={() => handleOpenLocationEditor(wh, location, locationId)}
-                  >
-                    {location}
-                  </h3>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-1">
-              {items.map((item) => {
-                const isInCart = cartItems.some(
-                  (c) =>
-                    c.SKU === item.SKU &&
-                    c.Warehouse === item.Warehouse &&
-                    c.Location === item.Location
-                );
-
-                // Calculate availability for picking mode
-                const stockInfo = viewMode === 'picking' ? getAvailableStock(item) : null;
-
-                return (
-                  <div
-                    key={`inv-row-${item.id}-${item.SKU}`}
-                    className={
-                      isInCart && viewMode === 'picking' ? 'ring-1 ring-accent rounded-lg' : ''
-                    }
-                  >
-                    <InventoryCard
-                      sku={item.SKU}
-                      quantity={item.Quantity}
-                      detail={item.Location_Detail}
-                      warehouse={item.Warehouse}
-                      onIncrement={() =>
-                        updateQuantity(item.SKU, 1, item.Warehouse, item.Location)
-                      }
-                      onDecrement={() =>
-                        updateQuantity(item.SKU, -1, item.Warehouse, item.Location)
-                      }
-                      onMove={() => handleQuickMove(item)}
-                      onClick={() => handleCardClick(item)}
-                      mode={viewMode === 'picking' ? sessionMode : 'stock'}
-                      reservedByOthers={stockInfo?.reservedByOthers || 0}
-                      available={stockInfo?.available}
+      <div className="p-4 space-y-12 min-h-[50vh]">
+        {isLoading && !inventory.length ? (
+          <div className="py-20 text-center text-muted font-bold uppercase tracking-widest animate-pulse">
+            Searching Inventory...
+          </div>
+        ) : (
+          locationBlocks.map(({ wh, location, items, locationId }) => (
+            <div key={`${wh}-${location}`} className="space-y-4">
+              <div className="sticky top-[84px] bg-main/95 backdrop-blur-sm z-30 py-3 border-b border-subtle group">
+                <div className="flex items-center gap-4 px-1">
+                  <div className="flex-[3]">
+                    <CapacityBar
+                      current={locationCapacities[`${wh}-${location}`]?.current || 0}
+                      max={locationCapacities[`${wh}-${location}`]?.max || 550}
                     />
                   </div>
-                );
-              })}
+
+                  <div className="flex-1 min-w-0">
+                    <h3
+                      className={`text-content text-xl font-black uppercase tracking-tighter truncate ${isAdmin && viewMode === 'stock' ? 'cursor-pointer hover:text-accent transition-colors' : ''}`}
+                      title={isAdmin && viewMode === 'stock' ? 'Click to edit location' : location}
+                      onClick={() => handleOpenLocationEditor(wh, location, locationId)}
+                    >
+                      {location}
+                    </h3>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-1">
+                {items.map((item) => {
+                  const isInCart = cartItems.some(
+                    (c) =>
+                      c.SKU === item.SKU &&
+                      c.Warehouse === item.Warehouse &&
+                      c.Location === item.Location
+                  );
+
+                  // Calculate availability for picking mode
+                  const stockInfo = viewMode === 'picking' ? getAvailableStock(item) : null;
+
+                  return (
+                    <div
+                      key={`inv-row-${item.id}-${item.SKU}`}
+                      className={
+                        isInCart && viewMode === 'picking' ? 'ring-1 ring-accent rounded-lg' : ''
+                      }
+                    >
+                      <InventoryCard
+                        sku={item.SKU}
+                        quantity={item.Quantity}
+                        detail={item.Location_Detail}
+                        warehouse={item.Warehouse}
+                        onIncrement={() =>
+                          updateQuantity(item.SKU, 1, item.Warehouse, item.Location)
+                        }
+                        onDecrement={() =>
+                          updateQuantity(item.SKU, -1, item.Warehouse, item.Location)
+                        }
+                        onMove={() => handleQuickMove(item)}
+                        onClick={() => handleCardClick(item)}
+                        mode={viewMode === 'picking' ? sessionMode : 'stock'}
+                        reservedByOthers={stockInfo?.reservedByOthers || 0}
+                        available={stockInfo?.available}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          ))
+        )}
 
         {hasNextPage && (
           <div className="flex flex-col items-center gap-4 py-8">

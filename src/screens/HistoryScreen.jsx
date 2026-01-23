@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+import { useDebounce } from '../hooks/useDebounce';
 import { useInventory } from '../hooks/useInventoryData';
 import {
   Clock,
@@ -36,6 +37,7 @@ export const HistoryScreen = () => {
   const [filter, setFilter] = useState('ALL');
   const [userFilter, setUserFilter] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearch = useDebounce(searchQuery, 300);
   const [error, setError] = useState(null);
 
   const fetchLogs = async () => {
@@ -127,9 +129,9 @@ export const HistoryScreen = () => {
         return true;
       })
       .filter((log) => {
-        const query = searchQuery.toLowerCase();
+        const query = debouncedSearch.toLowerCase();
         return (
-          !searchQuery ||
+          !debouncedSearch ||
           log.sku?.toLowerCase().includes(query) ||
           log.from_location?.toLowerCase().includes(query) ||
           log.to_location?.toLowerCase().includes(query) ||
