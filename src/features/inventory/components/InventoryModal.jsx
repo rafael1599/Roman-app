@@ -8,6 +8,7 @@ import { useConfirmation } from '../../../context/ConfirmationContext';
 import { useLocationManagement } from '../../../hooks/useLocationManagement';
 import { predictLocation } from '../../../utils/locationPredictor';
 import { useViewMode } from '../../../context/ViewModeContext';
+import { useAutoSelect } from '../../../hooks/useAutoSelect';
 
 export const InventoryModal = ({
   isOpen,
@@ -21,6 +22,7 @@ export const InventoryModal = ({
   const { ludlowData, atsData, isAdmin, updateSKUMetadata } = useInventory();
   const { locations } = useLocationManagement(); // Added for validation
   const { setIsNavHidden } = useViewMode();
+  const autoSelect = useAutoSelect();
 
   const [formData, setFormData] = useState({
     SKU: '',
@@ -384,7 +386,7 @@ export const InventoryModal = ({
                 onChange={(e) =>
                   setFormData((prev) => ({ ...prev, Quantity: parseInt(e.target.value) || 0 }))
                 }
-                onFocus={(e) => e.target.select()}
+                {...autoSelect}
                 className="w-full bg-main border border-subtle rounded-xl px-4 py-4 text-content focus:border-accent focus:outline-none transition-colors font-mono text-center text-2xl font-black"
                 required
               />
@@ -407,6 +409,7 @@ export const InventoryModal = ({
                         length_ft: parseFloat(e.target.value) || 0,
                       }))
                     }
+                    {...autoSelect}
                     className="w-full bg-main border border-subtle rounded-lg px-4 py-2 text-content focus:border-accent focus:outline-none transition-colors font-mono"
                     placeholder="5"
                     step="0.1"
@@ -426,6 +429,7 @@ export const InventoryModal = ({
                         width_in: parseFloat(e.target.value) || 0,
                       }))
                     }
+                    {...autoSelect}
                     className="w-full bg-main border border-subtle rounded-lg px-4 py-2 text-content focus:border-accent focus:outline-none transition-colors font-mono"
                     placeholder="6"
                     step="0.1"

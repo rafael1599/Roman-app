@@ -23,6 +23,7 @@ import { supabase } from '../../../lib/supabase';
 import { CorrectionNotesTimeline } from './CorrectionNotesTimeline';
 import { OrderBuilderMode } from './OrderBuilderMode';
 import { usePickingSession } from '../../../context/PickingContext';
+import { useAutoSelect } from '../../../hooks/useAutoSelect';
 import toast from 'react-hot-toast';
 
 export const PickingSessionView = ({
@@ -46,6 +47,7 @@ export const PickingSessionView = ({
 
   // NEW: Get Picking Session Control
   const { sessionMode, generatePickingPath, returnToBuilding } = usePickingSession();
+  const autoSelect = useAutoSelect();
 
   // ALL HOOKS MUST BE AT THE TOP - before any conditional returns
   const [isDeducting, setIsDeducting] = useState(false);
@@ -320,6 +322,7 @@ export const PickingSessionView = ({
                   onChange={(e) => setTempOrder(e.target.value)}
                   onBlur={handleOrderSubmit}
                   onKeyDown={handleOrderKeyDown}
+                  {...autoSelect}
                   className="text-[9px] font-mono bg-accent/10 text-accent px-1.5 py-0.5 rounded border border-accent/20 w-20 focus:outline-none focus:border-accent"
                   placeholder="#"
                   disabled={isValidatingOrder}
@@ -499,6 +502,7 @@ export const PickingSessionView = ({
                                 onChange={(e) => setEditingQuantity(e.target.value)}
                                 onBlur={() => handleQuantitySubmit(item)}
                                 onKeyDown={(e) => handleQuantityKeyDown(e, item)}
+                                {...autoSelect}
                                 className="w-10 text-center font-mono font-black text-accent text-base bg-transparent border-none focus:outline-none"
                                 min="0"
                                 max={maxStock.toString()}
@@ -515,8 +519,8 @@ export const PickingSessionView = ({
                               onClick={() => onUpdateQty(item, 1)}
                               disabled={isAtMax}
                               className={`w-7 h-7 flex items-center justify-center rounded transition-colors ${isAtMax
-                                  ? 'text-subtle cursor-not-allowed'
-                                  : 'text-muted hover:text-content active:bg-surface'
+                                ? 'text-subtle cursor-not-allowed'
+                                : 'text-muted hover:text-content active:bg-surface'
                                 } `}
                             >
                               <Plus size={14} />

@@ -17,6 +17,7 @@ import { CapacityBar } from '../../../components/ui/CapacityBar';
 import { useLocationManagement } from '../../../hooks/useLocationManagement';
 import { predictLocation } from '../../../utils/locationPredictor';
 import { useViewMode } from '../../../context/ViewModeContext';
+import { useAutoSelect } from '../../../hooks/useAutoSelect';
 import toast from 'react-hot-toast';
 
 export const MovementModal = ({ isOpen, onClose, onMove, initialSourceItem }) => {
@@ -25,6 +26,7 @@ export const MovementModal = ({ isOpen, onClose, onMove, initialSourceItem }) =>
   const { locations } = useLocationManagement();
   const { locationCapacities } = useInventory(); // To show capacity for typed locations
   const { setIsNavHidden } = useViewMode();
+  const autoSelect = useAutoSelect();
 
   const excludeLoc =
     initialSourceItem?.Warehouse === formData.targetWarehouse ? initialSourceItem?.Location : null;
@@ -248,6 +250,7 @@ export const MovementModal = ({ isOpen, onClose, onMove, initialSourceItem }) =>
                       Math.min(initialSourceItem?.Quantity || 0, parseInt(e.target.value) || 0)
                     )
                   }
+                  {...autoSelect}
                   className="w-full bg-main border border-subtle rounded-xl py-4 px-4 text-center text-3xl font-black text-accent focus:border-accent focus:ring-1 focus:ring-accent/20 outline-none transition-all placeholder:text-muted/50"
                 />
                 <button
@@ -281,8 +284,8 @@ export const MovementModal = ({ isOpen, onClose, onMove, initialSourceItem }) =>
                       setField('targetLocation', ''); // Clear on switch
                     }}
                     className={`px-4 py-2 rounded-lg font-bold text-xs transition-all border ${formData.targetWarehouse === wh
-                        ? 'bg-accent text-main border-accent shadow-[0_0_15px_rgba(var(--accent-rgb),0.3)]'
-                        : 'bg-surface text-muted border-subtle hover:border-muted'
+                      ? 'bg-accent text-main border-accent shadow-[0_0_15px_rgba(var(--accent-rgb),0.3)]'
+                      : 'bg-surface text-muted border-subtle hover:border-muted'
                       }`}
                   >
                     {wh}

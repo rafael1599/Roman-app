@@ -12,6 +12,7 @@ import {
 } from '../../../utils/locationValidations';
 import { DEFAULT_MAX_CAPACITY } from '../../../utils/capacityUtils';
 import { useViewMode } from '../../../context/ViewModeContext';
+import { useAutoSelect } from '../../../hooks/useAutoSelect';
 
 export default function LocationEditorModal({ location, onSave, onCancel, onDelete }) {
   const { ludlowData, atsData } = useInventory();
@@ -31,6 +32,7 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
   const { showError } = useError();
   const { showConfirmation } = useConfirmation();
   const { setIsNavHidden } = useViewMode();
+  const autoSelect = useAutoSelect();
 
   useEffect(() => {
     setIsNavHidden(true);
@@ -309,6 +311,7 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
               type="text"
               value={formData.location}
               onChange={(e) => setFormData((prev) => ({ ...prev, location: e.target.value }))}
+              {...autoSelect}
               className="w-full px-4 py-3 bg-main border border-subtle rounded-lg text-content focus:border-accent focus:outline-none transition-colors"
               placeholder="e.g. A-01-01"
             />
@@ -330,13 +333,13 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
               type="number"
               value={formData.max_capacity}
               onChange={(e) => handleCapacityChange(e.target.value)}
-              className={`w-full px-4 py-3 bg-main border rounded-lg text-content focus:outline-none transition-colors ${
-                validation.errors.length > 0
-                  ? 'border-red-500 focus:border-red-400'
-                  : validation.warnings.length > 0
-                    ? 'border-yellow-500 focus:border-yellow-400'
-                    : 'border-subtle focus:border-accent'
-              }`}
+              {...autoSelect}
+              className={`w-full px-4 py-3 bg-main border rounded-lg text-content focus:outline-none transition-colors ${validation.errors.length > 0
+                ? 'border-red-500 focus:border-red-400'
+                : validation.warnings.length > 0
+                  ? 'border-yellow-500 focus:border-yellow-400'
+                  : 'border-subtle focus:border-accent'
+                }`}
               min="1"
             />
           </div>
@@ -350,11 +353,10 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
                   key={zone}
                   type="button"
                   onClick={() => handleZoneChange(zone)}
-                  className={`px-4 py-2 rounded-lg font-bold text-xs transition-all border ${
-                    formData.zone === zone
-                      ? 'bg-accent text-main border-accent'
-                      : 'bg-surface text-muted border-subtle hover:border-muted'
-                  }`}
+                  className={`px-4 py-2 rounded-lg font-bold text-xs transition-all border ${formData.zone === zone
+                    ? 'bg-accent text-main border-accent'
+                    : 'bg-surface text-muted border-subtle hover:border-muted'
+                    }`}
                 >
                   {zone}
                 </button>
@@ -377,6 +379,7 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
                   picking_order: parseInt(e.target.value) || 0,
                 }))
               }
+              {...autoSelect}
               className="w-full px-4 py-3 bg-main border border-subtle rounded-lg text-content focus:border-accent focus:outline-none transition-colors"
             />
           </div>
@@ -390,6 +393,7 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, length_ft: parseFloat(e.target.value) || 0 }))
               }
+              {...autoSelect}
               className="w-full px-4 py-3 bg-main border border-subtle rounded-lg text-content focus:border-accent focus:outline-none transition-colors"
               placeholder="e.g. 44.0"
             />
@@ -404,6 +408,7 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, bike_line: parseInt(e.target.value) || 0 }))
               }
+              {...autoSelect}
               className="w-full px-4 py-3 bg-main border border-subtle rounded-lg text-content focus:border-accent focus:outline-none transition-colors"
               placeholder="e.g. 55"
             />
@@ -436,13 +441,12 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
             disabled={
               validation.errors.length > 0 || (validation.warnings.length > 0 && !overrideWarnings)
             }
-            className={`flex-[2] h-14 rounded-2xl font-black uppercase tracking-widest text-xs transition-all flex items-center justify-center gap-2 ${
-              validation.errors.length > 0
+            className={`flex-[2] h-14 rounded-2xl font-black uppercase tracking-widest text-xs transition-all flex items-center justify-center gap-2 ${validation.errors.length > 0
+              ? 'bg-surface text-muted cursor-not-allowed border border-subtle'
+              : validation.warnings.length > 0 && !overrideWarnings
                 ? 'bg-surface text-muted cursor-not-allowed border border-subtle'
-                : validation.warnings.length > 0 && !overrideWarnings
-                  ? 'bg-surface text-muted cursor-not-allowed border border-subtle'
-                  : 'bg-accent hover:opacity-90 text-main shadow-lg shadow-accent/20'
-            }`}
+                : 'bg-accent hover:opacity-90 text-main shadow-lg shadow-accent/20'
+              }`}
           >
             <Save size={20} />
             {validation.warnings.length > 0 && !overrideWarnings ? 'Confirm Risks' : 'Save Changes'}

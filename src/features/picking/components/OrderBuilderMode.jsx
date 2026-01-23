@@ -1,10 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Package, Truck, ArrowRight, Trash2, Minus, Plus } from 'lucide-react';
 import { usePickingSession } from '../../../context/PickingContext';
+import { useAutoSelect } from '../../../hooks/useAutoSelect';
 import toast from 'react-hot-toast';
 
 export const OrderBuilderMode = ({ cartItems, onGeneratePath }) => {
   const { removeFromCart, updateCartQty, setCartQty, isSaving } = usePickingSession();
+  const autoSelect = useAutoSelect();
   const [editingIndex, setEditingIndex] = useState(null);
   const [editingQuantity, setEditingQuantity] = useState('');
   const inputRef = useRef(null);
@@ -120,6 +122,7 @@ export const OrderBuilderMode = ({ cartItems, onGeneratePath }) => {
                     onChange={(e) => setEditingQuantity(e.target.value)}
                     onBlur={() => handleQuantitySubmit(item)}
                     onKeyDown={(e) => handleQuantityKeyDown(e, item)}
+                    {...autoSelect}
                     className="w-10 text-center font-bold text-content text-sm bg-accent/10 border border-accent rounded focus:outline-none focus:ring-2 focus:ring-accent"
                     min="0"
                   />

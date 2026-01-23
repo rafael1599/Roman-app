@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useAutoSelect } from '../../hooks/useAutoSelect';
 import { Search, X, Hash, Type } from 'lucide-react';
 
 /**
@@ -37,6 +38,7 @@ export default function AutocompleteInput({
 
   const inputRef = useRef(null);
   const dropdownRef = useRef(null);
+  const autoSelect = useAutoSelect();
 
   // Detect mobile
   useEffect(() => {
@@ -177,11 +179,13 @@ export default function AutocompleteInput({
           value={inputValue}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
-          onFocus={() => {
+          onFocus={(e) => {
+            autoSelect.onFocus(e);
             if (inputValue.length >= minChars && filteredSuggestions.length > 0) {
               setShowSuggestions(true);
             }
           }}
+          onPointerUp={autoSelect.onPointerUp}
           onBlur={(e) => {
             // Small delay to allow click on dropdown items to register first
             setTimeout(() => {
@@ -204,11 +208,10 @@ export default function AutocompleteInput({
             <button
               type="button"
               onClick={toggleKeyboardMode}
-              className={`p-2 rounded-md transition-all active:scale-90 ${
-                keyboardMode === 'numeric'
-                  ? 'bg-accent/20 text-accent border border-accent/30'
-                  : 'bg-surface text-muted border border-subtle'
-              }`}
+              className={`p-2 rounded-md transition-all active:scale-90 ${keyboardMode === 'numeric'
+                ? 'bg-accent/20 text-accent border border-accent/30'
+                : 'bg-surface text-muted border border-subtle'
+                }`}
               title={`Switch to ${keyboardMode === 'text' ? 'Numeric' : 'Text'} keyboard`}
             >
               {keyboardMode === 'text' ? <Hash size={18} /> : <Type size={18} />}
@@ -245,9 +248,8 @@ export default function AutocompleteInput({
             <button
               key={suggestion.value}
               onClick={() => handleSelect(suggestion)}
-              className={`w-full px-4 py-3 text-left hover:bg-surface transition-colors border-b border-subtle last:border-b-0 ${
-                index === selectedIndex ? 'bg-surface' : ''
-              }`}
+              className={`w-full px-4 py-3 text-left hover:bg-surface transition-colors border-b border-subtle last:border-b-0 ${index === selectedIndex ? 'bg-surface' : ''
+                }`}
             >
               {renderItem ? (
                 renderItem(suggestion)
