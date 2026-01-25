@@ -30,141 +30,16 @@ export const inventoryService = {
   /**
    * Orchestrates adding a new item, including auto-creating locations if needed.
    */
+  /* 
   async addItem(
     warehouse: string,
     newItem: InventoryItemInput & { isReversal?: boolean; force_id?: string | number },
     locations: Location[],
     ctx: InventoryServiceContext
   ) {
-    const { isAdmin, userInfo, trackLog, onLocationCreated } = ctx;
-
-    // Sanitize SKU to remove spaces and ensure it's not empty
-    const sanitizedSku = (newItem.SKU || '').trim().replace(/\s/g, '');
-    if (!sanitizedSku) {
-      throw new Error('SKU cannot be empty.');
-    }
-    newItem.SKU = sanitizedSku;
-
-    const qty = typeof newItem.Quantity === 'string' ? parseInt(newItem.Quantity) : (newItem.Quantity || 0);
-    const inputLocation = newItem.Location || '';
-
-    const {
-      name: targetLocation,
-      id: existingId,
-      isNew,
-    } = this.resolveLocationName(warehouse, inputLocation, locations);
-    let locationId = existingId;
-
-    if (isNew && !isAdmin) {
-      throw new Error(
-        `Unauthorized: Only administrators can create new locations ("${targetLocation}").`
-      );
-    }
-
-    if (isNew && isAdmin) {
-      const { data: newLoc, error: locError } = await supabase
-        .from('locations')
-        .insert([
-          {
-            warehouse,
-            location: targetLocation,
-            max_capacity: 550,
-            zone: 'UNASSIGNED',
-            is_active: true,
-          },
-        ])
-        .select()
-        .single();
-
-      if (locError) throw locError;
-      if (newLoc) {
-        locationId = newLoc.id;
-        if (onLocationCreated) onLocationCreated(newLoc as Location);
-      }
-    }
-
-    // Check if item exists in this location to update instead of insert
-    const { data: existingItemData } = await supabase
-      .from('inventory')
-      .select('*')
-      .eq('SKU', newItem.SKU)
-      .eq('Warehouse', warehouse)
-      .eq('Location', targetLocation)
-      .maybeSingle();
-
-    if (existingItemData) {
-      const existingItem = validateData(InventoryItemSchema, existingItemData);
-      const newTotal = (existingItem.Quantity || 0) + qty;
-
-      const { error } = await supabase
-        .from('inventory')
-        .update({
-          Quantity: newTotal,
-          location_id: locationId,
-        })
-        .eq('id', existingItem.id);
-
-      if (error) throw error;
-
-      await trackLog(
-        {
-          sku: newItem.SKU || '',
-          to_warehouse: warehouse,
-          to_location: targetLocation,
-          quantity: qty,
-          prev_quantity: existingItem.Quantity,
-          new_quantity: newTotal,
-          action_type: 'ADD',
-          item_id: String(existingItem.id),
-          is_reversed: newItem.isReversal || false,
-        },
-        userInfo
-      );
-
-      return { action: 'updated', id: existingItem.id };
-    }
-
-    // Insert new item
-    const itemToInsert: Partial<InventoryItem> = {
-      SKU: newItem.SKU || '',
-      Location: targetLocation,
-      location_id: locationId,
-      Quantity: qty,
-      sku_note: newItem.sku_note || '',
-      Warehouse: warehouse as any, // Cast specific enum match
-      Status: newItem.Status || 'Active',
-    };
-
-    // PHASE 3: ID Restoration logic
-    if (newItem.force_id) {
-      itemToInsert.id = newItem.force_id as any; // Cast only where strictly necessary for DB identity injection
-    }
-
-    const { data: insertedData, error: insertError } = await supabase
-      .from('inventory')
-      .insert([itemToInsert])
-      .select()
-      .single();
-
-    if (insertError) throw insertError;
-
-    await trackLog(
-      {
-        sku: newItem.SKU || '',
-        to_warehouse: warehouse,
-        to_location: targetLocation,
-        quantity: qty,
-        prev_quantity: 0,
-        new_quantity: qty,
-        action_type: 'ADD',
-        item_id: String(insertedData.id),
-        is_reversed: newItem.isReversal || false,
-      },
-      userInfo
-    );
-
-    return { action: 'inserted', id: insertedData.id };
+    // ... logic moved to InventoryService class ...
   },
+  */
 
   /**
    * Detailed movement logic between locations.

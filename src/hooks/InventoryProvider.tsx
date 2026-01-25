@@ -15,7 +15,8 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { useInventoryLogs } from './useInventoryLogs';
 import { useLocationManagement } from './useLocationManagement';
-import { inventoryService, InventoryServiceContext } from '../services/inventoryService';
+import { inventoryService as legacyInventoryService } from '../services/inventoryService';
+import { inventoryService, type InventoryServiceContext } from '../services/inventory.service';
 import { type InventoryItem, type InventoryItemWithMetadata, type InventoryItemInput } from '../schemas/inventory.schema';
 import { inventoryApi } from '../services/inventoryApi';
 import { type SKUMetadata, type SKUMetadataInput } from '../schemas/skuMetadata.schema';
@@ -505,7 +506,7 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
       }
       try {
         const ctx = getServiceContext();
-        const result = await inventoryService.updateItem(
+        const result = await legacyInventoryService.updateItem(
           originalItem,
           updatedFormData,
           locations,
@@ -586,7 +587,7 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
       try {
-        await inventoryService.moveItem(
+        await legacyInventoryService.moveItem(
           sourceItem,
           targetWarehouse,
           targetLocation,
@@ -686,7 +687,7 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
       console.log('Skipping syncInventoryLocations in Demo Mode');
       return { successCount: 0, failCount: 0 };
     }
-    return await inventoryService.syncInventoryLocations(inventoryData, locations);
+    return await legacyInventoryService.syncInventoryLocations(inventoryData, locations);
   }, [inventoryData, locations, isDemoMode]);
 
   const updateSKUMetadata = useCallback(
