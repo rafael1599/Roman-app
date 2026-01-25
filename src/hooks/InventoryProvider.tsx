@@ -16,9 +16,10 @@ import { useAuth } from '../context/AuthContext';
 import { useInventoryLogs } from './useInventoryLogs';
 import { useLocationManagement } from './useLocationManagement';
 import { inventoryService, InventoryServiceContext } from '../services/inventoryService';
-import { type InventoryItem, type InventoryItemWithMetadata } from '../schemas/inventory.schema';
+import { type InventoryItem, type InventoryItemWithMetadata, type InventoryItemInput } from '../schemas/inventory.schema';
 import { inventoryApi } from '../services/inventoryApi';
-import { type SKUMetadataInput } from '../schemas/skuMetadata.schema';
+import { type SKUMetadata, type SKUMetadataInput } from '../schemas/skuMetadata.schema';
+import { type InventoryLog } from '../schemas/log.schema';
 import { debounce } from '../utils/debounce';
 
 interface InventoryContextType {
@@ -43,8 +44,8 @@ interface InventoryContextType {
   ) => Promise<void>;
   updateLudlowQuantity: (sku: string, delta: number, location?: string | null) => Promise<void>;
   updateAtsQuantity: (sku: string, delta: number, location?: string | null) => Promise<void>;
-  addItem: (warehouse: string, newItem: any) => Promise<void>;
-  updateItem: (originalItem: InventoryItem, updatedFormData: any) => Promise<void>;
+  addItem: (warehouse: string, newItem: InventoryItemInput) => Promise<void>;
+  updateItem: (originalItem: InventoryItem, updatedFormData: InventoryItemInput) => Promise<void>;
   moveItem: (
     sourceItem: InventoryItem,
     targetWarehouse: string,
@@ -63,9 +64,9 @@ interface InventoryContextType {
   isAdmin: boolean;
   isDemoMode: boolean;
   toggleDemoMode: () => void;
-  user: any;
-  profile: any;
-  demoLogs: any[];
+  user: any; // Auth User object is usually complex, keeping any for now but can be User
+  profile: any; // Profile is also from AuthContext
+  demoLogs: InventoryLog[];
   resetDemo: () => void;
 }
 
@@ -74,8 +75,8 @@ const InventoryContext = createContext<InventoryContextType | undefined>(undefin
 export const InventoryProvider = ({ children }: { children: ReactNode }) => {
   const [inventoryData, setInventoryData] = useState<InventoryItemWithMetadata[]>([]);
   const [demoInventoryData, setDemoInventoryData] = useState<InventoryItemWithMetadata[]>([]);
-  const [demoLogs, setDemoLogs] = useState<any[]>([]);
-  const [skuMetadataMap, setSkuMetadataMap] = useState<Record<string, any>>({});
+  const [demoLogs, setDemoLogs] = useState<InventoryLog[]>([]);
+  const [skuMetadataMap, setSkuMetadataMap] = useState<Record<string, SKUMetadata>>({});
   const [reservedQuantities, setReservedQuantities] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -110,24 +111,26 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
           inventoryApi.fetchInventory(),
           inventoryApi.fetchAllMetadata(),
         ]);
+        console.log('📦 Inventory loaded:', inv.length);
 
         // Create metadata map for quick enrichment
-        const metaMap: Record<string, any> = {};
+        const metaMap: Record<string, SKUMetadata> = {};
         meta.forEach((m) => {
           metaMap[m.sku] = m;
         });
         setSkuMetadataMap(metaMap);
 
         // Enrich inventory with metadata
-        const enriched = inv.map((item) => ({
+        const enriched: InventoryItemWithMetadata[] = inv.map((item) => ({
           ...item,
-          sku_metadata: metaMap[item.SKU] || item.sku_metadata,
+          sku_metadata: metaMap[item.SKU] || (item as any).sku_metadata,
         }));
 
         setInventoryData(enriched || []);
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const errorMsg = err instanceof Error ? err.message : 'Failed to load inventory data';
         console.error('Error loading inventory data:', err);
-        setError(err.message);
+        setError(errorMsg);
       } finally {
         setLoading(false);
       }
@@ -149,9 +152,9 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
 
   // Helper to enrich a single item
   const enrichItem = useCallback(
-    (item: any) => ({
+    (item: InventoryItem): InventoryItemWithMetadata => ({
       ...item,
-      sku_metadata: skuMetadataMap[item.SKU] || item.sku_metadata,
+      sku_metadata: skuMetadataMap[item.SKU] || (item as any).sku_metadata,
     }),
     [skuMetadataMap]
   );
@@ -162,10 +165,10 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
       .channel('inventory_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory' }, (payload) => {
         if (payload.eventType === 'INSERT') {
-          setInventoryData((prev) => [enrichItem(payload.new), ...prev]);
+          setInventoryData((prev) => [enrichItem(payload.new as InventoryItem), ...prev]);
         } else if (payload.eventType === 'UPDATE') {
           setInventoryData((prev) =>
-            prev.map((item) => (item.id === payload.new.id ? enrichItem(payload.new) : item))
+            prev.map((item) => (item.id === payload.new.id ? enrichItem(payload.new as InventoryItem) : item))
           );
         } else if (payload.eventType === 'DELETE') {
           setInventoryData((prev) => prev.filter((item) => item.id !== payload.old.id));
@@ -179,11 +182,14 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   // Reservation Logic
-  const calculateReservations = useCallback((lists: any[]) => {
+  // Reservation Logic
+  // Reservation Logic
+  const calculateReservations = useCallback((lists: { items: unknown }[]) => {
     const reservations: Record<string, number> = {};
     lists.forEach((list) => {
-      if (Array.isArray(list.items)) {
-        list.items.forEach((item: any) => {
+      const items = list.items as unknown as { SKU: string; Warehouse: string; Location: string; pickingQty: number }[];
+      if (Array.isArray(items)) {
+        items.forEach((item) => {
           const key = `${item.SKU}|${item.Warehouse}|${item.Location}`;
           reservations[key] = (reservations[key] || 0) + (item.pickingQty || 0);
         });
@@ -331,12 +337,14 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
             prev_quantity: currentQty,
             new_quantity: newQty,
             action_type: action,
-            created_at: new Date().toISOString(),
+            created_at: new Date(),
             performed_by: userName,
-            is_demo: true,
-            list_id: listId,
-            order_number: orderNumber,
-          },
+            is_reversed: false,
+            to_warehouse: null,
+            to_location: null,
+            list_id: listId || null,
+            order_number: orderNumber || null,
+          } as InventoryLog,
           ...prev,
         ]);
         return;
@@ -421,23 +429,34 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
   );
 
   const addItem = useCallback(
-    async (warehouse: string, newItem: any) => {
+    async (warehouse: string, newItem: InventoryItemInput) => {
       if (isDemoMode) {
         const id = `demo-item-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
-        const item = { ...newItem, id, Warehouse: warehouse, created_at: new Date().toISOString() };
+        const item: InventoryItemWithMetadata = {
+          SKU: newItem.SKU || '',
+          Quantity: newItem.Quantity || 0,
+          Warehouse: warehouse as any, // "LUDLOW" | "ATS"
+          Location: newItem.Location || null, // null is valid for InventoryItem
+          sku_note: newItem.sku_note || '',
+          Status: newItem.Status || 'Active',
+          id: id,
+          created_at: new Date(),
+          location_id: null,
+          Capacity: undefined,
+        };
         setDemoInventoryData((prev) => [item, ...prev]);
         setDemoLogs((prev) => [
           {
             id: `demo-log-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
             sku: newItem.SKU,
             to_warehouse: warehouse,
-            to_location: newItem.Location,
+            to_location: newItem.Location || null,
             quantity: newItem.Quantity,
             action_type: 'ADD',
-            created_at: new Date().toISOString(),
+            created_at: new Date(),
             performed_by: userName,
-            is_demo: true,
-          },
+            is_reversed: false,
+          } as InventoryLog,
           ...prev,
         ]);
         return;
@@ -445,16 +464,17 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
       try {
         await inventoryService.addItem(warehouse, newItem, locations, getServiceContext());
         queryClient.invalidateQueries({ queryKey: inventoryKeys.lists() });
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const errorMsg = err instanceof Error ? err.message : 'Error adding item';
         console.error('Error adding item:', err);
-        toast.error(err.message);
+        toast.error(errorMsg);
       }
     },
     [isDemoMode, locations, getServiceContext, userName]
   );
 
   const updateItem = useCallback(
-    async (originalItem: InventoryItem, updatedFormData: any) => {
+    async (originalItem: InventoryItem, updatedFormData: InventoryItemInput) => {
       if (isDemoMode) {
         setDemoInventoryData((prev) =>
           prev.map((i) =>
@@ -468,11 +488,17 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
             id: `demo-upd-log-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
             sku: updatedFormData.SKU || originalItem.SKU,
             from_warehouse: originalItem.Warehouse as any,
-            action_type: 'UPDATE',
-            created_at: new Date().toISOString(),
+            from_location: originalItem.Location || null,
+            to_warehouse: (updatedFormData as any).Warehouse || null,
+            to_location: (updatedFormData as any).Location || null,
+            quantity: 0,
+            prev_quantity: originalItem.Quantity,
+            new_quantity: (updatedFormData as any).Quantity || originalItem.Quantity,
+            action_type: 'EDIT',
+            created_at: new Date(),
             performed_by: userName,
-            is_demo: true,
-          },
+            is_reversed: false,
+          } as InventoryLog,
           ...prev,
         ]);
         return;
@@ -492,9 +518,10 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
             `🚀 Dynamic Merge: Internal stock of "${result.source}" has been consolidated into existing SKU "${result.target}".`
           );
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const errorMsg = err instanceof Error ? err.message : 'Error updating item';
         console.error('Error updating item:', err);
-        toast.error(err.message);
+        toast.error(errorMsg);
       }
     },
     [isDemoMode, locations, getServiceContext, userName]
@@ -547,11 +574,13 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
             to_warehouse: targetWarehouse as any,
             to_location: targetLocation as any,
             quantity: qty,
+            prev_quantity: sourceItem.Quantity,
+            new_quantity: newSourceQty,
             action_type: 'MOVE',
-            created_at: new Date().toISOString(),
+            created_at: new Date(),
             performed_by: userName,
-            is_demo: true,
-          },
+            is_reversed: false,
+          } as InventoryLog,
           ...prev,
         ]);
         return;
@@ -567,9 +596,10 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
           isReversal
         );
         queryClient.invalidateQueries({ queryKey: inventoryKeys.lists() });
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const errorMsg = err instanceof Error ? err.message : 'Error moving item';
         console.error('Error moving item:', err);
-        toast.error(err.message);
+        toast.error(errorMsg);
       }
     },
     [isDemoMode, locations, getServiceContext, userName]
@@ -588,12 +618,16 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
             sku,
             from_warehouse: warehouse as any,
             from_location: item.Location as any,
+            to_warehouse: null,
+            to_location: null,
             quantity: item.Quantity,
+            prev_quantity: item.Quantity,
+            new_quantity: 0,
             action_type: 'DELETE',
-            created_at: new Date().toISOString(),
+            created_at: new Date(),
             performed_by: userName,
-            is_demo: true,
-          },
+            is_reversed: false,
+          } as InventoryLog,
           ...prev,
         ]);
         return;
@@ -612,7 +646,7 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
             prev_quantity: item.Quantity,
             new_quantity: 0,
             action_type: 'DELETE',
-            item_id: item.id,
+            item_id: (typeof item.id === 'string' ? parseInt(item.id) : item.id) as number,
           },
           { performed_by: userName, user_id: user?.id }
         );
@@ -680,7 +714,7 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
             item.SKU === metadata.sku ? { ...item, sku_metadata: updated } : item
           )
         );
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error updating SKU metadata:', err);
         throw err;
       }

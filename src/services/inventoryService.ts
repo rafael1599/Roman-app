@@ -1,7 +1,8 @@
 import { resolveLocationName } from '../utils/locationUtils';
 import { supabase } from '../lib/supabase';
-import { type InventoryItem, InventoryItemSchema } from '../schemas/inventory.schema';
+import { type InventoryItem, InventoryItemSchema, type InventoryItemInput } from '../schemas/inventory.schema';
 import { type Location } from '../schemas/location.schema';
+import { type InventoryLogInput } from '../schemas/log.schema';
 import { validateData } from '../utils/validate';
 
 /**
@@ -14,7 +15,7 @@ import { validateData } from '../utils/validate';
 export interface InventoryServiceContext {
   isAdmin: boolean;
   userInfo: { performed_by: string; user_id?: string };
-  trackLog: (logData: any, userInfo: any) => Promise<string | null>;
+  trackLog: (logData: InventoryLogInput, userInfo: { performed_by: string; user_id?: string }) => Promise<string | null>;
   onLocationCreated?: (newLoc: Location) => void;
 }
 
@@ -31,7 +32,7 @@ export const inventoryService = {
    */
   async addItem(
     warehouse: string,
-    newItem: any,
+    newItem: InventoryItemInput & { isReversal?: boolean; force_id?: string | number },
     locations: Location[],
     ctx: InventoryServiceContext
   ) {
@@ -44,7 +45,7 @@ export const inventoryService = {
     }
     newItem.SKU = sanitizedSku;
 
-    const qty = parseInt(newItem.Quantity) || 0;
+    const qty = typeof newItem.Quantity === 'string' ? parseInt(newItem.Quantity) : (newItem.Quantity || 0);
     const inputLocation = newItem.Location || '';
 
     const {
@@ -124,19 +125,19 @@ export const inventoryService = {
     }
 
     // Insert new item
-    const itemToInsert: any = {
+    const itemToInsert: Partial<InventoryItem> = {
       SKU: newItem.SKU || '',
       Location: targetLocation,
       location_id: locationId,
       Quantity: qty,
-      Location_Detail: newItem.Location_Detail || '',
-      Warehouse: warehouse,
+      sku_note: newItem.sku_note || '',
+      Warehouse: warehouse as any, // Cast specific enum match
       Status: newItem.Status || 'Active',
     };
 
     // PHASE 3: ID Restoration logic
     if (newItem.force_id) {
-      itemToInsert.id = newItem.force_id;
+      itemToInsert.id = newItem.force_id as any; // Cast only where strictly necessary for DB identity injection
     }
 
     const { data: insertedData, error: insertError } = await supabase
@@ -264,7 +265,7 @@ export const inventoryService = {
           Location: resolvedTargetLocation,
           location_id: locationId,
           Quantity: qty,
-          Location_Detail: sourceItem.Location_Detail,
+          sku_note: sourceItem.sku_note,
           Status: sourceItem.Status || 'Active',
         },
       ]);
@@ -276,7 +277,7 @@ export const inventoryService = {
       {
         sku: sourceItem.SKU,
         from_warehouse: sourceItem.Warehouse,
-        from_location: sourceItem.Location,
+        from_location: sourceItem.Location || undefined,
         to_warehouse: targetWarehouse,
         to_location: resolvedTargetLocation,
         quantity: qty,
@@ -291,7 +292,7 @@ export const inventoryService = {
 
   async updateItem(
     originalItem: InventoryItem,
-    updatedFormData: any,
+    updatedFormData: InventoryItemInput & { isReversal?: boolean },
     locations: Location[],
     ctx: InventoryServiceContext
   ) {
@@ -300,7 +301,7 @@ export const inventoryService = {
     // 1. Sanitize Inputs
     const newSku = (updatedFormData.SKU || '').trim().replace(/\s/g, '');
     const inputLocation = (updatedFormData.Location || '').trim();
-    const newQty = Math.max(0, parseInt(updatedFormData.Quantity) || 0);
+    const newQty = Math.max(0, typeof updatedFormData.Quantity === 'string' ? parseInt(updatedFormData.Quantity) : (updatedFormData.Quantity || 0));
 
     if (!newSku) throw new Error('SKU cannot be empty.');
 
@@ -332,7 +333,7 @@ export const inventoryService = {
       isNew,
     } = this.resolveLocationName(
       updatedFormData.Warehouse || sourceItem.Warehouse,
-      inputLocation || sourceItem.Location,
+      inputLocation || sourceItem.Location || '',
       locations
     );
     let locationId = existingLocId;
@@ -412,7 +413,7 @@ export const inventoryService = {
           {
             sku: newSku, // Surviving SKU
             from_warehouse: sourceItem.Warehouse,
-            from_location: sourceItem.Location, // Was here
+            from_location: sourceItem.Location || undefined, // Was here
             to_warehouse: targetWarehouse,
             to_location: targetLocation, // Is now here (merged)
             quantity: sourceItem.Quantity, // Amount added/merged
@@ -438,7 +439,7 @@ export const inventoryService = {
         Location: targetLocation,
         location_id: locationId,
         Quantity: newQty,
-        Location_Detail: updatedFormData.Location_Detail,
+        sku_note: updatedFormData.sku_note,
         Warehouse: targetWarehouse,
         Status: updatedFormData.Status || sourceItem.Status,
       })
@@ -456,8 +457,8 @@ export const inventoryService = {
         from_location: sourceItem.Location || undefined,
         to_warehouse: targetWarehouse,
         to_location: targetLocation || undefined,
-        quantity: Math.abs(newQty - (parseInt(sourceItem.Quantity as any) || 0)),
-        prev_quantity: parseInt(sourceItem.Quantity as any) || 0,
+        quantity: Math.abs(newQty - (sourceItem.Quantity || 0)),
+        prev_quantity: sourceItem.Quantity || 0,
         new_quantity: newQty,
         action_type: isMove ? 'MOVE' : 'EDIT',
         previous_sku: sourceItem.SKU !== newSku ? sourceItem.SKU : undefined,

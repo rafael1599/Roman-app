@@ -27,15 +27,14 @@ export const inventoryApi = {
   /**
    * Fetch all inventory items
    */
-  async fetchInventory(): Promise<any[]> {
+  async fetchInventory(): Promise<InventoryItem[]> {
     const { data, error } = await supabase
       .from('inventory')
       .select('*')
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    // We allow raw data for now because the join makes it a nested object
-    return data || [];
+    return validateArray(InventoryItemSchema, data || []);
   },
 
   /**
@@ -64,6 +63,9 @@ export const inventoryApi = {
       .order('created_at', { ascending: false });
 
     if (error) throw error;
+    // Since this is a nested join, we use unknown[] and then validate each partially or fully if needed.
+    // For now, keeping as any[] to avoid complex joint-schema validation here, 
+    // but the intention is to use InventoryItemWithMetadataSchema.
     return data || [];
   },
 
@@ -96,11 +98,11 @@ export const inventoryApi = {
   /**
    * Update quantity for a specific inventory record
    */
-  async updateQuantity(id: string, quantity: number): Promise<InventoryItem> {
+  async updateQuantity(id: string | number, quantity: number): Promise<InventoryItem> {
     const { data, error } = await supabase
       .from('inventory')
       .update({ Quantity: quantity })
-      .eq('id', id)
+      .eq('id', id as any)
       .select()
       .single();
 
@@ -127,8 +129,8 @@ export const inventoryApi = {
   /**
    * Delete an inventory item
    */
-  async deleteItem(id: string): Promise<void> {
-    const { error } = await supabase.from('inventory').delete().eq('id', id);
+  async deleteItem(id: string | number): Promise<void> {
+    const { error } = await supabase.from('inventory').delete().eq('id', id as any);
 
     if (error) throw error;
   },

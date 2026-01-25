@@ -12,32 +12,28 @@ interface UserInfo {
   user_id?: string;
 }
 
+import { type InventoryItem, type InventoryItemInput } from '../schemas/inventory.schema';
+
 interface UndoActions {
   addItem: (
     warehouse: string,
-    item: {
-      SKU: string;
-      Location: string | null;
-      Quantity: number;
-      force_id?: string | number | null;
-      isReversal?: boolean;
-    }
-  ) => Promise<any>;
+    item: InventoryItemInput & { force_id?: string | number | null; isReversal?: boolean }
+  ) => Promise<void>;
   moveItem: (
-    item: any,
+    item: InventoryItem,
     toWarehouse: string,
     toLocation: string,
     qty: number,
     isReversal?: boolean
-  ) => Promise<any>;
+  ) => Promise<void>;
   updateQuantity: (
     sku: string,
     delta: number,
     warehouse: string,
     location: string,
     isReversal?: boolean
-  ) => Promise<any>;
-  updateItem: (originalItem: any, updatedFormData: any) => Promise<any>;
+  ) => Promise<void>;
+  updateItem: (originalItem: InventoryItem, updatedFormData: InventoryItemInput & { isReversal?: boolean }) => Promise<void>;
 }
 
 /**
@@ -167,11 +163,12 @@ export const useInventoryLogs = () => {
         .insert([
           {
             ...logData,
+            item_id: typeof logData.item_id === 'string' ? parseInt(logData.item_id) : logData.item_id,
             prev_quantity: logData.prev_quantity ?? null,
             new_quantity: logData.new_quantity ?? null,
             is_reversed: logData.is_reversed || false,
             performed_by: userName,
-            created_at: new Date().toISOString(),
+            created_at: new Date().toISOString() as any, // Supabase expects string, but Zod schema might say Date
           },
         ])
         .select()
@@ -205,7 +202,7 @@ export const useInventoryLogs = () => {
         return [];
       }
 
-      return (data || []).map((log: any) => validateData(InventoryLogSchema, log));
+      return (data || []).map((log) => validateData(InventoryLogSchema, log));
     } catch (err) {
       console.error('Fetch logs failed:', err);
       return [];
@@ -242,7 +239,7 @@ export const useInventoryLogs = () => {
         const { data: currentItemByID } = await supabase
           .from('inventory')
           .select('SKU')
-          .eq('id', log.item_id)
+          .eq('id', typeof log.item_id === 'string' ? parseInt(log.item_id) : log.item_id)
           .maybeSingle();
 
         if (currentItemByID) {
@@ -259,8 +256,8 @@ export const useInventoryLogs = () => {
         const { data: destLoc } = await supabase
           .from('locations')
           .select('id')
-          .eq('warehouse', log.to_warehouse)
-          .eq('location', log.to_location)
+          .eq('warehouse', log.to_warehouse || '')
+          .eq('location', log.to_location || '')
           .maybeSingle();
 
         if (!destLoc) {
@@ -273,8 +270,8 @@ export const useInventoryLogs = () => {
           .from('inventory')
           .select('*')
           .eq('SKU', targetSku) // Use resolved SKU
-          .eq('Warehouse', log.to_warehouse)
-          .eq('Location', log.to_location)
+          .eq('Warehouse', log.to_warehouse || '')
+          .eq('Location', log.to_location || '')
           .maybeSingle();
 
         if (findError || !itemToMoveBack) {
@@ -284,7 +281,7 @@ export const useInventoryLogs = () => {
         }
 
         await moveItem(
-          itemToMoveBack,
+          itemToMoveBack as any,
           targetWarehouse,
           log.from_location || '',
           log.quantity,
@@ -293,7 +290,7 @@ export const useInventoryLogs = () => {
       } else if (log.action_type === 'DEDUCT') {
         await addItem(targetWarehouse, {
           SKU: targetSku,
-          Location: log.from_location,
+          Location: log.from_location || '', // Ensure string
           Quantity: log.quantity,
           isReversal: true,
         });
@@ -311,7 +308,7 @@ export const useInventoryLogs = () => {
         console.log(`[Undo] Restoring deleted item ${targetSku} with ID ${log.item_id}`);
         await addItem(targetWarehouse, {
           SKU: targetSku,
-          Location: log.from_location,
+          Location: log.from_location || null,
           Quantity: log.quantity,
           force_id: log.item_id, // PHASE 3: ID Persistence
           isReversal: true,
@@ -322,14 +319,14 @@ export const useInventoryLogs = () => {
           const { data: itemToUpdate, error: itemError } = await supabase
             .from('inventory')
             .select('*')
-            .eq('id', log.item_id)
+            .eq('id', typeof log.item_id === 'string' ? parseInt(log.item_id) : (log.item_id || 0))
             .single();
 
           if (itemError || !itemToUpdate) {
             throw new Error(`Cannot undo rename: Item with ID ${log.item_id} not found.`);
           }
 
-          await updateItem(itemToUpdate, {
+          await updateItem(itemToUpdate as any, {
             SKU: log.previous_sku,
             Quantity: log.prev_quantity,
             Warehouse: log.from_warehouse,
@@ -352,9 +349,10 @@ export const useInventoryLogs = () => {
       await supabase.from('inventory_logs').update({ is_reversed: true }).eq('id', logId);
 
       return { success: true };
-    } catch (err: any) {
-      console.error('Undo failed:', err.message);
-      return { success: false, error: err.message };
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error during undo';
+      console.error('Undo failed:', errorMessage);
+      return { success: false, error: errorMessage };
     }
   };
 

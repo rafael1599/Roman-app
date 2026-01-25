@@ -20,6 +20,8 @@ import LocationEditorModal from '../features/warehouse-management/components/Loc
 import { useError } from '../context/ErrorContext';
 import { useConfirmation } from '../context/ConfirmationContext';
 import { SessionInitializationModal } from '../features/picking/components/SessionInitializationModal';
+import { InventoryItem, InventoryItemWithMetadata } from '../schemas/inventory.schema';
+import { Location } from '../schemas/location.schema';
 
 export const InventoryScreen = () => {
   const {
@@ -51,7 +53,7 @@ export const InventoryScreen = () => {
       return (
         (item.SKU || '').toLowerCase().includes(s) ||
         (item.Location || '').toLowerCase().includes(s) ||
-        (item.Location_Detail || '').toLowerCase().includes(s) ||
+        (item.sku_note || '').toLowerCase().includes(s) ||
         (item.Warehouse || '').toLowerCase().includes(s)
       );
     });
@@ -60,7 +62,10 @@ export const InventoryScreen = () => {
   const isLoading = loading;
 
   const allGroupedData = useMemo(() => {
-    const groups: any = {};
+    const groups: Record<
+      string,
+      Record<string, { items: typeof filteredInventory; locationId?: string | null }>
+    > = {};
     filteredInventory.forEach((item) => {
       const wh = item.Warehouse || 'UNKNOWN';
       const locName = item.Location || 'Unknown Location';
@@ -123,11 +128,11 @@ export const InventoryScreen = () => {
   const { viewMode } = useViewMode(); // 'stock' | 'picking'
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<any>(null);
-  const [modalMode, setModalMode] = useState('add');
+  const [editingItem, setEditingItem] = useState<InventoryItemWithMetadata | null>(null);
+  const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   const [selectedWarehouseForAdd, setSelectedWarehouseForAdd] = useState('LUDLOW');
   const [isMovementModalOpen, setIsMovementModalOpen] = useState(false);
-  const [locationBeingEdited, setLocationBeingEdited] = useState<any>(null);
+  const [locationBeingEdited, setLocationBeingEdited] = useState<Location | any>(null);
 
   const [showWelcome, setShowWelcome] = useState(false);
   const welcomeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -206,7 +211,7 @@ export const InventoryScreen = () => {
     setIsModalOpen(true);
   }, []);
 
-  const handleEditItem = useCallback((item) => {
+  const handleEditItem = useCallback((item: InventoryItemWithMetadata) => {
     setModalMode('edit');
     setEditingItem(item);
     setIsModalOpen(true);
@@ -219,11 +224,11 @@ export const InventoryScreen = () => {
   }, [editingItem, deleteItem]);
 
   const saveItem = useCallback(
-    (formData) => {
+    (formData: any) => {
       const targetWarehouse = formData.Warehouse;
       if (modalMode === 'add') {
         addItem(targetWarehouse, formData);
-      } else {
+      } else if (editingItem) {
         updateItem(editingItem, formData);
       }
     },
@@ -473,7 +478,7 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
                       <InventoryCard
                         sku={item.SKU}
                         quantity={item.Quantity}
-                        detail={item.Location_Detail}
+                        detail={item.sku_note}
                         warehouse={item.Warehouse}
                         onIncrement={() =>
                           updateQuantity(item.SKU, 1, item.Warehouse, item.Location)

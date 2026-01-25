@@ -8,7 +8,7 @@ export class AppError extends Error {
     constructor(
         public message: string,
         public status: string | number = '500',
-        public originalError?: any
+        public originalError?: unknown
     ) {
         super(message);
         this.name = 'AppError';
