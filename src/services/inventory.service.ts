@@ -8,7 +8,7 @@ import { inventorySchema, InventoryModel } from '../models/inventory.schema';
  */
 class InventoryService extends BaseService<'inventory'> {
     constructor() {
-        super(supabase, 'inventory');
+        super(supabase, 'inventory', () => ({ schema: inventorySchema }));
     }
 
     /**
@@ -48,8 +48,8 @@ class InventoryService extends BaseService<'inventory'> {
             this.handleError(error);
         }
 
-        // Transform and validate data using Zod schema
-        const validatedData = (data || []).map((item) => inventorySchema.parse(item));
+        // Standardized validation through BaseService
+        const validatedData = this.validateArray(data);
 
         return {
             data: validatedData,
