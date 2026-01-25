@@ -74,8 +74,72 @@ class InventoryService extends BaseService<'inventory'> {
     }
 
     /**
+     * Ensures a location exists, creating it if necessary with resilient race-condition handling.
+     */
+    private async ensureLocationExists(
+        warehouse: string,
+        locationName: string,
+        locations: Location[],
+        ctx: { isAdmin: boolean; onLocationCreated?: (newLoc: Location) => void }
+    ): Promise<{ id: string | null; name: string }> {
+        const { isAdmin, onLocationCreated } = ctx;
+
+        const resolved = this.resolveLocationName(locations, warehouse, locationName);
+
+        if (!resolved.isNew) {
+            return { id: resolved.id, name: resolved.name };
+        }
+
+        if (!isAdmin) {
+            throw new AppError(`Unauthorized: Only administrators can create new locations ("${resolved.name}").`, 403);
+        }
+
+        try {
+            const { data: newLoc, error } = await this.supabase
+                .from('locations')
+                .insert([
+                    {
+                        warehouse,
+                        location: resolved.name,
+                        max_capacity: 550,
+                        zone: 'UNASSIGNED',
+                        is_active: true,
+                    },
+                ])
+                .select()
+                .single();
+
+            if (error) {
+                if (error.code === '23505') { // Unique Violation
+                    const { data: recoveredLoc } = await this.supabase
+                        .from('locations')
+                        .select('id')
+                        .eq('warehouse', warehouse)
+                        .eq('location', resolved.name)
+                        .single();
+
+                    if (recoveredLoc) {
+                        return { id: recoveredLoc.id, name: resolved.name };
+                    }
+                    throw error;
+                }
+                throw error;
+            }
+
+            if (newLoc) {
+                if (onLocationCreated) onLocationCreated(newLoc as any);
+                return { id: newLoc.id, name: resolved.name };
+            }
+        } catch (err: any) {
+            if (err instanceof AppError) throw err;
+            throw new AppError(err.message || 'Failed to resolve location', err.code, err);
+        }
+
+        return { id: null, name: resolved.name };
+    }
+
+    /**
      * Orchestrates adding stock to a SKU, handling dynamic location creation and merges.
-     * Implements "Insert -> Catch -> Recover" for resilient location creation.
      */
     async addItem(
         warehouse: string,
@@ -83,78 +147,22 @@ class InventoryService extends BaseService<'inventory'> {
         locations: Location[],
         ctx: InventoryServiceContext
     ) {
-        const { isAdmin, userInfo, trackLog, onLocationCreated } = ctx;
+        const { userInfo, trackLog } = ctx;
 
         // 1. Zod Validation (Includes Coercion for numbers)
         const validatedInput = InventoryItemInputSchema.parse(newItem);
         const qty = validatedInput.Quantity;
 
-        // 2. Resolve Target Location
-        const {
-            name: targetLocation,
-            id: existingId,
-            isNew,
-        } = this.resolveLocationName(locations, warehouse, validatedInput.Location || '');
-        let locationId = existingId;
+        // 2. HARDENING: Resolve destination before touching stock
+        const destination = await this.ensureLocationExists(warehouse, validatedInput.Location || '', locations, ctx);
 
-        // 3. Handle resilient Location Creation
-        if (isNew) {
-            if (!isAdmin) {
-                throw new AppError(`Unauthorized: Only administrators can create new locations ("${targetLocation}").`, 403);
-            }
-
-            try {
-                // Try to insert
-                const { data: newLoc, error } = await this.supabase
-                    .from('locations')
-                    .insert([
-                        {
-                            warehouse,
-                            location: targetLocation,
-                            max_capacity: 550,
-                            zone: 'UNASSIGNED',
-                            is_active: true,
-                        },
-                    ])
-                    .select()
-                    .single();
-
-                if (error) {
-                    // CODE 23505: Unique Violation (Someone else created it just now)
-                    if (error.code === '23505') {
-                        const { data: recoveredLoc } = await this.supabase
-                            .from('locations')
-                            .select('id')
-                            .eq('warehouse', warehouse)
-                            .eq('location', targetLocation)
-                            .single();
-
-                        if (recoveredLoc) {
-                            locationId = recoveredLoc.id;
-                        } else {
-                            throw error; // If we can't recover, throw the original
-                        }
-                    } else {
-                        throw error; // Other database errors
-                    }
-                } else if (newLoc) {
-                    locationId = newLoc.id;
-                    if (onLocationCreated) onLocationCreated(newLoc as any);
-                }
-            } catch (err: any) {
-                // Wrap in AppError if not already one
-                if (err instanceof AppError) throw err;
-                throw new AppError(err.message || 'Failed to resolve location', err.code, err);
-            }
-        }
-
-        // 4. Process Inventory Persistence (UPSERT logic via BaseService)
+        // 3. Process Inventory Persistence (UPSERT logic via BaseService)
         const { data: existingItemData } = await this.supabase
             .from(this.table)
             .select('*')
             .eq('SKU', validatedInput.SKU)
             .eq('Warehouse', warehouse)
-            .eq('Location', targetLocation)
+            .eq('Location', destination.name)
             .maybeSingle();
 
         if (existingItemData) {
@@ -163,14 +171,14 @@ class InventoryService extends BaseService<'inventory'> {
 
             await this.update(existingItem.id, {
                 Quantity: newTotal,
-                location_id: locationId,
+                location_id: destination.id,
             } as any);
 
             await trackLog(
                 {
                     sku: validatedInput.SKU,
                     to_warehouse: warehouse,
-                    to_location: targetLocation,
+                    to_location: destination.name,
                     quantity: qty,
                     prev_quantity: existingItem.Quantity || 0,
                     new_quantity: newTotal,
@@ -184,12 +192,12 @@ class InventoryService extends BaseService<'inventory'> {
             return { action: 'updated', id: existingItem.id };
         }
 
-        // 5. Insert New Item
+        // 4. Insert New Item
         const itemToInsert: any = {
             ...validatedInput,
             Warehouse: warehouse,
-            Location: targetLocation,
-            location_id: locationId,
+            Location: destination.name,
+            location_id: destination.id,
         };
 
         if (newItem.force_id) {
@@ -202,7 +210,7 @@ class InventoryService extends BaseService<'inventory'> {
             {
                 sku: validatedInput.SKU,
                 to_warehouse: warehouse,
-                to_location: targetLocation,
+                to_location: destination.name,
                 quantity: qty,
                 prev_quantity: 0,
                 new_quantity: qty,
@@ -214,6 +222,86 @@ class InventoryService extends BaseService<'inventory'> {
         );
 
         return { action: 'inserted', id: inserted.id };
+    }
+
+    /**
+     * Detailed movement logic between locations.
+     */
+    async moveItem(
+        sourceItem: InventoryModel,
+        targetWarehouse: string,
+        targetLocation: string,
+        qty: number,
+        locations: Location[],
+        ctx: InventoryServiceContext,
+        isReversal = false
+    ) {
+        const { userInfo, trackLog } = ctx;
+
+        // 1. HARDENING: Resolve destination before touching source
+        const destination = await this.ensureLocationExists(targetWarehouse, targetLocation, locations, ctx);
+
+        // 2. Server-side check
+        const { data: serverItem, error: checkError } = await this.supabase
+            .from(this.table)
+            .select('Quantity')
+            .eq('id' as any, sourceItem.id as any)
+            .single();
+
+        if (checkError || !serverItem) throw new AppError('Item no longer exists in source.', 404);
+        const serverQty = serverItem.Quantity ?? 0;
+        if (serverQty < qty) {
+            throw new AppError(`Stock mismatch: Found ${serverQty} units, but tried to move ${qty}.`, 409);
+        }
+
+        // 3. Update Source (Zero-Stock Handling: Keep the row)
+        const remainingQty = ((serverItem.Quantity as number) || 0) - qty;
+        await this.update(sourceItem.id as any, { Quantity: remainingQty } as any);
+
+        // 4. Update Destination
+        const { data: existingTargetData } = await this.supabase
+            .from(this.table)
+            .select('*')
+            .eq('SKU', sourceItem.SKU)
+            .eq('Warehouse', targetWarehouse)
+            .eq('Location', destination.name)
+            .maybeSingle();
+
+        if (existingTargetData) {
+            const existingTarget = this.validate(existingTargetData);
+            const newTotal = (existingTarget.Quantity || 0) + qty;
+            await this.update(existingTarget.id, {
+                Quantity: newTotal,
+                location_id: destination.id,
+            } as any);
+        } else {
+            await this.create({
+                SKU: sourceItem.SKU,
+                Warehouse: targetWarehouse,
+                Location: destination.name,
+                location_id: destination.id,
+                Quantity: qty,
+                sku_note: sourceItem.sku_note,
+                Status: sourceItem.Status || 'Active',
+            } as any);
+        }
+
+        // 5. Track Log
+        await trackLog(
+            {
+                sku: sourceItem.SKU,
+                from_warehouse: sourceItem.Warehouse as any,
+                from_location: sourceItem.Location || undefined,
+                to_warehouse: targetWarehouse as any,
+                to_location: destination.name,
+                quantity: qty,
+                prev_quantity: serverItem.Quantity || 0,
+                new_quantity: remainingQty,
+                action_type: 'MOVE',
+                is_reversed: isReversal,
+            },
+            userInfo
+        );
     }
 
     /**
@@ -233,8 +321,9 @@ class InventoryService extends BaseService<'inventory'> {
     } = {}): Promise<{ data: InventoryModel[]; count: number | null }> {
         let query = this.supabase
             .from(this.table)
-            .select('*', { count: 'exact' })
-            .gt('Quantity', 0)
+            .select('*', { count: 'exact' }) as any;
+
+        query = query.gt('Quantity', 0)
             .order('Warehouse', { ascending: false }) // Puts LUDLOW (L) before ATS (A)
             .order('Location', { ascending: true })
             .order('SKU', { ascending: true });
@@ -257,7 +346,7 @@ class InventoryService extends BaseService<'inventory'> {
         const validatedData = this.validateArray(data);
 
         return {
-            data: validatedData,
+            data: validatedData as any,
             count,
         };
     }
@@ -265,4 +354,3 @@ class InventoryService extends BaseService<'inventory'> {
 
 // Export a singleton instance for application-wide use
 export const inventoryService = new InventoryService();
-

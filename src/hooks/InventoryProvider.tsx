@@ -587,7 +587,7 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
       try {
-        await legacyInventoryService.moveItem(
+        await inventoryService.moveItem(
           sourceItem,
           targetWarehouse,
           targetLocation,

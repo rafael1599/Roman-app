@@ -44,6 +44,7 @@ export const inventoryService = {
   /**
    * Detailed movement logic between locations.
    */
+  /* 
   async moveItem(
     sourceItem: InventoryItem,
     targetWarehouse: string,
@@ -53,117 +54,9 @@ export const inventoryService = {
     ctx: InventoryServiceContext,
     isReversal = false
   ) {
-    const { isAdmin, userInfo, trackLog, onLocationCreated } = ctx;
-
-    // 0. Server-side check
-    const { data: serverItem, error: checkError } = await supabase
-      .from('inventory')
-      .select('Quantity')
-      .eq('id', sourceItem.id)
-      .single();
-
-    if (checkError || !serverItem) throw new Error('Item no longer exists in source.');
-    if (serverItem.Quantity < qty) {
-      throw new Error(
-        `Stock mismatch: Found ${serverItem.Quantity} units, but tried to move ${qty}.`
-      );
-    }
-
-    const {
-      name: resolvedTargetLocation,
-      id: existingId,
-      isNew,
-    } = this.resolveLocationName(targetWarehouse, targetLocation, locations);
-    let locationId = existingId;
-
-    if (isNew && !isAdmin) {
-      throw new Error(
-        `Unauthorized: Only administrators can create new locations ("${resolvedTargetLocation}").`
-      );
-    }
-
-    if (isNew && isAdmin) {
-      const { data: newLoc, error: locError } = await supabase
-        .from('locations')
-        .insert([
-          {
-            warehouse: targetWarehouse,
-            location: resolvedTargetLocation,
-            max_capacity: 550,
-            zone: 'UNASSIGNED',
-            is_active: true,
-          },
-        ])
-        .select()
-        .single();
-
-      if (locError) throw locError;
-      if (newLoc) {
-        locationId = newLoc.id;
-        if (onLocationCreated) onLocationCreated(newLoc as Location);
-      }
-    }
-
-    // 1. Update Source
-    const remainingQty = sourceItem.Quantity - qty;
-    const { error: sourceError } = await supabase
-      .from('inventory')
-      .update({ Quantity: remainingQty })
-      .eq('id', sourceItem.id);
-    if (sourceError) throw sourceError;
-
-    // 2. Update Destination
-    const { data: existingTargetData } = await supabase
-      .from('inventory')
-      .select('*')
-      .eq('SKU', sourceItem.SKU)
-      .eq('Warehouse', targetWarehouse)
-      .eq('Location', resolvedTargetLocation)
-      .maybeSingle();
-
-    if (existingTargetData) {
-      const existingTarget = validateData(InventoryItemSchema, existingTargetData);
-      const newQty = (existingTarget.Quantity || 0) + qty;
-      const { error: targetError } = await supabase
-        .from('inventory')
-        .update({
-          Quantity: newQty,
-          location_id: locationId,
-        })
-        .eq('id', existingTarget.id);
-      if (targetError) throw targetError;
-    } else {
-      const { error: insertError } = await supabase.from('inventory').insert([
-        {
-          SKU: sourceItem.SKU,
-          Warehouse: targetWarehouse,
-          Location: resolvedTargetLocation,
-          location_id: locationId,
-          Quantity: qty,
-          sku_note: sourceItem.sku_note,
-          Status: sourceItem.Status || 'Active',
-        },
-      ]);
-      if (insertError) throw insertError;
-    }
-
-    // 3. Track Log
-    await trackLog(
-      {
-        sku: sourceItem.SKU,
-        from_warehouse: sourceItem.Warehouse,
-        from_location: sourceItem.Location || undefined,
-        to_warehouse: targetWarehouse,
-        to_location: resolvedTargetLocation,
-        quantity: qty,
-        prev_quantity: sourceItem.Quantity,
-        new_quantity: remainingQty,
-        action_type: 'MOVE',
-        is_reversed: isReversal,
-      },
-      userInfo
-    );
+    // ... logic moved to InventoryService class ...
   },
+  */
 
   async updateItem(
     originalItem: InventoryItem,
