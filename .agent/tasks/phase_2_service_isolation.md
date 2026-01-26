@@ -29,7 +29,7 @@ Focus: Decoupling business logic from React hooks, establishing a Service Layer,
 
 ### **Next Steps**
 
-1.  Review `InventoryScreen.jsx` or similar high-level components to see if they can be migrated easily now that their hooks are typed.
+1.  Review `InventoryScreen.tsx` or similar high-level components to see if they can be migrated easily now that their hooks are typed.
 2.  Consider validating "Optimization Reports" if they are used heavily.
 
 ---

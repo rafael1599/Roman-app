@@ -1,15 +1,24 @@
-import React, { useState, useEffect, useMemo, FormEvent } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Save, Trash2, Plus, AlertCircle, CheckCircle2 } from 'lucide-react';
-import { useInventory } from '../../../hooks/useInventoryData';
-import AutocompleteInput from '../../../components/ui/AutocompleteInput';
+import { X, Save, Trash2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import toast from 'react-hot-toast';
-import { useConfirmation } from '../../../context/ConfirmationContext';
+
+import { useInventory } from '../../../hooks/useInventoryData';
 import { useLocationManagement } from '../../../hooks/useLocationManagement';
-import { predictLocation } from '../../../utils/locationPredictor';
+import { useConfirmation } from '../../../context/ConfirmationContext';
 import { useViewMode } from '../../../context/ViewModeContext';
 import { useAutoSelect } from '../../../hooks/useAutoSelect';
-import { InventoryItem, InventoryItemInput } from '../../../schemas/inventory.schema';
+
+import AutocompleteInput from '../../../components/ui/AutocompleteInput';
+import { predictLocation } from '../../../utils/locationPredictor';
+import {
+    InventoryItem,
+    InventoryItemInput,
+    InventoryItemInputSchema
+} from '../../../schemas/inventory.schema';
+import { inventoryService } from '../../../services/inventory.service';
 
 interface InventoryModalProps {
     isOpen: boolean;
@@ -33,162 +42,279 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
     const { ludlowData, atsData, isAdmin, updateSKUMetadata } = useInventory();
     const { locations } = useLocationManagement();
     const { setIsNavHidden } = useViewMode();
+    const { showConfirmation } = useConfirmation();
     const autoSelect = useAutoSelect();
-
-    const [formData, setFormData] = useState({
-        SKU: '',
-        Location: '',
-        Quantity: 0,
-        sku_note: '',
-        Warehouse: screenType || 'LUDLOW',
-        length_ft: 5,
-        width_in: 6,
-    });
 
     const [confirmCreateNew, setConfirmCreateNew] = useState(false);
 
+    // 1. Setup React Hook Form
+    const {
+        register,
+        handleSubmit,
+        setValue,
+        watch,
+        reset,
+        formState: { errors, isValid }
+    } = useForm<InventoryItemInput & { length_ft?: number; width_in?: number }>({
+        resolver: zodResolver(InventoryItemInputSchema.extend({
+            length_ft: InventoryItemInputSchema.shape.capacity.optional(),
+            width_in: InventoryItemInputSchema.shape.capacity.optional(),
+        })),
+        mode: 'onChange',
+        defaultValues: {
+            sku: '',
+            location: '',
+            quantity: 0,
+            sku_note: '',
+            warehouse: 'LUDLOW',
+            length_ft: 5,
+            width_in: 6,
+        }
+    });
+
+    const formData = watch();
+
+    // 2. Sync Initial Data
+    useEffect(() => {
+        if (isOpen) {
+            setIsNavHidden?.(true);
+            setConfirmCreateNew(false);
+
+            if (mode === 'edit' && initialData) {
+                reset({
+                    sku: initialData.sku || '',
+                    location: initialData.location || '',
+                    quantity: Number(initialData.quantity) || 0,
+                    sku_note: initialData.sku_note || '',
+                    warehouse: initialData.warehouse || (screenType as any) || 'LUDLOW',
+                    length_ft: initialData.sku_metadata?.length_ft ?? 5,
+                    width_in: initialData.sku_metadata?.width_in ?? 6,
+                });
+            } else {
+                reset({
+                    sku: '',
+                    location: '',
+                    quantity: 0,
+                    sku_note: '',
+                    warehouse: (screenType as any) || 'LUDLOW',
+                    length_ft: 5,
+                    width_in: 6,
+                });
+            }
+        } else {
+            setIsNavHidden?.(false);
+        }
+        return () => setIsNavHidden?.(false);
+    }, [isOpen, initialData, mode, screenType, reset, setIsNavHidden]);
+
+    // 3. Location Predictions & Suggestions
     const validLocationNames = useMemo(() => {
-        if (!locations || locations.length === 0) return [];
-        const names = locations
-            .filter((l) => (l.warehouse || '').toUpperCase() === (formData.Warehouse || '').toUpperCase())
-            .map((l) => l.location);
-        return [...new Set(names)];
-    }, [locations, formData.Warehouse]);
+        if (!locations) return [];
+        return [...new Set(locations
+            .filter((l) => l.warehouse === formData.warehouse)
+            .map((l) => l.location))];
+    }, [locations, formData.warehouse]);
 
     const prediction = useMemo(
-        () => predictLocation(formData.Location, validLocationNames),
-        [formData.Location, validLocationNames]
+        () => predictLocation(formData.location || '', validLocationNames),
+        [formData.location, validLocationNames]
     );
 
     const isNewLocation = useMemo(() => {
-        if (!formData.Location) return false;
+        if (!formData.location) return false;
         return !prediction.exactMatch;
-    }, [formData.Location, prediction]);
+    }, [formData.location, prediction]);
 
     useEffect(() => {
         setConfirmCreateNew(false);
-    }, [formData.Location]);
+    }, [formData.location]);
 
-    const { showConfirmation } = useConfirmation();
-
-    const currentInventory = formData.Warehouse === 'ATS' ? atsData : ludlowData;
+    const currentInventory = formData.warehouse === 'ATS' ? atsData : ludlowData;
 
     const skuSuggestions = useMemo(() => {
         const uniqueSKUs = new Map<string, { value: string; info: string }>();
         currentInventory.forEach((item) => {
-            if (item.SKU) {
-                const skuStr = String(item.SKU).trim();
-                if (!uniqueSKUs.has(skuStr)) {
-                    uniqueSKUs.set(skuStr, {
-                        value: skuStr,
-                        info: `${item.Quantity || 0} units${item.Location ? ` • ${item.Location}` : ''}${item.sku_note ? ` • ${item.sku_note}` : ''}`,
-                    });
-                }
+            if (item.sku && !uniqueSKUs.has(item.sku)) {
+                uniqueSKUs.set(item.sku, {
+                    value: item.sku,
+                    info: `${item.quantity}u • ${item.location}`,
+                });
             }
         });
         return Array.from(uniqueSKUs.values());
     }, [currentInventory]);
 
     const locationSuggestions = useMemo(() => {
-        if (formData.Location && formData.Location.length > 0 && prediction.matches.length > 0) {
-            return [...new Set(prediction.matches)].map((locName) => ({
-                value: locName,
-                info: `Database Location`,
-            }));
+        if (formData.location && prediction.matches.length > 0) {
+            return [...new Set(prediction.matches)].map(l => ({ value: l, info: 'DB Location' }));
         }
-
-        const locationMap = new Map<string, { count: number; totalQty: number }>();
-        currentInventory.forEach((item) => {
-            if (item.Location) {
-                const locStr = String(item.Location).trim();
-                if (!locationMap.has(locStr)) {
-                    locationMap.set(locStr, {
-                        count: 0,
-                        totalQty: 0,
-                    });
-                }
-                const loc = locationMap.get(locStr)!;
-                loc.count++;
-                loc.totalQty += Number(item.Quantity) || 0;
-            }
-        });
-
-        return Array.from(locationMap.entries()).map(([location, data]) => ({
-            value: location,
-            info: `${data.count} item${data.count !== 1 ? 's' : ''} • ${data.totalQty} total units`,
+        const counts = new Map<string, number>();
+        currentInventory.forEach(i => i.location && counts.set(i.location, (counts.get(i.location) || 0) + 1));
+        return Array.from(counts.entries()).map(([loc, count]) => ({
+            value: loc,
+            info: `${count} items here`
         }));
-    }, [currentInventory, formData.Location, prediction.matches]);
+    }, [currentInventory, formData.location, prediction.matches]);
 
+    // 4. Real-time Validation & Presence Tracking
+    const [validationState, setValidationState] = useState<{
+        status: 'idle' | 'checking' | 'error' | 'warning' | 'info';
+        message?: string;
+    }>({ status: 'idle' });
+
+    const [foundLocations, setFoundLocations] = useState<string[]>([]);
+
+    // Constants for Validation Rules
+    const MIN_SKU_CHARS = 7;
+
+    const isSkuChanged = useMemo(() => {
+        if (mode !== 'edit' || !initialData) return false;
+        return formData.sku.trim() !== (initialData.sku || '').trim();
+    }, [formData.sku, initialData, mode]);
+
+    // Use a custom debounce hook or simple timeout for now
     useEffect(() => {
-        if (isOpen) {
-            setIsNavHidden!(true);
-            setConfirmCreateNew(false);
-            if (mode === 'edit' && initialData) {
-                setFormData({
-                    SKU: initialData.SKU || '',
-                    Location: initialData.Location || '',
-                    Quantity: Number(initialData.Quantity) || 0,
-                    sku_note: initialData.sku_note || '',
-                    Warehouse: initialData.Warehouse || screenType || 'LUDLOW',
-                    length_ft: initialData.sku_metadata?.length_ft ?? 5,
-                    width_in: initialData.sku_metadata?.width_in ?? 6,
-                });
-            } else {
-                setFormData({
-                    SKU: '',
-                    Location: '',
-                    Quantity: 0,
-                    sku_note: '',
-                    Warehouse: screenType || 'LUDLOW',
-                    length_ft: 5,
-                    width_in: 6,
-                });
-            }
+        // LEVEL 1: DIRTY CHECK (Has anything changed?)
+        const normalize = (str?: string | null) => (str || '').trim();
+
+        const currentSKU = normalize(formData.sku);
+        const originalSKU = normalize(initialData?.sku);
+
+        const currentLocation = normalize(formData.location);
+        const originalLocation = normalize(initialData?.location);
+
+        const currentWh = normalize(formData.warehouse);
+        const originalWh = normalize(initialData?.warehouse || (screenType as any) || 'LUDLOW');
+
+        const skuChanged = currentSKU !== originalSKU;
+        const locationChanged = currentLocation !== originalLocation;
+        const warehouseChanged = currentWh !== originalWh;
+        const hasAnyChange = skuChanged || locationChanged || warehouseChanged;
+
+        // TIER 1: INSTANT LOCAL PRESENCE (Independent of everything)
+        if (currentSKU.length >= 2) {
+            const existingEntries = currentInventory.filter(i => normalize(i.sku) === currentSKU);
+            const locs = [...new Set(existingEntries.map(i => i.location || 'Unknown'))].filter(Boolean);
+            setFoundLocations(locs);
         } else {
-            setIsNavHidden!(false);
+            setFoundLocations([]);
         }
 
-        return () => setIsNavHidden!(false);
-    }, [isOpen, initialData, mode, screenType, setIsNavHidden]);
+        // TIER 2: COORDINATED SERVER VALIDATION (Debounced)
+        if (mode === 'edit' && !hasAnyChange) {
+            setValidationState({ status: 'idle' });
+            return;
+        }
 
-    if (!isOpen) return null;
-
-    const handleWarehouseChange = (wh: string) => {
-        setFormData((prev) => ({ ...prev, Warehouse: wh }));
-    };
-
-    const handleLocationBlur = (val: string) => {
-        if (!val) return;
-        if (prediction.bestGuess && prediction.bestGuess !== val) {
-            setFormData((prev) => ({ ...prev, Location: prediction.bestGuess! }));
-            toast(
-                <span className="flex flex-col">
-                    <span>
-                        Auto-selected <b>{prediction.bestGuess}</b>
-                    </span>
-                    <span className="text-xs opacity-80">Matched from "{val}"</span>
-                </span>,
-                { icon: '✨', duration: 3000 }
+        // TIER 2.1: GLOBAL RENAME CONFLICT (Instant Check)
+        if (mode === 'edit' && isSkuChanged && currentSKU.length >= MIN_SKU_CHARS) {
+            const globalConflict = currentInventory.find(i =>
+                normalize(i.sku) === currentSKU &&
+                String(i.id) !== String(initialData?.id)
             );
+            if (globalConflict) {
+                setValidationState({
+                    status: 'error',
+                    message: `⛔ SKU already exists in this warehouse (${globalConflict.location}). Cannot rename.`
+                });
+                return;
+            }
+        }
+
+        // Length guard for server validation
+        if (mode === 'add' || skuChanged) {
+            if (currentSKU.length < MIN_SKU_CHARS) {
+                setValidationState({ status: 'idle' });
+                return;
+            }
+        }
+
+        const timer = setTimeout(async () => {
+            // Guard: Must have coordinates (SKU + Location + Warehouse)
+            if (!currentSKU || !currentLocation || !currentWh) {
+                // If we match SKU but location is still empty, we still want to show identity info in edit mode
+                if (mode === 'edit' && isSkuChanged) {
+                    setValidationState({
+                        status: 'info',
+                        message: 'ℹ️ Renaming: History will be transferred to the new SKU.'
+                    });
+                } else {
+                    setValidationState({ status: 'idle' });
+                }
+                return;
+            }
+
+            // LEVEL 3: EXECUTION (API Call)
+            setValidationState({ status: 'checking' });
+
+            try {
+                const excludeId = initialData?.id;
+
+                const exists = await inventoryService.checkExistence(
+                    currentSKU,
+                    currentLocation,
+                    currentWh,
+                    excludeId
+                );
+
+                if (exists) {
+                    if (mode === 'add') {
+                        setValidationState({
+                            status: 'warning',
+                            message: '⚠️ Item already exists here. Quantity will be added and Description updated.'
+                        });
+                    } else if (mode === 'edit') {
+                        if (isSkuChanged) {
+                            setValidationState({
+                                status: 'error',
+                                message: '⛔ SKU already exists. Cannot rename.'
+                            });
+                        } else {
+                            setValidationState({
+                                status: 'warning',
+                                message: 'ℹ️ Item exists in target location. Stock will be consolidated.'
+                            });
+                        }
+                    }
+                } else {
+                    if (mode === 'edit' && isSkuChanged) {
+                        setValidationState({
+                            status: 'info',
+                            message: 'ℹ️ Renaming: History will be transferred to the new SKU.'
+                        });
+                    } else {
+                        setValidationState({ status: 'idle' });
+                    }
+                }
+            } catch (err) {
+                console.error('Validation check failed', err);
+                setValidationState({ status: 'idle' });
+            }
+        }, 800);
+
+        return () => clearTimeout(timer);
+    }, [formData.sku, formData.location, formData.warehouse, mode, initialData, screenType, currentInventory, isSkuChanged]);
+
+    // 4. Handlers
+    const handleLocationBlur = (val: string) => {
+        if (prediction.bestGuess && prediction.bestGuess !== val) {
+            setValue('location', prediction.bestGuess);
+            toast(`Auto-selected ${prediction.bestGuess}`, { icon: '✨' });
         }
     };
 
-    const handleSubmit = (e?: FormEvent) => {
-        if (e) e.preventDefault();
-
+    const onFormSubmit = (data: any) => {
         if (isNewLocation && !confirmCreateNew) {
             toast.error('Please confirm creating the new location.');
             return;
         }
 
-        if (mode === 'edit' && initialData && formData.SKU !== initialData.SKU) {
+        // Rename Confirmation
+        if (mode === 'edit' && initialData && data.sku !== initialData.sku) {
             showConfirmation(
                 'Identity Change (SKU)',
-                `You are about to rename the product:\nFROM: "${initialData.SKU}"\nTO:  "${formData.SKU}"\n\nAre you sure? This will alter how this item is searched in the history.`,
-                () => {
-                    onSave(formData as any);
-                    onClose();
-                },
+                `Rename "${initialData.sku}" to "${data.sku}"?\nThis will update or merge the product row.`,
+                () => executeSave(data),
                 null,
                 'Rename',
                 'Cancel'
@@ -196,56 +322,54 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
             return;
         }
 
+        executeSave(data);
+    };
+
+    const executeSave = (data: any) => {
         if (isAdmin) {
             updateSKUMetadata({
-                sku: formData.SKU,
-                length_ft: formData.length_ft,
-                width_in: formData.width_in,
-            }).catch((err) => {
-                console.error('Failed to save metadata:', err);
-                toast.error('Note: Item saved but dimensions failed to update.');
-            });
+                sku: data.sku,
+                length_ft: data.length_ft,
+                width_in: data.width_in,
+            }).catch(e => console.error('Metadata fail:', e));
         }
-
-        onSave(formData as any);
+        onSave(data);
         onClose();
     };
 
+    if (!isOpen) return null;
+
     return createPortal(
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200">
-            <div className="bg-surface border border-subtle rounded-3xl w-full shadow-2xl overflow-hidden scale-100 animate-in zoom-in-95 duration-200">
+            <div className="bg-surface border border-subtle rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden scale-100 animate-in zoom-in-95 duration-200">
                 <div className="px-6 py-4 border-b border-subtle bg-main/50 flex items-center justify-between">
                     <div>
                         <h2 className="text-xl font-black text-content uppercase tracking-tight">
                             {mode === 'edit' ? 'Edit Item' : 'Add New Item'}
                         </h2>
-                        {initialData?.SKU && mode === 'edit' && (
+                        {initialData?.sku && mode === 'edit' && (
                             <p className="text-[10px] text-muted font-bold uppercase tracking-widest mt-0.5">
-                                Original: <span className="text-accent">{initialData.SKU}</span>
+                                Original: <span className="text-accent">{initialData.sku}</span>
                             </p>
                         )}
                     </div>
-                    <button
-                        onClick={onClose}
-                        className="p-2 -mr-2 text-muted hover:text-content transition-colors z-10"
-                    >
+                    <button onClick={onClose} className="p-2 -mr-2 text-muted hover:text-content transition-colors z-10">
                         <X className="w-6 h-6" />
                     </button>
                 </div>
 
                 <div className="max-h-[70vh] overflow-y-auto">
-                    <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                    <form onSubmit={handleSubmit(onFormSubmit)} className="p-6 space-y-6">
+                        {/* Warehouse Selection */}
                         <div>
-                            <label className="block text-[10px] font-black text-accent mb-3 uppercase tracking-widest">
-                                Select Warehouse
-                            </label>
-                            <div className="flex flex-wrap gap-2">
+                            <label className="block text-[10px] font-black text-accent mb-3 uppercase tracking-widest">Select Warehouse</label>
+                            <div className="flex gap-2">
                                 {['LUDLOW', 'ATS'].map((wh) => (
                                     <button
                                         key={wh}
                                         type="button"
-                                        onClick={() => handleWarehouseChange(wh)}
-                                        className={`px-4 py-2 rounded-lg font-bold text-xs transition-all border ${formData.Warehouse === wh
+                                        onClick={() => setValue('warehouse', wh as any)}
+                                        className={`px-4 py-2 rounded-lg font-bold text-xs transition-all border ${formData.warehouse === wh
                                             ? 'bg-accent text-main border-accent shadow-[0_0_15px_rgba(var(--accent-rgb),0.3)]'
                                             : 'bg-surface text-muted border-subtle hover:border-muted'
                                             }`}
@@ -253,47 +377,64 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
                                         {wh}
                                     </button>
                                 ))}
-                                <button
-                                    type="button"
-                                    onClick={() =>
-                                        toast('Coming Soon: You will be able to add custom warehouses here.', { icon: 'ℹ️' })
-                                    }
-                                    className="w-9 h-9 flex items-center justify-center rounded-lg bg-surface border border-dashed border-subtle text-muted hover:border-accent hover:text-accent transition-all"
-                                    title="Add New Warehouse"
-                                >
-                                    <Plus className="w-5 h-5" />
-                                </button>
                             </div>
                         </div>
-
                         <AutocompleteInput
                             id="inventory_sku"
                             label="SKU"
-                            value={formData.SKU}
-                            onChange={(value: string) => setFormData((prev) => ({ ...prev, SKU: value }))}
+                            value={formData.sku}
+                            onChange={(v: string) => setValue('sku', v)}
                             suggestions={skuSuggestions}
                             placeholder="Enter SKU..."
                             minChars={2}
                             initialKeyboardMode="numeric"
-                            onSelect={(suggestion: any) => {
-                                const item = currentInventory.find((i) => i.SKU === suggestion.value);
-                                if (item && mode === 'add') {
-                                    setFormData((prev) => ({
-                                        ...prev,
-                                        SKU: suggestion.value,
-                                        Location: item.Location || prev.Location,
-                                        sku_note: item.sku_note || prev.sku_note,
-                                    }));
+                            onSelect={(s: any) => {
+                                const match = currentInventory.find(i => i.sku === s.value);
+                                if (match && mode === 'add') {
+                                    setValue('location', match.location || '');
+                                    setValue('sku_note', match.sku_note || '');
                                 }
                             }}
                         />
+
+                        {/* SKU Presence Info (Independent of Location) - Only on Add Mode */}
+                        {mode === 'add' && foundLocations.length > 0 && (
+                            <div className="mt-1 bg-blue-500/10 border border-blue-500/20 text-blue-400 p-3 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-start gap-2 animate-in fade-in slide-in-from-top-1">
+                                <CheckCircle2 size={14} className="shrink-0 mt-0.5 text-blue-400" />
+                                <span>
+                                    SKU detected in this warehouse at: <strong className="text-blue-200">{foundLocations.join(', ')}</strong>
+                                </span>
+                            </div>
+                        )}
+
+                        {/* Real-time Validation Feedback */}
+                        {validationState.status !== 'idle' && (
+                            <div className={`mt-2 flex items-start gap-2 p-3 rounded-xl text-[10px] font-black uppercase tracking-widest animate-in fade-in slide-in-from-top-1 ${validationState.status === 'error' ? 'bg-red-500/10 border border-red-500/20 text-red-500' :
+                                validationState.status === 'warning' ? 'bg-amber-500/10 border border-amber-500/20 text-amber-500' :
+                                    'bg-blue-500/10 border border-blue-500/20 text-blue-400'
+                                }`}>
+                                {validationState.status === 'checking' ? (
+                                    <>
+                                        <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin mt-0.5" />
+                                        Checking availability...
+                                    </>
+                                ) : (
+                                    <>
+                                        <AlertCircle size={14} className="shrink-0 mt-0.5" />
+                                        <span className="leading-relaxed">
+                                            {validationState.message}
+                                        </span>
+                                    </>
+                                )}
+                            </div>
+                        )}
 
                         <div className="flex flex-col gap-2">
                             <AutocompleteInput
                                 id="inventory_location"
                                 label="Location"
-                                value={formData.Location}
-                                onChange={(value: string) => setFormData((prev) => ({ ...prev, Location: value }))}
+                                value={formData.location || ''}
+                                onChange={(v: string) => setValue('location', v)}
                                 onBlur={handleLocationBlur}
                                 suggestions={locationSuggestions}
                                 placeholder="Row/Bin..."
@@ -301,37 +442,19 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
                                 initialKeyboardMode="numeric"
                             />
 
-                            {isNewLocation && formData.Location && (
+                            {isNewLocation && formData.location && (
                                 <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-xl animate-in fade-in slide-in-from-top-2">
                                     <div className="flex items-start gap-2">
                                         <AlertCircle className="text-yellow-500 shrink-0 mt-0.5" size={16} />
-                                        <div>
-                                            <p className="text-[10px] font-black text-yellow-500 uppercase">
-                                                Unrecognized Location
-                                            </p>
+                                        <p className="text-[10px] font-black text-yellow-500 uppercase">Unrecognized Location</p>
+                                    </div>
+                                    <label className="mt-2 flex items-center gap-2 cursor-pointer group">
+                                        <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${confirmCreateNew ? 'bg-yellow-500 border-yellow-500' : 'border-neutral-500 group-hover:border-yellow-500'}`}>
+                                            {confirmCreateNew && <CheckCircle2 size={12} className="text-black" />}
                                         </div>
-                                    </div>
-
-                                    <div className="mt-2 pt-2 border-t border-yellow-500/10">
-                                        <label className="flex items-center gap-2 cursor-pointer group">
-                                            <div
-                                                className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${confirmCreateNew ? 'bg-yellow-500 border-yellow-500' : 'border-neutral-500 group-hover:border-yellow-500'}`}
-                                            >
-                                                {confirmCreateNew && <CheckCircle2 size={12} className="text-black" />}
-                                            </div>
-                                            <input
-                                                type="checkbox"
-                                                className="hidden"
-                                                checked={confirmCreateNew}
-                                                onChange={(e) => setConfirmCreateNew(e.target.checked)}
-                                            />
-                                            <span
-                                                className={`text-[10px] font-black uppercase tracking-wide ${confirmCreateNew ? 'text-content' : 'text-muted'}`}
-                                            >
-                                                Confirm New Location
-                                            </span>
-                                        </label>
-                                    </div>
+                                        <input type="checkbox" className="hidden" checked={confirmCreateNew} onChange={(e) => setConfirmCreateNew(e.target.checked)} />
+                                        <span className={`text-[10px] font-black uppercase tracking-wide ${confirmCreateNew ? 'text-content' : 'text-muted'}`}>Confirm New Location</span>
+                                    </label>
                                 </div>
                             )}
                         </div>
@@ -339,24 +462,17 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
                         <AutocompleteInput
                             id="sku_note"
                             label="Internal Note"
-                            value={formData.sku_note}
-                            onChange={(value: string) => setFormData((prev) => ({ ...prev, sku_note: value }))}
+                            value={formData.sku_note || ''}
+                            onChange={(v: string) => setValue('sku_note', v)}
                             suggestions={[]}
                             placeholder="e.g. T, ø, P..."
-                            initialKeyboardMode="text"
                         />
 
                         <div>
-                            <label className="block text-[10px] font-black text-accent mb-2 uppercase tracking-widest">
-                                Quantity
-                            </label>
+                            <label className="block text-[10px] font-black text-accent mb-2 uppercase tracking-widest">Quantity</label>
                             <input
                                 type="number"
-                                name="Quantity"
-                                value={formData.Quantity}
-                                onChange={(e) =>
-                                    setFormData((prev) => ({ ...prev, Quantity: parseInt(e.target.value) || 0 }))
-                                }
+                                {...register('quantity', { valueAsNumber: true })}
                                 {...autoSelect}
                                 className="w-full bg-main border border-subtle rounded-xl px-4 py-4 text-content focus:border-accent focus:outline-none transition-colors font-mono text-center text-2xl font-black"
                                 required
@@ -366,47 +482,18 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
                         {isAdmin && (
                             <div className="grid grid-cols-2 gap-4 p-4 bg-accent/5 rounded-2xl border border-accent/10">
                                 <div>
-                                    <label className="block text-[10px] font-black text-accent mb-2 uppercase tracking-widest">
-                                        Length (ft)
-                                    </label>
-                                    <input
-                                        type="number"
-                                        name="length_ft"
-                                        value={formData.length_ft}
-                                        onChange={(e) =>
-                                            setFormData((prev) => ({
-                                                ...prev,
-                                                length_ft: parseFloat(e.target.value) || 0,
-                                            }))
-                                        }
-                                        {...autoSelect}
-                                        className="w-full bg-main border border-subtle rounded-lg px-4 py-2 text-content focus:border-accent focus:outline-none transition-colors font-mono"
-                                        placeholder="5"
-                                        step="0.1"
-                                    />
+                                    <label className="block text-[10px] font-black text-accent mb-2 uppercase tracking-widest">Length (ft)</label>
+                                    <input type="number" {...register('length_ft', { valueAsNumber: true })} {...autoSelect} step="0.1" className="w-full bg-main border border-subtle rounded-lg px-4 py-2 text-content focus:border-accent focus:outline-none font-mono" />
                                 </div>
                                 <div>
-                                    <label className="block text-[10px] font-black text-accent mb-2 uppercase tracking-widest">
-                                        Width (in)
-                                    </label>
-                                    <input
-                                        type="number"
-                                        name="width_in"
-                                        value={formData.width_in}
-                                        onChange={(e) =>
-                                            setFormData((prev) => ({
-                                                ...prev,
-                                                width_in: parseFloat(e.target.value) || 0,
-                                            }))
-                                        }
-                                        {...autoSelect}
-                                        className="w-full bg-main border border-subtle rounded-lg px-4 py-2 text-content focus:border-accent focus:outline-none transition-colors font-mono"
-                                        placeholder="6"
-                                        step="0.1"
-                                    />
+                                    <label className="block text-[10px] font-black text-accent mb-2 uppercase tracking-widest">Width (in)</label>
+                                    <input type="number" {...register('width_in', { valueAsNumber: true })} {...autoSelect} step="0.1" className="w-full bg-main border border-subtle rounded-lg px-4 py-2 text-content focus:border-accent focus:outline-none font-mono" />
                                 </div>
                             </div>
                         )}
+
+                        {/* Validation Error Display */}
+                        {errors.sku && <p className="text-red-500 text-[10px] font-bold uppercase">{errors.sku.message}</p>}
                     </form>
                 </div>
 
@@ -415,24 +502,23 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
                         <button
                             type="button"
                             onClick={() => {
-                                showConfirmation(
-                                    'Delete Item',
-                                    'Are you sure you want to delete this item?',
-                                    () => {
-                                        onDelete();
-                                        onClose();
-                                    }
-                                );
+                                showConfirmation('Delete Item', 'Are you sure you want to delete this item?', () => {
+                                    onDelete();
+                                    onClose();
+                                });
                             }}
                             className="w-14 h-14 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-500 rounded-2xl flex items-center justify-center transition-all active:scale-95 shrink-0"
-                            title="Delete Item"
                         >
                             <Trash2 className="w-6 h-6" />
                         </button>
                     )}
                     <button
-                        onClick={() => handleSubmit()}
-                        className="flex-1 bg-accent hover:opacity-90 text-main font-black uppercase tracking-widest h-14 rounded-2xl flex items-center justify-center gap-2 transition-transform active:scale-95 shadow-lg shadow-accent/20"
+                        disabled={!isValid || !formData.sku?.trim() || !formData.location?.trim() || (isNewLocation && !confirmCreateNew) || validationState.status === 'error' || validationState.status === 'checking'}
+                        onClick={handleSubmit(onFormSubmit)}
+                        className={`flex-1 font-black uppercase tracking-widest h-14 rounded-2xl flex items-center justify-center gap-2 transition-transform shadow-lg shadow-accent/20 ${(!isValid || !formData.sku?.trim() || !formData.location?.trim() || (isNewLocation && !confirmCreateNew) || validationState.status === 'error' || validationState.status === 'checking')
+                            ? 'bg-neutral-800 text-neutral-500 border border-neutral-700 cursor-not-allowed opacity-50'
+                            : 'bg-accent hover:opacity-90 text-main active:scale-95'
+                            }`}
                     >
                         <Save className="w-5 h-5" />
                         {mode === 'edit' ? 'Update' : 'Save'}

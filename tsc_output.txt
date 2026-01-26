@@ -1,0 +1,255 @@
+src/App.tsx(60,30): error TS6133: 'showConfirmation' is declared but its value is never read.
+src/App.tsx(60,48): error TS6133: 'hideConfirmation' is declared but its value is never read.
+src/components/InventoryListTest.tsx(41,25): error TS2339: Property 'map' does not exist on type '{ data: { id: string | number; SKU: string; Quantity: number; Location: string | null; Warehouse: "LUDLOW" | "ATS"; created_at: Date; location_id?: string | null | undefined; sku_note?: string | ... 1 more ... | undefined; Status?: string | ... 1 more ... | undefined; Capacity?: number | ... 1 more ... | undefined; ...'.
+src/components/InventoryListTest.tsx(41,30): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/components/InventoryListTest.tsx(64,22): error TS2339: Property 'length' does not exist on type '{ data: { id: string | number; SKU: string; Quantity: number; Location: string | null; Warehouse: "LUDLOW" | "ATS"; created_at: Date; location_id?: string | null | undefined; sku_note?: string | ... 1 more ... | undefined; Status?: string | ... 1 more ... | undefined; Capacity?: number | ... 1 more ... | undefined; ...'.
+src/components/layout/LayoutMain.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/context/AuthContext.tsx(157,21): error TS2353: Object literal may only specify known properties, and 'last_seen_at' does not exist in type '{ age?: number | null | undefined; avatar_url?: string | null | undefined; email?: string | undefined; full_name?: string | undefined; id?: string | undefined; role?: string | null | undefined; }'.
+src/features/inventory/components/InventoryModal.tsx(14,31): error TS7016: Could not find a declaration file for module '../../../components/ui/AutocompleteInput'. '/Users/rafaellopez/Documents/Antigravity/Roman-app/src/components/ui/AutocompleteInput.jsx' implicitly has an 'any' type.
+src/features/inventory/components/InventoryModal.tsx(59,9): error TS2322: Type 'Resolver<{ SKU: string; Quantity: unknown; Location: string; Warehouse: unknown; location_id?: string | null | undefined; sku_note?: string | null | undefined; Status?: string | null | undefined; Capacity?: unknown; force_id?: string | ... 1 more ... | undefined; isReversal?: boolean | undefined; length_ft?: unknown...' is not assignable to type 'Resolver<{ SKU: string; Quantity: number; Location: string; Warehouse: "LUDLOW" | "ATS"; location_id?: string | null | undefined; sku_note?: string | null | undefined; Status?: string | null | undefined; Capacity?: number | undefined; force_id?: string | ... 1 more ... | undefined; isReversal?: boolean | undefined; ...'.
+  Types of parameters 'options' and 'options' are incompatible.
+    Type 'ResolverOptions<{ SKU: string; Quantity: number; Location: string; Warehouse: "LUDLOW" | "ATS"; location_id?: string | null | undefined; sku_note?: string | null | undefined; Status?: string | null | undefined; Capacity?: number | undefined; force_id?: string | ... 1 more ... | undefined; isReversal?: boolean | unde...' is not assignable to type 'ResolverOptions<{ SKU: string; Quantity: unknown; Location: string; Warehouse: unknown; location_id?: string | null | undefined; sku_note?: string | null | undefined; Status?: string | null | undefined; Capacity?: unknown; force_id?: string | ... 1 more ... | undefined; isReversal?: boolean | undefined; length_ft?: ...'.
+      Type '{ SKU: string; Quantity: unknown; Location: string; Warehouse: unknown; location_id?: string | null | undefined; sku_note?: string | null | undefined; Status?: string | null | undefined; Capacity?: unknown; force_id?: string | ... 1 more ... | undefined; isReversal?: boolean | undefined; length_ft?: unknown; width_i...' is not assignable to type '{ SKU: string; Quantity: number; Location: string; Warehouse: "LUDLOW" | "ATS"; location_id?: string | null | undefined; sku_note?: string | null | undefined; Status?: string | null | undefined; Capacity?: number | undefined; force_id?: string | ... 1 more ... | undefined; isReversal?: boolean | undefined; } & { ......'.
+        Type '{ SKU: string; Quantity: unknown; Location: string; Warehouse: unknown; location_id?: string | null | undefined; sku_note?: string | null | undefined; Status?: string | null | undefined; Capacity?: unknown; force_id?: string | ... 1 more ... | undefined; isReversal?: boolean | undefined; length_ft?: unknown; width_i...' is not assignable to type '{ SKU: string; Quantity: number; Location: string; Warehouse: "LUDLOW" | "ATS"; location_id?: string | null | undefined; sku_note?: string | null | undefined; Status?: string | null | undefined; Capacity?: number | undefined; force_id?: string | ... 1 more ... | undefined; isReversal?: boolean | undefined; }'.
+          Types of property 'Quantity' are incompatible.
+            Type 'unknown' is not assignable to type 'number'.
+src/features/inventory/components/InventoryModal.tsx(318,17): error TS2345: Argument of type 'null' is not assignable to parameter of type '(() => void) | undefined'.
+src/features/inventory/components/MovementModal.tsx(14,31): error TS7016: Could not find a declaration file for module '../../../components/ui/AutocompleteInput'. '/Users/rafaellopez/Documents/Antigravity/Roman-app/src/components/ui/AutocompleteInput.jsx' implicitly has an 'any' type.
+src/features/inventory/components/MovementModal.tsx(15,29): error TS7016: Could not find a declaration file for module '../../../components/ui/CapacityBar'. '/Users/rafaellopez/Documents/Antigravity/Roman-app/src/components/ui/CapacityBar.jsx' implicitly has an 'any' type.
+src/features/inventory/components/MovementModal.tsx(50,9): error TS2345: Argument of type 'string | null | undefined' is not assignable to parameter of type 'string | null'.
+  Type 'undefined' is not assignable to type 'string | null'.
+src/features/inventory/components/MovementModal.tsx(237,73): error TS2345: Argument of type 'number | undefined' is not assignable to parameter of type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+src/features/inventory/components/MovementModal.tsx(302,44): error TS7006: Parameter 'val' implicitly has an 'any' type.
+src/features/inventory/components/MovementModal.tsx(309,46): error TS7006: Parameter 'suggestion' implicitly has an 'any' type.
+src/features/picking/components/DoubleCheckHeader.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/features/picking/components/DoubleCheckHeader.tsx(2,43): error TS6133: 'PickingItem' is declared but its value is never read.
+src/features/picking/components/DoubleCheckHeader.tsx(18,50): error TS6133: 'loading' is declared but its value is never read.
+src/features/picking/components/DoubleCheckHeader.tsx(21,11): error TS6133: 'isAdmin' is declared but its value is never read.
+src/features/picking/components/DoubleCheckHeader.tsx(129,74): error TS2345: Argument of type 'number' is not assignable to parameter of type 'string'.
+src/features/picking/components/DoubleCheckHeader.tsx(198,70): error TS2345: Argument of type 'number' is not assignable to parameter of type 'string'.
+src/features/picking/components/DoubleCheckView.tsx(15,32): error TS7016: Could not find a declaration file for module '../../../components/ui/SlideToConfirm'. '/Users/rafaellopez/Documents/Antigravity/Roman-app/src/components/ui/SlideToConfirm.jsx' implicitly has an 'any' type.
+src/features/picking/components/DoubleCheckView.tsx(58,5): error TS6133: 'isOwner' is declared but its value is never read.
+src/features/picking/components/DoubleCheckView.tsx(77,11): error TS6133: 'totalUnits' is declared but its value is never read.
+src/features/picking/components/PickingCartDrawer.tsx(1,38): error TS6133: 'useCallback' is declared but its value is never read.
+src/features/picking/components/PickingCartDrawer.tsx(326,33): error TS2322: Type '(item: PickingItem, delta: number) => void' is not assignable to type '(item: CartItem, delta: number) => void'.
+  Types of parameters 'item' and 'item' are incompatible.
+    Type 'CartItem' is not assignable to type 'PickingItem'.
+      Types of property 'pickingQty' are incompatible.
+        Type 'number | undefined' is not assignable to type 'number'.
+          Type 'undefined' is not assignable to type 'number'.
+src/features/picking/components/PickingCartDrawer.tsx(327,33): error TS2322: Type '(item: PickingItem) => void' is not assignable to type '(item: CartItem) => void'.
+  Types of parameters 'item' and 'item' are incompatible.
+    Type 'CartItem' is not assignable to type 'PickingItem'.
+      Types of property 'pickingQty' are incompatible.
+        Type 'number | undefined' is not assignable to type 'number'.
+          Type 'undefined' is not assignable to type 'number'.
+src/features/picking/components/PickingSessionView.tsx(16,32): error TS7016: Could not find a declaration file for module '../../../components/ui/SlideToConfirm'. '/Users/rafaellopez/Documents/Antigravity/Roman-app/src/components/ui/SlideToConfirm.jsx' implicitly has an 'any' type.
+src/features/picking/components/PickingSessionView.tsx(384,29): error TS2345: Argument of type 'null' is not assignable to parameter of type '(() => void) | undefined'.
+src/features/picking/components/SessionInitializationModal.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/features/smart-picking/components/SKUEditorModal.tsx(3,31): error TS7016: Could not find a declaration file for module '../../../components/ui/AutocompleteInput'. '/Users/rafaellopez/Documents/Antigravity/Roman-app/src/components/ui/AutocompleteInput.jsx' implicitly has an 'any' type.
+src/features/warehouse-management/components/IntegratedMapManager.tsx(59,37): error TS2322: Type 'OptimizationReport | null' is not assignable to type 'Report | null'.
+  Type 'OptimizationReport' is not assignable to type 'Report'.
+    Types of property 'id' are incompatible.
+      Type 'number | undefined' is not assignable to type 'string'.
+        Type 'undefined' is not assignable to type 'string'.
+src/features/warehouse-management/components/LocationList.tsx(32,32): error TS2345: Argument of type 'string' is not assignable to parameter of type '"LUDLOW" | "ATS"'.
+src/features/warehouse-management/components/WarehouseFilter.tsx(7,40): error TS2339: Property 'warehouses' does not exist on type '{}'.
+src/features/warehouse-management/components/WarehouseFilter.tsx(7,52): error TS2339: Property 'selected' does not exist on type '{}'.
+src/features/warehouse-management/components/WarehouseFilter.tsx(7,62): error TS2339: Property 'onChange' does not exist on type '{}'.
+src/features/warehouse-management/components/WarehouseFilter.tsx(18,24): error TS7006: Parameter 'wh' implicitly has an 'any' type.
+src/features/warehouse-management/components/ZoneManagementPanel.tsx(2,18): error TS6133: 'Info' is declared but its value is never read.
+src/features/warehouse-management/components/ZoneManagementPanel.tsx(3,26): error TS2307: Cannot find module '../../context/ErrorContext' or its corresponding type declarations.
+src/features/warehouse-management/components/ZoneManagementPanel.tsx(7,39): error TS7031: Binding element 'locations' implicitly has an 'any' type.
+src/features/warehouse-management/components/ZoneManagementPanel.tsx(7,50): error TS7031: Binding element 'zones' implicitly has an 'any' type.
+src/features/warehouse-management/components/ZoneManagementPanel.tsx(7,57): error TS7031: Binding element 'getZone' implicitly has an 'any' type.
+src/features/warehouse-management/components/ZoneManagementPanel.tsx(7,66): error TS7031: Binding element 'updateZone' implicitly has an 'any' type.
+src/features/warehouse-management/components/ZoneManagementPanel.tsx(7,78): error TS7031: Binding element 'autoAssignZones' implicitly has an 'any' type.
+src/features/warehouse-management/components/ZoneManagementPanel.tsx(19,31): error TS7006: Parameter 'loc' implicitly has an 'any' type.
+src/features/warehouse-management/components/ZoneManagementPanel.tsx(23,31): error TS7006: Parameter 'loc' implicitly has an 'any' type.
+src/features/warehouse-management/components/ZoneManagementPanel.tsx(42,43): error TS18046: 'err' is of type 'unknown'.
+src/features/warehouse-management/components/ZoneManagementPanel.tsx(102,35): error TS7006: Parameter 'locKey' implicitly has an 'any' type.
+src/features/warehouse-management/components/ZoneManagementPanel.tsx(112,28): error TS7006: Parameter 'newZone' implicitly has an 'any' type.
+src/features/warehouse-management/components/ZoneManagementPanel.tsx(128,24): error TS7031: Binding element 'warehouse' implicitly has an 'any' type.
+src/features/warehouse-management/components/ZoneManagementPanel.tsx(128,35): error TS7031: Binding element 'location' implicitly has an 'any' type.
+src/features/warehouse-management/components/ZoneManagementPanel.tsx(128,45): error TS7031: Binding element 'zone' implicitly has an 'any' type.
+src/features/warehouse-management/components/ZoneManagementPanel.tsx(128,51): error TS7031: Binding element 'onUpdate' implicitly has an 'any' type.
+src/features/warehouse-management/components/ZoneManagementPanel.tsx(129,25): error TS7006: Parameter 'z' implicitly has an 'any' type.
+src/hooks/InventoryProvider.tsx(71,10): error TS6133: 'skuMetadataMap' is declared but its value is never read.
+src/hooks/InventoryProvider.tsx(72,30): error TS6133: 'setReservedQuantities' is declared but its value is never read.
+src/hooks/InventoryProvider.tsx(133,27): error TS6133: 'newLoc' is declared but its value is never read.
+src/hooks/InventoryProvider.tsx(202,19): error TS2345: Argument of type 'string | number' is not assignable to parameter of type 'number'.
+  Type 'string' is not assignable to type 'number'.
+src/hooks/InventoryProvider.tsx(209,11): error TS2322: Type 'null' is not assignable to type 'string | undefined'.
+src/hooks/InventoryProvider.tsx(210,11): error TS2322: Type 'null' is not assignable to type 'string | undefined'.
+src/hooks/InventoryProvider.tsx(352,23): error TS2345: Argument of type 'string | number' is not assignable to parameter of type 'number'.
+  Type 'string' is not assignable to type 'number'.
+src/hooks/picking/usePickingActions.ts(119,31): error TS2322: Type 'number | null' is not assignable to type 'number'.
+  Type 'null' is not assignable to type 'number'.
+src/hooks/picking/usePickingActions.ts(166,13): error TS2322: Type 'CartItem[]' is not assignable to type 'Json | undefined'.
+  Type 'CartItem[]' is not assignable to type 'Json[]'.
+    Type 'CartItem' is not assignable to type 'Json'.
+      Type 'CartItem' is not assignable to type '{ [key: string]: Json | undefined; }'.
+        Index signature for type 'string' is missing in type 'CartItem'.
+src/hooks/picking/usePickingActions.ts(266,11): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: { content: string; created_at?: string | null | undefined; id?: string | undefined; picking_list_id: string; user_id: string; }, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<...>', gave the following error.
+    Object literal may only specify known properties, and 'list_id' does not exist in type '{ content: string; created_at?: string | null | undefined; id?: string | undefined; picking_list_id: string; user_id: string; }'.
+  Overload 2 of 2, '(values: { content: string; created_at?: string | null | undefined; id?: string | undefined; picking_list_id: string; user_id: string; }[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<...>', gave the following error.
+    Object literal may only specify known properties, and 'list_id' does not exist in type '{ content: string; created_at?: string | null | undefined; id?: string | undefined; picking_list_id: string; user_id: string; }[]'.
+src/hooks/picking/usePickingActions.ts(391,29): error TS2322: Type 'number | null' is not assignable to type 'number'.
+  Type 'null' is not assignable to type 'number'.
+src/hooks/picking/usePickingActions.ts(430,10): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: { checked_by?: string | null | undefined; correction_notes?: string | null | undefined; created_at?: string | null | undefined; id?: string | undefined; items?: Json | undefined; order_number?: string | ... 1 more ... | undefined; status?: string | ... 1 more ... | undefined; updated_at?: string | ... 1 more ... | undefined; user_id?: string | ... 1 more ... | undefined; }, options?: { ...; } | undefined): PostgrestFilterBuilder<...>', gave the following error.
+    Type 'CartItem[]' is not assignable to type 'Json | undefined'.
+      Type 'CartItem[]' is not assignable to type 'Json[]'.
+        Type 'CartItem' is not assignable to type 'Json'.
+          Type 'CartItem' is not assignable to type '{ [key: string]: Json | undefined; }'.
+            Index signature for type 'string' is missing in type 'CartItem'.
+  Overload 2 of 2, '(values: { checked_by?: string | null | undefined; correction_notes?: string | null | undefined; created_at?: string | null | undefined; id?: string | undefined; items?: Json | undefined; order_number?: string | ... 1 more ... | undefined; status?: string | ... 1 more ... | undefined; updated_at?: string | ... 1 more ... | undefined; user_id?: string | ... 1 more ... | undefined; }[], options?: { ...; } | undefined): PostgrestFilterBuilder<...>', gave the following error.
+    Object literal may only specify known properties, and 'user_id' does not exist in type '{ checked_by?: string | null | undefined; correction_notes?: string | null | undefined; created_at?: string | null | undefined; id?: string | undefined; items?: Json | undefined; order_number?: string | ... 1 more ... | undefined; status?: string | ... 1 more ... | undefined; updated_at?: string | ... 1 more ... | u...'.
+src/hooks/picking/usePickingNotes.ts(44,16): error TS2345: Argument of type '{ user_display_name: any; content: string; created_at: string | null; id: string; picking_list_id: string; user_id: string; profiles: SelectQueryError<"could not find the relation between picking_list_notes and profiles">; }[]' is not assignable to parameter of type 'SetStateAction<PickingNote[]>'.
+  Type '{ user_display_name: any; content: string; created_at: string | null; id: string; picking_list_id: string; user_id: string; profiles: SelectQueryError<"could not find the relation between picking_list_notes and profiles">; }[]' is not assignable to type 'PickingNote[]'.
+    Type '{ user_display_name: any; content: string; created_at: string | null; id: string; picking_list_id: string; user_id: string; profiles: SelectQueryError<"could not find the relation between picking_list_notes and profiles">; }' is missing the following properties from type 'PickingNote': list_id, message
+src/hooks/picking/usePickingNotes.ts(102,9): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: { content: string; created_at?: string | null | undefined; id?: string | undefined; picking_list_id: string; user_id: string; }, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<...>', gave the following error.
+    Object literal may only specify known properties, and 'list_id' does not exist in type '{ content: string; created_at?: string | null | undefined; id?: string | undefined; picking_list_id: string; user_id: string; }'.
+  Overload 2 of 2, '(values: { content: string; created_at?: string | null | undefined; id?: string | undefined; picking_list_id: string; user_id: string; }[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<...>', gave the following error.
+    Object literal may only specify known properties, and 'list_id' does not exist in type '{ content: string; created_at?: string | null | undefined; id?: string | undefined; picking_list_id: string; user_id: string; }[]'.
+src/hooks/picking/usePickingSync.ts(269,25): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+src/hooks/queries/useInventoryInfinite.ts(38,26): error TS2345: Argument of type 'string | number' is not assignable to parameter of type 'number'.
+  Type 'string' is not assignable to type 'number'.
+src/hooks/queries/useInventoryInfinite.ts(39,22): error TS2345: Argument of type 'string | number' is not assignable to parameter of type 'number'.
+  Type 'string' is not assignable to type 'number'.
+src/hooks/useInventoryLogs.ts(68,34): error TS2352: Conversion of type '{ action_type: string; created_at: string | null; from_location: string | null; from_warehouse: string | null; id: string; is_reversed: boolean | null; item_id: number | null; list_id: string | null; ... 8 more ...; user_id: string | null; }' to type '{ id: string; sku: string; from_warehouse: string | null; from_location: string | null; to_warehouse: string | null; to_location: string | null; quantity: number; prev_quantity: number | null; ... 8 more ...; order_number?: string | ... 1 more ... | undefined; }' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Types of property 'created_at' are incompatible.
+    Type 'string | null' is not comparable to type 'Date'.
+      Type 'string' is not comparable to type 'Date'.
+src/hooks/useInventoryLogs.ts(322,11): error TS2322: Type 'string | null' is not assignable to type 'string'.
+  Type 'null' is not assignable to type 'string'.
+src/hooks/useInventoryLogs.ts(325,11): error TS2322: Type 'string | number | null | undefined' is not assignable to type 'string | number | undefined'.
+  Type 'null' is not assignable to type 'string | number | undefined'.
+src/hooks/useInventoryLogs.ts(343,13): error TS2322: Type 'number | null' is not assignable to type 'number'.
+  Type 'null' is not assignable to type 'number'.
+src/hooks/useInventoryLogs.ts(344,13): error TS2322: Type 'string | null' is not assignable to type '"LUDLOW" | "ATS"'.
+  Type 'null' is not assignable to type '"LUDLOW" | "ATS"'.
+src/hooks/useInventoryLogs.ts(345,13): error TS2322: Type 'string | null' is not assignable to type 'string'.
+  Type 'null' is not assignable to type 'string'.
+src/hooks/useLocationManagement.ts(30,20): error TS2345: Argument of type '{ created_at: string | null; description: string | null; id: string; location: string; max_capacity: number | null; metadata: Json; status: string | null; type: string | null; updated_at: string | null; warehouse: string; zone_id: string | null; }[]' is not assignable to parameter of type 'SetStateAction<{ id: string; location: string; warehouse: "LUDLOW" | "ATS"; zone_type: string | null; max_capacity: number | null; picking_order: number | null; is_active: boolean; created_at: string; length_ft: number | null; bike_line: number | null; }[]>'.
+  Type '{ created_at: string | null; description: string | null; id: string; location: string; max_capacity: number | null; metadata: Json; status: string | null; type: string | null; updated_at: string | null; warehouse: string; zone_id: string | null; }[]' is not assignable to type '{ id: string; location: string; warehouse: "LUDLOW" | "ATS"; zone_type: string | null; max_capacity: number | null; picking_order: number | null; is_active: boolean; created_at: string; length_ft: number | null; bike_line: number | null; }[]'.
+    Type '{ created_at: string | null; description: string | null; id: string; location: string; max_capacity: number | null; metadata: Json; status: string | null; type: string | null; updated_at: string | null; warehouse: string; zone_id: string | null; }' is missing the following properties from type '{ id: string; location: string; warehouse: "LUDLOW" | "ATS"; zone_type: string | null; max_capacity: number | null; picking_order: number | null; is_active: boolean; created_at: string; length_ft: number | null; bike_line: number | null; }': zone_type, picking_order, is_active, length_ft, bike_line
+src/hooks/useLocationManagement.ts(70,19): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(relation: "inventory" | "locations" | "app_users" | "inventory_logs" | "picking_list_notes" | "picking_lists" | "profiles" | "sku_metadata" | "warehouse_zones"): PostgrestQueryBuilder<{ PostgrestVersion: "14.1"; }, { ...; }, { ...; } | ... 7 more ... | { ...; }, "inventory" | ... 7 more ... | "warehouse_zones", []>', gave the following error.
+    Argument of type '"optimization_reports"' is not assignable to parameter of type '"inventory" | "locations" | "app_users" | "inventory_logs" | "picking_list_notes" | "picking_lists" | "profiles" | "sku_metadata" | "warehouse_zones"'.
+  Overload 2 of 2, '(relation: never): PostgrestQueryBuilder<{ PostgrestVersion: "14.1"; }, { Tables: { app_users: { Row: { age: number | null; created_at: string | null; email: string; full_name: string; id: string; role: string | null; }; Insert: { ...; }; Update: { ...; }; Relationships: []; }; ... 7 more ...; warehouse_zones: { ...; }; }; Views: {}; Functions: {}; Enums: {}; CompositeTypes: {}; }, never, never, never>', gave the following error.
+    Argument of type '"optimization_reports"' is not assignable to parameter of type 'never'.
+src/hooks/useLocationManagement.ts(79,28): error TS2352: Conversion of type '{ created_at: string | null; description: string | null; id: string; location: string; max_capacity: number | null; metadata: Json; status: string | null; type: string | null; updated_at: string | null; warehouse: string; zone_id: string | null; }' to type '{ id: string; location: string; warehouse: "LUDLOW" | "ATS"; zone_type: string | null; max_capacity: number | null; picking_order: number | null; is_active: boolean; created_at: string; length_ft: number | null; bike_line: number | null; }' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type '{ created_at: string | null; description: string | null; id: string; location: string; max_capacity: number | null; metadata: Json; status: string | null; type: string | null; updated_at: string | null; warehouse: string; zone_id: string | null; }' is missing the following properties from type '{ id: string; location: string; warehouse: "LUDLOW" | "ATS"; zone_type: string | null; max_capacity: number | null; picking_order: number | null; is_active: boolean; created_at: string; length_ft: number | null; bike_line: number | null; }': zone_type, picking_order, is_active, length_ft, bike_line
+src/hooks/useLocationManagement.ts(110,24): error TS2352: Conversion of type '{ created_at: string | null; description: string | null; id: string; location: string; max_capacity: number | null; metadata: Json; status: string | null; type: string | null; updated_at: string | null; warehouse: string; zone_id: string | null; }' to type '{ id: string; location: string; warehouse: "LUDLOW" | "ATS"; zone_type: string | null; max_capacity: number | null; picking_order: number | null; is_active: boolean; created_at: string; length_ft: number | null; bike_line: number | null; }' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type '{ created_at: string | null; description: string | null; id: string; location: string; max_capacity: number | null; metadata: Json; status: string | null; type: string | null; updated_at: string | null; warehouse: string; zone_id: string | null; }' is missing the following properties from type '{ id: string; location: string; warehouse: "LUDLOW" | "ATS"; zone_type: string | null; max_capacity: number | null; picking_order: number | null; is_active: boolean; created_at: string; length_ft: number | null; bike_line: number | null; }': zone_type, picking_order, is_active, length_ft, bike_line
+src/hooks/useLocationManagement.ts(127,21): error TS2353: Object literal may only specify known properties, and 'is_active' does not exist in type '{ created_at?: string | null | undefined; description?: string | null | undefined; id?: string | undefined; location?: string | undefined; max_capacity?: number | null | undefined; ... 5 more ...; zone_id?: string | ... 1 more ... | undefined; }'.
+src/hooks/useOptimizationReports.ts(69,27): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(relation: "inventory" | "locations" | "app_users" | "inventory_logs" | "picking_list_notes" | "picking_lists" | "profiles" | "sku_metadata" | "warehouse_zones"): PostgrestQueryBuilder<{ PostgrestVersion: "14.1"; }, { ...; }, { ...; } | ... 7 more ... | { ...; }, "inventory" | ... 7 more ... | "warehouse_zones", []>', gave the following error.
+    Argument of type '"optimization_reports"' is not assignable to parameter of type '"inventory" | "locations" | "app_users" | "inventory_logs" | "picking_list_notes" | "picking_lists" | "profiles" | "sku_metadata" | "warehouse_zones"'.
+  Overload 2 of 2, '(relation: never): PostgrestQueryBuilder<{ PostgrestVersion: "14.1"; }, { Tables: { app_users: { Row: { age: number | null; created_at: string | null; email: string; full_name: string; id: string; role: string | null; }; Insert: { ...; }; Update: { ...; }; Relationships: []; }; ... 7 more ...; warehouse_zones: { ...; }; }; Views: {}; Functions: {}; Enums: {}; CompositeTypes: {}; }, never, never, never>', gave the following error.
+    Argument of type '"optimization_reports"' is not assignable to parameter of type 'never'.
+src/hooks/useOptimizationReports.ts(76,32): error TS2352: Conversion of type '({ action_type: string; created_at: string | null; from_location: string | null; from_warehouse: string | null; id: string; is_reversed: boolean | null; item_id: number | null; list_id: string | null; ... 8 more ...; user_id: string | null; } | ... 7 more ... | { ...; })[]' to type 'OptimizationReport[]' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type '{ action_type: string; created_at: string | null; from_location: string | null; from_warehouse: string | null; id: string; is_reversed: boolean | null; item_id: number | null; list_id: string | null; ... 8 more ...; user_id: string | null; } | ... 7 more ... | { ...; }' is not comparable to type 'OptimizationReport'.
+    Type '{ age: number | null; avatar_url: string | null; email: string; full_name: string; id: string; role: string | null; }' is missing the following properties from type 'OptimizationReport': report_date, report_type, suggestions, total_suggestions
+src/hooks/useOptimizationReports.ts(77,34): error TS2352: Conversion of type '{ action_type: string; created_at: string | null; from_location: string | null; from_warehouse: string | null; id: string; is_reversed: boolean | null; item_id: number | null; list_id: string | null; ... 8 more ...; user_id: string | null; } | ... 7 more ... | { ...; }' to type 'OptimizationReport' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type '{ age: number | null; avatar_url: string | null; email: string; full_name: string; id: string; role: string | null; }' is missing the following properties from type 'OptimizationReport': report_date, report_type, suggestions, total_suggestions
+src/hooks/useOptimizationReports.ts(207,27): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(relation: "inventory" | "locations" | "app_users" | "inventory_logs" | "picking_list_notes" | "picking_lists" | "profiles" | "sku_metadata" | "warehouse_zones"): PostgrestQueryBuilder<{ PostgrestVersion: "14.1"; }, { ...; }, { ...; } | ... 7 more ... | { ...; }, "inventory" | ... 7 more ... | "warehouse_zones", []>', gave the following error.
+    Argument of type '"optimization_reports"' is not assignable to parameter of type '"inventory" | "locations" | "app_users" | "inventory_logs" | "picking_list_notes" | "picking_lists" | "profiles" | "sku_metadata" | "warehouse_zones"'.
+  Overload 2 of 2, '(relation: never): PostgrestQueryBuilder<{ PostgrestVersion: "14.1"; }, { Tables: { app_users: { Row: { age: number | null; created_at: string | null; email: string; full_name: string; id: string; role: string | null; }; Insert: { ...; }; Update: { ...; }; Relationships: []; }; ... 7 more ...; warehouse_zones: { ...; }; }; Views: {}; Functions: {}; Enums: {}; CompositeTypes: {}; }, never, never, never>', gave the following error.
+    Argument of type '"optimization_reports"' is not assignable to parameter of type 'never'.
+src/hooks/useOptimizationReports.ts(211,29): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: { age?: number | null | undefined; created_at?: string | null | undefined; email: string; full_name: string; id?: string | undefined; role?: string | null | undefined; } | { capacity?: number | ... 1 more ... | undefined; ... 8 more ...; Warehouse?: string | ... 1 more ... | undefined; } | ... 6 more ... | { ...; }, options?: { ...; } | undefined): PostgrestFilterBuilder<...>', gave the following error.
+    Object literal may only specify known properties, and 'report_date' does not exist in type '{ age?: number | null | undefined; created_at?: string | null | undefined; email: string; full_name: string; id?: string | undefined; role?: string | null | undefined; } | { capacity?: number | null | undefined; ... 8 more ...; Warehouse?: string | ... 1 more ... | undefined; } | ... 6 more ... | { ...; }'.
+  Overload 2 of 2, '(values: ({ age?: number | null | undefined; created_at?: string | null | undefined; email: string; full_name: string; id?: string | undefined; role?: string | null | undefined; } | { capacity?: number | ... 1 more ... | undefined; ... 8 more ...; Warehouse?: string | ... 1 more ... | undefined; } | ... 6 more ... | { ...; })[], options?: { ...; } | undefined): PostgrestFilterBuilder<...>', gave the following error.
+    Object literal may only specify known properties, and 'report_date' does not exist in type '({ age?: number | null | undefined; created_at?: string | null | undefined; email: string; full_name: string; id?: string | undefined; role?: string | null | undefined; } | { capacity?: number | null | undefined; ... 8 more ...; Warehouse?: string | ... 1 more ... | undefined; } | ... 6 more ... | { ...; })[]'.
+src/hooks/useOptimizationReports.ts(221,33): error TS2352: Conversion of type '{ action_type: string; created_at: string | null; from_location: string | null; from_warehouse: string | null; id: string; is_reversed: boolean | null; item_id: number | null; list_id: string | null; ... 8 more ...; user_id: string | null; } | ... 7 more ... | { ...; }' to type 'OptimizationReport' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type '{ age: number | null; avatar_url: string | null; email: string; full_name: string; id: string; role: string | null; }' is missing the following properties from type 'OptimizationReport': report_date, report_type, suggestions, total_suggestions
+src/hooks/useWarehouseZones.ts(48,47): error TS2339: Property 'location' does not exist on type '{ color: string | null; created_at: string | null; description: string | null; id: string; name: string; updated_at: string | null; warehouse: string; }'.
+src/hooks/useWarehouseZones.ts(51,23): error TS2339: Property 'zone' does not exist on type '{ color: string | null; created_at: string | null; description: string | null; id: string; name: string; updated_at: string | null; warehouse: string; }'.
+src/hooks/useWarehouseZones.ts(52,31): error TS2339: Property 'picking_order' does not exist on type '{ color: string | null; created_at: string | null; description: string | null; id: string; name: string; updated_at: string | null; warehouse: string; }'.
+src/hooks/useWarehouseZones.ts(53,33): error TS2339: Property 'is_shipping_area' does not exist on type '{ color: string | null; created_at: string | null; description: string | null; id: string; name: string; updated_at: string | null; warehouse: string; }'.
+src/hooks/useWarehouseZones.ts(54,24): error TS2339: Property 'notes' does not exist on type '{ color: string | null; created_at: string | null; description: string | null; id: string; name: string; updated_at: string | null; warehouse: string; }'.
+src/hooks/useWarehouseZones.ts(201,17): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: { color?: string | null | undefined; created_at?: string | null | undefined; description?: string | null | undefined; id?: string | undefined; name: string; updated_at?: string | null | undefined; warehouse: string; }, options?: { ...; } | undefined): PostgrestFilterBuilder<...>', gave the following error.
+    Argument of type '{ warehouse: "LUDLOW" | "ATS"; location: string; zone: "UNASSIGNED" | "HOT" | "WARM" | "COLD"; picking_order: number; }[]' is not assignable to parameter of type '{ color?: string | null | undefined; created_at?: string | null | undefined; description?: string | null | undefined; id?: string | undefined; name: string; updated_at?: string | null | undefined; warehouse: string; }'.
+      Type '{ warehouse: "LUDLOW" | "ATS"; location: string; zone: "UNASSIGNED" | "HOT" | "WARM" | "COLD"; picking_order: number; }[]' is missing the following properties from type '{ color?: string | null | undefined; created_at?: string | null | undefined; description?: string | null | undefined; id?: string | undefined; name: string; updated_at?: string | null | undefined; warehouse: string; }': name, warehouse
+  Overload 2 of 2, '(values: { color?: string | null | undefined; created_at?: string | null | undefined; description?: string | null | undefined; id?: string | undefined; name: string; updated_at?: string | null | undefined; warehouse: string; }[], options?: { ...; } | undefined): PostgrestFilterBuilder<...>', gave the following error.
+    Argument of type '{ warehouse: "LUDLOW" | "ATS"; location: string; zone: "UNASSIGNED" | "HOT" | "WARM" | "COLD"; picking_order: number; }[]' is not assignable to parameter of type '{ color?: string | null | undefined; created_at?: string | null | undefined; description?: string | null | undefined; id?: string | undefined; name: string; updated_at?: string | null | undefined; warehouse: string; }[]'.
+      Property 'name' is missing in type '{ warehouse: "LUDLOW" | "ATS"; location: string; zone: "UNASSIGNED" | "HOT" | "WARM" | "COLD"; picking_order: number; }' but required in type '{ color?: string | null | undefined; created_at?: string | null | undefined; description?: string | null | undefined; id?: string | undefined; name: string; updated_at?: string | null | undefined; warehouse: string; }'.
+src/integrations/supabase/types.ts(352,14): error TS2536: Type '"Tables"' cannot be used to index type 'Database[PublicTableNameOrOptions["schema"]]'.
+src/integrations/supabase/types.ts(353,9): error TS2536: Type '"Views"' cannot be used to index type 'Database[PublicTableNameOrOptions["schema"]]'.
+src/integrations/supabase/types.ts(356,8): error TS2536: Type '"Tables"' cannot be used to index type 'Database[PublicTableNameOrOptions["schema"]]'.
+src/integrations/supabase/types.ts(357,9): error TS2536: Type '"Views"' cannot be used to index type 'Database[PublicTableNameOrOptions["schema"]]'.
+src/integrations/supabase/types.ts(373,13): error TS2536: Type '"Tables"' cannot be used to index type 'Database[PublicTableNameOrOptions["schema"]]'.
+src/integrations/supabase/types.ts(376,7): error TS2536: Type '"Tables"' cannot be used to index type 'Database[PublicTableNameOrOptions["schema"]]'.
+src/integrations/supabase/types.ts(392,13): error TS2536: Type '"Tables"' cannot be used to index type 'Database[PublicTableNameOrOptions["schema"]]'.
+src/integrations/supabase/types.ts(395,7): error TS2536: Type '"Tables"' cannot be used to index type 'Database[PublicTableNameOrOptions["schema"]]'.
+src/integrations/supabase/types.ts(411,13): error TS2536: Type '"Enums"' cannot be used to index type 'Database[PublicEnumNameOrOptions["schema"]]'.
+src/integrations/supabase/types.ts(414,7): error TS2536: Type '"Enums"' cannot be used to index type 'Database[PublicEnumNameOrOptions["schema"]]'.
+src/screens/HistoryScreen.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/screens/HistoryScreen.tsx(31,23): error TS6133: 'performUndo' is declared but its value is never read.
+src/screens/HistoryScreen.tsx(35,22): error TS6133: 'fetchLogsHook' is declared but its value is never read.
+src/screens/InventoryScreen.tsx(4,29): error TS7016: Could not find a declaration file for module '../components/ui/SearchInput'. '/Users/rafaellopez/Documents/Antigravity/Roman-app/src/components/ui/SearchInput.jsx' implicitly has an 'any' type.
+src/screens/InventoryScreen.tsx(13,29): error TS7016: Could not find a declaration file for module '../components/ui/CapacityBar'. '/Users/rafaellopez/Documents/Antigravity/Roman-app/src/components/ui/CapacityBar.jsx' implicitly has an 'any' type.
+src/screens/InventoryScreen.tsx(23,10): error TS6133: 'InventoryItem' is declared but its value is never read.
+src/screens/InventoryScreen.tsx(239,12): error TS7006: Parameter 'moveData' implicitly has an 'any' type.
+src/screens/InventoryScreen.tsx(250,34): error TS18046: 'err' is of type 'unknown'.
+src/screens/InventoryScreen.tsx(256,40): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/screens/InventoryScreen.tsx(262,6): error TS7006: Parameter 'warehouse' implicitly has an 'any' type.
+src/screens/InventoryScreen.tsx(262,17): error TS7006: Parameter 'locationName' implicitly has an 'any' type.
+src/screens/InventoryScreen.tsx(262,31): error TS7006: Parameter 'locationId' implicitly has an 'any' type.
+src/screens/InventoryScreen.tsx(291,12): error TS7006: Parameter 'formData' implicitly has an 'any' type.
+src/screens/InventoryScreen.tsx(311,12): error TS7006: Parameter 'id' implicitly has an 'any' type.
+src/screens/InventoryScreen.tsx(339,11): error TS2345: Argument of type 'null' is not assignable to parameter of type '(() => void) | undefined'.
+src/screens/InventoryScreen.tsx(357,6): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/screens/InventoryScreen.tsx(367,31): error TS7006: Parameter 'scannedLines' implicitly has an 'any' type.
+src/screens/InventoryScreen.tsx(368,40): error TS7006: Parameter 'line' implicitly has an 'any' type.
+src/screens/InventoryScreen.tsx(491,25): error TS2322: Type '"stock" | "picking" | "double_checking" | "building"' is not assignable to type '"stock" | "picking" | "building" | undefined'.
+  Type '"double_checking"' is not assignable to type '"stock" | "picking" | "building" | undefined'.
+src/screens/InventoryScreen.tsx(538,11): error TS2322: Type 'CartItem[]' is not assignable to type 'PickingItem[]'.
+  Type 'CartItem' is not assignable to type 'PickingItem'.
+    Types of property 'Location' are incompatible.
+      Type 'string | null' is not assignable to type 'string'.
+        Type 'null' is not assignable to type 'string'.
+src/screens/InventoryScreen.tsx(539,11): error TS2322: Type 'string | null' is not assignable to type 'string | undefined'.
+  Type 'null' is not assignable to type 'string | undefined'.
+src/screens/InventoryScreen.tsx(540,11): error TS2322: Type 'string | null' is not assignable to type 'string | undefined'.
+  Type 'null' is not assignable to type 'string | undefined'.
+src/screens/InventoryScreen.tsx(542,11): error TS2322: Type 'string | null' is not assignable to type 'string | undefined'.
+  Type 'null' is not assignable to type 'string | undefined'.
+src/screens/InventoryScreen.tsx(543,11): error TS2322: Type 'string | number | null' is not assignable to type 'string | null | undefined'.
+  Type 'number' is not assignable to type 'string'.
+src/screens/InventoryScreen.tsx(551,11): error TS2322: Type 'PickingNote[]' is not assignable to type 'Note[]'.
+  Type 'PickingNote' is not assignable to type 'Note'.
+    Types of property 'user_display_name' are incompatible.
+      Type 'string | undefined' is not assignable to type 'string'.
+        Type 'undefined' is not assignable to type 'string'.
+src/screens/InventoryScreen.tsx(555,11): error TS2322: Type 'string | null' is not assignable to type 'string | undefined'.
+  Type 'null' is not assignable to type 'string | undefined'.
+src/screens/InventoryScreen.tsx(560,11): error TS2322: Type '(id: string | null, keepLocalState?: boolean | undefined) => Promise<void>' is not assignable to type '(id?: string | undefined) => void'.
+  Types of parameters 'id' and 'id' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string | null'.
+      Type 'undefined' is not assignable to type 'string | null'.
+src/screens/InventoryScreen.tsx(584,21): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string | undefined'.
+  Type 'null' is not assignable to type 'string | undefined'.
+src/screens/InventoryScreen.tsx(608,9): error TS2322: Type '{ id: string | number; SKU: string; Quantity: number; Location: string | null; Warehouse: "LUDLOW" | "ATS"; created_at: Date; location_id?: string | null | undefined; sku_note?: string | ... 1 more ... | undefined; Status?: string | ... 1 more ... | undefined; Capacity?: number | ... 1 more ... | undefined; sku_meta...' is not assignable to type '({ id: string | number; SKU: string; Quantity: number; Location: string | null; Warehouse: "LUDLOW" | "ATS"; created_at: Date; location_id?: string | null | undefined; sku_note?: string | ... 1 more ... | undefined; Status?: string | ... 1 more ... | undefined; Capacity?: number | ... 1 more ... | undefined; } & { ....'.
+  Type 'null' is not assignable to type '({ id: string | number; SKU: string; Quantity: number; Location: string | null; Warehouse: "LUDLOW" | "ATS"; created_at: Date; location_id?: string | null | undefined; sku_note?: string | ... 1 more ... | undefined; Status?: string | ... 1 more ... | undefined; Capacity?: number | ... 1 more ... | undefined; } & { ....'.
+src/screens/InventoryScreen.tsx(620,9): error TS2322: Type '{ id: string | number; SKU: string; Quantity: number; Location: string | null; Warehouse: "LUDLOW" | "ATS"; created_at: Date; location_id?: string | null | undefined; sku_note?: string | ... 1 more ... | undefined; Status?: string | ... 1 more ... | undefined; Capacity?: number | ... 1 more ... | undefined; sku_meta...' is not assignable to type '{ id: string | number; SKU: string; Quantity: number; Location: string | null; Warehouse: "LUDLOW" | "ATS"; created_at: Date; location_id?: string | null | undefined; sku_note?: string | ... 1 more ... | undefined; Status?: string | ... 1 more ... | undefined; Capacity?: number | ... 1 more ... | undefined; } | unde...'.
+  Type 'null' is not assignable to type '{ id: string | number; SKU: string; Quantity: number; Location: string | null; Warehouse: "LUDLOW" | "ATS"; created_at: Date; location_id?: string | null | undefined; sku_note?: string | ... 1 more ... | undefined; Status?: string | ... 1 more ... | undefined; Capacity?: number | ... 1 more ... | undefined; } | unde...'.
+src/services/inventoryApi.ts(80,8): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: { created_at?: string | null | undefined; id?: string | undefined; image_url?: string | null | undefined; name: string; sku: string; updated_at?: string | null | undefined; }, options?: { ...; } | undefined): PostgrestFilterBuilder<...>', gave the following error.
+    Argument of type '{ sku: string; image_url?: string | null | undefined; name?: string | null | undefined; length_ft?: number | null | undefined; width_in?: number | null | undefined; }[]' is not assignable to parameter of type '{ created_at?: string | null | undefined; id?: string | undefined; image_url?: string | null | undefined; name: string; sku: string; updated_at?: string | null | undefined; }'.
+      Type '{ sku: string; image_url?: string | null | undefined; name?: string | null | undefined; length_ft?: number | null | undefined; width_in?: number | null | undefined; }[]' is missing the following properties from type '{ created_at?: string | null | undefined; id?: string | undefined; image_url?: string | null | undefined; name: string; sku: string; updated_at?: string | null | undefined; }': name, sku
+  Overload 2 of 2, '(values: { created_at?: string | null | undefined; id?: string | undefined; image_url?: string | null | undefined; name: string; sku: string; updated_at?: string | null | undefined; }[], options?: { ...; } | undefined): PostgrestFilterBuilder<...>', gave the following error.
+    Type '{ sku: string; image_url?: string | null | undefined; name?: string | null | undefined; length_ft?: number | null | undefined; width_in?: number | null | undefined; }' is not assignable to type '{ created_at?: string | null | undefined; id?: string | undefined; image_url?: string | null | undefined; name: string; sku: string; updated_at?: string | null | undefined; }'.
+      Types of property 'name' are incompatible.
+        Type 'string | null | undefined' is not assignable to type 'string'.
+          Type 'undefined' is not assignable to type 'string'.
+src/utils/locationUtils.ts(38,35): error TS2352: Conversion of type '{ created_at: string | null; description: string | null; id: string; location: string; max_capacity: number | null; metadata: Json; status: string | null; type: string | null; updated_at: string | null; warehouse: string; zone_id: string | null; }' to type '{ id: string; location: string; warehouse: "LUDLOW" | "ATS"; zone_type: string | null; max_capacity: number | null; picking_order: number | null; is_active: boolean; created_at: string; length_ft: number | null; bike_line: number | null; }' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type '{ created_at: string | null; description: string | null; id: string; location: string; max_capacity: number | null; metadata: Json; status: string | null; type: string | null; updated_at: string | null; warehouse: string; zone_id: string | null; }' is missing the following properties from type '{ id: string; location: string; warehouse: "LUDLOW" | "ATS"; zone_type: string | null; max_capacity: number | null; picking_order: number | null; is_active: boolean; created_at: string; length_ft: number | null; bike_line: number | null; }': zone_type, picking_order, is_active, length_ft, bike_line

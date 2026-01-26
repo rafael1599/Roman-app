@@ -71,7 +71,7 @@ const PickingContext = createContext<PickingContextType | undefined>(undefined);
 
 export const PickingProvider = ({ children }: { children: ReactNode }) => {
   // 1. External dependencies
-  const { user, isDemoMode } = useAuth();
+  const { user } = useAuth();
   const { reservedQuantities } = useInventory();
   const { showError } = useError();
 
@@ -142,7 +142,6 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
 
   const { isLoaded, isSaving, lastSaved, loadExternalList } = usePickingSync({
     user,
-    isDemoMode,
     sessionMode,
     cartItems,
     orderNumber,
@@ -175,7 +174,6 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
     generatePickingPath,
   } = usePickingActions({
     user,
-    isDemoMode,
     activeListId,
     cartItems,
     orderNumber,

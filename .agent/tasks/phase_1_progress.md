@@ -34,7 +34,7 @@ Phase 1 has been successfully implemented, establishing a robust foundation with
 
 Now that the data layer is secure, we can proceed to decouple the business logic:
 
-1. **Decouple `useInventoryData.jsx`:** Move the core logic (Move, Update, Delete) from the heavy hook to independent services using the new `inventoryApi.ts`.
+1. **Decouple `useInventoryData.tsx`:** Move the core logic (Move, Update, Delete) from the heavy hook to independent services using the new `inventoryApi.ts`.
 2. **Context Simplification:** Reduce the complexity of the `InventoryProvider` by offloading logic to services.
 3. **Unit Testing:** Start adding tests for the new `inventoryApi.ts` and `validate.ts` utilities.
 
@@ -42,7 +42,7 @@ Now that the data layer is secure, we can proceed to decouple the business logic
 
 ### **Decision Required**
 
-- Should we begin migrating `useInventoryData.jsx` to TypeScript now? It's the largest file (700+ lines) and would benefit greatly from the new API layer.
+- Should we begin migrating `useInventoryData.tsx` to TypeScript now? It's the largest file (700+ lines) and would benefit greatly from the new API layer.
 - Would you like to keep the `.deprecated` files for a few more days, or should we clean them up now?
 
 ### Hallazgo 2: Necesidad de `.coerce`
@@ -103,7 +103,7 @@ Antes de continuar con la Fase 1, necesito tu input en:
 
 1.  **Naming Conventions**: ¿Confirmamos usar `PascalCase` para tipos y `camelCase` para variables/funciones?
 2.  **Error Boundaries**: Cuando Zod detecta un error, ¿qué UX queremos? (Toast, Modal, Silent log?)
-3.  **Deprecation Strategy**: Al migrar `.jsx` → `.tsx`, ¿borramos el viejo o lo mantenemos con `@deprecated`?
+3.  **Deprecation Strategy**: Al migrar `.tsx` → `.tsx`, ¿borramos el viejo o lo mantenemos con `@deprecated`?
 
 ---
 

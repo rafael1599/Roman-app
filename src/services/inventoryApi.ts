@@ -101,7 +101,7 @@ export const inventoryApi = {
   async updateQuantity(id: string | number, quantity: number): Promise<InventoryItem> {
     const { data, error } = await supabase
       .from('inventory')
-      .update({ Quantity: quantity })
+      .update({ quantity: quantity })
       .eq('id', id as any)
       .select()
       .single();
@@ -118,7 +118,7 @@ export const inventoryApi = {
 
     const { data, error } = await supabase
       .from('inventory')
-      .upsert([validated], { onConflict: 'SKU,Warehouse,Location' })
+      .upsert([validated], { onConflict: 'sku,warehouse,location' })
       .select()
       .single();
 
@@ -154,9 +154,9 @@ export const inventoryApi = {
     const { data, error } = await supabase
       .from('inventory')
       .select('*')
-      .eq('SKU', sku)
-      .eq('Warehouse', warehouse)
-      .eq('Location', location)
+      .eq('sku', sku)
+      .eq('warehouse', warehouse)
+      .eq('location', location)
       .maybeSingle();
 
     if (error) throw error;

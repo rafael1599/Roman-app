@@ -84,17 +84,18 @@ If you scanned the wrong order:
 ```
 src/
 ├── services/
-│   └── gemini.js                 # Gemini API integration
+│   └── aiScanner.ts              # Multi-provider AI integration
 ├── features/smart-picking/
 │   ├── components/
-│   │   ├── MapBuilder.jsx        # Warehouse map editor
-│   │   ├── CamScanner.jsx        # Order scanning component
-│   │   └── PalletVerification.jsx # Pallet verification component
-│   └── hooks/
-│       └── useOrderProcessing.js # Order processing logic
+│   │   ├── MapBuilder.tsx        # Warehouse map editor (TSX)
+│   │   ├── CamScanner.tsx        # Order extraction UI (TSX)
+│   │   └── PalletVerification.tsx # AI validation UI (TSX)
+│   ├── hooks/
+│   │   └── useOrderProcessing.ts # Core business logic (TS)
+│   └── types.ts                  # Shared interfaces
 └── screens/
-    ├── SmartPicking.jsx          # Main picking screen
-    └── Settings.jsx              # Configuration screen
+    ├── InventoryScreen.tsx       # Unified Inventory/Picking view
+    └── Settings.tsx              # AI & Map Configuration
 ```
 
 ### Key Components
@@ -112,7 +113,7 @@ src/
 - **deductInventory()**: Updates inventory in real-time
 - **rollbackOrder()**: Restores inventory if needed
 
-#### 3. Map Builder (`MapBuilder.jsx`)
+#### 3. Map Builder (`MapBuilder.tsx`)
 
 - Drag-and-drop interface for organizing locations
 - Saves configuration to localStorage

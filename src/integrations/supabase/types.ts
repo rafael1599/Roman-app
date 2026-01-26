@@ -46,37 +46,37 @@ export type Database = {
                     capacity: number | null
                     created_at: string | null
                     id: number
-                    Location: string | null
-                    Location_Detail: string | null
+                    location: string | null
+                    location_detail: string | null
                     location_id: string | null
-                    Quantity: number | null
-                    SKU: string
-                    Status: string | null
-                    Warehouse: string | null
+                    quantity: number | null
+                    sku: string
+                    status: string | null
+                    warehouse: string | null
                 }
                 Insert: {
                     capacity?: number | null
                     created_at?: string | null
                     id?: never
-                    Location?: string | null
-                    Location_Detail?: string | null
+                    location?: string | null
+                    location_detail?: string | null
                     location_id?: string | null
-                    Quantity?: number | null
-                    SKU: string
-                    Status?: string | null
-                    Warehouse?: string | null
+                    quantity?: number | null
+                    sku: string
+                    status?: string | null
+                    warehouse?: string | null
                 }
                 Update: {
                     capacity?: number | null
                     created_at?: string | null
                     id?: never
-                    Location?: string | null
-                    Location_Detail?: string | null
+                    location?: string | null
+                    location_detail?: string | null
                     location_id?: string | null
-                    Quantity?: number | null
-                    SKU?: string
-                    Status?: string | null
-                    Warehouse?: string | null
+                    quantity?: number | null
+                    sku?: string
+                    status?: string | null
+                    warehouse?: string | null
                 }
                 Relationships: []
             }
@@ -94,7 +94,7 @@ export type Database = {
                     order_number: string | null
                     performed_by: string | null
                     prev_quantity: number | null
-                    quantity: number
+                    quantity_change: number
                     sku: string
                     to_location: string | null
                     to_warehouse: string | null
@@ -113,7 +113,7 @@ export type Database = {
                     order_number?: string | null
                     performed_by?: string | null
                     prev_quantity?: number | null
-                    quantity: number
+                    quantity_change: number
                     sku: string
                     to_location?: string | null
                     to_warehouse?: string | null
@@ -132,7 +132,7 @@ export type Database = {
                     order_number?: string | null
                     performed_by?: string | null
                     prev_quantity?: number | null
-                    quantity?: number
+                    quantity_change?: number
                     sku?: string
                     to_location?: string | null
                     to_warehouse?: string | null
@@ -274,25 +274,31 @@ export type Database = {
                     created_at: string | null
                     id: string
                     image_url: string | null
-                    name: string
+                    name: string | null
                     sku: string
                     updated_at: string | null
+                    length_ft: number | null
+                    width_in: number | null
                 }
                 Insert: {
                     created_at?: string | null
                     id?: string
                     image_url?: string | null
-                    name: string
+                    name?: string | null
                     sku: string
                     updated_at?: string | null
+                    length_ft?: number | null
+                    width_in?: number | null
                 }
                 Update: {
                     created_at?: string | null
                     id?: string
                     image_url?: string | null
-                    name?: string
+                    name?: string | null
                     sku?: string
                     updated_at?: string | null
+                    length_ft?: number | null
+                    width_in?: number | null
                 }
                 Relationships: []
             }
@@ -302,27 +308,42 @@ export type Database = {
                     created_at: string | null
                     description: string | null
                     id: string
-                    name: string
+                    name: string | null
                     updated_at: string | null
                     warehouse: string
+                    location: string
+                    zone: string
+                    picking_order: number | null
+                    is_shipping_area: boolean | null
+                    notes: string | null
                 }
                 Insert: {
                     color?: string | null
                     created_at?: string | null
                     description?: string | null
                     id?: string
-                    name: string
+                    name?: string | null
                     updated_at?: string | null
                     warehouse: string
+                    location: string
+                    zone: string
+                    picking_order?: number | null
+                    is_shipping_area?: boolean | null
+                    notes?: string | null
                 }
                 Update: {
                     color?: string | null
                     created_at?: string | null
                     description?: string | null
                     id?: string
-                    name?: string
+                    name?: string | null
                     updated_at?: string | null
                     warehouse?: string
+                    location?: string
+                    zone?: string
+                    picking_order?: number | null
+                    is_shipping_area?: boolean | null
+                    notes?: string | null
                 }
                 Relationships: []
             }

@@ -90,11 +90,11 @@ The system handles these scenarios gracefully:
 
 ## Files Modified
 
-- `src/services/aiScanner.js` - New service with fallback logic
-- `src/features/smart-picking/components/CamScanner.jsx` - Updated to use new service
-- `src/features/smart-picking/components/PalletVerification.jsx` - Updated to use new service
+- `src/services/aiScanner.ts` - Core service with multi-provider fallback logic
+- `src/features/smart-picking/components/CamScanner.tsx` - Smart extraction UI (TypeScript)
+- `src/features/smart-picking/components/PalletVerification.tsx` - Pallet validation UI (TypeScript)
 - `.env.example` - Template for environment variables
 
-## Original Service
+## Implementation Details
 
-The original `src/services/gemini.js` file is kept for reference but is no longer used.
+The system is now fully typed with TypeScript. The `aiScanner.ts` service uses the official Google Generative AI SDK and OpenAI SDK to provide a resilient scanning experience.

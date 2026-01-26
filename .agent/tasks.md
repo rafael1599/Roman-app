@@ -15,9 +15,9 @@
 - [x] **DB Update**: Crear tabla `picking_list_notes`.
 - [x] **Data Hook**: Crear `src/hooks/picking/usePickingNotes.ts`.
 - [x] **Context Sync**: Integrar notas en `PickingProvider.tsx`.
-- [x] **DoubleCheck UI**: Migrar input de notas de `DoubleCheckView.jsx` a la nueva tabla.
-- [x] **Picker UI**: Mostrar banner persistente de notas en `PickingSessionView.jsx`.
-- [x] **Timeline**: Crear `CorrectionNotesTimeline.jsx` para visualización clara.
+- [x] **DoubleCheck UI**: Migrar input de notas de `DoubleCheckView.tsx` a la nueva tabla.
+- [x] **Picker UI**: Mostrar banner persistente de notas en `PickingSessionView.tsx`.
+- [x] **Timeline**: Crear `CorrectionNotesTimeline.tsx` para visualización clara.
 
 ---
 

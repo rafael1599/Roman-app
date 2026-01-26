@@ -5,7 +5,6 @@ import type { CartItem } from './usePickingCart';
 
 interface UsePickingActionsProps {
   user: any;
-  isDemoMode: boolean;
   activeListId: string | null;
   cartItems: CartItem[];
   orderNumber: string | null;
@@ -24,7 +23,6 @@ interface UsePickingActionsProps {
 
 export const usePickingActions = ({
   user,
-  isDemoMode,
   activeListId,
   cartItems,
   orderNumber,
@@ -42,18 +40,13 @@ export const usePickingActions = ({
   const completeList = useCallback(
     async (listIdOverride?: string) => {
       const targetId = listIdOverride || activeListId;
-      if (isDemoMode) {
-        setCartItems([]);
-        setActiveListId(null);
-        localStorage.removeItem('picking_cart_items');
-        return;
-      }
+
       if (!targetId || !user) return;
       setIsSaving(true);
       try {
         const { error } = await supabase
           .from('picking_lists')
-          .update({ status: 'completed' })
+          .update({ status: 'completed' } as any)
           .eq('id', targetId);
 
         if (error) throw error;
@@ -67,12 +60,12 @@ export const usePickingActions = ({
         setIsSaving(false);
       }
     },
-    [activeListId, user, isDemoMode]
+    [activeListId, user, resetSession, setIsSaving]
   );
 
   const markAsReady = useCallback(
     async (items?: CartItem[], orderNum?: string) => {
-      if (!activeListId || isDemoMode || !user) return null;
+      if (!activeListId || !user) return null;
 
       const finalItems = items || cartItems;
       const finalOrderNum = orderNum || orderNumber;
@@ -90,7 +83,7 @@ export const usePickingActions = ({
           .update({
             status: 'ready_to_double_check',
             checked_by: null,
-          })
+          } as any)
           .eq('checked_by', user.id)
           .neq('id', activeListId); // Don't release the one we are about to lock
 
@@ -98,27 +91,17 @@ export const usePickingActions = ({
 
         // 1. Validation Logic: Check for concurrency conflicts
         // We must ensure that (Stock - ReservedByOthers) >= MyQty
-        const skuList = finalItems.map((i) => i.SKU);
+        const skuList = finalItems.map((i) => i.sku);
 
         // A. Fetch current stock
         const { data: currentStock, error: stockError } = await supabase
           .from('inventory')
-          .select('SKU, Quantity, Warehouse, Location')
-          .in('SKU', skuList);
+          .select('sku, quantity, warehouse, location')
+          .in('sku', skuList);
 
         if (stockError) throw stockError;
 
         // B. Fetch ALL active allocations for these SKUs (excluding self)
-        // Note: This relies on the fact that picking_lists stores items as JSONB.
-        // We can't easily sum JSONB in standard PostgREST without a function.
-        // fallback: The most critical failure is if stock is 1 and 2 people pick it.
-        // We can rely on `inventory` if we had a `reserved_qty` column, but we don't.
-
-        // ALTERNATIVE: Use the existing Hook logic but force a refresh?
-        // No, the hook is passive.
-
-        // PROFESSIONAL APPROACH (Lite):
-        // We will fetch all `picking_lists` that are NOT completed/archived.
         const { data: activeLists, error: listsError } = await supabase
           .from('picking_lists')
           .select('id, items')
@@ -128,13 +111,12 @@ export const usePickingActions = ({
         if (listsError) throw listsError;
 
         // C. Calculate availability
-        // Map: Key -> { stock: number, reservedByOthers: number }
         const stockMap = new Map<string, { stock: number; reserved: number }>();
 
         // Fill stock
-        currentStock?.forEach((row) => {
-          const key = `${row.SKU}-${row.Warehouse}-${row.Location}`; // SKU-Wh-Loc
-          stockMap.set(key, { stock: row.Quantity, reserved: 0 });
+        currentStock?.forEach((row: any) => {
+          const key = `${row.sku}-${row.warehouse}-${row.location}`;
+          stockMap.set(key, { stock: Number(row.quantity || 0), reserved: 0 });
         });
 
         // Fill reservations
@@ -142,7 +124,7 @@ export const usePickingActions = ({
           const listItems = list.items || [];
           if (Array.isArray(listItems)) {
             listItems.forEach((li: any) => {
-              const key = `${li.SKU}-${li.Warehouse}-${li.Location}`;
+              const key = `${li.sku}-${li.warehouse}-${li.location}`;
               if (stockMap.has(key)) {
                 const entry = stockMap.get(key)!;
                 entry.reserved += li.pickingQty || 0;
@@ -153,12 +135,12 @@ export const usePickingActions = ({
 
         // D. Validate my cart
         for (const myItem of finalItems) {
-          const key = `${myItem.SKU}-${myItem.Warehouse}-${myItem.Location}`;
+          const key = `${myItem.sku}-${myItem.warehouse}-${myItem.location}`;
           const entry = stockMap.get(key);
 
           // If item not found in stock (deleted?), fail
           if (!entry) {
-            toast.error(`Item ${myItem.SKU} no longer exists in inventory.`);
+            toast.error(`Item ${myItem.sku} no longer exists in inventory.`);
             return null;
           }
 
@@ -167,7 +149,7 @@ export const usePickingActions = ({
 
           if (myQty > availableForMe) {
             toast.error(
-              `Stock conflict! ${myItem.SKU}: Only ${availableForMe} available (you need ${myQty}). Another user may have taken it.`,
+              `Stock conflict! ${myItem.sku}: Only ${availableForMe} available (you need ${myQty}). Another user may have taken it.`,
               { duration: 5000 }
             );
             return null; // Abort
@@ -181,10 +163,10 @@ export const usePickingActions = ({
           .update({
             status: 'double_checking',
             checked_by: user.id, // Auto-assign to self for verification
-            items: finalItems,
+            items: finalItems as any,
             order_number: finalOrderNum,
             correction_notes: null,
-          })
+          } as any)
           .eq('id', activeListId);
 
         if (error) throw error;
@@ -206,19 +188,19 @@ export const usePickingActions = ({
         setIsSaving(false);
       }
     },
-    [activeListId, user, isDemoMode, cartItems, orderNumber]
+    [activeListId, user, cartItems, orderNumber, setCartItems, setOrderNumber, setCorrectionNotes, setListStatus, setCheckedBy, setSessionMode, setIsSaving]
   );
 
   const lockForCheck = useCallback(
     async (listId: string) => {
-      if (isDemoMode || !user) return;
+      if (!user) return;
       try {
         const { error: releaseError } = await supabase
           .from('picking_lists')
           .update({
             status: 'ready_to_double_check',
             checked_by: null,
-          })
+          } as any)
           .eq('checked_by', user.id)
           .neq('id', listId);
 
@@ -229,47 +211,38 @@ export const usePickingActions = ({
           .update({
             status: 'double_checking',
             checked_by: user.id,
-          })
+          } as any)
           .eq('id', listId);
         if (error) throw error;
-
-        if (releaseError === null) {
-          // We only show toast if we successfully locked and there was potential cleanup
-          // (Though we don't know for sure if it updated rows without checking count)
-        }
       } catch (err) {
         console.error('Failed to lock list:', err);
       }
     },
-    [user, isDemoMode]
+    [user]
   );
 
   const releaseCheck = useCallback(
     async (listId: string) => {
-      if (isDemoMode) return;
       try {
         const { error } = await supabase
           .from('picking_lists')
           .update({
             status: 'ready_to_double_check',
             checked_by: null,
-          })
+          } as any)
           .eq('id', listId);
         if (error) throw error;
 
-        // Clear local state
-        // Clear local state
         resetSession();
       } catch (err) {
         console.error('Failed to release list:', err);
       }
     },
-    [isDemoMode]
+    [resetSession]
   );
 
   const returnToPicker = useCallback(
     async (listId: string, notes: string) => {
-      if (isDemoMode) return;
       if (!user) {
         console.error('No user found for returnToPicker');
         return;
@@ -283,7 +256,7 @@ export const usePickingActions = ({
             status: 'needs_correction',
             checked_by: null,
             correction_notes: notes,
-          })
+          } as any)
           .eq('id', listId);
 
         if (listError) throw listError;
@@ -293,10 +266,9 @@ export const usePickingActions = ({
           list_id: listId,
           user_id: user.id,
           message: notes,
-        });
+        } as any);
 
         if (noteError) {
-          // Non-blocking error, just log it
           console.error('Failed to log historical note:', noteError);
         }
 
@@ -308,11 +280,11 @@ export const usePickingActions = ({
         toast.error('Failed to update order status');
       }
     },
-    [isDemoMode, user, resetSession]
+    [user, resetSession]
   );
 
   const revertToPicking = useCallback(async () => {
-    if (!activeListId || isDemoMode || !user) return;
+    if (!activeListId || !user) return;
     setIsSaving(true);
     try {
       const { error } = await supabase
@@ -320,7 +292,7 @@ export const usePickingActions = ({
         .update({
           status: 'active',
           checked_by: null,
-        })
+        } as any)
         .eq('id', activeListId);
 
       if (error) throw error;
@@ -334,20 +306,17 @@ export const usePickingActions = ({
     } finally {
       setIsSaving(false);
     }
-  }, [activeListId, user, isDemoMode]);
+  }, [activeListId, user, setListStatus, setCheckedBy, setSessionMode, setIsSaving]);
 
   const deleteList = useCallback(
     async (listId: string | null, keepLocalState = false) => {
-      // If no listId, we're in building mode - just reset local state (unless keeping it)
       if (!listId) {
         if (!keepLocalState) resetSession();
         toast.success('Local session reset');
         return;
       }
 
-      if (isDemoMode) return;
       try {
-        // SAFETY CHECK: Prevent deleting history of completed orders
         const { data: currentList } = await supabase
           .from('picking_lists')
           .select('status')
@@ -362,8 +331,6 @@ export const usePickingActions = ({
           return;
         }
 
-        // First, delete all related inventory_logs entries to prevent foreign key constraint violation
-        // (Only if not completed, which we checked above)
         const { error: logsError } = await supabase
           .from('inventory_logs')
           .delete()
@@ -374,7 +341,6 @@ export const usePickingActions = ({
           throw logsError;
         }
 
-        // Now we can safely delete the picking list
         const { error } = await supabase.from('picking_lists').delete().eq('id', listId);
 
         if (error) throw error;
@@ -388,10 +354,10 @@ export const usePickingActions = ({
       } catch (err) {
         console.error('Failed to delete list:', err);
         toast.error('Failed to delete order');
-        throw err; // Re-throw to allow caller to handle aborts
+        throw err;
       }
     },
-    [activeListId, isDemoMode, resetSession]
+    [activeListId, resetSession]
   );
 
   const generatePickingPath = useCallback(async () => {
@@ -402,18 +368,15 @@ export const usePickingActions = ({
 
     setIsSaving(true);
     try {
-      // 1. Validation Logic: Check for concurrency conflicts
-      const skuList = cartItems.map((i) => i.SKU);
+      const skuList = cartItems.map((i) => i.sku);
 
-      // A. Fetch current stock
       const { data: currentStock, error: stockError } = await supabase
         .from('inventory')
-        .select('SKU, Quantity, Warehouse, Location')
-        .in('SKU', skuList);
+        .select('sku, quantity, warehouse, location')
+        .in('sku', skuList);
 
       if (stockError) throw stockError;
 
-      // B. Fetch ALL active allocations for these SKUs
       const { data: activeLists, error: listsError } = await supabase
         .from('picking_lists')
         .select('id, items')
@@ -421,19 +384,18 @@ export const usePickingActions = ({
 
       if (listsError) throw listsError;
 
-      // C. Calculate availability
       const stockMap = new Map<string, { stock: number; reserved: number }>();
 
-      currentStock?.forEach((row) => {
-        const key = `${row.SKU}-${row.Warehouse}-${row.Location}`;
-        stockMap.set(key, { stock: row.Quantity, reserved: 0 });
+      currentStock?.forEach((row: any) => {
+        const key = `${row.sku}-${row.warehouse}-${row.location}`;
+        stockMap.set(key, { stock: Number(row.quantity || 0), reserved: 0 });
       });
 
       activeLists?.forEach((list: any) => {
         const listItems = list.items || [];
         if (Array.isArray(listItems)) {
           listItems.forEach((li: any) => {
-            const key = `${li.SKU}-${li.Warehouse}-${li.Location}`;
+            const key = `${li.sku}-${li.warehouse}-${li.location}`;
             if (stockMap.has(key)) {
               const entry = stockMap.get(key)!;
               entry.reserved += li.pickingQty || 0;
@@ -442,38 +404,35 @@ export const usePickingActions = ({
         }
       });
 
-      // D. Validate my cart request
       for (const myItem of cartItems) {
-        const key = `${myItem.SKU}-${myItem.Warehouse}-${myItem.Location}`;
+        const key = `${myItem.sku}-${myItem.warehouse}-${myItem.location}`;
         const entry = stockMap.get(key);
 
         if (!entry) {
-          toast.error(`Item ${myItem.SKU} no longer exists in inventory.`);
+          toast.error(`Item ${myItem.sku} no longer exists in inventory.`);
           return;
         }
 
         const availableAcrossSystem = entry.stock - entry.reserved;
         const myQty = myItem.pickingQty || 0;
 
-        // Since we haven't reserved yet, we just check against available
         if (myQty > availableAcrossSystem) {
           toast.error(
-            `Constraint Error: ${myItem.SKU} - Only ${availableAcrossSystem} available.`,
+            `Constraint Error: ${myItem.sku} - Only ${availableAcrossSystem} available.`,
             { duration: 5000 }
           );
-          return; // Abort
+          return;
         }
       }
 
-      // 2. Commit to Database
       const { data, error } = await supabase
         .from('picking_lists')
         .insert({
-          user_id: user.id,
-          items: cartItems,
+          user_id: user.id || user.user_id,
+          items: cartItems as any,
           status: 'active',
           order_number: orderNumber,
-        })
+        } as any)
         .select()
         .single();
 
@@ -481,11 +440,11 @@ export const usePickingActions = ({
 
       if (data) {
         setActiveListId(data.id);
+        const ownerId = (data as any).user_id;
         setListStatus('active');
-        setOwnerId(data.user_id);
+        setOwnerId(ownerId);
         setSessionMode('picking');
 
-        // Also update local storage to reflect mode change
         localStorage.setItem('picking_session_mode', 'picking');
         localStorage.setItem('active_picking_list_id', data.id);
 
@@ -497,7 +456,7 @@ export const usePickingActions = ({
     } finally {
       setIsSaving(false);
     }
-  }, [user, cartItems, orderNumber]);
+  }, [user, cartItems, orderNumber, setActiveListId, setListStatus, setOwnerId, setSessionMode, setIsSaving]);
 
   return {
     completeList,

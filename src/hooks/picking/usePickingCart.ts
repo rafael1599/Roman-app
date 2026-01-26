@@ -53,7 +53,7 @@ export const usePickingCart = ({ sessionMode, reservedQuantities }: UsePickingCa
 
   const isSameItem = useCallback((a: Partial<InventoryItem>, b: Partial<InventoryItem>) => {
     if (a.id && b.id) return a.id === b.id;
-    return a.SKU === b.SKU && a.Location === b.Location && a.Warehouse === b.Warehouse;
+    return a.sku === b.sku && a.location === b.location && a.warehouse === b.warehouse;
   }, []);
 
   const addToCart = useCallback(
@@ -61,13 +61,13 @@ export const usePickingCart = ({ sessionMode, reservedQuantities }: UsePickingCa
       // Allow in both 'picking' and 'building' modes
       if (sessionMode !== 'picking' && sessionMode !== 'building') return;
 
-      const key = `${item.SKU}|${item.Warehouse}|${item.Location}`;
+      const key = `${item.sku}|${item.warehouse}|${item.location}`;
       const totalReserved = reservedQuantities[key] || 0;
       const currentInMyCart = cartItems.find((i) => isSameItem(i, item))?.pickingQty || 0;
 
       // In Building Mode: We ignore *current* reservations because we might be stealing them (race condition handled at commit).
       // But we must respect total physical stock.
-      const stock = item.Quantity || 0;
+      const stock = item.quantity || 0;
 
       let available = 0;
       if (sessionMode === 'building') {
@@ -119,11 +119,11 @@ export const usePickingCart = ({ sessionMode, reservedQuantities }: UsePickingCa
   // Helper to get available stock for an item (exported for UI usage)
   const getAvailableStock = useCallback(
     (item: Partial<InventoryItem>) => {
-      const key = `${item.SKU}|${item.Warehouse}|${item.Location}`;
+      const key = `${item.sku}|${item.warehouse}|${item.location}`;
       const totalReserved = reservedQuantities[key] || 0;
       const currentInMyCart = cartItems.find((i) => isSameItem(i, item))?.pickingQty || 0;
       const reservedByOthers = Math.max(0, totalReserved - currentInMyCart);
-      const stock = item.Quantity || 0;
+      const stock = item.quantity || 0;
       const available = stock - reservedByOthers;
 
       return {
@@ -140,11 +140,11 @@ export const usePickingCart = ({ sessionMode, reservedQuantities }: UsePickingCa
     (item: InventoryItem, change: number) => {
       if (sessionMode !== 'picking' && sessionMode !== 'building') return;
 
-      const key = `${item.SKU}|${item.Warehouse}|${item.Location}`;
+      const key = `${item.sku}|${item.warehouse}|${item.location}`;
       const totalReserved = reservedQuantities[key] || 0;
       const currentInMyCart = cartItems.find((i) => isSameItem(i, item))?.pickingQty || 0;
 
-      const stock = item.Quantity || 0;
+      const stock = item.quantity || 0;
       let available = 0;
 
       if (sessionMode === 'building') {
@@ -179,11 +179,11 @@ export const usePickingCart = ({ sessionMode, reservedQuantities }: UsePickingCa
     (item: InventoryItem, newAbsoluteQty: number) => {
       if (sessionMode !== 'picking' && sessionMode !== 'building') return;
 
-      const key = `${item.SKU}|${item.Warehouse}|${item.Location}`;
+      const key = `${item.sku}|${item.warehouse}|${item.location}`;
       const totalReserved = reservedQuantities[key] || 0;
       const currentInMyCart = cartItems.find((i) => isSameItem(i, item))?.pickingQty || 0;
 
-      const stock = item.Quantity || 0;
+      const stock = item.quantity || 0;
       let available = 0;
 
       if (sessionMode === 'building') {

@@ -1,5 +1,3 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import OpenAI from 'openai';
 import { scanOrderWithTesseract, verifyPalletWithTesseract } from './tesseractOCR';
 import {
   AIOrderResponseSchema,
@@ -9,14 +7,27 @@ import {
 } from '../schemas/ai.schema';
 import { validateData, safeValidateData } from '../utils/validate';
 
-// Initialize APIs
+// API Keys
 const GEMINI_API_KEY = import.meta.env.VITE_GOOGLE_API_KEY as string | undefined;
 const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY as string | undefined;
 
-const genAI = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
-const openai = OPENAI_API_KEY
-  ? new OpenAI({ apiKey: OPENAI_API_KEY, dangerouslyAllowBrowser: true })
-  : null;
+/**
+ * Lazy-load and initialize Gemini API
+ */
+async function getGenAI() {
+  if (!GEMINI_API_KEY) return null;
+  const { GoogleGenerativeAI } = await import('@google/generative-ai');
+  return new GoogleGenerativeAI(GEMINI_API_KEY);
+}
+
+/**
+ * Lazy-load and initialize OpenAI API
+ */
+async function getOpenAI() {
+  if (!OPENAI_API_KEY) return null;
+  const { default: OpenAI } = await import('openai');
+  return new OpenAI({ apiKey: OPENAI_API_KEY, dangerouslyAllowBrowser: true });
+}
 
 /**
  * Convert image file to base64 format for Gemini API
@@ -59,6 +70,7 @@ async function fileToBase64DataURL(file: File): Promise<string> {
  * Scan order using Gemini API with Zod validation
  */
 async function scanWithGemini(imageFile: File): Promise<AIOrderItem[]> {
+  const genAI = await getGenAI();
   if (!genAI) {
     throw new Error('Gemini API not initialized');
   }
@@ -116,6 +128,7 @@ Return ONLY a valid JSON object in this exact format:
  * Scan order using OpenAI API (GPT-4 Vision) with Zod validation
  */
 async function scanWithOpenAI(imageFile: File): Promise<AIOrderItem[]> {
+  const openai = await getOpenAI();
   if (!openai) {
     throw new Error('OpenAI API not initialized');
   }
@@ -187,6 +200,7 @@ async function verifyWithGemini(
   imageFile: File,
   expectedItems: AIOrderItem[]
 ): Promise<AIPalletVerification> {
+  const genAI = await getGenAI();
   if (!genAI) {
     throw new Error('Gemini API not initialized');
   }
@@ -280,6 +294,7 @@ async function verifyWithOpenAI(
   imageFile: File,
   expectedItems: AIOrderItem[]
 ): Promise<AIPalletVerification> {
+  const openai = await getOpenAI();
   if (!openai) {
     throw new Error('OpenAI API not initialized');
   }
@@ -422,6 +437,7 @@ export async function scanOrderImage(imageFile: File): Promise<AIOrderItem[]> {
   }
 
   // Try Gemini as fallback
+  const genAI = await getGenAI();
   if (genAI) {
     try {
       console.log('🔄 Falling back to Gemini...');
@@ -443,6 +459,7 @@ export async function scanOrderImage(imageFile: File): Promise<AIOrderItem[]> {
   }
 
   // Try OpenAI as last resort
+  const openai = await getOpenAI();
   if (openai) {
     try {
       console.log('🔄 Falling back to OpenAI...');
@@ -493,6 +510,7 @@ export async function verifyPalletImage(
   }
 
   // Try Gemini as fallback
+  const genAI = await getGenAI();
   if (genAI) {
     try {
       console.log('🔄 Falling back to Gemini for verification...');
@@ -513,6 +531,7 @@ export async function verifyPalletImage(
   }
 
   // Try OpenAI as last resort
+  const openai = await getOpenAI();
   if (openai) {
     try {
       console.log('🔄 Falling back to OpenAI for verification...');
@@ -548,6 +567,7 @@ export async function testAIConnection(): Promise<{
   };
 
   // Test Gemini
+  const genAI = await getGenAI();
   if (genAI) {
     try {
       const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
@@ -564,6 +584,7 @@ export async function testAIConnection(): Promise<{
   }
 
   // Test OpenAI
+  const openai = await getOpenAI();
   if (openai) {
     try {
       await openai.chat.completions.create({

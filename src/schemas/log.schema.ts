@@ -15,7 +15,7 @@ export const InventoryLogSchema = z.object({
   from_location: z.string().nullable(),
   to_warehouse: z.string().nullable(),
   to_location: z.string().nullable(),
-  quantity: z.coerce.number().int(),
+  quantity_change: z.coerce.number().int(),
   prev_quantity: z.coerce.number().int().nonnegative().nullable(),
   new_quantity: z.coerce.number().int().nonnegative().nullable(),
   is_reversed: z.boolean().default(false),
@@ -24,6 +24,9 @@ export const InventoryLogSchema = z.object({
   created_at: z.coerce.date(),
   previous_sku: z.string().optional().nullable(),
   item_id: z.union([z.string(), z.number()]).optional().nullable(),
+  location_id: z.string().uuid().optional().nullable(),
+  to_location_id: z.string().uuid().optional().nullable(),
+  snapshot_before: z.any().optional().nullable(), // For offline resilience snapshots
   list_id: z.string().uuid().optional().nullable(),
   order_number: z.string().optional().nullable(),
 });
@@ -37,7 +40,7 @@ export const InventoryLogInputSchema = z.object({
   from_location: z.string().optional(),
   to_warehouse: z.string().optional(),
   to_location: z.string().optional(),
-  quantity: z.coerce.number().int().nonnegative(),
+  quantity_change: z.coerce.number().int(),
   prev_quantity: z.coerce.number().int().nonnegative().optional(),
   new_quantity: z.coerce.number().int().nonnegative().optional(),
   is_reversed: z.boolean().optional(),
@@ -45,6 +48,9 @@ export const InventoryLogInputSchema = z.object({
   performed_by: z.string().optional(),
   previous_sku: z.string().optional().nullable(),
   item_id: z.union([z.string(), z.number()]).optional().nullable(),
+  location_id: z.string().uuid().optional().nullable(),
+  to_location_id: z.string().uuid().optional().nullable(),
+  snapshot_before: z.any().optional().nullable(),
   list_id: z.string().uuid().optional().nullable(),
   order_number: z.string().optional().nullable(),
 });

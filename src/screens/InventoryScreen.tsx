@@ -13,7 +13,7 @@ import { MovementModal } from '../features/inventory/components/MovementModal';
 import { CapacityBar } from '../components/ui/CapacityBar';
 import toast from 'react-hot-toast';
 
-import { usePickingSession } from '../hooks/usePickingSession';
+import { usePickingSession } from '../context/PickingContext';
 import { useAuth } from '../context/AuthContext';
 import { useLocationManagement } from '../hooks/useLocationManagement';
 import LocationEditorModal from '../features/warehouse-management/components/LocationEditorModal';
@@ -33,10 +33,16 @@ export const InventoryScreen = () => {
     moveItem,
     deleteItem,
     loading,
+    syncFilters,
   } = useInventory();
 
   const [localSearch, setLocalSearch] = useState('');
   const debouncedSearch = useDebounce(localSearch, 300);
+
+  // Sync filters with provider for Context-Aware Realtime updates
+  useEffect(() => {
+    syncFilters({ search: debouncedSearch });
+  }, [debouncedSearch, syncFilters]);
 
   // Client-side filtering and pagination logic (by location)
   const [displayLocationCount, setDisplayLocationCount] = useState(50);
@@ -44,17 +50,17 @@ export const InventoryScreen = () => {
   const filteredInventory = useMemo(() => {
     const s = debouncedSearch.toLowerCase().trim();
     return inventoryData.filter((item) => {
-      // Basic stock filter (match server behavior: Quantity > 0)
-      if ((item.Quantity || 0) <= 0) return false;
+      // Basic stock filter (match server behavior: quantity > 0)
+      if ((item.quantity || 0) <= 0) return false;
 
       if (!s) return true;
 
       // Multi-field search
       return (
-        (item.SKU || '').toLowerCase().includes(s) ||
-        (item.Location || '').toLowerCase().includes(s) ||
+        (item.sku || '').toLowerCase().includes(s) ||
+        (item.location || '').toLowerCase().includes(s) ||
         (item.sku_note || '').toLowerCase().includes(s) ||
-        (item.Warehouse || '').toLowerCase().includes(s)
+        (item.warehouse || '').toLowerCase().includes(s)
       );
     });
   }, [inventoryData, debouncedSearch]);
@@ -67,8 +73,8 @@ export const InventoryScreen = () => {
       Record<string, { items: typeof filteredInventory; locationId?: string | null }>
     > = {};
     filteredInventory.forEach((item) => {
-      const wh = item.Warehouse || 'UNKNOWN';
-      const locName = item.Location || 'Unknown Location';
+      const wh = item.warehouse || 'UNKNOWN';
+      const locName = item.location || 'Unknown Location';
 
       if (!groups[wh]) groups[wh] = {};
       if (!groups[wh][locName]) {
@@ -219,13 +225,13 @@ export const InventoryScreen = () => {
 
   const handleDelete = useCallback(() => {
     if (editingItem) {
-      deleteItem(editingItem.Warehouse, editingItem.SKU);
+      deleteItem(editingItem.warehouse, editingItem.sku);
     }
   }, [editingItem, deleteItem]);
 
   const saveItem = useCallback(
     (formData: any) => {
-      const targetWarehouse = formData.Warehouse;
+      const targetWarehouse = formData.warehouse;
       if (modalMode === 'add') {
         addItem(targetWarehouse, formData);
       } else if (editingItem) {
@@ -313,10 +319,10 @@ export const InventoryScreen = () => {
         const totalUnits = inventoryData
           .filter(
             (i) =>
-              i.Warehouse === locationBeingEdited.warehouse &&
-              i.Location === locationBeingEdited.location
+              i.warehouse === locationBeingEdited.warehouse &&
+              i.location === locationBeingEdited.location
           )
-          .reduce((sum, i) => sum + (i.Quantity || 0), 0);
+          .reduce((sum, i) => sum + (i.quantity || 0), 0);
 
         const confirmMsg = `This is a "ghost" location (it only exists as text on ${totalUnits} inventory units). 
 Do you want to PERMANENTLY DELETE all these products so the location disappears?`;
@@ -327,11 +333,11 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
           async () => {
             const itemsToDelete = inventoryData.filter(
               (i) =>
-                i.Warehouse === locationBeingEdited.warehouse &&
-                i.Location === locationBeingEdited.location
+                i.warehouse === locationBeingEdited.warehouse &&
+                i.location === locationBeingEdited.location
             );
             for (const item of itemsToDelete) {
-              await deleteItem(item.Warehouse, item.SKU);
+              await deleteItem(item.warehouse, item.sku);
             }
             setLocationBeingEdited(null);
             window.location.reload();
@@ -366,10 +372,10 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
 
   const handleScanComplete = (scannedLines) => {
     const newItems = scannedLines.map((line) => {
-      const match = inventoryData.find((i) => i.SKU === line.sku);
+      const match = inventoryData.find((i) => i.sku === line.sku);
       return match
         ? { ...match, pickingQty: line.qty || 1 }
-        : { SKU: line.sku, pickingQty: line.qty || 1, Location: 'UNKNOWN', Warehouse: 'UNKNOWN' };
+        : { sku: line.sku, pickingQty: line.qty || 1, location: 'UNKNOWN', warehouse: 'UNKNOWN' };
     });
     setCartItems((prev) => [...prev, ...newItems]);
     setShowScanner(false);
@@ -460,9 +466,9 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
                 {items.map((item) => {
                   const isInCart = cartItems.some(
                     (c) =>
-                      c.SKU === item.SKU &&
-                      c.Warehouse === item.Warehouse &&
-                      c.Location === item.Location
+                      c.sku === item.sku &&
+                      c.warehouse === item.warehouse &&
+                      c.location === item.location
                   );
 
                   // Calculate availability for picking mode
@@ -470,21 +476,21 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
 
                   return (
                     <div
-                      key={`inv-row-${item.id}-${item.SKU}`}
+                      key={`inv-row-${item.id}-${item.sku}`}
                       className={
                         isInCart && viewMode === 'picking' ? 'ring-1 ring-accent rounded-lg' : ''
                       }
                     >
                       <InventoryCard
-                        sku={item.SKU}
-                        quantity={item.Quantity}
+                        sku={item.sku}
+                        quantity={item.quantity}
                         detail={item.sku_note}
-                        warehouse={item.Warehouse}
+                        warehouse={item.warehouse}
                         onIncrement={() =>
-                          updateQuantity(item.SKU, 1, item.Warehouse, item.Location)
+                          updateQuantity(item.sku, 1, item.warehouse, item.location)
                         }
                         onDecrement={() =>
-                          updateQuantity(item.SKU, -1, item.Warehouse, item.Location)
+                          updateQuantity(item.sku, -1, item.warehouse, item.location)
                         }
                         onMove={() => handleQuickMove(item)}
                         onClick={() => handleCardClick(item)}
@@ -573,13 +579,13 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
             setIsProcessingDeduction(true);
             try {
               await Promise.all(
-                items.map((item) => {
+                items.map((item: any) => {
                   const delta = -(item.pickingQty || 0);
                   return updateQuantity(
-                    item.SKU,
+                    item.sku,
                     delta,
-                    item.Warehouse,
-                    item.Location,
+                    item.warehouse,
+                    item.location,
                     false,
                     activeListId,
                     orderNumber
@@ -607,7 +613,7 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
         onDelete={handleDelete}
         initialData={editingItem}
         mode={modalMode}
-        screenType={selectedWarehouseForAdd || editingItem?.Warehouse}
+        screenType={selectedWarehouseForAdd || editingItem?.warehouse}
       />
 
       {showScanner && (

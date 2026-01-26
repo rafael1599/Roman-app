@@ -7,7 +7,7 @@ Solution: Implement client-side buffering (debouncing) to verify "bursts" of cli
 
 ## Implementation Steps
 
-### 1. Update `useInventoryData.jsx`
+### 1. Update `useInventoryData.tsx`
 
 - [ ] **Add Buffer Ref**: `const logBuffersRef = useRef({})`. Store pending logs keyed by SKU+Loc.
 - [ ] **Create `executeBufferedLog`**: Helper to flush a specific buffer key key to `trackLog`.

@@ -12,30 +12,6 @@ interface UserInfo {
   user_id?: string;
 }
 
-import { type InventoryItem, type InventoryItemInput } from '../schemas/inventory.schema';
-
-interface UndoActions {
-  addItem: (
-    warehouse: string,
-    item: InventoryItemInput & { force_id?: string | number | null; isReversal?: boolean }
-  ) => Promise<void>;
-  moveItem: (
-    item: InventoryItem,
-    toWarehouse: string,
-    toLocation: string,
-    qty: number,
-    isReversal?: boolean
-  ) => Promise<void>;
-  updateQuantity: (
-    sku: string,
-    delta: number,
-    warehouse: string,
-    location: string,
-    isReversal?: boolean
-  ) => Promise<void>;
-  updateItem: (originalItem: InventoryItem, updatedFormData: InventoryItemInput & { isReversal?: boolean }) => Promise<void>;
-}
-
 /**
  * Hook to manage inventory logs and undo operations.
  * Implements sophisticated log coalescing and atomic undo logic.
@@ -65,8 +41,7 @@ export const useInventoryLogs = () => {
           .single();
 
         if (candidate) {
-          const typedCandidate = candidate as InventoryLog;
-          // Verify context matches
+          const typedCandidate = candidate as unknown as InventoryLog;
           const isSameContext =
             !typedCandidate.is_reversed &&
             typedCandidate.sku === logData.sku &&
@@ -91,7 +66,7 @@ export const useInventoryLogs = () => {
           .order('created_at', { ascending: false })
           .limit(1);
 
-        const lastLog = recentLogs?.[0] as InventoryLog | undefined;
+        const lastLog = recentLogs?.[0] as unknown as InventoryLog | undefined;
 
         if (
           lastLog &&
@@ -114,41 +89,35 @@ export const useInventoryLogs = () => {
           (targetLog.action_type === 'DEDUCT' && logData.action_type === 'ADD');
 
         if (sameType) {
-          const newTotalQty = targetLog.quantity + logData.quantity;
+          const newTotalChange = (targetLog.quantity_change || 0) + (logData.quantity_change || 0);
+
           console.log(
-            `[Log] Merging ${logData.action_type}: ${targetLog.quantity} + ${logData.quantity} = ${newTotalQty}`
+            `[Log] Merging ${logData.action_type}: ${targetLog.quantity_change} + ${logData.quantity_change} = ${newTotalChange}`
           );
 
           await supabase
             .from('inventory_logs')
             .update({
-              quantity: newTotalQty,
+              quantity_change: newTotalChange,
               new_quantity: logData.new_quantity,
             })
             .eq('id', targetLog.id);
 
           return targetLog.id;
         } else if (isInverse) {
-          const netQty = targetLog.quantity - logData.quantity;
+          const netChange = (targetLog.quantity_change || 0) + (logData.quantity_change || 0);
 
-          if (netQty === 0) {
+          if (netChange === 0) {
             await supabase.from('inventory_logs').delete().eq('id', targetLog.id);
             return null;
-          } else if (netQty > 0) {
-            await supabase
-              .from('inventory_logs')
-              .update({
-                quantity: netQty,
-                new_quantity: logData.new_quantity,
-              })
-              .eq('id', targetLog.id);
-            return targetLog.id;
           } else {
+            // If we have a net change, update the log. 
+            // Note: netChange might be negative if DEDUCT > ADD, we use its absolute value for display if needed but store delta.
             await supabase
               .from('inventory_logs')
               .update({
-                quantity: Math.abs(netQty),
-                action_type: logData.action_type,
+                quantity_change: netChange,
+                action_type: netChange > 0 ? targetLog.action_type : logData.action_type,
                 new_quantity: logData.new_quantity,
               })
               .eq('id', targetLog.id);
@@ -168,7 +137,7 @@ export const useInventoryLogs = () => {
             new_quantity: logData.new_quantity ?? null,
             is_reversed: logData.is_reversed || false,
             performed_by: userName,
-            created_at: new Date().toISOString() as any, // Supabase expects string, but Zod schema might say Date
+            created_at: new Date().toISOString(),
           },
         ])
         .select()
@@ -179,7 +148,7 @@ export const useInventoryLogs = () => {
         return null;
       }
 
-      return newLog?.id;
+      return (newLog as any)?.id;
     } catch (err) {
       console.error('Log tracking failed:', err);
       return null;
@@ -210,143 +179,23 @@ export const useInventoryLogs = () => {
   };
 
   /**
-   * Reverses a previously performed action
+   * Reverses a previously performed action using Database RPC
    */
   const undoAction = async (
-    logId: string,
-    actions: UndoActions
+    logId: string
   ): Promise<{ success: boolean; error?: string }> => {
-    const { addItem, moveItem, updateQuantity, updateItem } = actions;
-
     try {
-      const { data: logData, error: fetchError } = await supabase
-        .from('inventory_logs')
-        .select('*')
-        .eq('id', logId)
-        .single();
+      // @ts-ignore - RPC function added manually
+      const { data, error } = await supabase
+        .rpc('undo_inventory_action', { target_log_id: logId });
 
-      if (fetchError || !logData) throw new Error('Action log not found');
+      if (error) throw error;
 
-      const log = validateData(InventoryLogSchema, logData);
-      if (log.is_reversed) throw new Error('Action already undone');
+      const result = data as { success: boolean; message?: string };
 
-      // --- Resolve Target Item Identity ---
-      let targetSku = log.sku;
-      const targetWarehouse = log.from_warehouse || '';
-
-      // ID-Based Identity Recovery (The "Anti-Zombie" Fix)
-      if (log.item_id) {
-        const { data: currentItemByID } = await supabase
-          .from('inventory')
-          .select('SKU')
-          .eq('id', typeof log.item_id === 'string' ? parseInt(log.item_id) : log.item_id)
-          .maybeSingle();
-
-        if (currentItemByID) {
-          console.log(
-            `[Undo] Identity Shift: Log says ${log.sku}, but Item ${log.item_id} is actually ${currentItemByID.SKU}`
-          );
-          targetSku = currentItemByID.SKU;
-        }
+      if (!result.success) {
+        throw new Error(result.message || 'Undo operation failed');
       }
-
-      // --- Reversal Logic ---
-      if (log.action_type === 'MOVE') {
-        // Ghost Location Handling: Ensure destination exists before trying to move back from it
-        const { data: destLoc } = await supabase
-          .from('locations')
-          .select('id')
-          .eq('warehouse', log.to_warehouse || '')
-          .eq('location', log.to_location || '')
-          .maybeSingle();
-
-        if (!destLoc) {
-          console.warn(
-            `[Undo] Destination location ${log.to_warehouse}-${log.to_location} no longer exists in DB records, but we will proceed with the text-based identity.`
-          );
-        }
-
-        const { data: itemToMoveBack, error: findError } = await supabase
-          .from('inventory')
-          .select('*')
-          .eq('SKU', targetSku) // Use resolved SKU
-          .eq('Warehouse', log.to_warehouse || '')
-          .eq('Location', log.to_location || '')
-          .maybeSingle();
-
-        if (findError || !itemToMoveBack) {
-          throw new Error(
-            `Cannot undo move: Item ${targetSku} not found at current location ${log.to_warehouse}-${log.to_location}.`
-          );
-        }
-
-        await moveItem(
-          itemToMoveBack as any,
-          targetWarehouse,
-          log.from_location || '',
-          log.quantity,
-          true // isReversal
-        );
-      } else if (log.action_type === 'DEDUCT') {
-        await addItem(targetWarehouse, {
-          SKU: targetSku,
-          Location: log.from_location || '', // Ensure string
-          Quantity: log.quantity,
-          isReversal: true,
-        });
-      } else if (log.action_type === 'ADD') {
-        // UNDO ADD: Reduce quantity where it was added
-        await updateQuantity(
-          targetSku,
-          -log.quantity,
-          log.to_warehouse || log.from_warehouse || '',
-          log.to_location || log.from_location || '',
-          true // isReversal
-        );
-      } else if (log.action_type === 'DELETE') {
-        // UNDO DELETE: Recreate the item with its original ID
-        console.log(`[Undo] Restoring deleted item ${targetSku} with ID ${log.item_id}`);
-        await addItem(targetWarehouse, {
-          SKU: targetSku,
-          Location: log.from_location || null,
-          Quantity: log.quantity,
-          force_id: log.item_id, // PHASE 3: ID Persistence
-          isReversal: true,
-        });
-      } else if (log.action_type === 'EDIT') {
-        if (log.previous_sku && log.previous_sku !== targetSku) {
-          // UNDO RENAME: Rename back from Current (targetSku) to Old (log.previous_sku)
-          const { data: itemToUpdate, error: itemError } = await supabase
-            .from('inventory')
-            .select('*')
-            .eq('id', typeof log.item_id === 'string' ? parseInt(log.item_id) : (log.item_id || 0))
-            .single();
-
-          if (itemError || !itemToUpdate) {
-            throw new Error(`Cannot undo rename: Item with ID ${log.item_id} not found.`);
-          }
-
-          await updateItem(itemToUpdate as any, {
-            SKU: log.previous_sku,
-            Quantity: log.prev_quantity,
-            Warehouse: log.from_warehouse,
-            Location: log.from_location,
-            isReversal: true,
-          });
-        } else {
-          // STANDARD UNDO (Quantity change only)
-          await updateQuantity(
-            targetSku,
-            (log.prev_quantity || 0) - (log.new_quantity || 0),
-            targetWarehouse,
-            log.from_location || '',
-            true
-          );
-        }
-      }
-
-      // Mark as reversed
-      await supabase.from('inventory_logs').update({ is_reversed: true }).eq('id', logId);
 
       return { success: true };
     } catch (err: unknown) {

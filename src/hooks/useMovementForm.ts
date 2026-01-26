@@ -20,8 +20,8 @@ export const useMovementForm = (initialSourceItem: InventoryItem | null | undefi
     if (initialSourceItem) {
       setFormData((prev) => ({
         ...prev,
-        quantity: Number(initialSourceItem.Quantity) || 0,
-        targetWarehouse: initialSourceItem.Warehouse || 'LUDLOW',
+        quantity: Number(initialSourceItem.quantity) || 0,
+        targetWarehouse: initialSourceItem.warehouse || 'LUDLOW',
       }));
     } else {
       setFormData({
@@ -41,15 +41,15 @@ export const useMovementForm = (initialSourceItem: InventoryItem | null | undefi
     const errors: string[] = [];
     if (!initialSourceItem) errors.push('No source item selected');
     if (formData.quantity <= 0) errors.push('Quantity must be greater than 0');
-    if (formData.quantity > (Number(initialSourceItem?.Quantity) || 0))
+    if (formData.quantity > (Number(initialSourceItem?.quantity) || 0))
       errors.push('Quantity exceeds available stock');
     if (!formData.targetLocation) errors.push('Target location is required');
 
     // Only run this check if initial source is loaded
     if (
       initialSourceItem &&
-      formData.targetLocation === initialSourceItem.Location &&
-      formData.targetWarehouse === initialSourceItem.Warehouse
+      formData.targetLocation === initialSourceItem.location &&
+      formData.targetWarehouse === initialSourceItem.warehouse
     ) {
       errors.push('Cannot move to the same location');
     }

@@ -59,7 +59,7 @@ export const useLocationSuggestions = (
           // Sample velocities for normalization
           const sampleVelocities = inventoryData
             .slice(0, 50)
-            .map((i) => calculateSkuVelocity(i.SKU, simpleLogs))
+            .map((i) => calculateSkuVelocity(i.sku, simpleLogs))
             .filter((val): val is number => val !== null);
 
           setAllVelocities(sampleVelocities);
@@ -88,12 +88,12 @@ export const useLocationSuggestions = (
 
     // Iterate through all items in that warehouse
     targetInv.forEach((item) => {
-      if (item.Location) {
-        const key = `${item.Warehouse}-${item.Location}`;
+      if (item.location) {
+        const key = `${item.warehouse}-${item.location}`;
 
         // Find config in locations table
         const locConfig = locations.find(
-          (l) => l.warehouse === item.Warehouse && l.location === item.Location
+          (l) => l.warehouse === item.warehouse && l.location === item.location
         );
         const maxCapacity = locConfig?.max_capacity || 550;
 
@@ -101,8 +101,8 @@ export const useLocationSuggestions = (
         // Override max with DB value if available locally
         capData.max = maxCapacity;
 
-        const locName = String(item.Location).trim();
-        const zone = getZone(item.Warehouse, item.Location) as ZoneType;
+        const locName = String(item.location).trim();
+        const zone = getZone(item.warehouse, item.location) as ZoneType;
         if (!locationMap.has(locName)) {
           // Calculate Hybrid Score
           const score = calculateHybridLocationScore(
@@ -145,8 +145,8 @@ export const useLocationSuggestions = (
   const mergeOpportunity = useMemo(() => {
     if (!sku || !targetWarehouse) return null;
     const targetInv = targetWarehouse === 'ATS' ? atsData : ludlowData;
-    const matching = targetInv.find((i) => i.SKU === sku && i.Location !== excludeLocation);
-    return matching ? matching.Location : null;
+    const matching = targetInv.find((i) => i.sku === sku && i.location !== excludeLocation);
+    return matching ? matching.location : null;
   }, [sku, targetWarehouse, ludlowData, atsData, excludeLocation]);
 
   return {

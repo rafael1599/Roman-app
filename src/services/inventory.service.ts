@@ -26,7 +26,7 @@ interface ResolvedLocation {
  * Service to handle inventory-specific business logic.
  * Extends BaseService to inherit standard CRUD operations.
  */
-class InventoryService extends BaseService<'inventory'> {
+class InventoryService extends BaseService<'inventory', InventoryModel, InventoryItemInput, InventoryItemInput> {
     constructor() {
         super(supabase, 'inventory', () => ({ schema: inventorySchema as any }));
     }
@@ -151,39 +151,55 @@ class InventoryService extends BaseService<'inventory'> {
 
         // 1. Zod Validation (Includes Coercion for numbers)
         const validatedInput = InventoryItemInputSchema.parse(newItem);
-        const qty = validatedInput.Quantity;
+        const qty = validatedInput.quantity;
 
         // 2. HARDENING: Resolve destination before touching stock
-        const destination = await this.ensureLocationExists(warehouse, validatedInput.Location || '', locations, ctx);
+        const destination = await this.ensureLocationExists(warehouse, validatedInput.location || '', locations, ctx);
 
         // 3. Process Inventory Persistence (UPSERT logic via BaseService)
         const { data: existingItemData } = await this.supabase
             .from(this.table)
             .select('*')
-            .eq('SKU', validatedInput.SKU)
-            .eq('Warehouse', warehouse)
-            .eq('Location', destination.name)
+            .eq('sku', validatedInput.sku)
+            .eq('warehouse', warehouse)
+            .eq('location', destination.name)
             .maybeSingle();
 
         if (existingItemData) {
             const existingItem = this.validate(existingItemData);
-            const newTotal = (existingItem.Quantity || 0) + qty;
+            const newTotal = (existingItem.quantity || 0) + qty;
+
+            // Smart Description Merge: Overwrite only if source has content
+            const incomingNote = validatedInput.sku_note?.trim();
+            const updatedNote = (incomingNote && incomingNote.length > 0)
+                ? validatedInput.sku_note
+                : existingItem.sku_note;
 
             await this.update(existingItem.id, {
-                Quantity: newTotal,
+                quantity: newTotal,
                 location_id: destination.id,
+                sku_note: updatedNote,
             } as any);
 
             await trackLog(
                 {
-                    sku: validatedInput.SKU,
+                    sku: validatedInput.sku,
                     to_warehouse: warehouse,
                     to_location: destination.name,
-                    quantity: qty,
-                    prev_quantity: existingItem.Quantity || 0,
+                    quantity_change: qty, // New explicit delta
+                    prev_quantity: existingItem.quantity || 0,
                     new_quantity: newTotal,
                     action_type: 'ADD',
                     item_id: String(existingItem.id),
+                    location_id: destination.id,
+                    snapshot_before: {
+                        id: existingItem.id,
+                        sku: existingItem.sku,
+                        quantity: existingItem.quantity,
+                        location_id: existingItem.location_id,
+                        location: existingItem.location,
+                        warehouse: existingItem.warehouse
+                    },
                     is_reversed: newItem.isReversal || false,
                 },
                 userInfo
@@ -193,10 +209,13 @@ class InventoryService extends BaseService<'inventory'> {
         }
 
         // 4. Insert New Item
+        // Remove non-DB fields that might be present in the schema for input validation but not persistence
+        const { isReversal, force_id, ...cleanInput } = validatedInput;
+
         const itemToInsert: any = {
-            ...validatedInput,
-            Warehouse: warehouse,
-            Location: destination.name,
+            ...cleanInput,
+            warehouse: warehouse,
+            location: destination.name,
             location_id: destination.id,
         };
 
@@ -206,16 +225,24 @@ class InventoryService extends BaseService<'inventory'> {
 
         const inserted = await this.create(itemToInsert);
 
+        console.log(`[InventoryService] Item ${newItem.force_id ? 'RESTORED' : 'CREATED'}:`, {
+            sku: inserted.sku,
+            UUID: inserted.id,
+            isReversal: newItem.isReversal || false
+        });
+
         await trackLog(
             {
-                sku: validatedInput.SKU,
+                sku: validatedInput.sku,
                 to_warehouse: warehouse,
                 to_location: destination.name,
-                quantity: qty,
+                quantity_change: qty,
                 prev_quantity: 0,
                 new_quantity: qty,
                 action_type: 'ADD',
                 item_id: String(inserted.id),
+                location_id: destination.id,
+                snapshot_before: null, // New item, no previous state
                 is_reversed: newItem.isReversal || false,
             },
             userInfo
@@ -225,7 +252,215 @@ class InventoryService extends BaseService<'inventory'> {
     }
 
     /**
-     * Detailed movement logic between locations.
+     * Updates an inventory item, handling identity changes (merges) and quantity overrides.
+     *
+     * Hybrid Logic:
+     * - Case A (In-place): Only quantity changes -> Overwrite (Input is absolute truth).
+     * - Case B (Movement): SKU/Wh/Loc change + Collision -> Consolidate (Add origin to target) and Delete origin.
+     */
+    async updateItem(
+        originalItem: InventoryModel,
+        updatedFormData: InventoryItemInput & { isReversal?: boolean },
+        locations: Location[],
+        ctx: InventoryServiceContext
+    ) {
+        const { userInfo, trackLog } = ctx;
+
+        // 1. Validate input
+        const validatedInput = InventoryItemInputSchema.parse(updatedFormData);
+        const newSku = validatedInput.sku;
+        const targetWarehouse = validatedInput.warehouse;
+        const newQty = validatedInput.quantity;
+
+        // 2. Resolve target location
+        const destination = await this.ensureLocationExists(targetWarehouse, validatedInput.location || '', locations, ctx);
+        const targetLocation = destination.name;
+        const targetLocationId = destination.id;
+
+        // 3. Identity & Collision Detection
+        const hasSkuChanged = newSku !== originalItem.sku;
+        const hasTargetChanged =
+            targetWarehouse !== originalItem.warehouse ||
+            targetLocation !== originalItem.location;
+
+        if (hasSkuChanged || hasTargetChanged) {
+            // Check for collision at destination
+            const { data: collisionData } = await this.supabase
+                .from(this.table)
+                .select('*')
+                .eq('sku', newSku)
+                .eq('warehouse', targetWarehouse)
+                .eq('location', targetLocation)
+                .neq('id' as any, originalItem.id as any)
+                .maybeSingle();
+
+            if (collisionData) {
+                // COLLISION DETECTED
+                if (hasSkuChanged) {
+                    // CASE 1: ILLEGAL RENAME
+                    // Cannot rename to a SKU that already exists in the target location
+                    throw new AppError(
+                        `Cannot rename to "${newSku}" because that SKU already exists in ${targetLocation}. To merge, move the item instead of renaming.`,
+                        409
+                    );
+                }
+
+                // CASE 2: VALID MERGE (Location Change)
+                const targetItem = this.validate(collisionData);
+                const consolidatedQty = (targetItem.quantity || 0) + originalItem.quantity;
+
+                // Smart Description Merge: Overwrite only if source has content
+                const incomingNote = validatedInput.sku_note?.trim();
+                const updatedNote = (incomingNote && incomingNote.length > 0)
+                    ? validatedInput.sku_note
+                    : targetItem.sku_note;
+
+                // Update Target
+                await this.update(targetItem.id, {
+                    quantity: consolidatedQty,
+                    location_id: targetLocationId,
+                    sku_note: updatedNote,
+                } as any);
+
+                // Delete Origin
+                await this.delete(originalItem.id);
+
+                // Log as MOVE (Merge)
+                await trackLog({
+                    sku: newSku,
+                    from_warehouse: originalItem.warehouse as any,
+                    from_location: originalItem.location || undefined,
+                    to_warehouse: targetWarehouse,
+                    to_location: targetLocation,
+                    to_location_id: targetLocationId,
+                    quantity_change: -originalItem.quantity, // Log as deduction from source
+                    prev_quantity: originalItem.quantity,
+                    new_quantity: 0,
+                    action_type: 'MOVE',
+                    item_id: String(originalItem.id), // Source is the primary subject for resurrection
+                    location_id: originalItem.location_id,
+                    snapshot_before: {
+                        id: originalItem.id,
+                        sku: originalItem.sku,
+                        quantity: originalItem.quantity,
+                        location_id: originalItem.location_id,
+                        location: originalItem.location,
+                        warehouse: originalItem.warehouse
+                    },
+                    is_reversed: updatedFormData.isReversal || false,
+                }, userInfo);
+
+                return { action: 'consolidated', id: targetItem.id };
+            }
+
+            // CASE 3: NO COLLISION (Standard Move/Rename)
+            await this.update(originalItem.id, {
+                sku: newSku,
+                warehouse: targetWarehouse,
+                location: targetLocation,
+                location_id: targetLocationId,
+                quantity: newQty, // Absolute truth
+                sku_note: validatedInput.sku_note,
+                status: validatedInput.status || originalItem.status,
+            } as any);
+
+            const isRename = hasSkuChanged;
+            const actionType = isRename ? 'EDIT' : 'MOVE';
+
+            await trackLog({
+                sku: newSku,
+                from_warehouse: originalItem.warehouse as any,
+                from_location: originalItem.location || undefined,
+                to_warehouse: targetWarehouse,
+                to_location: targetLocation,
+                to_location_id: targetLocationId,
+                quantity_change: newQty - originalItem.quantity,
+                prev_quantity: originalItem.quantity,
+                new_quantity: newQty,
+                action_type: actionType,
+                previous_sku: isRename ? originalItem.sku : undefined,
+                item_id: String(originalItem.id),
+                location_id: originalItem.location_id, // Source location ID
+                snapshot_before: {
+                    id: originalItem.id,
+                    sku: originalItem.sku,
+                    quantity: originalItem.quantity,
+                    location_id: originalItem.location_id,
+                    location: originalItem.location,
+                    warehouse: originalItem.warehouse
+                },
+                is_reversed: updatedFormData.isReversal || false,
+            }, userInfo);
+
+            return { action: isRename ? 'renamed' : 'moved', id: originalItem.id };
+        }
+
+        // IN-PLACE EDIT SCENARIO (Only Quantity or Note)
+        await this.update(originalItem.id, {
+            quantity: newQty,
+            sku_note: validatedInput.sku_note,
+            status: validatedInput.status || originalItem.status,
+        } as any);
+
+        await trackLog({
+            sku: originalItem.sku,
+            to_warehouse: originalItem.warehouse as any,
+            to_location: originalItem.location || undefined,
+            quantity_change: newQty - originalItem.quantity,
+            prev_quantity: originalItem.quantity,
+            new_quantity: newQty,
+            action_type: 'EDIT',
+            item_id: String(originalItem.id),
+            location_id: originalItem.location_id,
+            snapshot_before: {
+                id: originalItem.id,
+                sku: originalItem.sku,
+                quantity: originalItem.quantity,
+                location_id: originalItem.location_id,
+                location: originalItem.location,
+                warehouse: originalItem.warehouse
+            },
+            is_reversed: updatedFormData.isReversal || false,
+        }, userInfo);
+
+        return { action: 'updated', id: originalItem.id };
+    }
+
+    /**
+     * Permanently removes an item from inventory.
+     */
+    async deleteItem(
+        item: InventoryModel,
+        ctx: InventoryServiceContext
+    ) {
+        const { userInfo, trackLog } = ctx;
+
+        await this.delete(item.id);
+
+        await trackLog({
+            sku: item.sku,
+            from_warehouse: item.warehouse as any,
+            from_location: item.location || undefined,
+            quantity_change: -item.quantity,
+            prev_quantity: item.quantity,
+            new_quantity: 0,
+            action_type: 'DELETE',
+            item_id: String(item.id),
+            location_id: item.location_id,
+            snapshot_before: {
+                id: item.id,
+                sku: item.sku,
+                quantity: item.quantity,
+                location_id: item.location_id,
+                location: item.location,
+                warehouse: item.warehouse
+            },
+        }, userInfo);
+    }
+
+    /**
+     * Moving stock from one place to another. 
+     * Internally leverages updateItem/addItem patterns but specialized for transfer semantics.
      */
     async moveItem(
         sourceItem: InventoryModel,
@@ -238,77 +473,79 @@ class InventoryService extends BaseService<'inventory'> {
     ) {
         const { userInfo, trackLog } = ctx;
 
-        // 1. HARDENING: Resolve destination before touching source
+        // 1. Resolve destination
         const destination = await this.ensureLocationExists(targetWarehouse, targetLocation, locations, ctx);
 
-        // 2. Server-side check
-        const { data: serverItem, error: checkError } = await this.supabase
+        // 2. Fetch server qty to prevent over-drawing
+        const { data: serverItem } = await this.supabase
             .from(this.table)
-            .select('Quantity')
-            .eq('id' as any, sourceItem.id as any)
+            .select('quantity')
+            .eq('id', sourceItem.id as any)
             .single();
 
-        if (checkError || !serverItem) throw new AppError('Item no longer exists in source.', 404);
-        const serverQty = serverItem.Quantity ?? 0;
+        const serverQty = (serverItem as any)?.quantity ?? 0;
         if (serverQty < qty) {
-            throw new AppError(`Stock mismatch: Found ${serverQty} units, but tried to move ${qty}.`, 409);
+            throw new AppError(`Stock mismatch: Found ${serverQty}, tried to move ${qty}.`, 409);
         }
 
-        // 3. Update Source (Zero-Stock Handling: Keep the row)
-        const remainingQty = ((serverItem.Quantity as number) || 0) - qty;
-        await this.update(sourceItem.id as any, { Quantity: remainingQty } as any);
+        // 3. Update source
+        const remainingQty = serverQty - qty;
+        await this.update(sourceItem.id, { quantity: remainingQty } as any);
 
-        // 4. Update Destination
+        // 4. Update/Create Target
         const { data: existingTargetData } = await this.supabase
             .from(this.table)
             .select('*')
-            .eq('SKU', sourceItem.SKU)
-            .eq('Warehouse', targetWarehouse)
-            .eq('Location', destination.name)
+            .eq('sku', sourceItem.sku)
+            .eq('warehouse', targetWarehouse)
+            .eq('location', destination.name)
             .maybeSingle();
 
         if (existingTargetData) {
             const existingTarget = this.validate(existingTargetData);
-            const newTotal = (existingTarget.Quantity || 0) + qty;
             await this.update(existingTarget.id, {
-                Quantity: newTotal,
+                quantity: (existingTarget.quantity || 0) + qty,
                 location_id: destination.id,
             } as any);
         } else {
             await this.create({
-                SKU: sourceItem.SKU,
-                Warehouse: targetWarehouse,
-                Location: destination.name,
+                sku: sourceItem.sku,
+                warehouse: targetWarehouse,
+                location: destination.name,
                 location_id: destination.id,
-                Quantity: qty,
+                quantity: qty,
                 sku_note: sourceItem.sku_note,
-                Status: sourceItem.Status || 'Active',
+                status: sourceItem.status || 'Active',
             } as any);
         }
 
-        // 5. Track Log
-        await trackLog(
-            {
-                sku: sourceItem.SKU,
-                from_warehouse: sourceItem.Warehouse as any,
-                from_location: sourceItem.Location || undefined,
-                to_warehouse: targetWarehouse as any,
-                to_location: destination.name,
-                quantity: qty,
-                prev_quantity: serverItem.Quantity || 0,
-                new_quantity: remainingQty,
-                action_type: 'MOVE',
-                is_reversed: isReversal,
+        // 5. Log
+        await trackLog({
+            sku: sourceItem.sku,
+            from_warehouse: sourceItem.warehouse as any,
+            from_location: sourceItem.location || undefined,
+            to_warehouse: targetWarehouse,
+            to_location: destination.name,
+            to_location_id: destination.id, // THE CRITICAL MISSING LINK
+            quantity_change: -qty, // Deduct from source
+            prev_quantity: serverQty,
+            new_quantity: remainingQty,
+            action_type: 'MOVE',
+            location_id: sourceItem.location_id, // Source location ID
+            snapshot_before: {
+                id: sourceItem.id,
+                sku: sourceItem.sku,
+                quantity: serverQty,
+                location_id: sourceItem.location_id,
+                location: sourceItem.location,
+                warehouse: sourceItem.warehouse
             },
-            userInfo
-        );
+            is_reversed: isReversal,
+        }, userInfo);
     }
 
     /**
      * Fetches inventory items with advanced filtering, search, and pagination.
-     * Includes total count for UI pagination components.
-     * 
-     * @returns {Promise<{ data: InventoryModel[], count: number | null }>} 
      */
     async getWithFilters({
         search = '',
@@ -323,34 +560,58 @@ class InventoryService extends BaseService<'inventory'> {
             .from(this.table)
             .select('*', { count: 'exact' }) as any;
 
-        query = query.gt('Quantity', 0)
-            .order('Warehouse', { ascending: false }) // Puts LUDLOW (L) before ATS (A)
-            .order('Location', { ascending: true })
-            .order('SKU', { ascending: true });
+        query = query.gt('quantity', 0)
+            .order('warehouse', { ascending: false })
+            .order('location', { ascending: true })
+            .order('sku', { ascending: true });
 
         if (search) {
-            // Search across SKU and Location fields
-            query = query.or(`SKU.ilike.%${search}%,Location.ilike.%${search}%`);
+            query = query.or(`sku.ilike.%${search}%,location.ilike.%${search}%`);
         }
 
         const from = page * limit;
-        const to = from + limit - 1;
+        const { data, error, count } = await query.range(from, from + limit - 1);
 
-        const { data, error, count } = await query.range(from, to);
-
-        if (error) {
-            this.handleError(error);
-        }
-
-        // Standardized validation through BaseService
-        const validatedData = this.validateArray(data);
+        if (error) this.handleError(error);
 
         return {
-            data: validatedData as any,
+            data: this.validateArray(data) as any,
             count,
         };
     }
+
+    /**
+     * Checks if an item exists at the given coordinates.
+     * Useful for real-time validation in UI.
+     */
+    async checkExistence(
+        sku: string,
+        locationName: string,
+        warehouse: string,
+        excludeId?: string | number
+    ): Promise<boolean> {
+        if (!sku || (!locationName && locationName !== '') || !warehouse) return false;
+
+        let query = this.supabase
+            .from(this.table)
+            .select('id')
+            .eq('sku', sku)
+            .eq('warehouse', warehouse)
+            .eq('location', locationName);
+
+        if (excludeId) {
+            query = query.neq('id', excludeId as any);
+        }
+
+        const { data, error } = await query.maybeSingle();
+
+        if (error) {
+            console.error('Error checking existence:', error);
+            return false;
+        }
+
+        return !!data;
+    }
 }
 
-// Export a singleton instance for application-wide use
 export const inventoryService = new InventoryService();

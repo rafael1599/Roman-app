@@ -6,7 +6,7 @@ The user wants to optimize the inventory history (`HistoryScreen`) to avoid clut
 
 ## Task Breakdown
 
-### 1. Refactor `useInventoryData.jsx` (Data Source)
+### 1. Refactor `useInventoryData.tsx` (Data Source)
 
 **Goal:** Ensure correct data (`action_type`, `user`) is sent to the logging hook.
 

@@ -6,14 +6,17 @@ Quick, transient notes for the current session. Move permanent insights to `.age
 
 ## 🕒 Current Focus
 
-- Implementing categorized knowledge base.
-- Setting up token efficiency rules.
+- **Feature Stability**: Monitoring the new TypeScript-based Smart Picking engine.
+- **Type Adoption**: Converting remaining UI components to `.tsx`.
+- **Performance**: Ensuring Supabase real-time sync doesn't hit throttle limits during peak picking.
 
 ## 📝 Pending Tasks
 
-- [ ] Review `useInventoryData.jsx` for initial `INVENTORY_FLOW.md` entries.
-- [ ] Check `AuthContext` for `USER_MANAGEMENT.md`.
+- [ ] Resolve remaining lint errors in migrated `.tsx` files.
+- [ ] Implement automated regression tests for inventory deduction.
+- [ ] Add barcode scanning support (Roadmap).
 
 ## 💡 Quick Insights (Session)
 
-- _None yet._
+- TypeScript interfaces in `smart-picking/types.ts` significantly reduced "undefined" errors during pallet splitting.
+- Hybrid AI fallback ensures 99% uptime for order extraction even on Gemini's free tier.

@@ -1,10 +1,9 @@
-import Papa from 'papaparse';
-
 /**
  * Fetches and parses a CSV file from the given URL.
  */
 export const fetchAndParseCSV = async <T = any>(url: string): Promise<T[]> => {
   try {
+    const { default: Papa } = await import('papaparse');
     const response = await fetch(url);
     if (!response.ok) {
       throw new Error(`Failed to fetch CSV from ${url}: ${response.statusText}`);

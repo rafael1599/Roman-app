@@ -1,172 +1,99 @@
 # Roman Inv - Inventory Management PWA
 
-Offline-first Progressive Web App for inventory management with automatic CSV file synchronization.
+High-performance, multi-user Inventory Management System powered by **Supabase** and **Google Gemini AI**.
+
+## 🚀 Reality Check: Current State
+
+The system has matured from a CSV-based prototype into a full-scale warehouse orchestration platform:
+- **Database**: 100% migrated to Supabase (PostgreSQL) with Real-time synchronization.
+- **Language**: Core logic and Smart Picking migrated to **TypeScript** for enterprise-grade reliability.
+- **AI**: Dual-provider fallback system (Gemini 2.5 Flash + GPT-4o).
 
 ## Features
 
-### Core Inventory Management
+### Core Warehouse Management
 
-- 📱 **Mobile-First Design** - Optimized for iPhone/Safari
-- 🌐 **Network Access** - Access from any device on your local network
-- 💾 **Auto-Save** - Changes automatically saved to CSV files (1 second debounce)
-- 🔍 **Search** - Filter inventory by SKU or Location
-- ✏️ **CRUD Operations** - Add, Edit, Delete inventory items
-- 📊 **Dual Inventory** - Separate views for Ludlow (General) and ATS (High Density)
-- 🎨 **Dark Mode** - Industrial dark theme with Matrix green accents
+- 📱 **Mobile-First Design** - Optimized for high-speed warehouse operations on iPhone/PWA.
+- 🔄 **Real-time Sync** - Direct Supabase integration for multi-user inventory consistency.
+- 🔍 **Global Search** - Instant filtering by SKU, Location, or Metadata.
+- 🏗️ **Zone Optimization** - Organize warehouse into HOT, WARM, and COLD zones.
+- 📊 **Dual Inventory** - Specialized tracking for Ludlow (General) and ATS (High Density) grids.
+- 🛠️ **Location HUD** - Interactive location editor with capacity validation and picking priority.
 
 ### 🤖 Smart Picking (AI-Powered)
 
-- 📸 **AI Order Scanning** - Scan invoices with camera, AI extracts SKUs automatically
-- 🧠 **Powered by Gemini 2.5 Flash** - Best FREE model with hybrid reasoning
-- 🎯 **JSON Schema Validation** - Guaranteed accurate OCR results
-- 📦 **Auto Palletization** - Automatically splits orders into pallets (max 13 items)
-- 🗺️ **Route Optimization** - Configurable warehouse map for optimal picking routes
-- ✅ **AI Verification** - Verify completed pallets with photo verification
-- 🔄 **Real-time Inventory** - Automatic inventory deduction as orders are processed
-- ↩️ **Rollback Support** - Undo orders if mistakes are made
-- ⚡ **Fast & Free** - Latest AI technology on free tier
-
-> 📖 **[Read Smart Picking Documentation](./SMART_PICKING.md)** for setup and usage guide
+- 📸 **AI Order Extraction** - Scan physical invoices; Gemini extracts items and quantities automatically.
+- 🧠 **Hybrid Reasoning** - Powered by Gemini 2.5 Flash with automatic fallback to OpenAI GPT-4o.
+- 📦 **Auto Palletization** - Intelligent order splitting into pallets (max 13 items) based on warehouse mapping.
+- 🗺️ **Visual Map Builder** - Drag-and-drop picking route optimizer.
+- ✅ **Photo Verification** - AI-driven validation of completed pallets to prevent shipping errors.
+- ↩️ **Global Undo** - Single-click restoration of any inventory movement or picking session.
 
 ## Installation
 
 ### 1. Install Dependencies
 
 ```bash
-# Install frontend dependencies
 pnpm install
-
-# Install backend dependencies
-cd server
-pnpm install
-cd ..
 ```
 
-### 2. Run the Application
+### 2. Configure Environment
 
-You need to run **both** the frontend and backend servers:
-
-#### Option A: Run Both Servers Separately (Recommended)
-
-**Terminal 1 - Backend Server:**
+Copy `.env.example` to `.env` and provide your Supabase and AI provider credentials:
 
 ```bash
-pnpm run dev:server
+VITE_SUPABASE_URL=...
+VITE_SUPABASE_ANON_KEY=...
+VITE_GOOGLE_API_KEY=...
+VITE_OPENAI_API_KEY=... # Optional fallback
 ```
 
-**Terminal 2 - Frontend Server:**
+### 3. Start Development Server
 
 ```bash
 pnpm run dev
 ```
 
-#### Option B: Run Both Together (macOS/Linux)
+The app is accessible at http://localhost:5173/ and automatically broadcasts to your local network.
 
-```bash
-pnpm run dev:all
-```
+## Technical Architecture
 
-### 3. Access the App
+- **Frontend**: React 19 + Vite + Tailwind CSS + **TypeScript**.
+- **State & Data**: TanStack Query (React Query) + Supabase Client.
+- **Storage**: PostgreSQL (via Supabase) with Row Level Security (RLS).
+- **Communication**: Real-time Postgres changes for instant multi-user updates.
+- **Utilities**: 
+  - `@dnd-kit` for visual map configuration.
+  - `Lucide React` for high-fidelity iconography.
+  - `jsPDF` for automated picking reports.
 
-- **Local:** http://localhost:5173/
-- **Network:** http://YOUR_IP:5173/ (shown in terminal after starting)
+## Usage Guide
 
-> **Note:** Make sure both servers are running. The backend runs on port 3001, frontend on port 5173.
+### Picking Flow
+1. **Deduction & Validation**: As items are scanned or added to a picking session, the system validates stock in real-time.
+2. **Route Optimization**: The system calculates the shortest path through the warehouse based on your custom map.
+3. **Session Persistence**: Picking progress is synced across users. An admin can "Double Check" a pallet before finalizing.
+4. **Finalization**: Inventory is deducted from Supabase, and a comprehensive log is created with an optional PDF report.
 
-## How It Works
+## Tech Stack (Current)
 
-### Architecture
-
-- **Frontend:** React + Vite + Tailwind CSS
-- **Backend:** Express.js (Node.js)
-- **Data Storage:** CSV files in `public/data/`
-- **Auto-Save:** Debounced (1 second) automatic writes to CSV
-
-### Data Flow
-
-1. Frontend loads inventory from backend API (`/api/inventory/ludlow` and `/api/inventory/ats`)
-2. User makes changes (add, edit, delete, increment/decrement)
-3. Changes are automatically saved to CSV files via API after 1 second of inactivity
-4. CSV files in `public/data/` are updated in real-time
-
-### CSV Files
-
-- `public/data/clean_inventory.csv` - Ludlow inventory
-- `public/data/ats_inventory.csv` - ATS inventory
-
-## Usage
-
-### Ludlow Screen (General Inventory)
-
-- Grouped by Location (Row 1, Row 2, etc.)
-- Click any card to edit
-- Use +/- buttons to adjust quantity
-- Tap green "+" button (bottom right) to add new item
-
-### ATS Screen (High Density)
-
-- Sorted by Location and Location_Detail
-- Location_Detail highlighted in yellow
-- Same editing capabilities as Ludlow
-
-### Editing Items
-
-- Click any inventory card to open edit modal
-- Modify SKU, Location, Quantity, or Location_Detail
-- Click "Save" to confirm or "Delete" to remove item
-- Changes auto-save to CSV files
-
-## Network Access
-
-The app is configured to be accessible from other devices on your local network:
-
-1. Start both servers
-2. Find the Network URL in the terminal output
-3. Open that URL on your iPhone (same WiFi network)
-4. Add to Home Screen for PWA experience
-
-## Tech Stack
-
-### Core
-
-- **React 19** - UI framework
-- **Vite** - Build tool and dev server
-- **Tailwind CSS** - Styling
-- **Express.js** - Backend API server
-- **PapaParse** - CSV parsing
-- **Lucide React** - Icons
-- **React Router** - Navigation
-
-### Smart Picking
-
-- **Google Gemini 2.5 Flash** - Best FREE model with hybrid reasoning
-- **JSON Schema Validation** - Ensures accurate OCR results
-- **@google/generative-ai** - Official Gemini SDK
-- **@dnd-kit** - Drag-and-drop for warehouse map editor
-
-## Development
-
-- Frontend runs on port **5173**
-- Backend runs on port **3001**
-- Vite proxy forwards `/api/*` requests to backend
-- CORS enabled for network access
+- **React 19** - UI Core
+- **TypeScript** - Type safety and documentation
+- **Supabase** - Authentication, Database, and Real-time
+- **Vite** - Build & Dev ecosystem
+- **Tailwind CSS** - Design system
+- **Google Gemini 2.5 Flash** - Vision & Extraction AI
 
 ## Troubleshooting
 
-**Q: Changes aren't saving to CSV?**
+**Q: Inventory changes aren't syncing?**
+- Verify your internet connection; Supabase requires an active link for real-time updates.
+- Check the browser console for RLS (Row Level Security) violations.
 
-- Make sure the backend server is running (`pnpm run dev:server`)
-- Check the browser console for API errors
-- Verify CSV files exist in `public/data/`
+**Q: AI scanning is slow or failing?**
+- The system will fallback to OpenAI if Gemini is overloaded.
+- Ensure the invoice is well-lit and the camera is in focus.
 
-**Q: Can't access from iPhone?**
+---
 
-- Ensure both devices are on the same WiFi network
-- Use the Network URL shown in terminal (not localhost)
-- Check firewall settings on your Mac
-
-**Q: App shows "Loading Inventory..." forever?**
-
-- Backend server might not be running
-- Check if CSV files exist in `public/data/`
-- Open browser console to see error messages
+_Project maintained by the Roman App Engineering Team._

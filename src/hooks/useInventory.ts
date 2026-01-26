@@ -11,7 +11,7 @@ export function useInventoryList(filters: { search?: string; page?: number; limi
 
     return useQuery({
         queryKey: inventoryKeys.list({ search, page, limit }),
-        queryFn: () => inventoryService.getInventoryItems({ search, page, limit }),
+        queryFn: () => inventoryService.getWithFilters({ search, page, limit }),
         // Optimization for inventory: keep data "stale" but don't refetch too aggressively
         // if the user is just navigating, unless explicitly requested.
         staleTime: 1000 * 60 * 2, // 2 minutes

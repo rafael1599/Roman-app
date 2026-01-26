@@ -1,11 +1,11 @@
-import Tesseract from 'tesseract.js';
-import { type AIOrderItem, type AIPalletVerification } from '../schemas/ai.schema';
+import type { AIOrderItem, AIPalletVerification } from '../schemas/ai.schema';
 
 /**
  * Extract text from image/PDF using Tesseract.js (Free, Local OCR)
  */
 async function extractTextWithTesseract(file: File | string): Promise<string> {
   try {
+    const { default: Tesseract } = await import('tesseract.js');
     console.log('🔍 Starting Tesseract OCR...');
 
     const result = await Tesseract.recognize(

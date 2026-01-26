@@ -146,7 +146,7 @@ const validateOrder = (orderItems) => {
 };
 ```
 
-### **3. Modal in `WarehouseSelectionModal.jsx`**
+### **3. Modal in `WarehouseSelectionModal.tsx`**
 
 ```javascript
 export default function WarehouseSelectionModal({ items, onConfirm, onCancel }) {
@@ -174,7 +174,7 @@ export default function WarehouseSelectionModal({ items, onConfirm, onCancel }) 
 }
 ```
 
-### **4. Integration in `SmartPicking.jsx`**
+### **4. Integration in `SmartPicking.tsx`**
 
 ```javascript
 const handleScanComplete = (scannedItems) => {
@@ -324,11 +324,11 @@ Picking List:
    - `findInventoryItem()` - Detects duplicates
    - `validateOrder()` - Marks items for selection
 
-2. **`WarehouseSelectionModal.jsx`** (new)
+2. **`WarehouseSelectionModal.tsx`** (new)
    - Selection modal
    - UI for choosing warehouse
 
-3. **`SmartPicking.jsx`**
+3. **`SmartPicking.tsx`**
    - Modal integration
    - Handling selections
 

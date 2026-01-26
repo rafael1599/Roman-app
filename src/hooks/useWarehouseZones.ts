@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../context/AuthContext';
 import { SLOTTING_CONFIG, inferZoneByAlphabetical } from '../config/slotting';
 import { type ZoneType } from '../schemas/zone.schema';
 
@@ -19,7 +18,6 @@ interface ZoneMapItem {
 }
 
 export const useWarehouseZones = () => {
-  const { isDemoMode } = useAuth();
   const [zones, setZones] = useState<Record<string, ZoneMapItem>>({});
   const [pendingChanges, setPendingChanges] = useState<Record<string, PendingChange>>({});
   const [loading, setLoading] = useState(true);
@@ -46,7 +44,7 @@ export const useWarehouseZones = () => {
         }
 
         const zoneMap: Record<string, ZoneMapItem> = {};
-        data?.forEach((row) => {
+        data?.forEach((row: any) => {
           const key = `${row.warehouse}-${row.location}`;
           zoneMap[key] = {
             id: row.id,
@@ -73,8 +71,8 @@ export const useWarehouseZones = () => {
     const fetchLocations = async () => {
       const { data, error } = await supabase
         .from('inventory')
-        .select('Warehouse, Location')
-        .not('Location', 'is', null);
+        .select('warehouse, location')
+        .not('location', 'is', null);
 
       if (error) {
         console.error('Error fetching inventory locations:', error);
@@ -83,8 +81,8 @@ export const useWarehouseZones = () => {
 
       const unique = new Set<string>();
       data?.forEach((item) => {
-        if (item.Location && item.Location.trim() !== '') {
-          unique.add(`${item.Warehouse}-${item.Location}`);
+        if (item.location && item.location.trim() !== '') {
+          unique.add(`${item.warehouse}-${item.location}`);
         }
       });
 
@@ -121,7 +119,6 @@ export const useWarehouseZones = () => {
           .filter((k) => k.startsWith(`${warehouse}-`))
           .map((k) => k.split(`${warehouse}-`)[1]);
 
-        // inferZoneByAlphabetical currently returns string, assume compatible or cast
         return inferZoneByAlphabetical(whLocations, location) as ZoneType;
       }
 
@@ -190,14 +187,6 @@ export const useWarehouseZones = () => {
     const changes = Object.values(pendingChanges);
     if (changes.length === 0) return { success: true };
 
-    if (isDemoMode) {
-      // In demo mode, we just clear the pending changes state
-      // since the 'zones' state was already optimistically updated.
-      // This simulates a "save" without persisting to Supabase.
-      setPendingChanges({});
-      return { success: true };
-    }
-
     try {
       // Prepare upsert data
       const upsertData = changes.map(({ warehouse, location, zone }) => ({
@@ -220,7 +209,7 @@ export const useWarehouseZones = () => {
       console.error('Error saving zone changes:', err);
       return { success: false, error: err.message };
     }
-  }, [pendingChanges, isDemoMode]);
+  }, [pendingChanges]);
 
   // 7. Auto-Assign Zones based on alphabetical order
   const autoAssignZones = useCallback(async () => {

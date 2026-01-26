@@ -1,17 +1,16 @@
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
-
-/**
- * Generates a Picking List PDF grouped by pallets.
- */
 /**
  * Generates a Picking List PDF based on a pre-ordered sequence.
  */
-export const generatePickingPdf = (
+export const generatePickingPdf = async (
   finalSequence: any[],
   orderNumber?: string,
   totalPallets: number = 0
 ) => {
+  const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+    import('jspdf'),
+    import('jspdf-autotable')
+  ]);
+
   const doc = new jsPDF('p', 'mm', 'a4');
   const today = new Intl.DateTimeFormat('en-US', {
     year: 'numeric',
@@ -45,8 +44,8 @@ export const generatePickingPdf = (
 
   const sequenceData = finalSequence.map((item, idx) => [
     (idx + 1).toString(),
-    item.SKU,
-    `${item.Location}${item.Warehouse ? ` / ${item.Warehouse}` : ''}`,
+    item.sku,
+    `${item.location}${item.warehouse ? ` / ${item.warehouse}` : ''}`,
     `P${item.palletId}`,
     item.pickingQty?.toString() || '0',
     item.isPicked ? 'VERIFIED' : '',

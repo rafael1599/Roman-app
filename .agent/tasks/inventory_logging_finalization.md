@@ -17,8 +17,8 @@ We have implemented smart log coalescing (server-side) and burst buffering (clie
 
 ## 3. Reporting & UI Consistency
 
-- [ ] **HistoryScreen Live Refresh**: Ensure `HistoryScreen.jsx` correctly receives updates when a log is **deleted** (counter-merge to 0) via real-time subscriptions. Currently, it might only handle `UPDATE` and `INSERT`.
-- [ ] **Real-time Deletion**: Verify `HistoryScreen.jsx` has a listener for `DELETE` events on `inventory_logs`.
+- [ ] **HistoryScreen Live Refresh**: Ensure `HistoryScreen.tsx` correctly receives updates when a log is **deleted** (counter-merge to 0) via real-time subscriptions. Currently, it might only handle `UPDATE` and `INSERT`.
+- [ ] **Real-time Deletion**: Verify `HistoryScreen.tsx` has a listener for `DELETE` events on `inventory_logs`.
 
 ## 4. Code Cleanup
 

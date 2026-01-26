@@ -10,14 +10,14 @@ const InventoryScreen = React.lazy(() =>
   import('./screens/InventoryScreen.tsx').then((m) => ({ default: m.InventoryScreen }))
 );
 const HistoryScreen = React.lazy(() =>
-  import('./screens/HistoryScreen.jsx').then((m) => ({ default: m.HistoryScreen }))
+  import('./screens/HistoryScreen.tsx').then((m) => ({ default: m.HistoryScreen }))
 );
-const Settings = React.lazy(() => import('./screens/Settings.jsx'));
+const Settings = React.lazy(() => import('./screens/Settings.tsx'));
+const LoginScreen = React.lazy(() => import('./screens/LoginScreen').then(m => ({ default: m.LoginScreen })));
 
 import { ViewModeProvider } from './context/ViewModeContext';
 import { PickingProvider } from './context/PickingContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { LoginScreen } from './screens/LoginScreen';
 import { Loader2 } from 'lucide-react';
 import { ThemeProvider } from './context/ThemeContext';
 import { Suspense } from 'react';
@@ -68,7 +68,15 @@ const AuthGuard = () => {
   }
 
   if (!user) {
-    return <LoginScreen />;
+    return (
+      <Suspense fallback={
+        <div className="min-h-screen bg-main flex items-center justify-center">
+          <Loader2 className="animate-spin text-accent w-10 h-10 opa-20" />
+        </div>
+      }>
+        <LoginScreen />
+      </Suspense>
+    );
   }
 
   // Solo cargar datos si hay usuario

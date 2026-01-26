@@ -40,14 +40,14 @@ export const MovementModal: React.FC<MovementModalProps> = ({ isOpen, onClose, o
     const autoSelect = useAutoSelect();
 
     const excludeLoc =
-        initialSourceItem?.Warehouse === formData.targetWarehouse ? initialSourceItem?.Location : null;
+        initialSourceItem?.warehouse === formData.targetWarehouse ? initialSourceItem?.location : null;
 
     const {
         suggestions: strategySuggestions,
         skuVelocity,
         mergeOpportunity,
     } = useLocationSuggestions(
-        formData.targetLocation ? null : initialSourceItem?.SKU,
+        formData.targetLocation ? null : initialSourceItem?.sku,
         formData.targetWarehouse,
         excludeLoc
     );
@@ -134,8 +134,8 @@ export const MovementModal: React.FC<MovementModalProps> = ({ isOpen, onClose, o
     const isSameLocation = useMemo(() => {
         if (!formData.targetLocation || !initialSourceItem) return false;
         return (
-            formData.targetLocation.trim().toUpperCase() === (initialSourceItem.Location || '').toUpperCase() &&
-            formData.targetWarehouse === initialSourceItem.Warehouse
+            formData.targetLocation.trim().toUpperCase() === (initialSourceItem.location || '').toUpperCase() &&
+            formData.targetWarehouse === initialSourceItem.warehouse
         );
     }, [formData.targetLocation, formData.targetWarehouse, initialSourceItem]);
 
@@ -198,16 +198,16 @@ export const MovementModal: React.FC<MovementModalProps> = ({ isOpen, onClose, o
                                 <span className="text-muted font-bold uppercase tracking-widest text-[9px] self-center">
                                     Moving
                                 </span>
-                                {initialSourceItem?.SKU}
+                                {initialSourceItem?.sku}
                             </h3>
                             <p className="text-[10px] text-muted font-bold mt-0.5 uppercase tracking-tight">
-                                From: <span className="text-content">{initialSourceItem?.Location}</span> •{' '}
-                                {initialSourceItem?.Warehouse}
+                                From: <span className="text-content">{initialSourceItem?.location}</span> •{' '}
+                                {initialSourceItem?.warehouse}
                             </p>
                         </div>
                         <div className="text-right">
                             <p className="text-2xl font-black text-content leading-none">
-                                {initialSourceItem?.Quantity}
+                                {initialSourceItem?.quantity}
                             </p>
                             <p className="text-[9px] text-muted uppercase font-black tracking-widest mt-1">
                                 Available
@@ -227,14 +227,14 @@ export const MovementModal: React.FC<MovementModalProps> = ({ isOpen, onClose, o
                                     onChange={(e) =>
                                         setField(
                                             'quantity',
-                                            Math.min(Number(initialSourceItem?.Quantity || 0), parseInt(e.target.value) || 0)
+                                            Math.min(Number(initialSourceItem?.quantity || 0), parseInt(e.target.value) || 0)
                                         )
                                     }
                                     {...autoSelect}
                                     className="w-full bg-main border border-subtle rounded-xl py-4 px-4 text-center text-3xl font-black text-accent focus:border-accent focus:ring-1 focus:ring-accent/20 outline-none transition-all placeholder:text-muted/50"
                                 />
                                 <button
-                                    onClick={() => setField('quantity', initialSourceItem?.Quantity)}
+                                    onClick={() => setField('quantity', initialSourceItem?.quantity)}
                                     className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black uppercase bg-surface border border-subtle text-muted px-2 py-1 rounded hover:opacity-80 transition-colors"
                                 >
                                     Max
@@ -302,7 +302,7 @@ export const MovementModal: React.FC<MovementModalProps> = ({ isOpen, onClose, o
                                 onChange={(val) => setField('targetLocation', val)}
                                 onBlur={handleBlur}
                                 suggestions={displaySuggestions.filter(
-                                    (s) => s.value !== initialSourceItem?.Location
+                                    (s) => s.value !== initialSourceItem?.location
                                 )}
                                 placeholder="Scan or type location (e.g. '9')"
                                 initialKeyboardMode="numeric"

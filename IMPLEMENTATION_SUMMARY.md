@@ -1,46 +1,38 @@
-# 🚀 Roman App - Implementation Summary (v2.5)
+# 🚀 Roman App - Implementation Summary (v2.6)
 
 ## ✅ Current System Overview
 
-The Roman App has evolved from a simple inventory manager into a robust, multi-user warehouse orchestration system powered by **Supabase** and **Google Gemini AI**.
+The Roman App has evolved from a simple inventory manager into a robust, multi-user **TypeScript-first** warehouse orchestration system powered by **Supabase** and **Dual-Provider AI**.
 
 ### 1. **Core Architecture**
 
-- **Unified Engine** (`src/screens/InventoryScreen.jsx`): A single, powerful interface switching between **Stock Mode** (Inventory management) and **Picking Mode** (Session-based picking).
-- **Real-time Backend**: Powered by Supabase for database persistence, real-time logging, and Edge Functions for automated reporting.
-- **Modular State**: Context-based logic separated into `Auth`, `Picking`, `ViewMode`, `Error`, and `Confirmation` providers.
+- **Unified Engine** (`src/screens/InventoryScreen.tsx`): A single, powerful interface switching between **Stock Mode** and **Picking Mode**.
+- **TypeScript Foundation**: Core logic and Smart Picking migrated to **TypeScript** for enterprise-grade reliability.
+- **Real-time Backend**: Powered by Supabase for database persistence, real-time logging, and multi-user sync.
 
 ### 2. **Advanced Features**
 
 - ✅ **Multi-User Picking & Double Check**:
   - Picking sessions can be locked for verification.
   - Verification queue for admins to "Double Check" picked pallets.
-  - Multi-user conflict resolution.
-- ✅ **Advanced History & Auditing** (`src/screens/HistoryScreen.jsx`):
+- ✅ **Smart Picking (TS Migration)**:
+  - Centralized type system in `src/features/smart-picking/types.ts`.
+  - Refined `useOrderProcessing` hook with strict validation logic.
+  - Fully typed UI components for mapping, scanning, and verification.
+- ✅ **Advanced History & Auditing** (`src/screens/HistoryScreen.tsx`):
   - Real-time activity log with `Undo` functionality.
-  - User-specific activity tracking.
-  - Automated PDF report generation (jsPDF).
-  - Daily email summaries via Supabase Edge Functions.
-- ✅ **Smart Warehouse Management**:
-  - **Zone Management**: Organizing locations into logical zones.
-  - **Location Editor**: Interactive modal for updating capacities and picking order.
-  - **Predictive Typing**: Location suggestions based on movement patterns.
-- ✅ **Reliability & Performance**:
-  - Global **Demo Mode** for safe testing.
-  - Batch request optimization to prevent bottlenecks.
-  - Comprehensive error handling and user confirmation workflows.
+  - User-specific activity tracking and PDF reporting.
 
-### 3. **AI Capabilities (Gemini)**
+### 3. **AI Capabilities (Hybrid Fallback)**
 
-- **OCR Scanning**: Extracting SKUs and quantities from physical invoices.
-- **Pallet Verification**: Validating physical pallets against digital picking lists.
-- **Metadata Management**: Automated SKU metadata generation.
+- **Dual-Provider OCR**: Uses Google Gemini 2.5 Flash with automatic fallback to OpenAI GPT-4o if rate limits or errors occur.
+- **Pallet Verification**: AI-driven validation of physical pick accuracy.
 
-### 4. **AI & Agent Tooling (MCP)**
+### 4. **Infrastructure & Stack**
 
-- **Context7 MCP**: Integrated for real-time, version-specific documentation retrieval. Assistants should use this for any library configuration or coding advice.
-- **Supabase MCP**: Enabled for direct database management, SQL execution, and RLS advising.
-- **Agent Knowledge Base** (`.agent/`): Specialized rules and project context stored in `.agent/knowledge/` and `.agent/workflows/` to ensure consistency across different AI sessions.
+- **Frontend**: React 19 + Vite + Tailwind CSS + **TypeScript**.
+- **Database**: Supabase (PostgreSQL, Realtime, Auth).
+- **Tooling**: MCP (Context7, Supabase, Github) for agentic development workflow.
 
 ## 📁 Current File Structure
 
@@ -49,21 +41,21 @@ The Roman App has evolved from a simple inventory manager into a robust, multi-u
 ├── src/                 # Application source code
 │   ├── components/      # Global layout and UI atoms
 │   ├── context/         # Modular state (Auth, Picking, etc.)
-│   ├── features/        # Business logic modules
+│   ├── features/        # Business logic modules (TypeScript)
 │   ├── hooks/           # Data fetching and sync hooks
-│   ├── screens/         # Page components
-│   └── services/        # AI and API integrations
+│   ├── screens/         # Page components (TSX)
+│   └── services/        # AI (aiScanner.ts) and API integrations
 └── supabase/            # Migrations, Edge Functions, and RLS policies
 ```
 
 ## 🚀 Technical Stack
 
-- **Frontend**: React + Vite + Tailwind CSS.
-- **Backend**: Supabase (PostgreSQL, Realtime, Auth, Edge Functions).
-- **AI**: Google Gemini API.
+- **Frontend**: React 19 + Vite + Tailwind CSS + TypeScript.
+- **Backend**: Supabase (PostgreSQL, Realtime, Auth).
+- **AI**: Google Gemini API + OpenAI API (Fallback).
 - **Utilities**: Lucide React (Icons), jsPDF (Reports), Hot Toast (Notifications).
 
-## �️ Key Workflows
+## ️ Key Workflows
 
 ### Picking & Deduction
 
@@ -83,10 +75,11 @@ The Roman App has evolved from a simple inventory manager into a robust, multi-u
 
 - [x] Multi-user support.
 - [x] Persistent Picking Sessions.
+- [x] TypeScript Core Migration.
 - [ ] Barcode/QR integration.
 - [ ] Inventory heatmaps based on picking frequency.
 - [ ] Advanced analytics dashboard.
 
 ---
 
-_Last updated: 2026-01-21 | Roman App Engineering_
+_Last updated: 2026-01-25 | Roman App Engineering_

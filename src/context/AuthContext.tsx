@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
+import { queryClient } from '../lib/query-client';
 import { type User } from '@supabase/supabase-js';
 
 export interface AuthProfile {
@@ -19,8 +20,6 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   updateProfileName: (newName: string) => Promise<{ success: boolean; error?: string }>;
   toggleAdminView: () => void;
-  isDemoMode: boolean;
-  toggleDemoMode: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -32,9 +31,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [profile, setProfile] = useState<AuthProfile | null>(null);
   const [viewAsUser, setViewAsUser] = useState<boolean>(() => {
     return localStorage.getItem('view_as_user') === 'true';
-  });
-  const [isDemoMode, setIsDemoMode] = useState<boolean>(() => {
-    return localStorage.getItem('is_demo_mode') === 'true';
   });
 
   useEffect(() => {
@@ -89,38 +85,72 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             }
 
             fetchProfileWithTimeout(session.user.id, true);
+
+            // Kickstart: Resume and Invalidate to prevent 'Zombie Orders'
+            queryClient.resumePausedMutations().then(() => {
+              console.log('[AuthContext] Resumed mutations post-login');
+              // If no mutations are running, force absolute truth from server now
+              if (queryClient.isMutating() === 0) {
+                queryClient.invalidateQueries();
+              }
+            });
           } else {
             await fetchProfileWithTimeout(session.user.id, false);
+            queryClient.resumePausedMutations().then(() => {
+              if (queryClient.isMutating() === 0) {
+                queryClient.invalidateQueries();
+              }
+            });
           }
         }
       } else if (event === 'SIGNED_OUT') {
         if (mounted) {
+          // On generalized SIGNED_OUT event (could be session expiry or other tab logout)
+          // we play it safe and only remove sensitive queries, preserving the mutation queue.
+          queryClient.removeQueries();
+
           setUser(null);
           setRole(null);
           setProfile(null);
           setLoading(false);
+
+          if (window.location.pathname !== '/login') {
+            window.location.href = '/login';
+          }
         }
       }
     });
 
+    // Listen for global 401 auth errors from QueryClient
+    const handleAuthError = () => {
+      console.warn('[AuthContext] 401 detected. Session expired. Preserving mutations, clearing queries.');
+      // 401 is involuntary logout: remove queries only
+      queryClient.removeQueries();
+
+      // Clear app state and redirect
+      setUser(null);
+      setRole(null);
+      setProfile(null);
+
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+    };
+
+    window.addEventListener('auth-error-401', handleAuthError);
+
     return () => {
       mounted = false;
       subscription?.unsubscribe();
+      window.removeEventListener('auth-error-401', handleAuthError);
     };
   }, []);
 
-  // Force disable demo mode for non-admins
-  useEffect(() => {
-    if (role && role !== 'admin' && isDemoMode) {
-      console.warn('Unauthorized Demo Mode detected. Force disabling.');
-      setIsDemoMode(false);
-      localStorage.removeItem('is_demo_mode');
-    }
-  }, [role, isDemoMode]);
+
 
   // Update last seen
   useEffect(() => {
-    if (user && !isDemoMode) {
+    if (user) {
       const updateLastSeen = async () => {
         await supabase
           .from('profiles')
@@ -129,7 +159,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       };
       updateLastSeen();
     }
-  }, [user?.id, isDemoMode]);
+  }, [user?.id]);
 
   const fetchProfileWithTimeout = async (userId: string, isBackground = false) => {
     const timeoutMs = 3000;
@@ -168,11 +198,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           localStorage.setItem('view_as_user', 'false');
         }
 
-        // FORCE DISABLE DEMO MODE FOR NON-ADMINS
-        if (profileData.role !== 'admin' && isDemoMode) {
-          setIsDemoMode(false);
-          localStorage.removeItem('is_demo_mode');
-        }
+
       } else {
         if (!isBackground) setRole('staff');
       }
@@ -186,12 +212,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const updateProfileName = async (newName: string) => {
     if (!user) return { success: false, error: 'No user session' };
-
-    if (isDemoMode) {
-      // Simulate profile update locally
-      setProfile((prev) => (prev ? { ...prev, full_name: newName } : null));
-      return { success: true };
-    }
 
     try {
       const { error } = await supabase
@@ -211,6 +231,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signOut = async () => {
     setLoading(true);
+
+    // Voluntary Logout: Clear EVERYTHING (Queries + Mutations)
+    // This prevents data leakage between different users on the same device.
+    queryClient.clear();
+
     await supabase.auth.signOut();
 
     // Clear picking-related localStorage on Logout
@@ -238,18 +263,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
-  const toggleDemoMode = () => {
-    if (role !== 'admin') {
-      console.error('Only admins can toggle demo mode');
-      return;
-    }
-    setIsDemoMode((prev) => {
-      const newValue = !prev;
-      localStorage.setItem('is_demo_mode', String(newValue));
-      return newValue;
-    });
-  };
-
   const value = {
     user,
     role,
@@ -257,12 +270,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     isAdmin: role === 'admin' && !viewAsUser,
     isSystemAdmin: role === 'admin',
     viewAsUser,
-    isDemoMode,
     loading,
     signOut,
     updateProfileName,
     toggleAdminView,
-    toggleDemoMode,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

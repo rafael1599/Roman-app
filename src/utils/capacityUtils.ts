@@ -64,7 +64,7 @@ export const wouldExceedCapacity = (
 export interface InventoryLogSimple {
   sku: string;
   action_type: string;
-  quantity: number;
+  quantity_change: number;
   created_at: string | Date;
 }
 
@@ -82,7 +82,7 @@ export const calculateSkuVelocity = (
   );
 
   // Check threshold (per Config)
-  const totalPicks = picks.reduce((sum, log) => sum + Math.abs(log.quantity || 0), 0);
+  const totalPicks = picks.reduce((sum, log) => sum + Math.abs(log.quantity_change || 0), 0);
 
   if (totalPicks < SLOTTING_CONFIG.MIN_PICKS_FOR_VELOCITY) {
     return null; // Not enough data

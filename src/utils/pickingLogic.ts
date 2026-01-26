@@ -20,8 +20,8 @@ export const getOptimizedPickingPath = (items: any[], locations: Location[]) => 
   });
 
   return [...items].sort((a, b) => {
-    const keyA = `${a.Warehouse}-${a.Location}`;
-    const keyB = `${b.Warehouse}-${b.Location}`;
+    const keyA = `${a.warehouse}-${a.location}`;
+    const keyB = `${b.warehouse}-${b.location}`;
 
     const orderA = orderMap.get(keyA) ?? 9999;
     const orderB = orderMap.get(keyB) ?? 9999;
@@ -29,7 +29,7 @@ export const getOptimizedPickingPath = (items: any[], locations: Location[]) => 
     if (orderA !== orderB) return orderA - orderB;
 
     // Fallback to alphanumeric
-    return a.Location.localeCompare(b.Location, undefined, { numeric: true, sensitivity: 'base' });
+    return a.location.localeCompare(b.location, undefined, { numeric: true, sensitivity: 'base' });
   });
 };
 
@@ -77,7 +77,7 @@ export const calculatePallets = (items: any[]): Pallet[] => {
       if (take > 0) {
         // Check if SKU already in current pallet (merge split batches)
         const existingItem = currentPallet.items.find(
-          (i) => i.SKU === item.SKU && i.Location === item.Location
+          (i) => i.sku === item.sku && i.location === item.location
         );
         if (existingItem) {
           existingItem.pickingQty += take;

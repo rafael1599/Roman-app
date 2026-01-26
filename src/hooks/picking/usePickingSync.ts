@@ -6,7 +6,6 @@ import type { CartItem } from './usePickingCart';
 
 interface UsePickingSyncProps {
   user: any;
-  isDemoMode: boolean;
   sessionMode: 'building' | 'picking' | 'double_checking';
   cartItems: CartItem[];
   orderNumber: string | null;
@@ -32,7 +31,6 @@ const SYNC_DEBOUNCE_MS = 1000;
 
 export const usePickingSync = ({
   user,
-  isDemoMode,
   sessionMode,
   cartItems,
   orderNumber,
@@ -77,14 +75,10 @@ export const usePickingSync = ({
 
   // 1. Initial Load Logic
   useEffect(() => {
-    if (!user || isDemoMode) {
-      if (isDemoMode) {
-        loadFromLocalStorage();
-        setIsLoaded(true);
-      } else {
-        setCartItems([]);
-        setActiveListId(null);
-      }
+    if (!user) {
+      setCartItems([]);
+      setActiveListId(null);
+      setIsLoaded(true);
       return;
     }
 
@@ -188,11 +182,11 @@ export const usePickingSync = ({
     };
 
     loadSession();
-  }, [user?.id, isDemoMode]);
+  }, [user?.id]);
 
   // 2. Real-time Monitor
   useEffect(() => {
-    if (!activeListId || isDemoMode || !user) return;
+    if (!activeListId || !user) return;
 
     const showTakeoverAlert = async (takerId: string) => {
       if (takeoverSyncRef.current === activeListId) return;
@@ -254,12 +248,12 @@ export const usePickingSync = ({
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [activeListId, user?.id, isDemoMode]);
+  }, [activeListId, user?.id]);
 
   // 3. Save Logic
   const saveToDb = async (items: CartItem[], userId: string, listId: string | null, orderNum: string | null) => {
     if (sessionMode === 'building') return;
-    if (!userId || isSyncingRef.current || isDemoMode || sessionMode !== 'picking') return;
+    if (!userId || isSyncingRef.current || sessionMode !== 'picking') return;
 
     isSyncingRef.current = true;
     setIsSaving(true);
@@ -305,7 +299,7 @@ export const usePickingSync = ({
 
   // 4. Load External List
   const loadExternalList = useCallback(async (listId: string) => {
-    if (!user || isDemoMode) return;
+    if (!user) return;
     setIsSaving(true);
     try {
       const { data, error } = await supabase.from('picking_lists').select('id, items, order_number, status, checked_by, user_id, correction_notes').eq('id', listId).single();
@@ -327,7 +321,7 @@ export const usePickingSync = ({
     } finally {
       setIsSaving(false);
     }
-  }, [user, isDemoMode, showError]);
+  }, [user, showError]);
 
   return { isLoaded, isSaving, lastSaved, loadExternalList };
 };

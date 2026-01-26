@@ -6,18 +6,21 @@ import { SKUMetadataSchema } from './skuMetadata.schema';
  */
 export const InventoryItemDBSchema = z.object({
   id: z.union([z.string(), z.number()]),
-  SKU: z
+  sku: z
     .string()
     .trim()
-    .min(1, 'SKU cannot be empty')
-    .refine((s) => !s.includes(' '), 'SKU cannot contain spaces'),
-  Quantity: z.coerce.number().int().nonnegative(),
-  Location: z.string().nullable(),
+    .min(1, 'sku cannot be empty')
+    .refine((s) => !s.includes(' '), 'sku cannot contain spaces'),
+  quantity: z.coerce.number().int().nonnegative(),
+  location: z.string().nullable(),
   location_id: z.string().nullable().optional(),
   sku_note: z.string().nullable().optional(),
-  Warehouse: z.enum(['LUDLOW', 'ATS']),
-  Status: z.string().nullable().optional(),
-  Capacity: z.coerce.number().int().positive().optional().nullable(),
+  warehouse: z.preprocess(
+    (val) => (typeof val === 'string' ? val.trim().toUpperCase() : val),
+    z.enum(['LUDLOW', 'ATS'])
+  ),
+  status: z.string().nullable().optional(),
+  capacity: z.coerce.number().int().positive().optional().nullable(),
   created_at: z.coerce.date(),
 });
 
@@ -30,18 +33,24 @@ export const InventoryItemSchema = InventoryItemDBSchema;
  * Schema for creating/updating inventory items
  */
 export const InventoryItemInputSchema = z.object({
-  SKU: z
+  sku: z
     .string()
     .trim()
-    .min(1, 'SKU is required')
+    .min(1, 'sku is required')
     .transform((s) => s.replace(/\s/g, '')),
-  Quantity: z.coerce.number().int().nonnegative(),
-  Location: z.string().optional(),
+  quantity: z.coerce.number().int().nonnegative(),
+  location: z.string().trim().min(1, "location is required"),
   location_id: z.string().uuid().optional().nullable(),
   sku_note: z.string().optional().nullable(),
-  Warehouse: z.enum(['LUDLOW', 'ATS']),
-  Status: z.string().optional().nullable(),
-  Capacity: z.coerce.number().int().positive().optional(),
+  warehouse: z.preprocess(
+    (val) => (typeof val === 'string' ? val.trim().toUpperCase() : val),
+    z.enum(['LUDLOW', 'ATS'])
+  ),
+  status: z.string().optional().nullable(),
+  capacity: z.coerce.number().int().positive().optional(),
+  // Internal/System fields
+  force_id: z.union([z.string(), z.number()]).optional(),
+  isReversal: z.boolean().optional(),
 });
 
 // Type exports

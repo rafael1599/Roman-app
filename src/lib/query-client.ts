@@ -1,5 +1,5 @@
 import { get, set, del } from 'idb-keyval';
-import { QueryClient } from '@tanstack/react-query';
+import { QueryClient, MutationCache, QueryCache } from '@tanstack/react-query';
 import {
     PersistedClient,
     Persister,
@@ -43,16 +43,74 @@ export const queryClient = new QueryClient({
             gcTime: 1000 * 60 * 60 * 24 * 7,
             // If no network, don't fail, return cached data
             networkMode: 'offlineFirst',
-            // Minimal retries to avoid wasting battery/bandwidth on bad connections
-            retry: 1,
+            // Retry configuration for network resilience
+            retry: (_, error: any) => {
+                // Do not retry for specific client error statuses
+                const status = error?.status || error?.originalError?.status;
+                const code = error?.code || error?.originalError?.code;
+
+                // 401 (Unauthorized), 403 (Forbidden), 404 (Not Found)
+                // PGRST301 is Supabase specific for expired/invalid JWT
+                if (
+                    status === 401 ||
+                    status === 403 ||
+                    status === 404 ||
+                    code === 'PGRST301' ||
+                    code === '42501' // Supabase RLS error (Forbidden)
+                ) {
+                    return false;
+                }
+
+                // For any other error (connection lost, timeout, etc), retry infinitely
+                // TanStack Query will use the retryDelay for exponential backoff
+                return true;
+            },
+            // Exponential backoff: 1s, 2s, 4s, 8s... max 30s
+            retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
             // Refetch on window focus but only if data is stale
             refetchOnWindowFocus: true,
+            // Re-sync when network is recovered
+            refetchOnReconnect: true,
         },
         mutations: {
-            // Mutations also favor offline queueing if implemented later
+            // Mutations stay PAUSED if there is no network
             networkMode: 'offlineFirst',
         },
     },
+    queryCache: new QueryCache({
+        onError: (error: any) => {
+            const status = error?.status || error?.originalError?.status;
+            const code = error?.code || error?.originalError?.code;
+            if (status === 401 || code === 'PGRST301') {
+                console.warn('Session Expired - Re-authenticate (Query)');
+                window.dispatchEvent(new CustomEvent('auth-error-401'));
+            }
+        },
+    }),
+    mutationCache: new MutationCache({
+        onError: (error: any) => {
+            const status = error?.status || error?.originalError?.status;
+            const code = error?.code || error?.originalError?.code;
+            if (status === 401 || code === 'PGRST301') {
+                console.warn('Session Expired - Re-authenticate (Mutation)');
+                window.dispatchEvent(new CustomEvent('auth-error-401'));
+            }
+        },
+        // Anti-Zombie Policy: When a mutation finishes, if it was the last one, 
+        // invalidate all queries to get the absolute truth from the server.
+        onSuccess: () => {
+            if (queryClient.isMutating() === 1) { // 1 because this is still 'active' during onSuccess
+                console.log('[Queue] Last mutation succeeded, invalidating queries...');
+                queryClient.invalidateQueries();
+            }
+        },
+        onSettled: () => {
+            // Backup invalidation if success wasn't reached but queue is clear
+            if (queryClient.isMutating() <= 1) {
+                queryClient.invalidateQueries();
+            }
+        }
+    }),
 });
 
 export const persister = createIDBPersister();

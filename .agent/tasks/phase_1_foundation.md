@@ -13,7 +13,7 @@ After analyzing the current codebase structure, this phase establishes a **stric
 1.  **Manual Type Coercion (33+ instances)**: `parseInt(item.Quantity || 0)` scattered across 15+ files creates inconsistency. If DB returns `null`, some fail silently, others crash.
 2.  **AI Response Validation (Weak)**: `aiScanner.js` validates item structure BUT only after parsing. A malformed JSON from AI crashes the app before validation runs.
 3.  **DB Schema Mismatch**: `inventory_logs.quantity` is `INTEGER` in SQL, but frontend sometimes sends `string` or `undefined`.
-4.  **Context Pollution**: `useInventoryData.jsx` (750 lines) mixes business logic, DB queries, and UI state. TS won't help if we don't first **separate concerns**.
+4.  **Context Pollution**: `useInventoryData.tsx` (750 lines) mixes business logic, DB queries, and UI state. TS won't help if we don't first **separate concerns**.
 
 ### 📊 Data Flow Audit:
 
@@ -75,7 +75,7 @@ External → Zod Guard → Typed State → Components
 ### 2. Data Schemas (The "Single Source of Truth")
 
 **Why we need this BEFORE converting files:**
-Without schemas, converting `.jsx` → `.tsx` just adds `any` types everywhere, which is useless.
+Without schemas, converting `.tsx` → `.tsx` just adds `any` types everywhere, which is useless.
 
 #### 2.1 Core Domain Schemas (`src/schemas/`)
 
@@ -260,7 +260,7 @@ export function validateArray<T>(schema: ZodSchema<T>, data: unknown[]): T[] {
 2.  **Fail Fast**: Validate at the boundary (DB fetch, AI response), not in components.
 3.  **Explicit > Implicit**: Always define function return types.
 4.  **Defensive Parsing**: Never trust external data. Always `schema.parse()` before use.
-5.  **Type Guards for Legacy**: If a `.jsx` file calls a `.ts` file, add type guards:
+5.  **Type Guards for Legacy**: If a `.tsx` file calls a `.ts` file, add type guards:
 
 ```typescript
 export function isInventoryItem(data: unknown): data is InventoryItem {
@@ -289,7 +289,7 @@ export function isInventoryItem(data: unknown): data is InventoryItem {
 
 ✅ **Phase 1 Complete When:**
 
-1.  All `.js`/`.jsx` hooks and services are `.ts`/`.tsx`
+1.  All `.js`/`.tsx` hooks and services are `.ts`/`.tsx`
 2.  No `parseInt` without schema validation remains
 3.  AI responses are validated before reaching state
 4.  `tsc --noEmit` runs without errors
@@ -303,7 +303,7 @@ export function isInventoryItem(data: unknown): data is InventoryItem {
 
 **Mitigation**:
 
-- Keep old `.jsx` and new `.tsx` side-by-side temporarily
+- Keep old `.tsx` and new `.tsx` side-by-side temporarily
 - Use `// @ts-ignore` ONLY for third-party libs without types (mark with TODO)
 - Test each conversion with manual UI testing (critical flows: add item, move item, log verification)
 
