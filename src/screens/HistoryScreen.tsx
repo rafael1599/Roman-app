@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { useDebounce } from '../hooks/useDebounce';
 import { useInventory } from '../hooks/useInventoryData';
@@ -28,26 +29,30 @@ import { useInventoryLogs } from '../hooks/useInventoryLogs';
 import type { InventoryLog, LogActionTypeValue } from '../schemas/log.schema';
 
 export const HistoryScreen = () => {
-  const { undoAction: performUndo, addItem, moveItem, updateQuantity, updateItem } = useInventory();
+  useInventory(); // Ensure provider connection if needed, but don't bind unused vars
   const { isAdmin, profile, user: authUser } = useAuth();
   const { showError } = useError();
   const { showConfirmation } = useConfirmation();
-  const { fetchLogs: fetchLogsHook, undoAction: undoLogAction } = useInventoryLogs();
-
-  const [logs, setLogs] = useState<InventoryLog[]>([]);
-  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<LogActionTypeValue | 'ALL'>('ALL');
   const [userFilter, setUserFilter] = useState('ALL');
   const [timeFilter, setTimeFilter] = useState('TODAY');
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearch = useDebounce(searchQuery, 300);
-  const [error, setError] = useState<string | null>(null);
 
-  const fetchLogs = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  const { undoAction: undoLogAction } = useInventoryLogs();
+  const queryClient = useQueryClient();
 
+  const [logs, setLogs] = useState<InventoryLog[]>([]);
+  const [manualLoading, setManualLoading] = useState(false);
+
+  const {
+    data: logsData,
+    isLoading: loading,
+    error: queryError,
+    refetch,
+  } = useQuery({
+    queryKey: ['inventory_logs', timeFilter],
+    queryFn: async () => {
       let query = supabase
         .from('inventory_logs')
         .select('*, picking_lists(order_number)')
@@ -77,56 +82,53 @@ export const HistoryScreen = () => {
         query = query.limit(200);
       }
 
-      const { data, error: sbError } = await query;
+      const { data, error } = await query;
+      if (error) throw error;
 
-      if (sbError) throw sbError;
-
-      const formattedLogs = (data || []).map((log: any) => ({
+      return (data || []).map((log: any) => ({
         ...log,
         order_number: log.order_number || log.picking_lists?.order_number,
       })) as InventoryLog[];
+    },
+    staleTime: 1000 * 60 * 1, // 1 minute
+    gcTime: 1000 * 60 * 60 * 24, // 24 hours
+  });
 
-      setLogs(formattedLogs);
-    } catch (err: any) {
-      console.error('Fetch logs failed:', err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
+  // Keep manual 'logs' state in sync with react-query data for local optimistic updates (Undo)
+  useEffect(() => {
+    if (logsData) {
+      setLogs(logsData);
     }
-  }, [timeFilter]);
+  }, [logsData]);
+
+  const fetchLogs = useCallback(() => {
+    refetch();
+  }, [refetch]);
+
+  const error = queryError ? (queryError as any).message : null;
 
   useEffect(() => {
-    fetchLogs();
-
     const channel = supabase
       .channel('log_updates')
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'inventory_logs' },
-        (payload) => {
-          const logDate = new Date(payload.new.created_at);
-          const startOfToday = new Date();
-          startOfToday.setHours(0, 0, 0, 0);
-
-          if (timeFilter === 'YESTERDAY' && logDate >= startOfToday) return;
-
-          setLogs((prev) => [payload.new as InventoryLog, ...prev]);
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['inventory_logs'] });
         }
       )
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'inventory_logs' },
-        (payload) => {
-          setLogs((prev) =>
-            prev.map((log) => (log.id === payload.new.id ? { ...log, ...payload.new } as InventoryLog : log))
-          );
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['inventory_logs'] });
         }
       )
       .on(
         'postgres_changes',
         { event: 'DELETE', schema: 'public', table: 'inventory_logs' },
-        (payload) => {
-          setLogs((prev) => prev.filter((log) => log.id !== payload.old.id));
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['inventory_logs'] });
         }
       )
       .subscribe();
@@ -134,7 +136,7 @@ export const HistoryScreen = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchLogs, timeFilter]);
+  }, [queryClient]);
 
   const uniqueUsers = useMemo(() => {
     const users = new Set(logs.map((log) => log.performed_by).filter(Boolean));
@@ -212,7 +214,7 @@ export const HistoryScreen = () => {
         'Undo'
       );
     },
-    [undoLogAction, addItem, moveItem, updateQuantity, updateItem, fetchLogs, showConfirmation]
+    [undoLogAction, fetchLogs, showConfirmation]
   );
 
   const getActionTypeInfo = (type: LogActionTypeValue, log: InventoryLog) => {
@@ -391,7 +393,7 @@ export const HistoryScreen = () => {
 
   const handleDownloadReport = useCallback(async () => {
     try {
-      setLoading(true);
+      setManualLoading(true);
       const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
         import('jspdf'),
         import('jspdf-autotable'),
@@ -406,7 +408,7 @@ export const HistoryScreen = () => {
       console.error('Failed to generate PDF:', err);
       showError('Error generating PDF report.', err.message);
     } finally {
-      setLoading(false);
+      setManualLoading(false);
     }
   }, [generateDailyPDF, filter, timeFilter, showError]);
 
@@ -553,7 +555,7 @@ export const HistoryScreen = () => {
             className="p-3 bg-surface border border-subtle rounded-2xl hover:opacity-80 transition-all text-content"
             title="Refresh Logs"
           >
-            <RotateCcw className={loading ? 'animate-spin' : ''} size={20} />
+            <RotateCcw className={loading || manualLoading ? 'animate-spin' : ''} size={20} />
           </button>
         </div>
       </header>

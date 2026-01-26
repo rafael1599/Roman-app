@@ -148,18 +148,6 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'inventory' },
         (payload) => {
-          // DIAGNOSTIC LOGS
-          console.group('📡 Realtime Sync Debug');
-          console.log('Event Type:', payload.eventType);
-          console.log('Original Payload:', payload);
-
-          if (payload.eventType !== 'DELETE' && !payload.new) {
-            console.error('❌ CRITICAL: payload.new is missing! This usually means:');
-            console.error('1. RLS is blocking SELECT for this user.');
-            console.error('2. Replica Identity is not set to FULL in the inventory table.');
-          }
-          console.groupEnd();
-
           const event: RealtimeInventoryEvent = {
             eventType: payload.eventType as any,
             new: payload.new as any,

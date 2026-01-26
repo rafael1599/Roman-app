@@ -8,7 +8,7 @@ import {
 /**
  * Cache Versioning - increment this to force-invalidate all client caches.
  */
-const CACHE_VERSION = 'v1.0.0';
+const CACHE_VERSION = 'v1.1.0';
 const BASE_CACHE_KEY = 'roman-inventory-cache';
 const VERSIONED_KEY = `${BASE_CACHE_KEY}-${CACHE_VERSION}`;
 
@@ -99,17 +99,12 @@ export const queryClient = new QueryClient({
         // Anti-Zombie Policy: When a mutation finishes, if it was the last one, 
         // invalidate all queries to get the absolute truth from the server.
         onSuccess: () => {
-            if (queryClient.isMutating() === 1) { // 1 because this is still 'active' during onSuccess
+            // Note: queryClient.isMutating() during onSuccess includes the current one
+            if (queryClient.isMutating() === 1) {
                 console.log('[Queue] Last mutation succeeded, invalidating queries...');
                 queryClient.invalidateQueries();
             }
         },
-        onSettled: () => {
-            // Backup invalidation if success wasn't reached but queue is clear
-            if (queryClient.isMutating() <= 1) {
-                queryClient.invalidateQueries();
-            }
-        }
     }),
 });
 

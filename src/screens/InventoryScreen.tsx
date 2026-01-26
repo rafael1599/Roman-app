@@ -477,9 +477,8 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
                   return (
                     <div
                       key={`inv-row-${item.id}-${item.sku}`}
-                      className={
-                        isInCart && viewMode === 'picking' ? 'ring-1 ring-accent rounded-lg' : ''
-                      }
+                      className={`animate-slide-in-new ${isInCart && viewMode === 'picking' ? 'ring-1 ring-accent rounded-lg' : ''
+                        }`}
                     >
                       <InventoryCard
                         sku={item.sku}

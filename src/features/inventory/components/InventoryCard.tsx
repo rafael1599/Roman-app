@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useState, useRef, useEffect } from 'react';
 import { Plus, Minus, ArrowRightLeft } from 'lucide-react';
 
 interface InventoryCardProps {
@@ -31,6 +31,18 @@ export const InventoryCard = memo(
         reservedByOthers = 0,
         available = null,
     }: InventoryCardProps) => {
+        const [flash, setFlash] = useState(false);
+        const prevQuantityRef = useRef(quantity);
+
+        useEffect(() => {
+            if (prevQuantityRef.current !== quantity) {
+                setFlash(true);
+                const timer = setTimeout(() => setFlash(false), 800);
+                prevQuantityRef.current = quantity;
+                return () => clearTimeout(timer);
+            }
+        }, [quantity]);
+
         const getWarehouseColor = (wh: string | null | undefined) => {
             switch (wh?.toUpperCase()) {
                 case 'LUDLOW':
@@ -56,9 +68,9 @@ export const InventoryCard = memo(
         return (
             <div
                 onClick={isDisabled ? undefined : onClick}
-                className={`bg-card border rounded-lg p-4 mb-3 flex flex-col shadow-sm transition-colors ${isDisabled
-                        ? 'opacity-50 cursor-not-allowed border-red-500/30'
-                        : 'border-subtle active:border-accent/30 cursor-pointer'
+                className={`bg-card border rounded-lg p-4 mb-3 flex flex-col shadow-sm transition-premium origin-center ${isDisabled
+                    ? 'opacity-50 cursor-not-allowed border-red-500/30'
+                    : `border-subtle active:border-accent/30 cursor-pointer ${flash ? 'animate-flash-update scale-[1.02] border-accent/50 z-10' : 'hover:scale-[1.01]'}`
                     }`}
             >
                 <div className="flex justify-between items-start mb-2">
