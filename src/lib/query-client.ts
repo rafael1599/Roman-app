@@ -154,11 +154,12 @@ export async function cleanupCorruptedMutations() {
                     const error = mutation.state.error as any;
                     const errorMessage = error?.message || '';
 
-                    // Detect NaN or ID validation errors
+                    // Detect NaN, ID validation errors, or DB constraint violations
                     if (
                         errorMessage.includes('NaN') ||
                         errorMessage.includes('ID inválido') ||
                         errorMessage.includes('MUTATION ERROR') ||
+                        errorMessage.includes('null value in column "id"') || // Critical Fix for stuck Undos
                         error?.code === '22P02' // Postgres invalid bigint error
                     ) {
                         shouldRemove = true;

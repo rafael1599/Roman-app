@@ -109,7 +109,14 @@ const AuthGuard = () => {
   );
 };
 
+import { cleanupCorruptedMutations } from './lib/query-client';
+
 function App() {
+  React.useEffect(() => {
+    // Self-healing: Remove stuck mutations on app boot
+    cleanupCorruptedMutations();
+  }, []);
+
   return (
     <ThemeProvider>
       <AuthProvider>

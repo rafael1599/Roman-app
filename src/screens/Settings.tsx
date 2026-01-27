@@ -44,6 +44,40 @@ export default function Settings() {
           </div>
         </div>
 
+        {/* Data Management Section */}
+        <div className="bg-card border border-subtle rounded-3xl p-6 mb-8 backdrop-blur-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-content uppercase tracking-tight">Data Management</h2>
+              <p className="text-xs text-muted font-medium">
+                Fix sync issues by clearing the local queue
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                if (window.confirm('Are you sure? This will remove all pending offline actions and reload the app.')) {
+                  // Strategy: Nuke everything related to query persistence
+                  const dbs = ['query-cache', 'REACT_QUERY_OFFLINE_CACHE'];
+
+                  dbs.forEach(dbName => {
+                    try {
+                      indexedDB.deleteDatabase(dbName);
+                    } catch (e) {
+                      console.error(`Failed to delete ${dbName}`, e);
+                    }
+                  });
+
+                  localStorage.removeItem('tanstack-query-persist-client-v5');
+                  window.location.reload();
+                }
+              }}
+              className="px-4 py-2 bg-red-500/10 border border-red-500/20 text-red-500 rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-red-500/20 transition-colors"
+            >
+              Clear Sync Queue
+            </button>
+          </div>
+        </div>
+
         {/* Integrated Warehouse Management (Zones, Map, Reports) */}
         <IntegratedMapManager />
       </div>
