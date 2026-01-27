@@ -7,6 +7,7 @@ import {
   InventoryLogSchema,
 } from '../schemas/log.schema';
 import { validateData } from '../utils/validate';
+import { useAuth } from '../context/AuthContext';
 
 interface UserInfo {
   performed_by?: string;
@@ -19,6 +20,7 @@ interface UserInfo {
  */
 export const useInventoryLogs = () => {
   const queryClient = useQueryClient();
+  const { isAdmin } = useAuth();
   /**
    * Records an activity in the inventory_logs table
    * Implements "Write-Time Coalescing": Updates the last log if specific conditions met.
@@ -164,11 +166,16 @@ export const useInventoryLogs = () => {
    */
   const fetchLogs = async (): Promise<InventoryLog[]> => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('inventory_logs')
         .select('*')
-        .order('created_at', { ascending: false })
-        .limit(100);
+        .order('created_at', { ascending: false });
+
+      if (!isAdmin) {
+        query = query.neq('action_type', 'SYSTEM_RECONCILIATION');
+      }
+
+      const { data, error } = await query.limit(100);
 
       if (error) {
         console.error('Error fetching logs:', error);

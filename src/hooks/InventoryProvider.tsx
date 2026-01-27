@@ -148,12 +148,17 @@ export const InventoryProvider = ({
             const startOfToday = new Date();
             startOfToday.setHours(0, 0, 0, 0);
 
-            const { data, error } = await supabase
+            let query = supabase
               .from('inventory_logs')
               .select('*, picking_lists(order_number)')
               .gte('created_at', startOfToday.toISOString())
-              .order('created_at', { ascending: false })
-              .limit(50);
+              .order('created_at', { ascending: false });
+
+            if (!isAdmin) {
+              query = query.neq('action_type', 'SYSTEM_RECONCILIATION');
+            }
+
+            const { data, error } = await query.limit(50);
 
             if (error) throw error;
             return (data || []).map((log: any) => ({

@@ -19,6 +19,7 @@ import {
   Mail,
   User,
   Users,
+  Settings,
 } from 'lucide-react';
 import { getUserColor, getUserBgColor } from '../utils/userUtils';
 import toast from 'react-hot-toast';
@@ -58,6 +59,10 @@ export const HistoryScreen = () => {
         .from('inventory_logs')
         .select('*, picking_lists(order_number)')
         .order('created_at', { ascending: false });
+
+      if (!isAdmin) {
+        query = query.neq('action_type', 'SYSTEM_RECONCILIATION');
+      }
 
       const startOfToday = new Date();
       startOfToday.setHours(0, 0, 0, 0);
@@ -447,6 +452,13 @@ export const HistoryScreen = () => {
           bg: 'bg-amber-500/10',
           label: 'Update',
         };
+      case 'SYSTEM_RECONCILIATION':
+        return {
+          icon: <Settings size={14} />,
+          color: 'text-purple-500',
+          bg: 'bg-purple-500/10',
+          label: 'System Sync (Recon)',
+        };
       default:
         return {
           icon: <Clock size={14} />,
@@ -474,6 +486,7 @@ export const HistoryScreen = () => {
           ADD: 'Restock',
           DEDUCT: 'Picking',
           DELETE: 'Removal',
+          SYSTEM_RECONCILIATION: 'Reconciliation',
         };
         title = `${labels[filter] || filter} Report`;
       }
@@ -531,6 +544,9 @@ export const HistoryScreen = () => {
             break;
           case 'DELETE':
             description = `${performer} removed at ${fromLoc || 'Inv'}`;
+            break;
+          case 'SYSTEM_RECONCILIATION':
+            description = `System reconciliation by ${performer}`;
             break;
           default:
             description = `${performer} updated record at ${fromLoc || toLoc || '-'}`;
@@ -666,6 +682,9 @@ export const HistoryScreen = () => {
                 break;
               case 'DELETE':
                 description = `Removed item from ${fromLoc || 'Inventory'}`;
+                break;
+              case 'SYSTEM_RECONCILIATION':
+                description = `System reconciliation audit`;
                 break;
               default:
                 description = `Updated record for ${fromLoc || toLoc || '-'}`;
