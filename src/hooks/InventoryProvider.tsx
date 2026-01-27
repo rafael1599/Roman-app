@@ -535,6 +535,30 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
         updateInventoryCache(current, event, filtersRef.current, skuMetadataMapRef.current)
       );
 
+      // --- IMMEDIATE OPTIMISTIC LOG INJECTION (Fixes 1.5s gap) ---
+      const optimisticId = `upd-${Date.now()}-${sku}`;
+      queryClient.setQueryData(['inventory_logs', 'TODAY'], (old: any) => {
+        const optimisticLog = {
+          id: optimisticId,
+          sku: sku,
+          action_type: delta > 0 ? 'ADD' : 'DEDUCT',
+          quantity_change: delta,
+          from_warehouse: delta > 0 ? undefined : resolvedWarehouse,
+          from_location: delta > 0 ? undefined : (currentItem.location || undefined),
+          to_warehouse: delta > 0 ? resolvedWarehouse : undefined,
+          to_location: delta > 0 ? (currentItem.location || undefined) : undefined,
+          prev_quantity: currentItem.quantity,
+          new_quantity: (currentItem.quantity || 0) + delta,
+          created_at: new Date().toISOString(),
+          performed_by: userName,
+          is_reversed: false,
+          order_number: orderNumber,
+          list_id: listId,
+          isOptimistic: true,
+        };
+        return Array.isArray(old) ? [optimisticLog, ...old] : [optimisticLog];
+      });
+
       // 2. BATCHED SYNC: Debounce the server write
       if (pendingUpdatesRef.current[key]) {
         clearTimeout(pendingUpdatesRef.current[key].timer);
@@ -559,7 +583,7 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
           isReversal,
           listId,
           orderNumber,
-          optimistic_id: `upd-${Date.now()}-${sku}`,
+          optimistic_id: optimisticId, // Sync IDs
           preservedItem: savedItem, // Pass the original item with valid ID
         });
       }, 1500);

@@ -102,14 +102,21 @@ export const HistoryScreen = () => {
       predicate: (m) =>
         Array.isArray(m.options.mutationKey) &&
         m.options.mutationKey[0] === 'inventory'
-    }
+    },
+    select: (mutation) => ({
+      variables: mutation.state.variables as any,
+      status: mutation.state.status,
+      // @ts-ignore
+      isPaused: mutation.state.isPaused,
+      mutationKey: mutation.options.mutationKey
+    })
   });
 
   const optimisticLogs = useMemo(() => {
-    return pendingMutations
+    return (pendingMutations || [])
       .map(m => {
-        const vars = m.variables as any;
-        const mutationKey = (m as any).mutationKey; // Accessing key from state
+        const vars = m.variables;
+        const mutationKey = m.mutationKey;
         const mutationType = Array.isArray(mutationKey) ? mutationKey[1] : undefined;
 
         // Base log template
