@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import {
   type InventoryLog,
@@ -17,6 +18,7 @@ interface UserInfo {
  * Implements sophisticated log coalescing and atomic undo logic.
  */
 export const useInventoryLogs = () => {
+  const queryClient = useQueryClient();
   /**
    * Records an activity in the inventory_logs table
    * Implements "Write-Time Coalescing": Updates the last log if specific conditions met.
@@ -179,12 +181,12 @@ export const useInventoryLogs = () => {
   };
 
   /**
-   * Reverses a previously performed action using Database RPC
+   * Mutation for reversing a previously performed action using Database RPC
    */
-  const undoAction = async (
-    logId: string
-  ): Promise<{ success: boolean; error?: string }> => {
-    try {
+  const undoMutation = useMutation({
+    mutationKey: ['inventory', 'undo'],
+    networkMode: 'offlineFirst',
+    mutationFn: async (logId: string) => {
       // @ts-ignore - RPC function added manually
       const { data, error } = await supabase
         .rpc('undo_inventory_action', { target_log_id: logId });
@@ -192,25 +194,51 @@ export const useInventoryLogs = () => {
       if (error) throw error;
 
       const result = data as { success: boolean; message?: string };
-
       if (!result.success) {
         throw new Error(result.message || 'Undo operation failed');
       }
+      return result;
+    },
+    onMutate: async (logId) => {
+      // Cancel refetches
+      await queryClient.cancelQueries({ queryKey: ['inventory_logs'] });
 
-      return { success: true };
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error during undo';
-      console.error('Undo failed:', errorMessage);
-      return { success: false, error: errorMessage };
+      // Snapshot current logs
+      const previousLogs = queryClient.getQueryData<InventoryLog[]>(['inventory_logs', 'TODAY']);
+
+      // Optimistically update the UI: mark the log as reversed
+      if (previousLogs) {
+        queryClient.setQueryData(['inventory_logs', 'TODAY'], (old: any) => {
+          return Array.isArray(old)
+            ? old.map((l: any) => l.id === logId ? { ...l, is_reversed: true, isOptimistic: true } : l)
+            : old;
+        });
+      }
+
+      return { previousLogs };
+    },
+    onError: (err, _logId, context: any) => {
+      // Rollback on failure
+      if (context?.previousLogs) {
+        queryClient.setQueryData(['inventory_logs', 'TODAY'], context.previousLogs);
+      }
+      console.error('Undo failed:', err);
+    },
+    onSuccess: () => {
+      // Invalidate both inventory and logs to get fresh data
+      queryClient.invalidateQueries({ queryKey: ['inventory_logs'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory', 'lists'] });
     }
-  };
+  });
 
   return useMemo(
     () => ({
       trackLog,
       fetchLogs,
-      undoAction,
+      undoAction: undoMutation.mutateAsync,
+      isUndoing: undoMutation.isPending,
+      undoStatus: undoMutation.status,
     }),
-    [trackLog, fetchLogs, undoAction]
+    [trackLog, fetchLogs, undoMutation]
   );
 };

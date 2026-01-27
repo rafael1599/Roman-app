@@ -592,7 +592,7 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
                 })
               );
               await completeList();
-              toast.success('Deduction complete! Inventory updated.');
+              // Success feedback is implicit via optimistic UI update
               return true;
             } catch (error) {
               console.error('Deduction error:', error);

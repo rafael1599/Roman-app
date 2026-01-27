@@ -115,3 +115,76 @@ export const queryClient = new QueryClient({
 });
 
 export const persister = createIDBPersister();
+
+/**
+ * Cleanup utility: Removes corrupted mutations with invalid IDs from the queue.
+ * Call this on app initialization to prevent accumulated corruption.
+ */
+export async function cleanupCorruptedMutations() {
+    const mutations = queryClient.getMutationCache().getAll();
+    let cleanedCount = 0;
+
+    mutations.forEach((mutation) => {
+        // Check if it's an inventory mutation
+        if (
+            Array.isArray(mutation.options.mutationKey) &&
+            mutation.options.mutationKey[0] === 'inventory'
+        ) {
+            const mutationType = mutation.options.mutationKey[1];
+            const vars = mutation.state.variables as any;
+            let shouldRemove = false;
+            let reason = '';
+
+            // Only check updateQuantity mutations (the problematic ones)
+            if (mutationType === 'updateQuantity') {
+                // Check for invalid preserved item (new format)
+                if (vars?.preservedItem) {
+                    const item = vars.preservedItem;
+                    const numericId = Number(item.id);
+
+                    if (!item.id || isNaN(numericId) || numericId <= 0) {
+                        shouldRemove = true;
+                        reason = `Invalid preservedItem.id: ${item.id}`;
+                    }
+                }
+
+                // For legacy mutations without preservedItem, check if mutation is failing
+                // by looking at mutation state errors
+                if (mutation.state.status === 'error') {
+                    const error = mutation.state.error as any;
+                    const errorMessage = error?.message || '';
+
+                    // Detect NaN or ID validation errors
+                    if (
+                        errorMessage.includes('NaN') ||
+                        errorMessage.includes('ID inválido') ||
+                        errorMessage.includes('MUTATION ERROR') ||
+                        error?.code === '22P02' // Postgres invalid bigint error
+                    ) {
+                        shouldRemove = true;
+                        reason = `Failed mutation with ID error: ${errorMessage.substring(0, 50)}`;
+                    }
+                }
+            }
+
+            if (shouldRemove) {
+                console.warn(`[CLEANUP] Removing corrupted mutation for SKU ${vars?.sku || 'unknown'}`, {
+                    mutationKey: mutation.options.mutationKey,
+                    reason,
+                    status: mutation.state.status,
+                    vars
+                });
+                queryClient.getMutationCache().remove(mutation);
+                cleanedCount++;
+            }
+        }
+    });
+
+    if (cleanedCount > 0) {
+        console.log(`[CLEANUP] Removed ${cleanedCount} corrupted mutation(s) from queue`);
+    } else {
+        console.log('[CLEANUP] No corrupted mutations found');
+    }
+
+    return cleanedCount;
+}

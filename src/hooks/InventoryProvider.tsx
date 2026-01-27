@@ -100,11 +100,15 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
     filtersRef.current = filters;
   }, []);
 
-  // Initial Load - Parallel queries
+  // Initial Load - Parallel queries + Cleanup
   useEffect(() => {
     const loadAllData = async () => {
       try {
         setLoading(true);
+
+        // Clean corrupted mutations from previous sessions
+        const { cleanupCorruptedMutations } = await import('../lib/query-client');
+        await cleanupCorruptedMutations();
 
         const [inv, meta] = await Promise.all([
           inventoryApi.fetchInventory(),
@@ -130,6 +134,29 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
         setError(errorMsg);
       } finally {
         setLoading(false);
+
+        // Background prefetch of History logs for offline availability
+        queryClient.prefetchQuery({
+          queryKey: ['inventory_logs', 'TODAY'],
+          queryFn: async () => {
+            const startOfToday = new Date();
+            startOfToday.setHours(0, 0, 0, 0);
+
+            const { data, error } = await supabase
+              .from('inventory_logs')
+              .select('*, picking_lists(order_number)')
+              .gte('created_at', startOfToday.toISOString())
+              .order('created_at', { ascending: false })
+              .limit(50);
+
+            if (error) throw error;
+            return (data || []).map((log: any) => ({
+              ...log,
+              order_number: log.order_number || log.picking_lists?.order_number,
+            }));
+          },
+          staleTime: 1000 * 60 * 1,
+        });
       }
     };
     loadAllData();
@@ -155,18 +182,51 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
       listId?: string;
       orderNumber?: string;
       optimistic_id?: string;
+      preservedItem?: any; // The item captured before optimistic update
     }) => {
-      // Find item in state (Ref) to get ID
-      const item = inventoryDataRef.current.find(
-        (i) =>
-          i.sku === vars.sku &&
-          i.warehouse === vars.resolvedWarehouse &&
-          (!vars.location || i.location === vars.location)
-      );
+      // Use preserved item if available (preferred), otherwise fallback to ref lookup
+      let item = vars.preservedItem;
 
-      if (!item || !item.id || isNaN(Number(item.id))) {
-        const errorMsg = `ID inválido para SKU ${vars.sku}.`;
-        console.error('Critical Error: updateQuantityMutation aborted due to invalid ID.', { item });
+      if (!item) {
+        // Fallback: Find item in state (Ref) to get ID
+        item = inventoryDataRef.current.find(
+          (i) =>
+            i.sku === vars.sku &&
+            i.warehouse === vars.resolvedWarehouse &&
+            (!vars.location || i.location === vars.location)
+        );
+      }
+
+      if (!item) {
+        const errorMsg = `[MUTATION ERROR] Item not found for SKU ${vars.sku}`;
+        console.error(errorMsg, {
+          searchCriteria: { sku: vars.sku, warehouse: vars.resolvedWarehouse, location: vars.location },
+          preservedItemProvided: !!vars.preservedItem,
+          currentInventoryCount: inventoryDataRef.current.length
+        });
+        throw new Error(errorMsg);
+      }
+
+      if (!item.id) {
+        const errorMsg = `[MUTATION ERROR] Item has undefined/null ID for SKU ${vars.sku}`;
+        console.error(errorMsg, {
+          item: JSON.stringify(item),
+          itemKeys: Object.keys(item),
+          vars
+        });
+        throw new Error(errorMsg);
+      }
+
+      const numericId = Number(item.id);
+      if (isNaN(numericId) || numericId <= 0) {
+        const errorMsg = `[MUTATION ERROR] Item has invalid ID (${item.id}) for SKU ${vars.sku}`;
+        console.error(errorMsg, {
+          rawId: item.id,
+          idType: typeof item.id,
+          numericId,
+          item: JSON.stringify(item),
+          vars
+        });
         throw new Error(errorMsg);
       }
 
@@ -218,8 +278,61 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
         { performed_by: userName, user_id: user?.id }
       );
     },
+    onMutate: async (vars) => {
+      // Cancel any outgoing refetches to avoid overwriting our optimistic update
+      await queryClient.cancelQueries({ queryKey: ['inventory_logs'] });
+
+      // Snapshot the previous value for rollback
+      const previousLogs = queryClient.getQueryData(['inventory_logs', 'TODAY']);
+
+      // Find the item to get complete data for the log
+      const item = inventoryDataRef.current.find(
+        (i) =>
+          i.sku === vars.sku &&
+          i.warehouse === vars.resolvedWarehouse &&
+          (!vars.location || i.location === vars.location)
+      );
+
+      if (item) {
+        // Optimistically update the logs cache by injecting a temporary log
+        queryClient.setQueryData(['inventory_logs', 'TODAY'], (old: any) => {
+          const optimisticLog = {
+            id: vars.optimistic_id || `temp-${Date.now()}-${vars.sku}`,
+            sku: vars.sku,
+            action_type: vars.finalDelta > 0 ? 'ADD' : 'DEDUCT',
+            quantity_change: vars.finalDelta,
+            from_warehouse: vars.finalDelta > 0 ? undefined : vars.resolvedWarehouse,
+            from_location: vars.finalDelta > 0 ? undefined : (item.location || undefined),
+            to_warehouse: vars.finalDelta > 0 ? vars.resolvedWarehouse : undefined,
+            to_location: vars.finalDelta > 0 ? (item.location || undefined) : undefined,
+            prev_quantity: item.quantity,
+            new_quantity: (item.quantity || 0) + vars.finalDelta,
+            created_at: new Date().toISOString(),
+            performed_by: userName,
+            is_reversed: false,
+            order_number: vars.orderNumber,
+            list_id: vars.listId,
+            isOptimistic: true, // Mark as temporary
+          };
+
+          // Insert at beginning of array
+          return Array.isArray(old) ? [optimisticLog, ...old] : [optimisticLog];
+        });
+      }
+
+      // Return context for rollback
+      return { previousLogs };
+    },
+    onError: (err, vars, context) => {
+      // Rollback on error
+      if (context?.previousLogs) {
+        queryClient.setQueryData(['inventory_logs', 'TODAY'], context.previousLogs);
+      }
+      toast.error(`Error al actualizar ${vars.sku}: ${err.message}`);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: inventoryKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: ['inventory_logs'] });
     }
   });
 
@@ -376,7 +489,7 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
     return capacities;
   }, [inventoryData, locations]);
 
-  const pendingUpdatesRef = useRef<Record<string, { delta: number; timer: any }>>({});
+  const pendingUpdatesRef = useRef<Record<string, { delta: number; timer: any; item?: any }>>({});
 
   const updateQuantity = useCallback(
     async (
@@ -399,37 +512,45 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
           (!location || i.location === location)
       );
 
-      if (currentItem) {
-        const newQuantity = (currentItem.quantity || 0) + delta;
-        const event: RealtimeInventoryEvent = {
-          eventType: 'UPDATE',
-          new: {
-            ...currentItem,
-            quantity: newQuantity,
-          } as any,
-          old: currentItem as any,
-        };
-
-        setInventoryData((current) =>
-          updateInventoryCache(current, event, filtersRef.current, skuMetadataMapRef.current)
-        );
+      // Early return if item not found
+      if (!currentItem) {
+        console.error(`[updateQuantity] Item not found: ${sku} in ${resolvedWarehouse}/${location}`);
+        return;
       }
+
+      // Preserve item reference BEFORE optimistic update for mutation
+      const itemSnapshot = { ...currentItem };
+
+      const newQuantity = (currentItem.quantity || 0) + delta;
+      const event: RealtimeInventoryEvent = {
+        eventType: 'UPDATE',
+        new: {
+          ...currentItem,
+          quantity: newQuantity,
+        } as any,
+        old: currentItem as any,
+      };
+
+      setInventoryData((current) =>
+        updateInventoryCache(current, event, filtersRef.current, skuMetadataMapRef.current)
+      );
 
       // 2. BATCHED SYNC: Debounce the server write
       if (pendingUpdatesRef.current[key]) {
         clearTimeout(pendingUpdatesRef.current[key].timer);
         pendingUpdatesRef.current[key].delta += delta;
       } else {
-        pendingUpdatesRef.current[key] = { delta, timer: null };
+        pendingUpdatesRef.current[key] = { delta, timer: null, item: itemSnapshot };
       }
 
       const currentPending = pendingUpdatesRef.current[key];
 
       currentPending.timer = setTimeout(() => {
         const finalDelta = currentPending.delta;
+        const savedItem = currentPending.item; // Use preserved item
         delete pendingUpdatesRef.current[key];
 
-        // Use Mutation for the actual server call to enable persistence/retries
+        // Use Mutation with preserved item reference
         updateQuantityMutation.mutate({
           sku,
           resolvedWarehouse,
@@ -438,7 +559,8 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
           isReversal,
           listId,
           orderNumber,
-          optimistic_id: `upd-${Date.now()}-${sku}`
+          optimistic_id: `upd-${Date.now()}-${sku}`,
+          preservedItem: savedItem, // Pass the original item with valid ID
         });
       }, 1500);
     },

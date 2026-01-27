@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutationState } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { useDebounce } from '../hooks/useDebounce';
 import { useInventory } from '../hooks/useInventoryData';
@@ -42,6 +42,7 @@ export const HistoryScreen = () => {
   const [userFilter, setUserFilter] = useState('ALL');
   const [timeFilter, setTimeFilter] = useState('TODAY');
   const [searchQuery, setSearchQuery] = useState('');
+  const [undoingId, setUndoingId] = useState<string | null>(null);
   const debouncedSearch = useDebounce(searchQuery, 300);
 
   const {
@@ -94,18 +95,22 @@ export const HistoryScreen = () => {
   });
 
   // --- OPTIMISTIC LOGS INJECTION (Hybrid Stream) ---
-  const optimisticLogs = useMemo(() => {
-    const mutations = mutationCache.getAll();
-
-    return mutations
-      .filter(m =>
-        (m.state.status === 'pending' || (m as any).state.isPaused) &&
+  // Use useMutationState to observe inventory mutations in a React-friendly way
+  const pendingMutations = useMutationState({
+    filters: {
+      status: 'pending',
+      predicate: (m) =>
         Array.isArray(m.options.mutationKey) &&
         m.options.mutationKey[0] === 'inventory'
-      )
+    }
+  });
+
+  const optimisticLogs = useMemo(() => {
+    return pendingMutations
       .map(m => {
-        const vars = m.state.variables as any;
-        const mutationType = m.options.mutationKey![1];
+        const vars = m.variables as any;
+        const mutationKey = (m as any).mutationKey; // Accessing key from state
+        const mutationType = Array.isArray(mutationKey) ? mutationKey[1] : undefined;
 
         // Base log template
         const log: Partial<InventoryLog> & { isOptimistic: boolean } = {
@@ -158,20 +163,61 @@ export const HistoryScreen = () => {
             log.action_type = 'EDIT';
             log.previous_sku = vars.originalItem?.sku !== vars.updatedFormData?.sku ? vars.originalItem?.sku : undefined;
             break;
+
+          case 'undo':
+            // The mutation variable for 'undo' is the logId string
+            log.id = vars;
+            log.action_type = 'UNDO' as any;
+            break;
         }
 
         return log as InventoryLog & { isOptimistic: boolean };
       });
   }, [mutationCache, profile, authUser]);
 
-  // Combine real and optimistic logs
+  // Combine real and optimistic logs with defensive handling
   const logs = useMemo(() => {
     const serverLogs = logsData || [];
-    // Sort combined list: newest first
-    return [...optimisticLogs, ...serverLogs].sort((a, b) =>
-      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    );
+
+    // Defensive: If we're offline and have no cached data, only show optimistic logs
+    if (!logsData && optimisticLogs.length > 0) {
+      return optimisticLogs;
+    }
+
+    // Normal case: merge and deduplicate
+    const seenIds = new Set();
+    const combined: (InventoryLog & { isOptimistic: boolean })[] = [];
+
+    // Process all logs
+    [...optimisticLogs, ...serverLogs].forEach((l) => {
+      // Deduplicate by ID but keep optimistic flags
+      if (!l.id || seenIds.has(l.id)) return;
+      seenIds.add(l.id);
+      combined.push(l as any);
+    });
+
+    // Special handling for undo: if we have a pending undo mutation, 
+    // mark the targeted log as reversed/optimistic in the UI
+    const pendingUndoIds = optimisticLogs
+      .filter(m => (m as any).action_type === 'UNDO')
+      .map(m => m.id);
+
+    const finalLogs = combined.map(l => {
+      if (pendingUndoIds.includes(l.id)) {
+        return { ...l, is_reversed: true, isOptimistic: true };
+      }
+      return l;
+    });
+
+    // Safe sort with fallback
+    return finalLogs.sort((a, b) => {
+      const dateA = a?.created_at ? new Date(a.created_at).getTime() : 0;
+      const dateB = b?.created_at ? new Date(b.created_at).getTime() : 0;
+      return dateB - dateA;
+    });
   }, [logsData, optimisticLogs]);
+
+  const hasNoData = !loading && logs.length === 0;
 
   const fetchLogs = useCallback(() => {
     refetch();
@@ -262,30 +308,37 @@ export const HistoryScreen = () => {
 
   const handleUndo = useCallback(
     async (id: string) => {
+      if (undoingId) return;
+
       showConfirmation(
         'Undo Action',
         'Are you sure you want to undo this action?',
         async () => {
-          // Since we use useQuery + optimistic logs, we don't need to manually setLogs for undo 
-          // if we just invalidate, but for instant UI we can use local state if we had it.
-          // For now, let's just proceed with the action.
           try {
-            const result = await undoLogAction(id);
-            if (!result.success) {
-              throw new Error(result.error);
-            }
-            toast.success('Action undone successfully');
+            setUndoingId(id);
+            // Non-blocking call to support offline queueing
+            await undoLogAction(id);
+            toast.success('Solicitud de reversión enviada');
           } catch (err: any) {
-            console.error('Undo failed, rolling back state:', err);
-            toast.error(`Undo failed: ${err.message}`);
-            fetchLogs();
+            // Check if it's a network error (meant to be queued)
+            const isOffline = !navigator.onLine || err?.message?.includes('fetch') || err?.message?.includes('disconnected');
+
+            if (isOffline) {
+              toast('Acción guardada. Se revertirá al detectar internet.', { icon: 'ℹ️' });
+            } else {
+              console.error('Undo failed:', err);
+              toast.error(`Error: ${err.message}`);
+              await fetchLogs();
+            }
+          } finally {
+            setUndoingId(null);
           }
         },
-        undefined,
+        () => setUndoingId(null),
         'Undo'
       );
     },
-    [undoLogAction, fetchLogs, showConfirmation]
+    [undoLogAction, fetchLogs, showConfirmation, undoingId]
   );
 
   const getActionTypeInfo = (type: LogActionTypeValue, log: InventoryLog) => {
@@ -735,6 +788,16 @@ export const HistoryScreen = () => {
               Retry Connection
             </button>
           </div>
+        ) : hasNoData ? (
+          <div className="text-center py-24 border-2 border-dashed border-subtle rounded-[2.5rem]">
+            <AlertCircle className="mx-auto mb-4 opacity-20" size={48} />
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-muted mb-2">
+              Sin historial local disponible
+            </p>
+            <p className="text-[10px] text-muted/60">
+              Conecta a internet para cargar el historial
+            </p>
+          </div>
         ) : filteredLogs.length === 0 ? (
           <div className="text-center py-24 border-2 border-dashed border-subtle rounded-[2.5rem]">
             <Clock className="mx-auto mb-4 opacity-10" size={48} />
@@ -804,14 +867,18 @@ export const HistoryScreen = () => {
                         {!log.is_reversed && isAdmin && (
                           <button
                             onClick={() => handleUndo(log.id)}
-                            disabled={(log as any).isOptimistic}
-                            className={`p-3 bg-surface border border-subtle rounded-2xl transition-all shadow-xl text-content ${(log as any).isOptimistic
-                                ? 'opacity-20 cursor-not-allowed scale-90'
-                                : 'hover:bg-content hover:text-main'
+                            disabled={(log as any).isOptimistic || undoingId === log.id}
+                            className={`p-3 bg-surface border border-subtle rounded-2xl transition-all shadow-xl text-content ${(log as any).isOptimistic || undoingId === log.id
+                              ? 'opacity-20 cursor-not-allowed scale-90'
+                              : 'hover:bg-content hover:text-main'
                               }`}
-                            title={(log as any).isOptimistic ? "Syncing..." : "Undo Action"}
+                            title={(log as any).isOptimistic ? "Syncing..." : undoingId === log.id ? "Undoing..." : "Undo Action"}
                           >
-                            <Undo2 size={16} />
+                            {undoingId === log.id ? (
+                              <div className="animate-spin rounded-full h-4 w-4 border-2 border-content border-t-transparent" />
+                            ) : (
+                              <Undo2 size={16} />
+                            )}
                           </button>
                         )}
 
