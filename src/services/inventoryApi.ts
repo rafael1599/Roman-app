@@ -99,6 +99,10 @@ export const inventoryApi = {
    * Update quantity for a specific inventory record
    */
   async updateQuantity(id: string | number, quantity: number): Promise<InventoryItem> {
+    if (!id || isNaN(Number(id))) {
+      console.error("Critical Error: Attempted update on invalid ID", { id, quantity });
+      throw new Error(`Operación abortada: ID inválido (${id})`);
+    }
     const { data, error } = await supabase
       .from('inventory')
       .update({ quantity: quantity })
@@ -130,6 +134,10 @@ export const inventoryApi = {
    * Delete an inventory item
    */
   async deleteItem(id: string | number): Promise<void> {
+    if (!id || isNaN(Number(id))) {
+      console.error("Critical Error: Attempted delete on invalid ID", { id });
+      throw new Error(`Operación abortada: ID inválido (${id})`);
+    }
     const { error } = await supabase.from('inventory').delete().eq('id', id as any);
 
     if (error) throw error;

@@ -132,13 +132,13 @@ export const useInventoryLogs = () => {
         .insert([
           {
             ...logData,
-            item_id: typeof logData.item_id === 'string' ? parseInt(logData.item_id) : logData.item_id,
+            item_id: logData.item_id,
             prev_quantity: logData.prev_quantity ?? null,
             new_quantity: logData.new_quantity ?? null,
             is_reversed: logData.is_reversed || false,
             performed_by: userName,
             created_at: new Date().toISOString(),
-          },
+          } as any,
         ])
         .select()
         .single();

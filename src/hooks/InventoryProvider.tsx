@@ -164,13 +164,17 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
           (!vars.location || i.location === vars.location)
       );
 
-      if (!item) throw new Error('Item not found for update');
+      if (!item || !item.id || isNaN(Number(item.id))) {
+        const errorMsg = `ID inválido para SKU ${vars.sku}.`;
+        console.error('Critical Error: updateQuantityMutation aborted due to invalid ID.', { item });
+        throw new Error(errorMsg);
+      }
 
       // SNAPSHOT & WRITE
       const { data: snapshotItem, error: fetchError } = await supabase
         .from('inventory')
         .select('*')
-        .eq('id', Number(item.id))
+        .eq('id', item.id)
         .single();
 
       if (fetchError || !snapshotItem) throw fetchError || new Error('Item not found');
@@ -181,7 +185,7 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
       const { error: updateError } = await supabase
         .from('inventory')
         .update({ quantity: finalQuantity })
-        .eq('id', Number(item.id));
+        .eq('id', item.id);
 
       if (updateError) throw updateError;
 
@@ -197,7 +201,7 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
           prev_quantity: currentDbQty,
           new_quantity: finalQuantity,
           action_type: vars.finalDelta > 0 ? 'ADD' : 'DEDUCT',
-          item_id: String(item.id),
+          item_id: item.id as any, // ID is validated number, context needs union support
           location_id: item.location_id,
           snapshot_before: {
             id: snapshotItem.id,

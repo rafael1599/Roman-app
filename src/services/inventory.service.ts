@@ -175,6 +175,11 @@ class InventoryService extends BaseService<'inventory', InventoryModel, Inventor
                 ? validatedInput.sku_note
                 : existingItem.sku_note;
 
+            if (!existingItem.id || isNaN(Number(existingItem.id))) {
+                console.error("Critical Error: Invalid ID on existing item during merge", { existingItem });
+                throw new AppError(`Operación abortada: ID inválido para consolidación.`, 400);
+            }
+
             await this.update(existingItem.id, {
                 quantity: newTotal,
                 location_id: destination.id,
@@ -315,6 +320,11 @@ class InventoryService extends BaseService<'inventory', InventoryModel, Inventor
                     ? validatedInput.sku_note
                     : targetItem.sku_note;
 
+                if (!targetItem.id || isNaN(Number(targetItem.id))) {
+                    console.error("Critical Error: Invalid Target ID during collision merge", { targetItem });
+                    throw new AppError(`Operación abortada: ID de destino inválido.`, 400);
+                }
+
                 // Update Target
                 await this.update(targetItem.id, {
                     quantity: consolidatedQty,
@@ -434,6 +444,11 @@ class InventoryService extends BaseService<'inventory', InventoryModel, Inventor
         ctx: InventoryServiceContext
     ) {
         const { userInfo, trackLog } = ctx;
+
+        if (!item.id || isNaN(Number(item.id))) {
+            console.error("Critical Error: Attempted delete on invalid item ID", { item });
+            throw new AppError(`Operación abortada: ID inválido para eliminación.`, 400);
+        }
 
         await this.delete(item.id);
 

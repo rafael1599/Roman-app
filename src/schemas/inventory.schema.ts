@@ -5,7 +5,7 @@ import { SKUMetadataSchema } from './skuMetadata.schema';
  * Raw DB Schema - What Supabase returns from the 'inventory' table
  */
 export const InventoryItemDBSchema = z.object({
-  id: z.union([z.string(), z.number()]),
+  id: z.coerce.number().int().positive('ID must be a positive integer'),
   sku: z
     .string()
     .trim()
@@ -49,7 +49,7 @@ export const InventoryItemInputSchema = z.object({
   status: z.string().optional().nullable(),
   capacity: z.coerce.number().int().positive().optional(),
   // Internal/System fields
-  force_id: z.union([z.string(), z.number()]).optional(),
+  force_id: z.coerce.number().int().positive().optional(),
   isReversal: z.boolean().optional(),
 });
 
