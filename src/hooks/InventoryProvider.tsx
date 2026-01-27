@@ -391,16 +391,29 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
       const resolvedWarehouse = warehouse || 'LUDLOW';
       const key = `${sku}-${resolvedWarehouse}-${location || 'default'}`;
 
-      // 1. OPTIMISTIC UI: Update local state immediately for instant feedback
-      const event: RealtimeInventoryEvent = {
-        eventType: 'UPDATE',
-        new: { sku, quantity_delta: delta, warehouse: resolvedWarehouse, location } as any,
-        old: { sku, warehouse: resolvedWarehouse, location } as any,
-      };
-
-      setInventoryData((current) =>
-        updateInventoryCache(current, event, filtersRef.current, skuMetadataMapRef.current)
+      // 1. OPTIMISTIC UI: Find the current item to preserve all fields
+      const currentItem = inventoryDataRef.current.find(
+        (i) =>
+          i.sku === sku &&
+          i.warehouse === resolvedWarehouse &&
+          (!location || i.location === location)
       );
+
+      if (currentItem) {
+        const newQuantity = (currentItem.quantity || 0) + delta;
+        const event: RealtimeInventoryEvent = {
+          eventType: 'UPDATE',
+          new: {
+            ...currentItem,
+            quantity: newQuantity,
+          } as any,
+          old: currentItem as any,
+        };
+
+        setInventoryData((current) =>
+          updateInventoryCache(current, event, filtersRef.current, skuMetadataMapRef.current)
+        );
+      }
 
       // 2. BATCHED SYNC: Debounce the server write
       if (pendingUpdatesRef.current[key]) {
