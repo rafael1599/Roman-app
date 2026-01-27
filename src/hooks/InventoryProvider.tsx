@@ -68,7 +68,13 @@ interface InventoryContextType {
 
 const InventoryContext = createContext<InventoryContextType | undefined>(undefined);
 
-export const InventoryProvider = ({ children }: { children: ReactNode }) => {
+export const InventoryProvider = ({
+  children,
+  debounceDelay = 1500,
+}: {
+  children: ReactNode;
+  debounceDelay?: number;
+}) => {
   const [inventoryData, setInventoryData] = useState<InventoryItemWithMetadata[]>([]);
   const [skuMetadataMap, setSkuMetadataMap] = useState<Record<string, SKUMetadata>>({});
   const [loading, setLoading] = useState(true);
@@ -166,7 +172,7 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
 
   const mutationOptions = {
     networkMode: 'offlineFirst' as const,
-    retry: 3,
+    retry: process.env.NODE_ENV === 'test' ? 0 : 3,
     retryDelay: (attempt: number) => Math.min(1000 * 2 ** attempt, 30000),
   };
 
@@ -286,7 +292,8 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
       const previousLogs = queryClient.getQueryData(['inventory_logs', 'TODAY']);
 
       // Find the item to get complete data for the log
-      const item = inventoryDataRef.current.find(
+      // Use preservedItem (snapshot from before optimistic update) if available
+      const item = vars.preservedItem || inventoryDataRef.current.find(
         (i) =>
           i.sku === vars.sku &&
           i.warehouse === vars.resolvedWarehouse &&
@@ -321,14 +328,33 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
       }
 
       // Return context for rollback
-      return { previousLogs };
+      return { previousLogs, previousItem: item };
     },
     onError: (err, vars, context) => {
       // Rollback on error
       if (context?.previousLogs) {
         queryClient.setQueryData(['inventory_logs', 'TODAY'], context.previousLogs);
       }
-      toast.error(`Error al actualizar ${vars.sku}: ${err.message}`);
+
+      // Rollback local state (Inventory Data)
+      const prevItem = context?.previousItem;
+      console.log('[ROLLBACK] Mutation failed, attempting rollback', {
+        sku: vars.sku,
+        prevId: prevItem?.id,
+        prevQty: prevItem?.quantity
+      });
+
+      if (prevItem) {
+        setInventoryData((current) => {
+          const next = current.map(item =>
+            item.id === prevItem.id ? prevItem as InventoryItemWithMetadata : item
+          );
+          console.log('[ROLLBACK] New state count:', next.length, 'Target item qty:', next.find(i => i.id === prevItem.id)?.quantity);
+          return next;
+        });
+      }
+
+      toast.error(`Error updating ${vars.sku}: ${err.message}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: inventoryKeys.lists() });
@@ -585,7 +611,7 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
           optimistic_id: optimisticId, // Sync IDs
           preservedItem: savedItem, // Pass the original item with valid ID
         });
-      }, 1500);
+      }, debounceDelay);
     },
     [userName, user?.id, queryClient, updateQuantityMutation]
   );
