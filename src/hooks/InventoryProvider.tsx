@@ -350,9 +350,6 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
     [inventoryData]
   );
 
-  const ludlowData = useMemo(() => ludlowInventory, [ludlowInventory]);
-  const atsData = useMemo(() => atsInventory, [atsInventory]);
-
   const locationCapacities = useMemo(() => {
     const capacities: Record<string, { current: number; max: number }> = {};
 
@@ -596,10 +593,10 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
 
   const value: InventoryContextType = {
     inventoryData,
-    ludlowData: inventoryData.filter((i) => i.warehouse === 'LUDLOW'),
-    atsData: inventoryData.filter((i) => i.warehouse === 'ATS'),
-    ludlowInventory: inventoryData.filter((i) => i.warehouse === 'LUDLOW'),
-    atsInventory: inventoryData.filter((i) => i.warehouse === 'ATS'),
+    ludlowData: ludlowInventory,
+    atsData: atsInventory,
+    ludlowInventory,
+    atsInventory,
     locationCapacities,
     reservedQuantities: {},
     fetchLogs,
@@ -615,9 +612,9 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
     deleteItem,
     exportData,
     syncInventoryLocations,
-    updateInventory: (newData: any) => setInventoryData(newData),
-    updateLudlowInventory: (newData: any) => setInventoryData(prev => [...prev.filter(i => i.warehouse !== 'LUDLOW'), ...newData]),
-    updateAtsInventory: (newData: any) => setInventoryData(prev => [...prev.filter(i => i.warehouse !== 'ATS'), ...newData]),
+    updateInventory,
+    updateLudlowInventory,
+    updateAtsInventory,
     updateSKUMetadata,
     syncFilters,
     isAdmin: !!isAdmin,
@@ -635,4 +632,3 @@ export const useInventory = () => {
   }
   return context;
 };
-```
