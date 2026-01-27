@@ -1,4 +1,4 @@
-# 🚀 Roman App - Implementation Summary (v2.6)
+# 🚀 Roman App - Implementation Summary (v2.7)
 
 ## ✅ Current System Overview
 
@@ -22,6 +22,13 @@ The Roman App has evolved from a simple inventory manager into a robust, multi-u
 - ✅ **Advanced History & Auditing** (`src/screens/HistoryScreen.tsx`):
   - Real-time activity log with `Undo` functionality.
   - User-specific activity tracking and PDF reporting.
+  - **Dynamic Connection Feedback**: Intelligent prompts for offline users.
+- ✅ **Robust Realtime & Resiliency**:
+  - Automatic channel retry mechanism and zombie connection cleanup.
+  - Forensic logging for network state transitions.
+- ✅ **Safe Data Management**:
+  - Specialized logic for safe deletion of test SKUs with dependency handling.
+  - Full application localization (English).
 
 ### 3. **AI Capabilities (Hybrid Fallback)**
 
@@ -76,10 +83,12 @@ The Roman App has evolved from a simple inventory manager into a robust, multi-u
 - [x] Multi-user support.
 - [x] Persistent Picking Sessions.
 - [x] TypeScript Core Migration.
+- [x] Robust Realtime & Offline Sync.
+- [x] Full English Localization.
 - [ ] Barcode/QR integration.
 - [ ] Inventory heatmaps based on picking frequency.
 - [ ] Advanced analytics dashboard.
 
 ---
 
-_Last updated: 2026-01-25 | Roman App Engineering_
+_Last updated: 2026-01-27 | Roman App Engineering_

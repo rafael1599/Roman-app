@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronUp } from 'lucide-react';
 import { PickingSessionView } from './PickingSessionView';
 import { DoubleCheckView, PickingItem } from './DoubleCheckView';
@@ -7,7 +7,7 @@ import { useConfirmation } from '../../../context/ConfirmationContext';
 
 interface Note {
     id: string | number;
-    user_display_name: string;
+    user_display_name?: string;
     created_at: string;
     message: string;
 }
@@ -15,12 +15,12 @@ interface Note {
 // Define the full set of props expected by PickingCartDrawer
 interface PickingCartDrawerProps {
     cartItems: PickingItem[];
-    activeListId?: string;
-    orderNumber?: string;
+    activeListId?: string | null;
+    orderNumber?: string | null;
     sessionMode?: string; // e.g. 'picking', 'building', 'double_checking'
-    checkedBy?: string;
+    checkedBy?: string | null;
     correctionNotes?: string | null;
-    externalDoubleCheckId?: string | null;
+    externalDoubleCheckId?: string | number | null;
     onClearExternalTrigger: () => void;
     onLoadExternalList: (listId: string) => Promise<any>; // list object
     onLockForCheck: (listId: string) => Promise<void>;
@@ -28,8 +28,8 @@ interface PickingCartDrawerProps {
     onReturnToPicker: (listId: string, notes: string) => void;
     onRevertToPicking?: () => void;
     onMarkAsReady: (items: PickingItem[], orderNo?: string) => Promise<string | null>;
-    ownerId?: string;
-    onUpdateOrderNumber: (newOrder: string) => void;
+    ownerId?: string | null;
+    onUpdateOrderNumber: (newOrder: string | null) => void;
     onUpdateQty: (item: PickingItem, delta: number) => void;
     onRemoveItem: (item: PickingItem) => void;
     onSetQty?: (item: PickingItem, qty: number) => void;
@@ -38,9 +38,9 @@ interface PickingCartDrawerProps {
     isNotesLoading?: boolean;
     onAddNote: (note: string) => Promise<void> | void;
     onResetSession?: () => void;
-    onReturnToBuilding: (listId?: string) => Promise<void>;
-    onDelete?: (id?: string) => void;
-    [key: string]: any; // Allow remaining props for flexibility if I missed any minor ones from restProps
+    onReturnToBuilding: (listId?: string | null) => Promise<void>;
+    onDelete?: (id: string | null, keepLocalState?: boolean) => void;
+    [key: string]: any;
 }
 
 export const PickingCartDrawer: React.FC<PickingCartDrawerProps> = ({
@@ -114,7 +114,7 @@ export const PickingCartDrawer: React.FC<PickingCartDrawerProps> = ({
     useEffect(() => {
         if (externalDoubleCheckId) {
             const startDoubleCheck = async () => {
-                const list = await onLoadExternalList(externalDoubleCheckId);
+                const list = await onLoadExternalList(String(externalDoubleCheckId));
                 if (list && user) {
                     // Check for takeover
                     if (list.checked_by && list.checked_by !== user.id) {
@@ -127,7 +127,7 @@ export const PickingCartDrawer: React.FC<PickingCartDrawerProps> = ({
                             `This order is currently being checked by another user. Do you want to take over?`,
                             async () => {
                                 // Lock it for us
-                                await onLockForCheck(externalDoubleCheckId);
+                                await onLockForCheck(String(externalDoubleCheckId));
 
                                 // Load local progress for this specific list
                                 const savedProgress = localStorage.getItem(
@@ -159,7 +159,7 @@ export const PickingCartDrawer: React.FC<PickingCartDrawerProps> = ({
                     }
 
                     // Lock it for us
-                    await onLockForCheck(externalDoubleCheckId);
+                    await onLockForCheck(String(externalDoubleCheckId));
 
                     // Load local progress for this specific list
                     const savedProgress = localStorage.getItem(
@@ -330,14 +330,14 @@ export const PickingCartDrawer: React.FC<PickingCartDrawerProps> = ({
                     >
                         {currentView === 'picking' ? (
                             <PickingSessionView
-                                activeListId={activeListId}
-                                orderNumber={orderNumber}
+                                activeListId={activeListId ?? null}
+                                orderNumber={orderNumber ?? null}
                                 onUpdateOrderNumber={onUpdateOrderNumber}
-                                cartItems={cartItems}
+                                cartItems={cartItems as any}
                                 correctionNotes={correctionNotes}
-                                notes={notes}
+                                notes={notes as any}
                                 isNotesLoading={isNotesLoading}
-                                onGoToDoubleCheck={handleMarkAsReady as any} // Fixing generic signature mismatch if any
+                                onGoToDoubleCheck={handleMarkAsReady as any}
                                 onUpdateQty={onUpdateQty}
                                 onRemoveItem={onRemoveItem}
                                 onClose={() => setIsOpen(false)}
@@ -345,9 +345,9 @@ export const PickingCartDrawer: React.FC<PickingCartDrawerProps> = ({
                             />
                         ) : (
                             <DoubleCheckView
-                                cartItems={cartItems}
-                                orderNumber={orderNumber}
-                                activeListId={activeListId}
+                                cartItems={cartItems as any}
+                                orderNumber={orderNumber ?? null}
+                                activeListId={activeListId ?? null}
                                 checkedItems={checkedItems}
                                 onToggleCheck={toggleCheck}
                                 onDeduct={async (items, isVerified) => {
@@ -364,7 +364,7 @@ export const PickingCartDrawer: React.FC<PickingCartDrawerProps> = ({
                                 isNotesLoading={isNotesLoading}
                                 onAddNote={onAddNote}
                                 onBack={async () => {
-                                    await onReturnToBuilding(activeListId);
+                                    await onReturnToBuilding(activeListId ?? null);
                                 }}
                                 onRelease={() => {
                                     if (activeListId) {

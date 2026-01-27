@@ -25,7 +25,7 @@ export const LoginScreen = () => {
       console.error('Login error:', err);
       setError(
         err.message === 'Invalid login credentials'
-          ? 'Credenciales incorrectas. Intenta de nuevo.'
+          ? 'Incorrect credentials. Try again.'
           : err.message
       );
     } finally {
@@ -41,7 +41,7 @@ export const LoginScreen = () => {
             <KeyRound className="text-main w-8 h-8" />
           </div>
           <h1 className="text-3xl font-black text-content tracking-tighter">Roman App</h1>
-          <p className="text-muted font-medium">Identifícate para entrar</p>
+          <p className="text-muted font-medium">Sign in to access</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-4">
@@ -75,7 +75,7 @@ export const LoginScreen = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full bg-card border border-subtle text-content pl-11 pr-4 py-4 rounded-xl focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all placeholder:text-muted/50 font-medium"
-                placeholder="Contraseña"
+                placeholder="Password"
                 required
               />
             </div>
@@ -96,7 +96,7 @@ export const LoginScreen = () => {
               <Loader2 className="animate-spin" size={20} />
             ) : (
               <>
-                Entrar <ArrowRight size={20} />
+                Sign In <ArrowRight size={20} />
               </>
             )}
           </button>

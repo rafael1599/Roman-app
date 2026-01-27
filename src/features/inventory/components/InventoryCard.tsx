@@ -11,7 +11,7 @@ interface InventoryCardProps {
     detail?: string | null;
     onClick: () => void;
     warehouse?: string | null;
-    mode?: 'stock' | 'picking' | 'building';
+    mode?: 'stock' | 'picking' | 'building' | 'double_checking';
     reservedByOthers?: number;
     available?: number | null;
     lastUpdateSource?: 'local' | 'remote';

@@ -94,18 +94,25 @@ export const queryClient = new QueryClient({
         },
     }),
     mutationCache: new MutationCache({
-        onError: (error: any) => {
+        onMutate: (_variables, mutation) => {
+            console.log(`[FORENSIC][MUTATION][GLOBAL_START] ${new Date().toISOString()} - Key: ${JSON.stringify(mutation.options.mutationKey)}`, {
+                status: mutation.state.status,
+                variables: mutation.state.variables
+            });
+        },
+        onError: (error: any, _variables, _context, mutation) => {
             const status = error?.status || error?.originalError?.status;
             const code = error?.code || error?.originalError?.code;
+            console.error(`[FORENSIC][MUTATION][GLOBAL_ERROR] ${new Date().toISOString()} - Key: ${JSON.stringify(mutation.options.mutationKey)}`, error);
             if (status === 401 || code === 'PGRST301') {
                 console.warn('Session Expired - Re-authenticate (Mutation)');
                 window.dispatchEvent(new CustomEvent('auth-error-401'));
             }
         },
-        // Anti-Zombie Policy: When a mutation finishes, if it was the last one, 
-        // invalidate all queries to get the absolute truth from the server.
-        onSuccess: () => {
-            // Note: queryClient.isMutating() during onSuccess includes the current one
+        onSuccess: (_data, _variables, _context, mutation) => {
+            console.log(`[FORENSIC][MUTATION][GLOBAL_SUCCESS] ${new Date().toISOString()} - Key: ${JSON.stringify(mutation.options.mutationKey)}`);
+            // Anti-Zombie Policy: When a mutation finishes, if it was the last one, 
+            // invalidate all queries to get the absolute truth from the server.
             if (queryClient.isMutating() === 1) {
                 console.log('[Queue] Last mutation succeeded, invalidating queries...');
                 queryClient.invalidateQueries();

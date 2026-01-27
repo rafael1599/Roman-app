@@ -38,30 +38,30 @@ export function InventoryListTest() {
             </div>
 
             <div className="grid gap-3">
-                {items?.map((item) => (
+                {items?.data?.map((item) => (
                     <div
                         key={item.id}
                         className="group p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-all duration-300 hover:translate-x-1"
                     >
                         <div className="flex justify-between items-start">
                             <div>
-                                <p className="font-mono text-accent font-bold mb-1">{item.SKU}</p>
+                                <p className="font-mono text-accent font-bold mb-1">{item.sku}</p>
                                 <div className="flex items-center gap-4 text-xs text-white/60">
                                     <span className="flex items-center gap-1">
-                                        <MapPin className="w-3 h-3" /> {item.Location || 'No Loc'}
+                                        <MapPin className="w-3 h-3" /> {item.location || 'No Loc'}
                                     </span>
-                                    <span>Qty: <span className="text-white font-medium">{item.Quantity}</span></span>
+                                    <span>Qty: <span className="text-white font-medium">{item.quantity}</span></span>
                                 </div>
                             </div>
                             <div className="text-[10px] px-2 py-1 bg-white/5 rounded uppercase tracking-wider text-white/30">
-                                {item.Warehouse}
+                                {item.warehouse}
                             </div>
                         </div>
                     </div>
                 ))}
             </div>
 
-            {!items?.length && (
+            {!items?.data?.length && (
                 <p className="text-center text-white/40 py-8 italic border border-dashed border-white/10 rounded-xl">
                     No inventory found in the specified range.
                 </p>

@@ -11,8 +11,8 @@ import {
 import { useInventory } from '../../../hooks/useInventoryData';
 import { useMovementForm } from '../../../hooks/useMovementForm';
 import { useLocationSuggestions } from '../../../hooks/useLocationSuggestions';
-import AutocompleteInput from '../../../components/ui/AutocompleteInput';
-import { CapacityBar } from '../../../components/ui/CapacityBar';
+import AutocompleteInput from '../../../components/ui/AutocompleteInput.tsx';
+import { CapacityBar } from '../../../components/ui/CapacityBar.tsx';
 import { useLocationManagement } from '../../../hooks/useLocationManagement';
 import { predictLocation } from '../../../utils/locationPredictor';
 import { useViewMode } from '../../../context/ViewModeContext';
@@ -23,13 +23,8 @@ import { InventoryItem } from '../../../schemas/inventory.schema';
 interface MovementModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onMove: (data: {
-        sourceItem: InventoryItem;
-        targetWarehouse: string;
-        targetLocation: string;
-        quantity: number;
-    }) => void;
-    initialSourceItem?: InventoryItem;
+    onMove: (data: any) => void;
+    initialSourceItem?: InventoryItem | null;
 }
 
 export const MovementModal: React.FC<MovementModalProps> = ({ isOpen, onClose, onMove, initialSourceItem }) => {
@@ -47,7 +42,7 @@ export const MovementModal: React.FC<MovementModalProps> = ({ isOpen, onClose, o
         skuVelocity,
         mergeOpportunity,
     } = useLocationSuggestions(
-        formData.targetLocation ? null : initialSourceItem?.sku,
+        formData.targetLocation ? null : (initialSourceItem?.sku ?? null),
         formData.targetWarehouse,
         excludeLoc
     );
@@ -61,7 +56,7 @@ export const MovementModal: React.FC<MovementModalProps> = ({ isOpen, onClose, o
                 (l) => (l.warehouse || '').toUpperCase() === (formData.targetWarehouse || '').toUpperCase()
             )
             .map((l) => l.location);
-        return [...new Set(names)];
+        return Array.from(new Set(names));
     }, [locations, formData.targetWarehouse]);
 
     const prediction = useMemo(
@@ -234,7 +229,7 @@ export const MovementModal: React.FC<MovementModalProps> = ({ isOpen, onClose, o
                                     className="w-full bg-main border border-subtle rounded-xl py-4 px-4 text-center text-3xl font-black text-accent focus:border-accent focus:ring-1 focus:ring-accent/20 outline-none transition-all placeholder:text-muted/50"
                                 />
                                 <button
-                                    onClick={() => setField('quantity', initialSourceItem?.quantity)}
+                                    onClick={() => setField('quantity', initialSourceItem?.quantity || 0)}
                                     className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black uppercase bg-surface border border-subtle text-muted px-2 py-1 rounded hover:opacity-80 transition-colors"
                                 >
                                     Max
@@ -299,14 +294,14 @@ export const MovementModal: React.FC<MovementModalProps> = ({ isOpen, onClose, o
                                 id="inventory_location"
                                 label="Target Location"
                                 value={formData.targetLocation}
-                                onChange={(val) => setField('targetLocation', val)}
+                                onChange={(val: string) => setField('targetLocation', val)}
                                 onBlur={handleBlur}
                                 suggestions={displaySuggestions.filter(
                                     (s) => s.value !== initialSourceItem?.location
                                 )}
                                 placeholder="Scan or type location (e.g. '9')"
                                 initialKeyboardMode="numeric"
-                                renderItem={(suggestion) => (
+                                renderItem={(suggestion: any) => (
                                     <div className="py-2.5 px-1">
                                         <div className="flex justify-between items-center mb-1.5">
                                             <div className="flex items-center gap-2">

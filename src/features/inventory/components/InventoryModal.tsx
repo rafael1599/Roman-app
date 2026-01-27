@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { z } from 'zod';
 import { createPortal } from 'react-dom';
 import { X, Save, Trash2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
@@ -11,13 +12,9 @@ import { useConfirmation } from '../../../context/ConfirmationContext';
 import { useViewMode } from '../../../context/ViewModeContext';
 import { useAutoSelect } from '../../../hooks/useAutoSelect';
 
-import AutocompleteInput from '../../../components/ui/AutocompleteInput';
+import AutocompleteInput from '../../../components/ui/AutocompleteInput.tsx';
+import { InventoryItemWithMetadata, InventoryItemInput, InventoryItemInputSchema } from '../../../schemas/inventory.schema';
 import { predictLocation } from '../../../utils/locationPredictor';
-import {
-    InventoryItem,
-    InventoryItemInput,
-    InventoryItemInputSchema
-} from '../../../schemas/inventory.schema';
 import { inventoryService } from '../../../services/inventory.service';
 
 interface InventoryModalProps {
@@ -25,10 +22,17 @@ interface InventoryModalProps {
     onClose: () => void;
     onSave: (data: InventoryItemInput & { length_ft?: number; width_in?: number }) => void;
     onDelete?: () => void;
-    initialData?: InventoryItem & { sku_metadata?: { length_ft?: number; width_in?: number } | null };
+    initialData?: InventoryItemWithMetadata | null;
     mode?: 'add' | 'edit';
     screenType?: string;
 }
+
+const extendedSchema = InventoryItemInputSchema.extend({
+    length_ft: z.coerce.number().optional().nullable(),
+    width_in: z.coerce.number().optional().nullable(),
+});
+
+type InventoryFormValues = z.input<typeof extendedSchema>;
 
 export const InventoryModal: React.FC<InventoryModalProps> = ({
     isOpen,
@@ -47,7 +51,6 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
 
     const [confirmCreateNew, setConfirmCreateNew] = useState(false);
 
-    // 1. Setup React Hook Form
     const {
         register,
         handleSubmit,
@@ -55,11 +58,8 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
         watch,
         reset,
         formState: { errors, isValid }
-    } = useForm<InventoryItemInput & { length_ft?: number; width_in?: number }>({
-        resolver: zodResolver(InventoryItemInputSchema.extend({
-            length_ft: InventoryItemInputSchema.shape.capacity.optional(),
-            width_in: InventoryItemInputSchema.shape.capacity.optional(),
-        })),
+    } = useForm<InventoryFormValues>({
+        resolver: zodResolver(extendedSchema),
         mode: 'onChange',
         defaultValues: {
             sku: '',
@@ -110,9 +110,9 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
     // 3. Location Predictions & Suggestions
     const validLocationNames = useMemo(() => {
         if (!locations) return [];
-        return [...new Set(locations
+        return Array.from(new Set(locations
             .filter((l) => l.warehouse === formData.warehouse)
-            .map((l) => l.location))];
+            .map((l) => l.location)));
     }, [locations, formData.warehouse]);
 
     const prediction = useMemo(
@@ -146,7 +146,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
 
     const locationSuggestions = useMemo(() => {
         if (formData.location && prediction.matches.length > 0) {
-            return [...new Set(prediction.matches)].map(l => ({ value: l, info: 'DB Location' }));
+            return Array.from(new Set(prediction.matches)).map(l => ({ value: l, info: 'DB Location' }));
         }
         const counts = new Map<string, number>();
         currentInventory.forEach(i => i.location && counts.set(i.location, (counts.get(i.location) || 0) + 1));
@@ -194,7 +194,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
         // TIER 1: INSTANT LOCAL PRESENCE (Independent of everything)
         if (currentSKU.length >= 2) {
             const existingEntries = currentInventory.filter(i => normalize(i.sku) === currentSKU);
-            const locs = [...new Set(existingEntries.map(i => i.location || 'Unknown'))].filter(Boolean);
+            const locs = Array.from(new Set(existingEntries.map(i => i.location || 'Unknown'))).filter(Boolean);
             setFoundLocations(locs);
         } else {
             setFoundLocations([]);
@@ -315,7 +315,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
                 'Identity Change (SKU)',
                 `Rename "${initialData.sku}" to "${data.sku}"?\nThis will update or merge the product row.`,
                 () => executeSave(data),
-                null,
+                undefined,
                 'Rename',
                 'Cancel'
             );
@@ -469,8 +469,9 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
                         />
 
                         <div>
-                            <label className="block text-[10px] font-black text-accent mb-2 uppercase tracking-widest">Quantity</label>
+                            <label htmlFor="inventory_quantity" className="block text-[10px] font-black text-accent mb-2 uppercase tracking-widest">Quantity</label>
                             <input
+                                id="inventory_quantity"
                                 type="number"
                                 {...register('quantity', { valueAsNumber: true })}
                                 {...autoSelect}
@@ -493,7 +494,9 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
                         )}
 
                         {/* Validation Error Display */}
-                        {errors.sku && <p className="text-red-500 text-[10px] font-bold uppercase">{errors.sku.message}</p>}
+                        {errors.sku && <p className="text-red-500 text-[10px] font-bold uppercase">{String(errors.sku.message)}</p>}
+                        {errors.quantity && <p className="text-red-500 text-[10px] font-bold uppercase">{String(errors.quantity.message)}</p>}
+                        {errors.location && <p className="text-red-500 text-[10px] font-bold uppercase">{String(errors.location.message)}</p>}
                     </form>
                 </div>
 

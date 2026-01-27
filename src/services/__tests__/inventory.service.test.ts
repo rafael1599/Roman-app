@@ -18,8 +18,9 @@ describe('InventoryService', () => {
             );
 
             expect(mockSupabase.from).toHaveBeenCalledWith('inventory');
-            expect(mockSupabase.eq).toHaveBeenCalledWith('SKU', 'SKU-TEST');
-            expect(mockSupabase.eq).toHaveBeenCalledWith('Warehouse', 'LUDLOW');
+            expect(mockSupabase.eq).toHaveBeenCalledWith('sku', 'SKU-TEST');
+            expect(mockSupabase.eq).toHaveBeenCalledWith('warehouse', 'LUDLOW');
+            expect(mockSupabase.eq).toHaveBeenCalledWith('location', 'Row 1');
             expect(exists).toBe(true);
         });
 
@@ -51,34 +52,36 @@ describe('InventoryService', () => {
         ];
 
         const originalItem: any = {
-            id: 'item-orig',
-            SKU: 'SKU-A',
-            Warehouse: 'LUDLOW',
-            Location: 'Row 1',
-            Quantity: 5,
+            id: 101, // Must be number per schema
+            sku: 'SKU-A',
+            warehouse: 'LUDLOW',
+            location: 'Row 1',
+            quantity: 5,
             sku_note: 'Vieja',
             created_at: new Date().toISOString()
         };
 
         it('should throw Conflict error if renaming to an existing SKU in target location', async () => {
             // Setup: Target location has SKU-B already
+            // Mock ensureLocationExists first (implicitly handled by mockLocations logic in service, but let's be safe)
+
             mockSupabase.maybeSingle.mockResolvedValue({
                 data: {
-                    id: 'item-conflict',
-                    SKU: 'SKU-B',
-                    Location: 'Row 1',
-                    Warehouse: 'LUDLOW',
-                    Quantity: 1,
+                    id: 999,
+                    sku: 'SKU-B',
+                    location: 'Row 1',
+                    warehouse: 'LUDLOW',
+                    quantity: 1,
                     created_at: new Date().toISOString()
                 },
                 error: null
             });
 
             const updatedData: any = {
-                SKU: 'SKU-B',
-                Warehouse: 'LUDLOW',
-                Location: 'Row 1',
-                Quantity: 5
+                sku: 'SKU-B',
+                warehouse: 'LUDLOW',
+                location: 'Row 1',
+                quantity: 5
             };
 
             await expect(inventoryService.updateItem(originalItem, updatedData, mockLocations, mockCtx))
@@ -92,22 +95,22 @@ describe('InventoryService', () => {
             // Setup: Target has SKU-A, Qty 10, Note "Original"
             mockSupabase.maybeSingle.mockResolvedValue({
                 data: {
-                    id: 'item-target',
-                    SKU: 'SKU-A',
-                    Location: 'Row 2',
-                    Quantity: 10,
+                    id: 202,
+                    sku: 'SKU-A',
+                    location: 'Row 2',
+                    quantity: 10,
                     sku_note: 'Original',
-                    Warehouse: 'LUDLOW',
+                    warehouse: 'LUDLOW',
                     created_at: new Date().toISOString()
                 },
                 error: null
             });
 
             const updatedData: any = {
-                SKU: 'SKU-A',
-                Warehouse: 'LUDLOW',
-                Location: 'Row 2',
-                Quantity: 5,
+                sku: 'SKU-A',
+                warehouse: 'LUDLOW',
+                location: 'Row 2',
+                quantity: 5,
                 sku_note: 'NUEVA DESCRIPCIÓN'
             };
 
@@ -116,13 +119,13 @@ describe('InventoryService', () => {
             expect(result.action).toBe('consolidated');
             // Verify quantity sum (10 + 5) and note overwrite
             expect(mockSupabase.update).toHaveBeenCalledWith({
-                Quantity: 15,
+                quantity: 15,
                 location_id: 'loc-2',
                 sku_note: 'NUEVA DESCRIPCIÓN'
             });
             // Verify that we targeted the correct ID for update and delete
-            expect(mockSupabase.eq).toHaveBeenCalledWith('id', 'item-target');
-            expect(mockSupabase.eq).toHaveBeenCalledWith('id', 'item-orig');
+            expect(mockSupabase.eq).toHaveBeenCalledWith('id', 202);
+            expect(mockSupabase.eq).toHaveBeenCalledWith('id', 101);
 
             expect(mockSupabase.delete).toHaveBeenCalled();
         });
@@ -131,22 +134,22 @@ describe('InventoryService', () => {
             // Setup: Target has SKU-A, Note "Descripción Valiosa"
             mockSupabase.maybeSingle.mockResolvedValue({
                 data: {
-                    id: 'item-target',
-                    SKU: 'SKU-A',
-                    Location: 'Row 2',
-                    Quantity: 10,
+                    id: 303,
+                    sku: 'SKU-A',
+                    location: 'Row 2',
+                    quantity: 10,
                     sku_note: 'Descripción Valiosa',
-                    Warehouse: 'LUDLOW',
+                    warehouse: 'LUDLOW',
                     created_at: new Date().toISOString()
                 },
                 error: null
             });
 
             const updatedData: any = {
-                SKU: 'SKU-A',
-                Warehouse: 'LUDLOW',
-                Location: 'Row 2',
-                Quantity: 5,
+                sku: 'SKU-A',
+                warehouse: 'LUDLOW',
+                location: 'Row 2',
+                quantity: 5,
                 sku_note: '   ' // Empty spaces
             };
 

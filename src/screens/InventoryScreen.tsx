@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useInventory } from '../hooks/InventoryProvider';
 import { useViewMode } from '../context/ViewModeContext';
-import { SearchInput } from '../components/ui/SearchInput';
+import { SearchInput } from '../components/ui/SearchInput.tsx';
 import { useDebounce } from '../hooks/useDebounce';
 import { InventoryCard } from '../features/inventory/components/InventoryCard';
 import { InventoryModal } from '../features/inventory/components/InventoryModal';
@@ -10,7 +10,7 @@ import CamScanner from '../features/smart-picking/components/CamScanner';
 import { naturalSort } from '../utils/sortUtils';
 import { Plus, Warehouse, Sparkles, X } from 'lucide-react';
 import { MovementModal } from '../features/inventory/components/MovementModal';
-import { CapacityBar } from '../components/ui/CapacityBar';
+import { CapacityBar } from '../components/ui/CapacityBar.tsx';
 import toast from 'react-hot-toast';
 
 import { usePickingSession } from '../context/PickingContext';
@@ -20,7 +20,7 @@ import LocationEditorModal from '../features/warehouse-management/components/Loc
 import { useError } from '../context/ErrorContext';
 import { useConfirmation } from '../context/ConfirmationContext';
 import { SessionInitializationModal } from '../features/picking/components/SessionInitializationModal';
-import { InventoryItem, InventoryItemWithMetadata } from '../schemas/inventory.schema';
+import { InventoryItemWithMetadata } from '../schemas/inventory.schema';
 import { Location } from '../schemas/location.schema';
 
 export const InventoryScreen = () => {
@@ -242,7 +242,7 @@ export const InventoryScreen = () => {
   );
 
   const handleMoveStock = useCallback(
-    async (moveData) => {
+    async (moveData: { sourceItem: InventoryItemWithMetadata; targetWarehouse: 'LUDLOW' | 'ATS'; targetLocation: string; quantity: number }) => {
       try {
         await moveItem(
           moveData.sourceItem,
@@ -251,7 +251,7 @@ export const InventoryScreen = () => {
           moveData.quantity
         );
         toast.success('Stock successfully moved!');
-      } catch (err) {
+      } catch (err: any) {
         console.error('Error moving stock:', err);
         showError('Move failed', err.message);
       }
@@ -259,13 +259,13 @@ export const InventoryScreen = () => {
     [moveItem, showError]
   );
 
-  const handleQuickMove = useCallback((item) => {
+  const handleQuickMove = useCallback((item: InventoryItemWithMetadata) => {
     setEditingItem(item);
     setIsMovementModalOpen(true);
   }, []);
 
   const handleOpenLocationEditor = useCallback(
-    (warehouse, locationName, locationId) => {
+    (warehouse: string, locationName: string, locationId?: string | null) => {
       if (!isAdmin || viewMode !== 'stock') return;
       let loc = null;
       if (locationId) {
@@ -294,7 +294,7 @@ export const InventoryScreen = () => {
   );
 
   const handleSaveLocation = useCallback(
-    async (formData) => {
+    async (formData: any) => {
       let result;
       if (locationBeingEdited?.isNew) {
         const { isNew, ...dataToCreate } = formData;
@@ -314,7 +314,7 @@ export const InventoryScreen = () => {
   );
 
   const handleDeleteLocation = useCallback(
-    async (id) => {
+    async (id: string) => {
       if (locationBeingEdited?.isNew) {
         const totalUnits = inventoryData
           .filter(
@@ -342,7 +342,7 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
             setLocationBeingEdited(null);
             window.location.reload();
           },
-          null,
+          undefined,
           'Permanently Delete',
           'Cancel'
         );
@@ -360,7 +360,7 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
 
   // --- Picking Mode Handlers ---
   const handleCardClick = useCallback(
-    (item) => {
+    (item: InventoryItemWithMetadata) => {
       if (viewMode === 'stock') {
         handleEditItem(item);
       } else {
@@ -370,12 +370,21 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
     [viewMode, handleEditItem, addToCart]
   );
 
-  const handleScanComplete = (scannedLines) => {
-    const newItems = scannedLines.map((line) => {
+  const handleScanComplete = (scannedLines: any[]) => {
+    const newItems: any[] = scannedLines.map((line) => {
       const match = inventoryData.find((i) => i.sku === line.sku);
-      return match
-        ? { ...match, pickingQty: line.qty || 1 }
-        : { sku: line.sku, pickingQty: line.qty || 1, location: 'UNKNOWN', warehouse: 'UNKNOWN' };
+      if (match) {
+        return { ...match, pickingQty: line.qty || 1 };
+      }
+      return {
+        id: -1,
+        sku: line.sku,
+        quantity: 0,
+        location: 'UNKNOWN',
+        warehouse: 'LUDLOW',
+        created_at: new Date(),
+        pickingQty: line.qty || 1,
+      };
     });
     setCartItems((prev) => [...prev, ...newItems]);
     setShowScanner(false);
@@ -429,7 +438,7 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
         value={localSearch}
         onChange={setLocalSearch}
         placeholder="Search SKU, Loc, Warehouse..."
-        mode={viewMode}
+        mode={viewMode as any}
         onScanClick={() => setShowScanner(true)}
       />
 
@@ -541,7 +550,7 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
 
       {viewMode === 'picking' && (
         <PickingCartDrawer
-          cartItems={cartItems}
+          cartItems={cartItems as any}
           activeListId={activeListId}
           orderNumber={orderNumber}
           sessionMode={sessionMode}
@@ -554,7 +563,7 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
           onReturnToPicker={returnToPicker}
           onRevertToPicking={revertToPicking}
           onMarkAsReady={markAsReady}
-          notes={notes}
+          notes={notes as any}
           isNotesLoading={isNotesLoading}
           onAddNote={addNote}
           onResetSession={resetSession}
@@ -585,10 +594,10 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
                     item.sku,
                     delta,
                     item.warehouse,
-                    item.location,
+                    item.location ?? undefined,
                     false,
-                    activeListId,
-                    orderNumber
+                    activeListId ?? undefined,
+                    orderNumber ?? undefined
                   );
                 })
               );

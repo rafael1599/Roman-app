@@ -66,15 +66,15 @@ export const useOptimizationReports = () => {
         const fetchReports = async () => {
             try {
                 const { data, error } = await supabase
-                    .from('optimization_reports')
+                    .from('optimization_reports' as any)
                     .select('*')
                     .order('report_date', { ascending: false })
                     .limit(10);
 
                 if (error) throw error;
 
-                setAllReports((data as OptimizationReport[]) || []);
-                setLatestReport((data?.[0] as OptimizationReport) || null);
+                setAllReports(((data as any) as OptimizationReport[]) || []);
+                setLatestReport(((data as any)?.[0] as OptimizationReport) || null);
             } catch (err) {
                 console.error('Error fetching reports:', err);
             } finally {
@@ -101,7 +101,7 @@ export const useOptimizationReports = () => {
             if (logError) throw logError;
 
             // Cast logs to expected type
-            const typedLogs = logs as unknown as InventoryLogSimple[];
+            const typedLogs = (logs as any) as InventoryLogSimple[];
 
             // 2. Calculate Velocity for all SKUs
             const uniqueSkus = [...new Set(inventoryData.map((i) => i.sku))];
@@ -204,7 +204,7 @@ export const useOptimizationReports = () => {
             // 5. Save Report
             if (suggestions.length > 0) {
                 const { data, error } = await supabase
-                    .from('optimization_reports')
+                    .from('optimization_reports' as any)
                     .upsert(
                         {
                             // Upsert to overwrite if generated multiple times same day
@@ -212,13 +212,13 @@ export const useOptimizationReports = () => {
                             report_type: 'weekly_rebalance',
                             suggestions: { items: suggestions },
                             total_suggestions: suggestions.length,
-                        },
+                        } as any,
                         { onConflict: 'report_date, report_type' }
                     )
                     .select();
 
                 if (error) throw error;
-                setLatestReport(data[0] as OptimizationReport);
+                setLatestReport((data as any)?.[0] as OptimizationReport);
                 return { success: true, count: suggestions.length };
             } else {
                 return { success: true, count: 0, message: 'No optimization needed.' };

@@ -31,6 +31,7 @@ import type { InventoryLog, LogActionTypeValue } from '../schemas/log.schema';
 export const HistoryScreen = () => {
   useInventory(); // Ensure provider connection if needed, but don't bind unused vars
   const { isAdmin, profile, user: authUser } = useAuth();
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const { showError } = useError();
   const { showConfirmation } = useConfirmation();
   const { undoAction: undoLogAction } = useInventoryLogs();
@@ -227,39 +228,97 @@ export const HistoryScreen = () => {
   const hasNoData = !loading && logs.length === 0;
 
   const fetchLogs = useCallback(() => {
+    console.log(`[FORENSIC][CACHE][REFETCH_TRIGGER] ${new Date().toISOString()}`);
     refetch();
   }, [refetch]);
+
+  // Network & Cache Monitoring
+  useEffect(() => {
+    const handleOnline = () => {
+      console.log(`[FORENSIC][NETWORK] ${new Date().toISOString()} - ONLINE detected`);
+      setIsOnline(true);
+    };
+    const handleOffline = () => {
+      console.log(`[FORENSIC][NETWORK] ${new Date().toISOString()} - OFFLINE detected`);
+      setIsOnline(false);
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (logsData) {
+      console.log(`[FORENSIC][CACHE][LOGS_UPDATE] ${new Date().toISOString()} - Size: ${logsData.length}`);
+    }
+  }, [logsData]);
 
   const error = queryError ? (queryError as any).message : null;
 
   useEffect(() => {
-    const channel = supabase
-      .channel('log_updates')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'inventory_logs' },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['inventory_logs'] });
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'inventory_logs' },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['inventory_logs'] });
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'DELETE', schema: 'public', table: 'inventory_logs' },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['inventory_logs'] });
-        }
-      )
-      .subscribe();
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let retryTimeout: NodeJS.Timeout;
+
+    const setupSubscription = () => {
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+
+      console.log(`[FORENSIC][REALTIME][LOGS_INIT] ${new Date().toISOString()} - Setting up channel log_updates`);
+
+      channel = supabase
+        .channel('log_updates')
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'inventory_logs' },
+          (payload) => {
+            console.log(`[FORENSIC][REALTIME][LOGS_EVENT] ${new Date().toISOString()} - INSERT, SKU: ${payload.new?.sku}`);
+            queryClient.invalidateQueries({ queryKey: ['inventory_logs'] });
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'inventory_logs' },
+          (payload) => {
+            console.log(`[FORENSIC][REALTIME][LOGS_EVENT] ${new Date().toISOString()} - UPDATE, SKU: ${payload.new?.sku}`);
+            queryClient.invalidateQueries({ queryKey: ['inventory_logs'] });
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: 'DELETE', schema: 'public', table: 'inventory_logs' },
+          (payload) => {
+            console.log(`[FORENSIC][REALTIME][LOGS_EVENT] ${new Date().toISOString()} - DELETE, ID: ${payload.old?.id}`);
+            queryClient.invalidateQueries({ queryKey: ['inventory_logs'] });
+          }
+        )
+        .subscribe((status, err) => {
+          console.log(`[FORENSIC][REALTIME][LOGS_STATUS] ${new Date().toISOString()} - Status: ${status}`);
+
+          if (err) {
+            console.error(`[FORENSIC][REALTIME][LOGS_ERROR] ${new Date().toISOString()}`, err);
+          }
+
+          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+            console.warn(`[FORENSIC][REALTIME][LOGS_RETRY] ${new Date().toISOString()} - Channel died, retrying in 5s...`);
+            if (channel) supabase.removeChannel(channel);
+            clearTimeout(retryTimeout);
+            retryTimeout = setTimeout(setupSubscription, 5000);
+          }
+        });
+    };
+
+    setupSubscription();
 
     return () => {
-      supabase.removeChannel(channel);
+      console.log(`[FORENSIC][REALTIME][LOGS_CLEANUP] ${new Date().toISOString()}`);
+      if (channel) supabase.removeChannel(channel);
+      clearTimeout(retryTimeout);
     };
   }, [queryClient]);
 
@@ -797,11 +856,13 @@ export const HistoryScreen = () => {
           <div className="text-center py-24 border-2 border-dashed border-subtle rounded-[2.5rem]">
             <AlertCircle className="mx-auto mb-4 opacity-20" size={48} />
             <p className="text-xs font-black uppercase tracking-[0.2em] text-muted mb-2">
-              Sin historial local disponible
+              No history available
             </p>
-            <p className="text-[10px] text-muted/60">
-              Conecta a internet para cargar el historial
-            </p>
+            {!isOnline && (
+              <p className="text-[10px] text-muted/60 font-medium italic">
+                Connect to internet to load history
+              </p>
+            )}
           </div>
         ) : filteredLogs.length === 0 ? (
           <div className="text-center py-24 border-2 border-dashed border-subtle rounded-[2.5rem]">

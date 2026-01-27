@@ -14,9 +14,9 @@ interface InventoryMatch {
   inBothWarehouses?: boolean;
   ludlow?: any;
   ats?: any;
-  Quantity?: number;
-  Location?: string | null;
-  Location_Detail?: string | null;
+  quantity?: number;
+  location?: string | null;
+  location_detail?: string | null;
   warehouse?: 'ludlow' | 'ats';
   matchType: 'exact' | 'normalized';
 }
@@ -70,14 +70,14 @@ export function useOrderProcessing() {
 
       return allInventory
         .filter((item) => {
-          const itemNormalized = normalizeSKU(item.SKU);
+          const itemNormalized = normalizeSKU(item.sku);
           return (
             itemNormalized.includes(normalized.slice(0, 6)) ||
             normalized.includes(itemNormalized.slice(0, 6))
           );
         })
         .slice(0, 3) // Top 3 suggestions
-        .map((item) => item.SKU);
+        .map((item) => item.sku);
     },
     [ludlowData, atsData, normalizeSKU]
   );
@@ -90,8 +90,8 @@ export function useOrderProcessing() {
       const normalizedSku = normalizeSKU(sku);
 
       // Search in both warehouses
-      const ludlowExact = ludlowData.find((i) => i.SKU === sku);
-      const atsExact = atsData.find((i) => i.SKU === sku);
+      const ludlowExact = ludlowData.find((i) => i.sku === sku);
+      const atsExact = atsData.find((i) => i.sku === sku);
 
       // If found in both warehouses (exact match)
       if (ludlowExact && atsExact) {
@@ -112,8 +112,8 @@ export function useOrderProcessing() {
       }
 
       // Try normalized match
-      const ludlowNormalized = ludlowData.find((i) => normalizeSKU(i.SKU) === normalizedSku);
-      const atsNormalized = atsData.find((i) => normalizeSKU(i.SKU) === normalizedSku);
+      const ludlowNormalized = ludlowData.find((i) => normalizeSKU(i.sku) === normalizedSku);
+      const atsNormalized = atsData.find((i) => normalizeSKU(i.sku) === normalizedSku);
 
       if (ludlowNormalized && atsNormalized) {
         return {
@@ -166,7 +166,7 @@ export function useOrderProcessing() {
 
           if (preference) {
             const target = preference === 'ludlow' ? inventoryItem.ludlow : inventoryItem.ats;
-            const available = Number(target.Quantity) || 0;
+            const available = Number(target.quantity) || 0;
             const hasStock = available >= orderItem.qty;
 
             return {
@@ -174,17 +174,17 @@ export function useOrderProcessing() {
               id: itemId,
               status: hasStock ? 'available' : 'shortage',
               available,
-              location: target.Location,
-              locationDetail: (target as any).Location_Detail,
+              location: target.location,
+              locationDetail: target.location_detail,
               warehouse: preference,
-              position: getLocationPosition(target.Location),
+              position: getLocationPosition(target.location),
               matchType: target.matchType,
             };
           }
 
           // No preference yet - needs user selection
-          const lAvail = Number(inventoryItem.ludlow.Quantity) || 0;
-          const aAvail = Number(inventoryItem.ats.Quantity) || 0;
+          const lAvail = Number(inventoryItem.ludlow.quantity) || 0;
+          const aAvail = Number(inventoryItem.ats.quantity) || 0;
 
           return {
             ...orderItem,
@@ -198,21 +198,21 @@ export function useOrderProcessing() {
             ludlow: {
               available: lAvail,
               hasStock: lAvail >= orderItem.qty,
-              location: inventoryItem.ludlow.Location,
-              locationDetail: (inventoryItem.ludlow as any).Location_Detail,
+              location: inventoryItem.ludlow.location,
+              locationDetail: inventoryItem.ludlow.location_detail,
             },
             ats: {
               available: aAvail,
               hasStock: aAvail >= orderItem.qty,
-              location: inventoryItem.ats.Location,
-              locationDetail: (inventoryItem.ats as any).Location_Detail,
+              location: inventoryItem.ats.location,
+              locationDetail: inventoryItem.ats.location_detail,
             },
             matchType: inventoryItem.matchType,
           };
         }
 
         // Item found in only ONE warehouse
-        const available = Number(inventoryItem.Quantity) || 0;
+        const available = Number(inventoryItem.quantity) || 0;
         const hasStock = available >= orderItem.qty;
 
         return {
@@ -220,10 +220,10 @@ export function useOrderProcessing() {
           id: itemId,
           status: hasStock ? 'available' : 'shortage',
           available,
-          location: inventoryItem.Location || null,
-          locationDetail: (inventoryItem as any).Location_Detail,
+          location: inventoryItem.location || null,
+          locationDetail: inventoryItem.location_detail,
           warehouse: (inventoryItem.warehouse || null) as 'ludlow' | 'ats' | null,
-          position: getLocationPosition(inventoryItem.Location || null),
+          position: getLocationPosition(inventoryItem.location || null),
           matchType: inventoryItem.matchType,
         };
       });
@@ -244,14 +244,14 @@ export function useOrderProcessing() {
         if (item.status !== 'available') return;
 
         const targetInventory = item.warehouse === 'ludlow' ? ludlowUpdates : atsUpdates;
-        const index = targetInventory.findIndex((i) => i.SKU === item.sku);
+        const index = targetInventory.findIndex((i) => i.sku === item.sku);
 
         if (index !== -1) {
-          const currentQty = Number(targetInventory[index].Quantity) || 0;
+          const currentQty = Number(targetInventory[index].quantity) || 0;
           const newQty = Math.max(0, currentQty - item.qty);
           targetInventory[index] = {
             ...targetInventory[index],
-            Quantity: newQty,
+            quantity: newQty,
           };
 
           transactions.push({
@@ -385,12 +385,12 @@ export function useOrderProcessing() {
 
       order.transactions.forEach((transaction) => {
         const targetInventory = transaction.warehouse === 'ludlow' ? ludlowUpdates : atsUpdates;
-        const index = targetInventory.findIndex((i) => i.SKU === transaction.sku);
+        const index = targetInventory.findIndex((i) => i.sku === transaction.sku);
 
         if (index !== -1) {
           targetInventory[index] = {
             ...targetInventory[index],
-            Quantity: transaction.previousQty,
+            quantity: transaction.previousQty,
           };
         }
       });

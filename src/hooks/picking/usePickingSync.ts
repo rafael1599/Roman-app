@@ -188,6 +188,9 @@ export const usePickingSync = ({
   useEffect(() => {
     if (!activeListId || !user) return;
 
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let retryTimeout: NodeJS.Timeout;
+
     const showTakeoverAlert = async (takerId: string) => {
       if (takeoverSyncRef.current === activeListId) return;
       takeoverSyncRef.current = activeListId;
@@ -217,37 +220,63 @@ export const usePickingSync = ({
       }
     };
 
-    const channel = supabase
-      .channel(`list_status_sync_${activeListId}`)
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'picking_lists', filter: `id=eq.${activeListId}` },
-        (payload) => {
-          const newData = payload.new;
+    const setupSubscription = () => {
+      const channelName = `list_status_sync_${activeListId}`;
+      console.log(`🔌 [Realtime] Attempting connection to ${channelName}...`);
 
-          if (sessionModeRef.current === 'picking' && newData.user_id && (newData.user_id as string) !== user.id) {
-            showTakeoverAlert(newData.user_id as string);
-            return;
+      // Ensure any previous zombie channel is cleaned
+      if (channel) supabase.removeChannel(channel);
+
+      channel = supabase
+        .channel(channelName)
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'picking_lists', filter: `id=eq.${activeListId}` },
+          (payload) => {
+            const newData = payload.new;
+
+            if (sessionModeRef.current === 'picking' && newData.user_id && (newData.user_id as string) !== user.id) {
+              showTakeoverAlert(newData.user_id as string);
+              return;
+            }
+
+            if (sessionModeRef.current === 'double_checking' && newData.checked_by && (newData.checked_by as string) !== user.id) {
+              showTakeoverAlert(newData.checked_by as string);
+              return;
+            }
+
+            if (newData.status !== listStatusRef.current) setListStatus(newData.status as string);
+            if (newData.correction_notes !== correctionNotesRef.current) setCorrectionNotes(newData.correction_notes as string | null);
+            if (newData.checked_by !== checkedByRef.current) setCheckedBy(newData.checked_by as string | null);
+            if (newData.user_id !== ownerIdRef.current) setOwnerId(newData.user_id as string | null);
+
+            if (sessionModeRef.current === 'double_checking' && (newData.status === 'active' || newData.status === 'needs_correction')) {
+              if (newData.user_id === user.id) setSessionMode('picking');
+            }
+          }
+        )
+        .subscribe((status, err) => {
+          console.log(`Network status for ${channelName}:`, status);
+
+          if (status === 'SUBSCRIBED') {
+            console.log(`✅ [Realtime] Subscribed to ${channelName}`);
           }
 
-          if (sessionModeRef.current === 'double_checking' && newData.checked_by && (newData.checked_by as string) !== user.id) {
-            showTakeoverAlert(newData.checked_by as string);
-            return;
+          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+            console.error(`❌ [Realtime] Connection error (${status}). Retrying in 5s...`, err);
+            if (channel) supabase.removeChannel(channel);
+            retryTimeout = setTimeout(setupSubscription, 5000);
           }
+        });
+    };
 
-          if (newData.status !== listStatusRef.current) setListStatus(newData.status as string);
-          if (newData.correction_notes !== correctionNotesRef.current) setCorrectionNotes(newData.correction_notes as string | null);
-          if (newData.checked_by !== checkedByRef.current) setCheckedBy(newData.checked_by as string | null);
-          if (newData.user_id !== ownerIdRef.current) setOwnerId(newData.user_id as string | null);
+    setupSubscription();
 
-          if (sessionModeRef.current === 'double_checking' && (newData.status === 'active' || newData.status === 'needs_correction')) {
-            if (newData.user_id === user.id) setSessionMode('picking');
-          }
-        }
-      )
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      console.log(`🧹 Cleaning up channel list_status_sync_${activeListId}`);
+      if (channel) supabase.removeChannel(channel);
+      if (retryTimeout) clearTimeout(retryTimeout);
+    };
   }, [activeListId, user?.id]);
 
   // 3. Save Logic

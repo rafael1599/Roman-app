@@ -27,7 +27,7 @@ export const useLocationManagement = () => {
 
       if (error) throw error;
 
-      setLocations(data || []);
+      setLocations((data as any) || []);
       setError(null);
     } catch (err: any) {
       console.error('Error fetching locations:', err);
@@ -67,8 +67,8 @@ export const useLocationManagement = () => {
         // Handle optimization report invalidation
         if (invalidateReports && invalidateReports.length > 0) {
           const { error: reportError } = await supabase
-            .from('optimization_reports')
-            .update({ status: 'obsolete' })
+            .from('optimization_reports' as any)
+            .update({ status: 'obsolete' } as any)
             .in('id', invalidateReports);
 
           if (reportError) {
@@ -76,7 +76,7 @@ export const useLocationManagement = () => {
           }
         }
 
-        const updatedLoc = data as Location;
+        const updatedLoc = data as any;
         // Optimistic update
         setLocations((prev) => prev.map((loc) => (loc.id === id ? updatedLoc : loc)));
 
@@ -107,7 +107,7 @@ export const useLocationManagement = () => {
 
         if (error) throw error;
 
-        const newLoc = data as Location;
+        const newLoc = data as any;
         setLocations((prev) => [...prev, newLoc]);
         return { success: true, data: newLoc };
       } catch (err: any) {
@@ -124,7 +124,7 @@ export const useLocationManagement = () => {
       try {
         const { error } = await supabase
           .from('locations')
-          .update({ is_active: false })
+          .update({ is_active: false } as any)
           .eq('id', id);
 
         if (error) throw error;

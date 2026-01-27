@@ -12,12 +12,12 @@ type DBInventory = Database['public']['Tables']['inventory']['Row'];
  */
 export const inventorySchema = z.object({
     id: z.number(),
-    SKU: z.string().min(1, 'SKU is required'),
-    Quantity: z.number().nullable(),
-    Location: z.string().nullable(),
-    Location_Detail: z.string().nullable(),
-    Warehouse: z.string().nullable(),
-    Status: z.string().nullable(),
+    sku: z.string().min(1, 'SKU is required'),
+    quantity: z.number().nullable(),
+    location: z.string().nullable(),
+    location_detail: z.string().nullable(),
+    warehouse: z.string().nullable(),
+    status: z.string().nullable(),
     capacity: z.number().nullable(),
     location_id: z.string().nullable(),
     created_at: z.string().nullable(),

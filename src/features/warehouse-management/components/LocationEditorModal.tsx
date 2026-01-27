@@ -49,17 +49,17 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
     return () => setIsNavHidden(false);
   }, [setIsNavHidden]);
 
-  // Obtener inventario de esta ubicación (Prefer ID match, fallback to name match)
+  // Get inventory for this location (Prefer ID match, fallback to name match)
   const inventory = location?.warehouse === 'ATS' ? atsData : ludlowData;
   const locationInventory = inventory.filter((item) => {
     if (item.location_id && location?.id) {
       return item.location_id === location.id;
     }
-    return item.Warehouse === location?.warehouse && item.Location === location?.location;
+    return item.warehouse === location?.warehouse && item.location === location?.location;
   });
 
   const hasInventory = locationInventory.length > 0;
-  const totalUnits = locationInventory.reduce((sum, i) => sum + (Number(i.Quantity) || 0), 0);
+  const totalUnits = locationInventory.reduce((sum, i) => sum + (Number(i.quantity) || 0), 0);
   const hasUnits = totalUnits > 0;
 
   // Check if inventory is linked by ID (safe to rename) or just by name (legacy/unsafe)
@@ -103,7 +103,7 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
 
     setImpact(newImpact);
 
-    // Auto-expandir solo la primera vez que se detectan impactos
+    // Auto-expand only the first time impacts are detected
     if (newImpact.impacts.length > 0 && !showImpact) {
       setShowImpact(true);
     }
@@ -193,7 +193,7 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
           </div>
         </div>
 
-        {/* Errores Críticos */}
+        {/* Critical Errors */}
         {validation.errors.length > 0 && (
           <div className="mx-6 mt-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
             <div className="flex items-start gap-3 mb-2">
@@ -212,7 +212,7 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
           </div>
         )}
 
-        {/* Warnings con Override */}
+        {/* Warnings with Override */}
         {validation.warnings.length > 0 && (
           <div className="mx-6 mt-6 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
             <div className="flex items-start gap-3 mb-3">
@@ -244,7 +244,7 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
           </div>
         )}
 
-        {/* Análisis de Impacto (Colapsable) */}
+        {/* Impact Analysis (Collapsible) */}
         {impact && impact.impacts.length > 0 && (
           <div className="mx-6 mt-6 border border-subtle rounded-lg overflow-hidden">
             <button
@@ -297,7 +297,7 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
           </div>
         )}
 
-        {/* Info si tiene inventario */}
+        {/* Info if location has inventory */}
         {hasInventory && !impact && (
           <div className="mx-6 mt-6 p-3 bg-gray-800/50 border border-gray-700/50 rounded-lg flex items-start gap-3">
             <AlertTriangle className="text-gray-400 flex-shrink-0 mt-0.5" size={16} />

@@ -3,7 +3,7 @@ import { MessageSquare, User, Clock, ChevronDown, ChevronUp } from 'lucide-react
 
 export interface Note {
     id: string | number;
-    user_display_name: string;
+    user_display_name?: string;
     created_at: string;
     message: string;
     [key: string]: any;

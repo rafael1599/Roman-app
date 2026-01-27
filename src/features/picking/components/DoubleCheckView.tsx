@@ -13,7 +13,7 @@ import {
 import { getOptimizedPickingPath, calculatePallets } from '../../../utils/pickingLogic';
 import { CorrectionNotesTimeline, Note } from './CorrectionNotesTimeline';
 import { generatePickingPdf } from '../../../utils/pickingPdf';
-import { SlideToConfirm } from '../../../components/ui/SlideToConfirm';
+import { SlideToConfirm } from '../../../components/ui/SlideToConfirm.tsx';
 import { useLocationManagement } from '../../../hooks/useLocationManagement';
 import { useConfirmation } from '../../../context/ConfirmationContext';
 import toast from 'react-hot-toast';
@@ -21,7 +21,7 @@ import toast from 'react-hot-toast';
 // Define PickingItem Interface (Redefined or imported from shared location if preferred)
 export interface PickingItem {
     sku: string;
-    location: string;
+    location: string | null;
     pickingQty: number; // usually set by this point
     quantity: string | number;
     warehouse?: string;
@@ -30,13 +30,13 @@ export interface PickingItem {
 
 interface DoubleCheckViewProps {
     cartItems: PickingItem[];
-    orderNumber?: string;
-    activeListId?: string;
+    orderNumber?: string | null;
+    activeListId?: string | null;
     checkedItems: Set<string>;
     onToggleCheck: (item: PickingItem, palletId: number | string) => void;
     onDeduct: (items: PickingItem[], isFullyVerified: boolean) => Promise<boolean>;
     onClose: () => void;
-    onBack: () => void;
+    onBack: (id?: string | null) => void;
     onRelease: () => void;
     onReturnToPicker: (notes: string) => void;
     isOwner?: boolean;
@@ -56,7 +56,6 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
     onBack,
     onRelease,
     onReturnToPicker,
-    isOwner, // Unused in render, but prop exists
     notes = [],
     isNotesLoading = false,
     onAddNote,
@@ -75,7 +74,6 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
         return calculatePallets(optimizedItems);
     }, [cartItems, locations]);
 
-    const totalUnits = cartItems.reduce((acc, item) => acc + (item.pickingQty || 0), 0);
     const checkedCount = checkedItems.size;
     const totalCheckboxes = useMemo(() => {
         return pallets.reduce((sum: number, p: any) => sum + p.items.length, 0);
@@ -147,7 +145,7 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
                 className="px-4 py-2 border-b border-subtle flex items-center justify-between shrink-0 bg-surface/50 backdrop-blur-sm sticky top-0 z-10 touch-none"
             >
                 <button
-                    onClick={onBack}
+                    onClick={() => onBack()}
                     className="p-2 hover:bg-surface rounded-lg text-muted transition-colors shrink-0"
                     title="Back to Picking"
                 >
@@ -351,8 +349,9 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
                 <SlideToConfirm
                     onConfirm={handleConfirm}
                     isLoading={isDeducting}
-                    text="SLIDE TO DEDUCT"
-                    confirmedText="DEDUCTING..."
+                    text={checkedCount === totalCheckboxes ? "SLIDE TO DEDUCT" : "SEND TO VERIFY"}
+                    confirmedText={checkedCount === totalCheckboxes ? "DEDUCTING..." : "SENDING..."}
+                    variant={checkedCount === totalCheckboxes ? "default" : "info"}
                 />
             </div>
         </div>

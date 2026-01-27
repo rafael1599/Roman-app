@@ -13,7 +13,7 @@ export const LocationList = () => {
   const { locations, loading, updateLocation, refresh, deactivateLocation } = useLocationManagement();
   const { ludlowData, atsData } = useInventory();
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedWarehouse, setSelectedWarehouse] = useState('LUDLOW');
+  const [selectedWarehouse, setSelectedWarehouse] = useState<Location['warehouse']>('LUDLOW');
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
 
@@ -63,7 +63,7 @@ export const LocationList = () => {
     if (!selectedLocation) return;
     const result = await updateLocation(selectedLocation.id, formData);
     if (result.success) {
-      setSaveSuccess(`${selectedLocation.location} actualizado correctamente`);
+      setSaveSuccess(`${selectedLocation.location} updated successfully`);
       setTimeout(() => setSaveSuccess(null), 3000);
       setSelectedLocation(null);
       refresh();
@@ -113,7 +113,7 @@ export const LocationList = () => {
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Buscar ubicación..."
+            placeholder="Search location..."
             className="w-full pl-10 pr-4 py-2 bg-surface border border-subtle rounded-lg text-content placeholder-muted focus:border-accent focus:outline-none"
           />
         </div>
@@ -137,7 +137,7 @@ export const LocationList = () => {
 
       {/* Stats */}
       <div className="text-xs text-muted">
-        Mostrando {filteredLocations.length} de {locations.length} ubicaciones
+        Showing {filteredLocations.length} of {locations.length} locations
       </div>
 
       {/* Locations Grid */}
@@ -190,7 +190,7 @@ export const LocationList = () => {
               {/* Picking Order */}
               {loc.picking_order !== null && loc.picking_order < 999 && (
                 <div className="mt-2 text-[10px] text-muted">
-                  Orden de picking: #{loc.picking_order}
+                  Picking order: #{loc.picking_order}
                 </div>
               )}
             </button>
@@ -201,7 +201,7 @@ export const LocationList = () => {
       {/* Empty State */}
       {filteredLocations.length === 0 && (
         <div className="text-center py-12 text-muted">
-          No se encontraron ubicaciones con los filtros actuales.
+          No locations found with current filters.
         </div>
       )}
 

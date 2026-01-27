@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, ReactNode } from 'react';
 
-type ViewMode = 'stock' | 'picking';
+type ViewMode = 'stock' | 'picking' | 'building' | 'double_checking';
 
 interface ViewModeContextType {
   viewMode: ViewMode;

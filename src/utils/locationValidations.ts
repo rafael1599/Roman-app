@@ -21,30 +21,30 @@ interface ValidationResult {
 }
 
 /**
- * Valida que la capacidad propuesta sea válida para el inventario actual
- * Retorna warnings que pueden ser overridden por el usuario
+ * Validates that the proposed capacity is valid for the current inventory.
+ * Returns warnings that can be overridden by the user.
  */
 export const validateCapacityChange = (
   newCapacity: number,
   currentInventory: InventoryItem[],
   originalCapacity: number | null = null
 ): ValidationResult => {
-  const totalUnits = currentInventory.reduce((sum, item) => sum + (Number(item.Quantity) || 0), 0);
+  const totalUnits = currentInventory.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
 
   const warnings: ValidationWarning[] = [];
   const errors: string[] = [];
 
-  // ERROR: Capacidad debe ser positiva (NO OVERRIDE)
+  // ERROR: Capacity must be positive (NO OVERRIDE)
   if (newCapacity < 1) {
     errors.push('Capacity must be at least 1 unit');
   }
 
-  // ERROR: Límite superior (NO OVERRIDE)
+  // ERROR: Upper limit (NO OVERRIDE)
   if (newCapacity > 10000) {
     errors.push('Maximum capacity allowed is 10,000 units');
   }
 
-  // Si la capacidad NO ha cambiado, no mostramos warnings (solo errores si los hubiera)
+  // If capacity has NOT changed, we don't show warnings (only errors if any)
   const capacityHasChanged = originalCapacity !== null && newCapacity !== originalCapacity;
 
   if (originalCapacity !== null && !capacityHasChanged) {
@@ -56,7 +56,7 @@ export const validateCapacityChange = (
     };
   }
 
-  // WARNING: Capacidad menor que inventario actual (CON OVERRIDE)
+  // WARNING: Capacity lower than current inventory (WITH OVERRIDE)
   if (newCapacity < totalUnits) {
     warnings.push({
       type: 'CAPACITY_OVERFLOW',
@@ -67,7 +67,7 @@ export const validateCapacityChange = (
     });
   }
 
-  // WARNING: Cambio drástico de capacidad (CON OVERRIDE) - Solo si hay una base de comparación real
+  // WARNING: Drastic capacity change (WITH OVERRIDE) - Only if there is a real comparison base
   if (originalCapacity !== null && capacityHasChanged) {
     const percentChange = Math.abs(((newCapacity - originalCapacity) / originalCapacity) * 100);
 
@@ -91,7 +91,7 @@ export const validateCapacityChange = (
 };
 
 /**
- * Verifica si la ubicación tiene inventario activo
+ * Checks if the location has active inventory.
  */
 export const hasActiveInventory = (
   warehouse: string,
@@ -99,7 +99,7 @@ export const hasActiveInventory = (
   inventory: InventoryItem[]
 ): boolean => {
   return inventory.some(
-    (item) => item.Warehouse === warehouse && item.Location === location && (item.Quantity || 0) > 0
+    (item) => item.warehouse === warehouse && item.location === location && (item.quantity || 0) > 0
   );
 };
 
@@ -125,7 +125,7 @@ interface LocationChanges {
 }
 
 /**
- * Calcula el impacto completo de cambiar cualquier atributo de la ubicación
+ * Calculates the full impact of changing any location attribute.
  */
 export const calculateLocationChangeImpact = (
   warehouse: string,
@@ -135,13 +135,13 @@ export const calculateLocationChangeImpact = (
   optimizationReports: any[] = [] // TODO: Define OptimizationReport type when migrating reports
 ): LocationChangeImpact => {
   const affectedItems = inventory.filter(
-    (item) => item.Warehouse === warehouse && item.Location === location
+    (item) => item.warehouse === warehouse && item.location === location
   );
 
   const impact: LocationChangeImpact = {
     affectedSKUs: affectedItems.length,
-    totalUnits: affectedItems.reduce((sum, item) => sum + (item.Quantity || 0), 0),
-    skuList: affectedItems.map((item) => item.SKU),
+    totalUnits: affectedItems.reduce((sum, item) => sum + (item.quantity || 0), 0),
+    skuList: affectedItems.map((item) => item.sku),
     impacts: [],
   };
 

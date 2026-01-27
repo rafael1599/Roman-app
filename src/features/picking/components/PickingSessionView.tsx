@@ -13,7 +13,7 @@ import {
 import { getOptimizedPickingPath, calculatePallets } from '../../../utils/pickingLogic';
 import { generatePickingPdf } from '../../../utils/pickingPdf';
 import { useLocationManagement } from '../../../hooks/useLocationManagement';
-import { SlideToConfirm } from '../../../components/ui/SlideToConfirm';
+import { SlideToConfirm } from '../../../components/ui/SlideToConfirm.tsx';
 import { useError } from '../../../context/ErrorContext';
 import { useConfirmation } from '../../../context/ConfirmationContext';
 import { useAuth } from '../../../context/AuthContext';
@@ -36,17 +36,17 @@ interface CartItem {
 
 interface PickingSessionViewProps {
     cartItems: CartItem[];
-    activeListId?: string;
-    orderNumber?: string;
+    activeListId?: string | null;
+    orderNumber?: string | null;
     correctionNotes?: string | null;
     notes?: any[]; // Keep as any if complex timeline object not defined
     isNotesLoading?: boolean;
-    onUpdateOrderNumber: (newOrder: string) => void;
-    onGoToDoubleCheck: (orderId: string) => void;
+    onUpdateOrderNumber: (newOrder: string | null) => void;
+    onGoToDoubleCheck: (orderId: string | null) => void;
     onUpdateQty: (item: CartItem, delta: number) => void;
     onRemoveItem: (item: CartItem) => void;
     onClose: () => void;
-    onDelete?: (id?: string) => void;
+    onDelete?: (id: string | null) => void;
 }
 
 export const PickingSessionView: React.FC<PickingSessionViewProps> = ({
@@ -300,7 +300,7 @@ export const PickingSessionView: React.FC<PickingSessionViewProps> = ({
                             <ChevronDown className="w-6 h-6" />
                         </button>
                         <button
-                            onClick={() => onDelete && onDelete(activeListId)}
+                            onClick={() => onDelete && onDelete(activeListId ?? null)}
                             className="w-10 h-10 flex items-center justify-center rounded-full bg-card hover:bg-red-500/10 text-muted hover:text-red-500 transition-all border border-subtle ml-1"
                             title="Delete Draft"
                         >
@@ -324,7 +324,7 @@ export const PickingSessionView: React.FC<PickingSessionViewProps> = ({
                 className="px-4 py-2 border-b border-subtle flex items-center justify-between shrink-0 bg-surface/50 backdrop-blur-sm sticky top-0 z-10 touch-none"
             >
                 <button
-                    onClick={() => returnToBuilding(activeListId)}
+                    onClick={() => returnToBuilding(activeListId ?? null)}
                     className="p-2 hover:bg-surface rounded-lg text-muted transition-colors shrink-0 mr-1"
                     title="Return to Building"
                 >
@@ -378,7 +378,7 @@ export const PickingSessionView: React.FC<PickingSessionViewProps> = ({
                             'Cancel Order',
                             'Are you sure you want to cancel this order? This action cannot be undone.',
                             () => {
-                                if (onDelete) onDelete(activeListId);
+                                if (onDelete) onDelete(activeListId ?? null);
                                 onClose();
                             },
                             undefined,

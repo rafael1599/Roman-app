@@ -285,6 +285,7 @@ export const InventoryProvider = ({
       );
     },
     onMutate: async (vars) => {
+      console.log(`[FORENSIC][MUTATION][QUANTITY_START] ${new Date().toISOString()} - SKU: ${vars.sku}, Delta: ${vars.finalDelta}, Optimistic ID: ${vars.optimistic_id}`);
       // Cancel any outgoing refetches to avoid overwriting our optimistic update
       await queryClient.cancelQueries({ queryKey: ['inventory_logs'] });
 
@@ -331,6 +332,7 @@ export const InventoryProvider = ({
       return { previousLogs, previousItem: item };
     },
     onError: (err, vars, context) => {
+      console.error(`[FORENSIC][MUTATION][QUANTITY_ERROR] ${new Date().toISOString()} - SKU: ${vars.sku}`, err);
       // Rollback on error
       if (context?.previousLogs) {
         queryClient.setQueryData(['inventory_logs', 'TODAY'], context.previousLogs);
@@ -338,7 +340,7 @@ export const InventoryProvider = ({
 
       // Rollback local state (Inventory Data)
       const prevItem = context?.previousItem;
-      console.log('[ROLLBACK] Mutation failed, attempting rollback', {
+      console.log(`[FORENSIC][ROLLBACK] ${new Date().toISOString()} - Mutation failed, attempting rollback`, {
         sku: vars.sku,
         prevId: prevItem?.id,
         prevQty: prevItem?.quantity
@@ -349,14 +351,14 @@ export const InventoryProvider = ({
           const next = current.map(item =>
             item.id === prevItem.id ? prevItem as InventoryItemWithMetadata : item
           );
-          console.log('[ROLLBACK] New state count:', next.length, 'Target item qty:', next.find(i => i.id === prevItem.id)?.quantity);
           return next;
         });
       }
 
       toast.error(`Error updating ${vars.sku}: ${err.message}`);
     },
-    onSuccess: () => {
+    onSuccess: (_data, vars) => {
+      console.log(`[FORENSIC][MUTATION][QUANTITY_SUCCESS] ${new Date().toISOString()} - SKU: ${vars.sku}`);
       queryClient.invalidateQueries({ queryKey: inventoryKeys.lists() });
       queryClient.invalidateQueries({ queryKey: ['inventory_logs'] });
     }
@@ -367,7 +369,11 @@ export const InventoryProvider = ({
     mutationKey: ['inventory', 'addItem'],
     mutationFn: (vars: { warehouse: string, newItem: InventoryItemInput & { isReversal?: boolean; optimistic_id?: string } }) =>
       inventoryService.addItem(vars.warehouse, vars.newItem, locations, getServiceContext()),
+    onMutate: (vars) => {
+      console.log(`[FORENSIC][MUTATION][ADD_START] ${new Date().toISOString()} - SKU: ${vars.newItem.sku}, Optimistic ID: ${vars.newItem.optimistic_id}`);
+    },
     onSuccess: () => {
+      console.log(`[FORENSIC][MUTATION][ADD_SUCCESS] ${new Date().toISOString()}`);
       queryClient.invalidateQueries({ queryKey: inventoryKeys.lists() });
     }
   });
@@ -377,7 +383,11 @@ export const InventoryProvider = ({
     mutationKey: ['inventory', 'updateItem'],
     mutationFn: (vars: { originalItem: InventoryItem, updatedFormData: InventoryItemInput & { isReversal?: boolean; optimistic_id?: string } }) =>
       inventoryService.updateItem(vars.originalItem, vars.updatedFormData, locations, getServiceContext()),
+    onMutate: (vars) => {
+      console.log(`[FORENSIC][MUTATION][UPDATE_START] ${new Date().toISOString()} - SKU: ${vars.updatedFormData.sku}, Optimistic ID: ${vars.updatedFormData.optimistic_id}`);
+    },
     onSuccess: () => {
+      console.log(`[FORENSIC][MUTATION][UPDATE_SUCCESS] ${new Date().toISOString()}`);
       queryClient.invalidateQueries({ queryKey: inventoryKeys.lists() });
     }
   });
@@ -387,7 +397,11 @@ export const InventoryProvider = ({
     mutationKey: ['inventory', 'moveItem'],
     mutationFn: (vars: { sourceItem: InventoryItem, targetWarehouse: string, targetLocation: string, qty: number, isReversal?: boolean; optimistic_id?: string }) =>
       inventoryService.moveItem(vars.sourceItem, vars.targetWarehouse, vars.targetLocation, vars.qty, locations, getServiceContext(), vars.isReversal),
+    onMutate: (vars) => {
+      console.log(`[FORENSIC][MUTATION][MOVE_START] ${new Date().toISOString()} - SKU: ${vars.sourceItem.sku}, Qty: ${vars.qty}, Optimistic ID: ${vars.optimistic_id}`);
+    },
     onSuccess: () => {
+      console.log(`[FORENSIC][MUTATION][MOVE_SUCCESS] ${new Date().toISOString()}`);
       queryClient.invalidateQueries({ queryKey: inventoryKeys.lists() });
     }
   });
@@ -400,70 +414,96 @@ export const InventoryProvider = ({
       if (!item) throw new Error('Item not found');
       return inventoryService.deleteItem(item, getServiceContext());
     },
+    onMutate: (vars) => {
+      console.log(`[FORENSIC][MUTATION][DELETE_START] ${new Date().toISOString()} - SKU: ${vars.sku}, Optimistic ID: ${vars.optimistic_id}`);
+    },
     onSuccess: () => {
+      console.log(`[FORENSIC][MUTATION][DELETE_SUCCESS] ${new Date().toISOString()}`);
       queryClient.invalidateQueries({ queryKey: inventoryKeys.lists() });
     }
   });
 
-  // Realtime Subscription - "Quirurgical Sync"
+  // Realtime Subscription - "Quirurgical Sync" with Robust Connection Handling
   useEffect(() => {
-    /**
-     * NOTE: Ensure that RLS policies for the 'inventory' table allow 'SELECT' for the connected user.
-     * If RLS is not properly configured, 'payload.new' will be empty on UPDATE/INSERT events.
-     * The table must also have Realtime enabled in the Supabase Dashboard.
-     */
-    const channel = supabase
-      .channel('inventory-changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'inventory' },
-        (payload) => {
-          const event: RealtimeInventoryEvent = {
-            eventType: payload.eventType as any,
-            new: payload.new as any,
-            old: payload.old as any,
-          };
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let retryTimeout: NodeJS.Timeout;
 
-          // 1. Update React Query Cache for persistence and cross-component sync
-          queryClient.setQueriesData({ queryKey: inventoryKeys.all }, (old: any) => {
-            return updateInventoryCache(
-              old,
-              event,
-              filtersRef.current,
-              skuMetadataMapRef.current
-            );
-          });
+    const setupSubscription = () => {
+      // 1. Cleanup existing channel if any
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
 
-          // 2. Update Local State for immediate UI reaction in this Provider
-          setInventoryData((current) => {
-            return updateInventoryCache(
-              current,
-              event,
-              filtersRef.current,
-              skuMetadataMapRef.current
-            );
-          });
-        }
-      )
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          if (isInitialConnection.current) {
-            console.log('🔌 Realtime: Initial connection established.');
-            isInitialConnection.current = false;
-          } else {
-            console.log('🔄 Realtime: Reconnected. Resyncing inventory to close the "Elevator Gap"...');
-            // Force a refresh of all inventory data to catch missed events
-            queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
+      console.log(`[FORENSIC][REALTIME][INVENTORY_INIT] ${new Date().toISOString()} - Setting up channel inventory-changes`);
+
+      channel = supabase
+        .channel('inventory-changes')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'inventory' },
+          (payload) => {
+            const newItem = payload.new as any;
+            console.log(`[FORENSIC][REALTIME][INVENTORY_EVENT] ${new Date().toISOString()} - Event: ${payload.eventType}, SKU: ${newItem?.sku}`);
+            const event: RealtimeInventoryEvent = {
+              eventType: payload.eventType as any,
+              new: newItem,
+              old: payload.old as any,
+            };
+
+            // Update React Query Cache for persistence and cross-component sync
+            queryClient.setQueriesData({ queryKey: inventoryKeys.all }, (old: any) => {
+              return updateInventoryCache(
+                old,
+                event,
+                filtersRef.current,
+                skuMetadataMapRef.current
+              );
+            });
+
+            // Update Local State for immediate UI reaction
+            setInventoryData((current) => {
+              return updateInventoryCache(
+                current,
+                event,
+                filtersRef.current,
+                skuMetadataMapRef.current
+              );
+            });
           }
-        }
+        )
+        .subscribe((status, err) => {
+          console.log(`[FORENSIC][REALTIME][INVENTORY_STATUS] ${new Date().toISOString()} - Status: ${status}`);
 
-        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          console.warn(`⚠️ Realtime: Connection ${status}. Retrying...`);
-        }
-      });
+          if (err) {
+            console.error(`[FORENSIC][REALTIME][INVENTORY_ERROR] ${new Date().toISOString()}`, err);
+          }
+
+          if (status === 'SUBSCRIBED') {
+            if (isInitialConnection.current) {
+              console.log('🔌 Realtime: Initial connection established.');
+              isInitialConnection.current = false;
+            } else {
+              console.log('🔄 Realtime: Reconnected. Resyncing inventory...');
+              queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
+            }
+          }
+
+          // Handle disconnection/errors by retrying
+          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+            console.warn(`[FORENSIC][REALTIME][INVENTORY_RETRY] ${new Date().toISOString()} - Channel died, retrying in 5s...`);
+            if (channel) supabase.removeChannel(channel);
+            clearTimeout(retryTimeout);
+            retryTimeout = setTimeout(setupSubscription, 5000);
+          }
+        });
+    };
+
+    setupSubscription();
 
     return () => {
-      supabase.removeChannel(channel);
+      console.log(`[FORENSIC][REALTIME][INVENTORY_CLEANUP] ${new Date().toISOString()}`);
+      if (channel) supabase.removeChannel(channel);
+      clearTimeout(retryTimeout);
     };
   }, [queryClient]);
 

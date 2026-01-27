@@ -9,8 +9,8 @@ export type StockStatus = 'available' | 'shortage' | 'not_found' | 'needs_wareho
 export interface WarehouseInfo {
     available: number;
     hasStock: boolean;
-    location: string;
-    locationDetail?: string;
+    location: string | null;
+    locationDetail?: string | null;
 }
 
 export interface ValidatedItem extends ScannedItem {
@@ -18,7 +18,7 @@ export interface ValidatedItem extends ScannedItem {
     status: StockStatus;
     available: number;
     location: string | null;
-    locationDetail?: string;
+    locationDetail?: string | null;
     warehouse: 'ludlow' | 'ats' | null;
     position: number;
     matchType?: 'exact' | 'normalized';

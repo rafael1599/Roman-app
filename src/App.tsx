@@ -22,7 +22,7 @@ import { Loader2 } from 'lucide-react';
 import { ThemeProvider } from './context/ThemeContext';
 import { Suspense } from 'react';
 
-// Content accesible solo tras login
+// Content accessible only after login
 const AuthenticatedContent = () => {
   const { exportData } = useInventory();
   const { isAdmin } = useAuth();
@@ -53,11 +53,11 @@ const AuthenticatedContent = () => {
   );
 };
 
-// Maneja estado de sesión y loader
+// Handles session state and loader
 const AuthGuard = () => {
   const { user, loading } = useAuth();
   const { error, clearError } = useError(); // Use the error context
-  const { confirmationState, showConfirmation, hideConfirmation } = useConfirmation(); // Use the confirmation context state
+  const { confirmationState } = useConfirmation(); // Use the confirmation context state
 
   if (loading) {
     return (
@@ -79,7 +79,7 @@ const AuthGuard = () => {
     );
   }
 
-  // Solo cargar datos si hay usuario
+  // Only load data if user is authenticated
   return (
     <>
       <InventoryProvider>

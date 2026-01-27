@@ -128,6 +128,7 @@ export const useInventoryLogs = () => {
         }
       }
 
+      console.log(`[FORENSIC][DB][INSERT_START] ${new Date().toISOString()} - SKU: ${logData.sku}`);
       // --- INSERT NEW LOG (Default) ---
       const { data: newLog, error } = await supabase
         .from('inventory_logs')
@@ -146,13 +147,14 @@ export const useInventoryLogs = () => {
         .single();
 
       if (error) {
-        console.error('Logging error:', error);
+        console.error(`[FORENSIC][DB][INSERT_ERROR] ${new Date().toISOString()}`, error);
         return null;
       }
 
+      console.log(`[FORENSIC][DB][INSERT_SUCCESS] ${new Date().toISOString()} - New ID: ${(newLog as any)?.id}`);
       return (newLog as any)?.id;
     } catch (err) {
-      console.error('Log tracking failed:', err);
+      console.error(`[FORENSIC][DB][TRACK_FAILED] ${new Date().toISOString()}`, err);
       return null;
     }
   };
@@ -188,7 +190,7 @@ export const useInventoryLogs = () => {
     networkMode: 'offlineFirst',
     mutationFn: async (logId: string) => {
       // @ts-ignore - RPC function added manually
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .rpc('undo_inventory_action', { target_log_id: logId });
 
       if (error) throw error;
@@ -200,6 +202,7 @@ export const useInventoryLogs = () => {
       return result;
     },
     onMutate: async (logId) => {
+      console.log(`[FORENSIC][MUTATION][UNDO_START] ${new Date().toISOString()} - Target Log ID: ${logId}`);
       // Cancel refetches
       await queryClient.cancelQueries({ queryKey: ['inventory_logs'] });
 
@@ -217,14 +220,15 @@ export const useInventoryLogs = () => {
 
       return { previousLogs };
     },
-    onError: (err, _logId, context: any) => {
+    onError: (err, logId, context: any) => {
+      console.error(`[FORENSIC][MUTATION][UNDO_ERROR] ${new Date().toISOString()} - Log ID: ${logId}`, err);
       // Rollback on failure
       if (context?.previousLogs) {
         queryClient.setQueryData(['inventory_logs', 'TODAY'], context.previousLogs);
       }
-      console.error('Undo failed:', err);
     },
-    onSuccess: () => {
+    onSuccess: (data, logId) => {
+      console.log(`[FORENSIC][MUTATION][UNDO_SUCCESS] ${new Date().toISOString()} - Log ID: ${logId}`, data);
       // Invalidate both inventory and logs to get fresh data
       queryClient.invalidateQueries({ queryKey: ['inventory_logs'] });
       queryClient.invalidateQueries({ queryKey: ['inventory', 'lists'] });
