@@ -93,51 +93,71 @@ export const HistoryScreen = () => {
     gcTime: 1000 * 60 * 60 * 24, // 24 hours
   });
 
-  // --- OPTIMISTIC LOGS INJECTION ---
+  // --- OPTIMISTIC LOGS INJECTION (Hybrid Stream) ---
   const optimisticLogs = useMemo(() => {
-    // Get all mutations that are still pending or paused
     const mutations = mutationCache.getAll();
 
     return mutations
       .filter(m =>
-        m.state.status === 'pending' &&
+        (m.state.status === 'pending' || (m as any).state.isPaused) &&
         Array.isArray(m.options.mutationKey) &&
         m.options.mutationKey[0] === 'inventory'
       )
       .map(m => {
         const vars = m.state.variables as any;
-        const key = m.options.mutationKey![1];
+        const mutationType = m.options.mutationKey![1];
 
-        // Map mutation types to Log format
+        // Base log template
         const log: Partial<InventoryLog> & { isOptimistic: boolean } = {
-          id: (vars?.optimistic_id || `opt-${Date.now()}`) as string,
+          id: (vars?.optimistic_id || `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`) as string,
           created_at: new Date().toISOString() as any,
           performed_by: profile?.full_name || authUser?.email || 'You',
           isOptimistic: true,
           is_reversed: false,
         };
 
-        if (key === 'updateQuantity') {
-          log.sku = vars.sku;
-          log.action_type = vars.finalDelta > 0 ? 'ADD' : 'DEDUCT';
-          log.quantity_change = vars.finalDelta;
-          log.from_warehouse = vars.resolvedWarehouse;
-          log.from_location = vars.location;
-          log.order_number = vars.orderNumber;
-        } else if (key === 'moveItem') {
-          log.sku = vars.sourceItem.sku;
-          log.action_type = 'MOVE';
-          log.quantity_change = -vars.qty;
-          log.from_warehouse = vars.sourceItem.warehouse;
-          log.from_location = vars.sourceItem.location;
-          log.to_warehouse = vars.targetWarehouse;
-          log.to_location = vars.targetLocation;
-        } else if (key === 'addItem') {
-          log.sku = vars.newItem.sku;
-          log.action_type = 'ADD';
-          log.quantity_change = vars.newItem.quantity;
-          log.to_warehouse = vars.warehouse;
-          log.to_location = vars.newItem.location;
+        // Map specific mutation variables to Log format
+        switch (mutationType) {
+          case 'updateQuantity':
+            log.sku = vars.sku;
+            log.action_type = vars.finalDelta > 0 ? 'ADD' : 'DEDUCT';
+            log.quantity_change = vars.finalDelta;
+            log.from_warehouse = vars.finalDelta > 0 ? undefined : vars.resolvedWarehouse;
+            log.from_location = vars.finalDelta > 0 ? undefined : vars.location;
+            log.to_warehouse = vars.finalDelta > 0 ? vars.resolvedWarehouse : undefined;
+            log.to_location = vars.finalDelta > 0 ? vars.location : undefined;
+            log.order_number = vars.orderNumber;
+            break;
+
+          case 'moveItem':
+            log.sku = vars.sourceItem?.sku;
+            log.action_type = 'MOVE';
+            log.quantity_change = -vars.qty; // Log the movement magnitude
+            log.from_warehouse = vars.sourceItem?.warehouse;
+            log.from_location = vars.sourceItem?.location;
+            log.to_warehouse = vars.targetWarehouse;
+            log.to_location = vars.targetLocation;
+            break;
+
+          case 'addItem':
+            log.sku = vars.newItem?.sku;
+            log.action_type = 'ADD';
+            log.quantity_change = vars.newItem?.quantity;
+            log.to_warehouse = vars.warehouse;
+            log.to_location = vars.newItem?.location;
+            break;
+
+          case 'deleteItem':
+            log.sku = vars.sku;
+            log.action_type = 'DELETE';
+            log.from_warehouse = vars.warehouse;
+            break;
+
+          case 'updateItem':
+            log.sku = vars.updatedFormData?.sku;
+            log.action_type = 'EDIT';
+            log.previous_sku = vars.originalItem?.sku !== vars.updatedFormData?.sku ? vars.originalItem?.sku : undefined;
+            break;
         }
 
         return log as InventoryLog & { isOptimistic: boolean };
@@ -147,9 +167,10 @@ export const HistoryScreen = () => {
   // Combine real and optimistic logs
   const logs = useMemo(() => {
     const serverLogs = logsData || [];
-    // Only show optimistic logs that haven't been "seen" on server yet
-    // (A simple ID filter or just show them at the top)
-    return [...optimisticLogs, ...serverLogs];
+    // Sort combined list: newest first
+    return [...optimisticLogs, ...serverLogs].sort((a, b) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
   }, [logsData, optimisticLogs]);
 
   const fetchLogs = useCallback(() => {
@@ -783,8 +804,12 @@ export const HistoryScreen = () => {
                         {!log.is_reversed && isAdmin && (
                           <button
                             onClick={() => handleUndo(log.id)}
-                            className="p-3 bg-surface border border-subtle hover:bg-content hover:text-main rounded-2xl transition-all shadow-xl text-content"
-                            title="Undo Action"
+                            disabled={(log as any).isOptimistic}
+                            className={`p-3 bg-surface border border-subtle rounded-2xl transition-all shadow-xl text-content ${(log as any).isOptimistic
+                                ? 'opacity-20 cursor-not-allowed scale-90'
+                                : 'hover:bg-content hover:text-main'
+                              }`}
+                            title={(log as any).isOptimistic ? "Syncing..." : "Undo Action"}
                           >
                             <Undo2 size={16} />
                           </button>
