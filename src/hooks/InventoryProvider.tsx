@@ -428,13 +428,11 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
             console.log('🔄 Realtime: Reconnected. Resyncing inventory to close the "Elevator Gap"...');
             // Force a refresh of all inventory data to catch missed events
             queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
-            toast.success('Connection restored. Syncing inventory...', { icon: '🔄' });
           }
         }
 
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
           console.warn(`⚠️ Realtime: Connection ${status}. Retrying...`);
-          toast.error('Connection unstable. Retrying sync...', { id: 'connection-error' });
         }
       });
 

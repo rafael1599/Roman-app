@@ -325,14 +325,12 @@ export const HistoryScreen = () => {
             setUndoingId(id);
             // Non-blocking call to support offline queueing
             await undoLogAction(id);
-            toast.success('Solicitud de reversión enviada');
+            // Implicit feedback via optimistic UI (badge)
           } catch (err: any) {
             // Check if it's a network error (meant to be queued)
             const isOffline = !navigator.onLine || err?.message?.includes('fetch') || err?.message?.includes('disconnected');
 
-            if (isOffline) {
-              toast('Acción guardada. Se revertirá al detectar internet.', { icon: 'ℹ️' });
-            } else {
+            if (!isOffline) {
               console.error('Undo failed:', err);
               toast.error(`Error: ${err.message}`);
               await fetchLogs();
