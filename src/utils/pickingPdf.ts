@@ -61,19 +61,25 @@ export const generatePickingPdf = async (
       startY: startY,
       head: [['#', 'SKU', 'Location / WH', 'Pallet', 'Qty', 'Double check']],
       body: sequenceData,
-      theme: 'striped',
+      theme: 'grid',
       headStyles: {
-        fillColor: [40, 40, 40],
-        textColor: 255,
+        fillColor: [255, 255, 255],
+        textColor: 0,
         font: 'times',
         fontSize: 12,
-        fontStyle: 'bold'
+        fontStyle: 'bold',
+        lineColor: [0, 0, 0],
+        lineWidth: 0.1,
       },
       styles: {
         font: 'times',
         fontSize: 12,
         cellPadding: 3,
-        overflow: 'linebreak'
+        overflow: 'linebreak',
+        lineColor: [0, 0, 0],
+        lineWidth: 0.1,
+        fillColor: [255, 255, 255],
+        textColor: [0, 0, 0],
       },
       columnStyles: {
         0: { cellWidth: 12, halign: 'center' },
