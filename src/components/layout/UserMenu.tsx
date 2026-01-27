@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { createPortal } from 'react-dom';
 import { useTheme } from '../../context/ThemeContext';
-import { LogOut, X, Check, Sun, Moon, Save, Eye, ShieldCheck } from 'lucide-react';
+import { LogOut, X, Check, Sun, Moon, Save, Eye, ShieldCheck, History } from 'lucide-react';
+import { InventorySnapshotModal } from '../../features/inventory/components/InventorySnapshotModal';
 
 interface UserMenuProps {
   isOpen: boolean;
@@ -24,6 +25,7 @@ export const UserMenu = ({ isOpen, onClose, onExport }: UserMenuProps) => {
   const [newName, setNewName] = useState(profile?.full_name || '');
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSnapshotOpen, setIsSnapshotOpen] = useState(false);
 
   if (!isOpen) return null;
 
@@ -155,6 +157,16 @@ export const UserMenu = ({ isOpen, onClose, onExport }: UserMenuProps) => {
                 </button>
               )}
 
+              {isAdmin && (
+                <button
+                  onClick={() => setIsSnapshotOpen(true)}
+                  className="ios-btn w-full h-14 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/10 text-purple-500 transition-all font-black uppercase tracking-[0.2em] text-[10px]"
+                >
+                  <History size={16} />
+                  Inventory Time Travel
+                </button>
+              )}
+
               {isSystemAdmin && (
                 <button
                   onClick={() => {
@@ -193,6 +205,11 @@ export const UserMenu = ({ isOpen, onClose, onExport }: UserMenuProps) => {
           </div>
         </div>
       </div>
+
+      <InventorySnapshotModal
+        isOpen={isSnapshotOpen}
+        onClose={() => setIsSnapshotOpen(false)}
+      />
     </div>,
     document.body
   );
