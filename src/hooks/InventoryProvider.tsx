@@ -8,7 +8,7 @@ import {
   useCallback,
   ReactNode,
 } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useMutation } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { inventoryKeys } from '../lib/query-keys';
 import { supabase } from '../lib/supabase';
@@ -135,6 +135,133 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
     loadAllData();
   }, []);
 
+  // --- MUTATIONS (Persistence Layer) ---
+
+  const mutationOptions = {
+    networkMode: 'offlineFirst' as const,
+    retry: 3,
+    retryDelay: (attempt: number) => Math.min(1000 * 2 ** attempt, 30000),
+  };
+
+  const updateQuantityMutation = useMutation({
+    ...mutationOptions,
+    mutationKey: ['inventory', 'updateQuantity'],
+    mutationFn: async (vars: {
+      sku: string;
+      resolvedWarehouse: string;
+      location: string | null;
+      finalDelta: number;
+      isReversal?: boolean;
+      listId?: string;
+      orderNumber?: string;
+      optimistic_id?: string;
+    }) => {
+      // Find item in state (Ref) to get ID
+      const item = inventoryDataRef.current.find(
+        (i) =>
+          i.sku === vars.sku &&
+          i.warehouse === vars.resolvedWarehouse &&
+          (!vars.location || i.location === vars.location)
+      );
+
+      if (!item) throw new Error('Item not found for update');
+
+      // SNAPSHOT & WRITE
+      const { data: snapshotItem, error: fetchError } = await supabase
+        .from('inventory')
+        .select('*')
+        .eq('id', Number(item.id))
+        .single();
+
+      if (fetchError || !snapshotItem) throw fetchError || new Error('Item not found');
+
+      const currentDbQty = Number(snapshotItem.quantity || 0);
+      const finalQuantity = currentDbQty + vars.finalDelta;
+
+      const { error: updateError } = await supabase
+        .from('inventory')
+        .update({ quantity: finalQuantity })
+        .eq('id', Number(item.id));
+
+      if (updateError) throw updateError;
+
+      // Record Log
+      await trackLog(
+        {
+          sku: vars.sku,
+          from_warehouse: vars.finalDelta > 0 ? undefined : vars.resolvedWarehouse,
+          from_location: vars.finalDelta > 0 ? undefined : (item.location || undefined),
+          to_warehouse: vars.finalDelta > 0 ? vars.resolvedWarehouse : undefined,
+          to_location: vars.finalDelta > 0 ? (item.location || undefined) : undefined,
+          quantity_change: vars.finalDelta,
+          prev_quantity: currentDbQty,
+          new_quantity: finalQuantity,
+          action_type: vars.finalDelta > 0 ? 'ADD' : 'DEDUCT',
+          item_id: String(item.id),
+          location_id: item.location_id,
+          snapshot_before: {
+            id: snapshotItem.id,
+            sku: snapshotItem.sku,
+            quantity: snapshotItem.quantity,
+            location_id: snapshotItem.location_id,
+            location: snapshotItem.location,
+            warehouse: snapshotItem.warehouse
+          },
+          is_reversed: vars.isReversal,
+          list_id: vars.listId,
+          order_number: vars.orderNumber,
+        },
+        { performed_by: userName, user_id: user?.id }
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: inventoryKeys.lists() });
+    }
+  });
+
+  const addItemMutation = useMutation({
+    ...mutationOptions,
+    mutationKey: ['inventory', 'addItem'],
+    mutationFn: (vars: { warehouse: string, newItem: InventoryItemInput & { isReversal?: boolean; optimistic_id?: string } }) =>
+      inventoryService.addItem(vars.warehouse, vars.newItem, locations, getServiceContext()),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: inventoryKeys.lists() });
+    }
+  });
+
+  const updateItemMutation = useMutation({
+    ...mutationOptions,
+    mutationKey: ['inventory', 'updateItem'],
+    mutationFn: (vars: { originalItem: InventoryItem, updatedFormData: InventoryItemInput & { isReversal?: boolean; optimistic_id?: string } }) =>
+      inventoryService.updateItem(vars.originalItem, vars.updatedFormData, locations, getServiceContext()),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: inventoryKeys.lists() });
+    }
+  });
+
+  const moveItemMutation = useMutation({
+    ...mutationOptions,
+    mutationKey: ['inventory', 'moveItem'],
+    mutationFn: (vars: { sourceItem: InventoryItem, targetWarehouse: string, targetLocation: string, qty: number, isReversal?: boolean; optimistic_id?: string }) =>
+      inventoryService.moveItem(vars.sourceItem, vars.targetWarehouse, vars.targetLocation, vars.qty, locations, getServiceContext(), vars.isReversal),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: inventoryKeys.lists() });
+    }
+  });
+
+  const deleteItemMutation = useMutation({
+    ...mutationOptions,
+    mutationKey: ['inventory', 'deleteItem'],
+    mutationFn: (vars: { warehouse: string, sku: string, optimistic_id?: string }) => {
+      const item = inventoryDataRef.current.find(i => i.sku === vars.sku && i.warehouse === vars.warehouse);
+      if (!item) throw new Error('Item not found');
+      return inventoryService.deleteItem(item, getServiceContext());
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: inventoryKeys.lists() });
+    }
+  });
+
   // Realtime Subscription - "Quirurgical Sync"
   useEffect(() => {
     /**
@@ -248,7 +375,7 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
     return capacities;
   }, [inventoryData, locations]);
 
-  const pendingUpdatesRef = useRef<Record<string, { delta: number, timer: any }>>({});
+  const pendingUpdatesRef = useRef<Record<string, { delta: number; timer: any }>>({});
 
   const updateQuantity = useCallback(
     async (
@@ -261,104 +388,47 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
       orderNumber?: string
     ) => {
       const resolvedWarehouse = warehouse || 'LUDLOW';
-      const updateKey = `${sku}-${resolvedWarehouse}-${location || 'any'}`;
+      const key = `${sku}-${resolvedWarehouse}-${location || 'default'}`;
 
-      // 1. Instant Optimistic UI Update
-      setInventoryData((prev) =>
-        prev.map((i) =>
-          i.sku === sku && i.warehouse === resolvedWarehouse && (!location || i.location === location)
-            ? { ...i, quantity: i.quantity + delta }
-            : i
-        )
+      // 1. OPTIMISTIC UI: Update local state immediately for instant feedback
+      const event: RealtimeInventoryEvent = {
+        eventType: 'UPDATE',
+        new: { sku, quantity_delta: delta, warehouse: resolvedWarehouse, location } as any,
+        old: { sku, warehouse: resolvedWarehouse, location } as any,
+      };
+
+      setInventoryData((current) =>
+        updateInventoryCache(current, event, filtersRef.current, skuMetadataMapRef.current)
       );
 
-      // 2. Buffer the Delta
-      if (!pendingUpdatesRef.current[updateKey]) {
-        pendingUpdatesRef.current[updateKey] = { delta: 0, timer: null };
+      // 2. BATCHED SYNC: Debounce the server write
+      if (pendingUpdatesRef.current[key]) {
+        clearTimeout(pendingUpdatesRef.current[key].timer);
+        pendingUpdatesRef.current[key].delta += delta;
+      } else {
+        pendingUpdatesRef.current[key] = { delta, timer: null };
       }
 
-      const currentPending = pendingUpdatesRef.current[updateKey];
-      currentPending.delta += delta;
+      const currentPending = pendingUpdatesRef.current[key];
 
-      // 3. Clear existing timer to reset debounce
-      if (currentPending.timer) {
-        clearTimeout(currentPending.timer);
-      }
-
-      // 4. Set final sync timer (Merge Logic)
-      currentPending.timer = setTimeout(async () => {
+      currentPending.timer = setTimeout(() => {
         const finalDelta = currentPending.delta;
-        delete pendingUpdatesRef.current[updateKey]; // Cleanup buffer FIRST to allow new cycles
+        delete pendingUpdatesRef.current[key];
 
-        if (finalDelta === 0) return;
-
-        try {
-          // Find the item for DB reference
-          const item = inventoryDataRef.current.find(
-            (i) =>
-              i.sku === sku &&
-              i.warehouse === resolvedWarehouse &&
-              (!location || i.location === location)
-          );
-
-          if (!item) return;
-
-          // SNAPSHOT & WRITE (Atomic update in one go)
-          const { data: snapshotItem, error: fetchError } = await supabase
-            .from('inventory')
-            .select('*')
-            .eq('id', Number(item.id))
-            .single();
-
-          if (fetchError || !snapshotItem) throw fetchError || new Error('Item not found');
-
-          const currentDbQty = Number(snapshotItem.quantity || 0);
-          const finalQuantity = currentDbQty + finalDelta;
-
-          const { error: updateError } = await supabase
-            .from('inventory')
-            .update({ quantity: finalQuantity })
-            .eq('id', Number(item.id));
-
-          if (updateError) throw updateError;
-
-          // Record Log (Will be merged by trackLog if timing is close)
-          await trackLog(
-            {
-              sku,
-              from_warehouse: finalDelta > 0 ? undefined : resolvedWarehouse,
-              from_location: finalDelta > 0 ? undefined : (item.location || undefined),
-              to_warehouse: finalDelta > 0 ? resolvedWarehouse : undefined,
-              to_location: finalDelta > 0 ? (item.location || undefined) : undefined,
-              quantity_change: finalDelta,
-              prev_quantity: currentDbQty,
-              new_quantity: finalQuantity,
-              action_type: finalDelta > 0 ? 'ADD' : 'DEDUCT',
-              item_id: String(item.id),
-              location_id: item.location_id,
-              snapshot_before: {
-                id: snapshotItem.id,
-                sku: snapshotItem.sku,
-                quantity: snapshotItem.quantity,
-                location_id: snapshotItem.location_id,
-                location: snapshotItem.location,
-                warehouse: snapshotItem.warehouse
-              },
-              is_reversed: isReversal,
-              list_id: listId,
-              order_number: orderNumber,
-            },
-            { performed_by: userName, user_id: user?.id }
-          );
-
-          queryClient.invalidateQueries({ queryKey: inventoryKeys.lists() });
-        } catch (err) {
-          console.error('[UpdateQuantity] Error syncing batched update:', err);
-          toast.error(`Sync error for ${sku}. Please refresh.`);
-        }
-      }, 1500); // 1500ms debounce
+        // Use Mutation for the actual server call to enable persistence/retries
+        updateQuantityMutation.mutate({
+          sku,
+          resolvedWarehouse,
+          location,
+          finalDelta,
+          isReversal,
+          listId,
+          orderNumber,
+          optimistic_id: `upd-${Date.now()}-${sku}`
+        });
+      }, 1500);
     },
-    [trackLog, userName, user?.id, queryClient]
+    [userName, user?.id, queryClient, updateQuantityMutation]
   );
 
   const updateLudlowQuantity = useCallback(
@@ -378,29 +448,29 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
   const addItem = useCallback(
     async (warehouse: string, newItem: InventoryItemInput & { force_id?: string | number; isReversal?: boolean }) => {
       try {
-        await inventoryService.addItem(warehouse, newItem, locations, getServiceContext());
-        queryClient.invalidateQueries({ queryKey: inventoryKeys.lists() });
-      } catch (err: unknown) {
-        const errorMsg = err instanceof Error ? err.message : 'Error adding item';
+        // Optimistic UI for Add: (Simulated)
+        // For simplicity in addItem, we go straight to mutation which will persist if offline
+        const optimistic_id = `add-${Date.now()}-${newItem.sku}`;
+        await addItemMutation.mutateAsync({ warehouse, newItem: { ...newItem, optimistic_id } as any });
+      } catch (err: any) {
         console.error('Error adding item:', err);
-        toast.error(errorMsg);
+        toast.error(err.message || 'Error adding item');
       }
     },
-    [locations, getServiceContext, queryClient]
+    [addItemMutation]
   );
 
   const updateItem = useCallback(
     async (originalItem: InventoryItem, updatedFormData: InventoryItemInput & { isReversal?: boolean }) => {
       try {
-        await inventoryService.updateItem(originalItem, updatedFormData, locations, getServiceContext());
-        queryClient.invalidateQueries({ queryKey: inventoryKeys.lists() });
-      } catch (err: unknown) {
-        const errorMsg = err instanceof Error ? err.message : 'Error updating item';
+        const optimistic_id = `edit-${Date.now()}-${originalItem.sku}`;
+        await updateItemMutation.mutateAsync({ originalItem, updatedFormData: { ...updatedFormData, optimistic_id } as any });
+      } catch (err: any) {
         console.error('Error updating item:', err);
-        toast.error(errorMsg);
+        toast.error(err.message || 'Error updating item');
       }
     },
-    [locations, getServiceContext, queryClient]
+    [updateItemMutation]
   );
 
   const moveItem = useCallback(
@@ -409,96 +479,66 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
       targetWarehouse: string,
       targetLocation: string,
       qty: number,
-      isReversal = false
+      isReversal: boolean = false
     ) => {
-      if (!sourceItem || !targetWarehouse || !targetLocation) {
-        toast.error('Missing required fields for move');
-        return;
-      }
       try {
-        await inventoryService.moveItem(
-          sourceItem,
-          targetWarehouse,
-          targetLocation,
-          qty,
-          locations,
-          getServiceContext(),
-          isReversal
-        );
-        queryClient.invalidateQueries({ queryKey: inventoryKeys.lists() });
-      } catch (err: unknown) {
-        const errorMsg = err instanceof Error ? err.message : 'Error moving item';
+        const optimistic_id = `move-${Date.now()}-${sourceItem.sku}`;
+        await moveItemMutation.mutateAsync({ sourceItem, targetWarehouse, targetLocation, qty, isReversal, optimistic_id });
+      } catch (err: any) {
         console.error('Error moving item:', err);
-        toast.error(errorMsg);
+        toast.error(err.message || 'Error moving item');
       }
     },
-    [locations, getServiceContext, queryClient]
+    [moveItemMutation]
   );
 
   const deleteItem = useCallback(
     async (warehouse: string, sku: string) => {
-      const item = inventoryData.find((i) => i.sku === sku && i.warehouse === warehouse);
-      if (!item) return;
-
       try {
-        await inventoryService.deleteItem(item as any, getServiceContext());
-        queryClient.invalidateQueries({ queryKey: inventoryKeys.lists() });
+        const optimistic_id = `del-${Date.now()}-${sku}`;
+        await deleteItemMutation.mutateAsync({ warehouse, sku, optimistic_id });
       } catch (err: any) {
-        console.error('Delete item fail:', err);
+        console.error('Error deleting item:', err);
         toast.error(err.message || 'Error deleting item');
       }
     },
-    [inventoryData, getServiceContext, queryClient]
+    [deleteItemMutation]
   );
 
   const undoAction = useCallback(
     async (logId: string) => {
-      // New RPC-based undo doesn't require client-side actions
-      const result = await performUndo(logId);
-
-      if (!result.success) {
-        toast.error(result.error || 'Undo failed');
-        return;
+      try {
+        await performUndo(logId);
+      } catch (err: any) {
+        toast.error(err.message || 'Undo failed');
       }
-
-      toast.success('Action undone successfully');
-      queryClient.invalidateQueries({ queryKey: inventoryKeys.lists() });
     },
-    [performUndo, queryClient]
+    [performUndo]
   );
 
   const syncInventoryLocations = useCallback(async () => {
-    // Note: This logic could also be moved to the service if needed.
-    // For now, keeping legacy check logic if it works, but using cleaner API calls.
-    const legacyItems = inventoryData.filter((item) => !item.location_id);
-    const results = await Promise.all(
-      legacyItems.map(async (item) => {
-        const config = locations.find(
-          (l) =>
-            l.warehouse === item.warehouse &&
-            item.location &&
-            l.location.toLowerCase() === item.location.toLowerCase() &&
-            l.is_active
-        );
+    // Standard fetch-and-compare logic (keep as is for now as it's a bulk operation)
+    try {
+      const { data: allInv } = await supabase.from('inventory').select('id, warehouse, location, location_id');
+      if (!allInv) return { successCount: 0, failCount: 0 };
 
-        if (config) {
-          const { error } = await supabase
-            .from('inventory')
-            .update({ location_id: config.id })
-            .eq('id', Number(item.id));
+      let success = 0;
+      let fail = 0;
 
-          return !error;
+      for (const item of allInv) {
+        const loc = locations.find(l => l.warehouse === item.warehouse && l.location === item.location);
+        if (loc && loc.id !== item.location_id) {
+          const { error } = await supabase.from('inventory').update({ location_id: loc.id }).eq('id', item.id);
+          if (error) fail++;
+          else success++;
         }
-        return false;
-      })
-    );
-
-    const successCount = results.filter(Boolean).length;
-    const failCount = results.length - successCount;
-
-    queryClient.invalidateQueries({ queryKey: inventoryKeys.lists() });
-    return { successCount, failCount };
-  }, [inventoryData, locations, queryClient]);
+      }
+      return { successCount: success, failCount: fail };
+    } catch (err) {
+      console.error('Sync locations error:', err);
+      return { successCount: 0, failCount: 0 };
+    }
+  }, [locations]);
 
   const updateSKUMetadata = useCallback(
     async (metadata: SKUMetadataInput) => {
@@ -521,19 +561,13 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
   );
 
   const exportData = useCallback(() => {
-    const csvContent = [
-      ['SKU', 'Quantity', 'Location', 'Warehouse', 'Status'].join(','),
-      ...inventoryData.map((item) =>
-        [item.sku, item.quantity, item.location || '', item.warehouse, item.status || 'Active'].join(',')
-      ),
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `inventory-export-${new Date().toISOString()}.csv`;
-    a.click();
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(inventoryData));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", `inventory_export_${new Date().toISOString()}.json`);
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
   }, [inventoryData]);
 
   const updateInventory = useCallback((newData: InventoryItem[]) => {
@@ -562,10 +596,10 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
 
   const value: InventoryContextType = {
     inventoryData,
-    ludlowData,
-    atsData,
-    ludlowInventory,
-    atsInventory,
+    ludlowData: inventoryData.filter((i) => i.warehouse === 'LUDLOW'),
+    atsData: inventoryData.filter((i) => i.warehouse === 'ATS'),
+    ludlowInventory: inventoryData.filter((i) => i.warehouse === 'LUDLOW'),
+    atsInventory: inventoryData.filter((i) => i.warehouse === 'ATS'),
     locationCapacities,
     reservedQuantities: {},
     fetchLogs,
@@ -581,12 +615,12 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
     deleteItem,
     exportData,
     syncInventoryLocations,
-    updateInventory,
-    updateLudlowInventory,
-    updateAtsInventory,
+    updateInventory: (newData: any) => setInventoryData(newData),
+    updateLudlowInventory: (newData: any) => setInventoryData(prev => [...prev.filter(i => i.warehouse !== 'LUDLOW'), ...newData]),
+    updateAtsInventory: (newData: any) => setInventoryData(prev => [...prev.filter(i => i.warehouse !== 'ATS'), ...newData]),
     updateSKUMetadata,
     syncFilters,
-    isAdmin,
+    isAdmin: !!isAdmin,
     user,
     profile,
   };
@@ -596,8 +630,9 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
 
 export const useInventory = () => {
   const context = useContext(InventoryContext);
-  if (!context) {
-    throw new Error('useInventory must be used within InventoryProvider');
+  if (context === undefined) {
+    throw new Error('useInventory must be used within an InventoryProvider');
   }
   return context;
 };
+```

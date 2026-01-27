@@ -33,17 +33,16 @@ export const HistoryScreen = () => {
   const { isAdmin, profile, user: authUser } = useAuth();
   const { showError } = useError();
   const { showConfirmation } = useConfirmation();
+  const { undoAction: undoLogAction } = useInventoryLogs();
+  const [manualLoading, setManualLoading] = useState(false);
+
+  const queryClient = useQueryClient();
+  const mutationCache = queryClient.getMutationCache();
   const [filter, setFilter] = useState<LogActionTypeValue | 'ALL'>('ALL');
   const [userFilter, setUserFilter] = useState('ALL');
   const [timeFilter, setTimeFilter] = useState('TODAY');
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearch = useDebounce(searchQuery, 300);
-
-  const { undoAction: undoLogAction } = useInventoryLogs();
-  const queryClient = useQueryClient();
-
-  const [logs, setLogs] = useState<InventoryLog[]>([]);
-  const [manualLoading, setManualLoading] = useState(false);
 
   const {
     data: logsData,
@@ -94,12 +93,64 @@ export const HistoryScreen = () => {
     gcTime: 1000 * 60 * 60 * 24, // 24 hours
   });
 
-  // Keep manual 'logs' state in sync with react-query data for local optimistic updates (Undo)
-  useEffect(() => {
-    if (logsData) {
-      setLogs(logsData);
-    }
-  }, [logsData]);
+  // --- OPTIMISTIC LOGS INJECTION ---
+  const optimisticLogs = useMemo(() => {
+    // Get all mutations that are still pending or paused
+    const mutations = mutationCache.getAll();
+
+    return mutations
+      .filter(m =>
+        m.state.status === 'pending' &&
+        Array.isArray(m.options.mutationKey) &&
+        m.options.mutationKey[0] === 'inventory'
+      )
+      .map(m => {
+        const vars = m.state.variables as any;
+        const key = m.options.mutationKey![1];
+
+        // Map mutation types to Log format
+        const log: Partial<InventoryLog> & { isOptimistic: boolean } = {
+          id: (vars?.optimistic_id || `opt-${Date.now()}`) as string,
+          created_at: new Date().toISOString() as any,
+          performed_by: profile?.full_name || authUser?.email || 'You',
+          isOptimistic: true,
+          is_reversed: false,
+        };
+
+        if (key === 'updateQuantity') {
+          log.sku = vars.sku;
+          log.action_type = vars.finalDelta > 0 ? 'ADD' : 'DEDUCT';
+          log.quantity_change = vars.finalDelta;
+          log.from_warehouse = vars.resolvedWarehouse;
+          log.from_location = vars.location;
+          log.order_number = vars.orderNumber;
+        } else if (key === 'moveItem') {
+          log.sku = vars.sourceItem.sku;
+          log.action_type = 'MOVE';
+          log.quantity_change = -vars.qty;
+          log.from_warehouse = vars.sourceItem.warehouse;
+          log.from_location = vars.sourceItem.location;
+          log.to_warehouse = vars.targetWarehouse;
+          log.to_location = vars.targetLocation;
+        } else if (key === 'addItem') {
+          log.sku = vars.newItem.sku;
+          log.action_type = 'ADD';
+          log.quantity_change = vars.newItem.quantity;
+          log.to_warehouse = vars.warehouse;
+          log.to_location = vars.newItem.location;
+        }
+
+        return log as InventoryLog & { isOptimistic: boolean };
+      });
+  }, [mutationCache, profile, authUser]);
+
+  // Combine real and optimistic logs
+  const logs = useMemo(() => {
+    const serverLogs = logsData || [];
+    // Only show optimistic logs that haven't been "seen" on server yet
+    // (A simple ID filter or just show them at the top)
+    return [...optimisticLogs, ...serverLogs];
+  }, [logsData, optimisticLogs]);
 
   const fetchLogs = useCallback(() => {
     refetch();
@@ -194,10 +245,9 @@ export const HistoryScreen = () => {
         'Undo Action',
         'Are you sure you want to undo this action?',
         async () => {
-          setLogs((prev) =>
-            prev.map((log) => (log.id === id ? { ...log, is_reversed: true } : log))
-          );
-
+          // Since we use useQuery + optimistic logs, we don't need to manually setLogs for undo 
+          // if we just invalidate, but for instant UI we can use local state if we had it.
+          // For now, let's just proceed with the action.
           try {
             const result = await undoLogAction(id);
             if (!result.success) {
@@ -683,10 +733,10 @@ export const HistoryScreen = () => {
                   return (
                     <div
                       key={log.id}
-                      className={`group relative p-5 rounded-[2rem] border transition-all duration-300 hover:scale-[1.01] ${log.is_reversed
-                        ? 'bg-main border-subtle opacity-40 grayscale pointer-events-none'
+                      className={`group relative p-5 rounded-[2rem] border transition-all duration-300 hover:scale-[1.01] ${log.is_reversed || (log as any).isOptimistic
+                        ? 'bg-main border-subtle'
                         : 'bg-surface/40 border-subtle hover:border-accent/30 hover:bg-surface/60'
-                        }`}
+                        } ${(log as any).isOptimistic ? 'opacity-60 border-dashed' : ''} ${log.is_reversed ? 'opacity-40 grayscale pointer-events-none' : ''}`}
                     >
                       <div className="flex justify-between items-start">
                         <div className="flex items-center gap-4">
@@ -703,6 +753,11 @@ export const HistoryScreen = () => {
                               >
                                 {info.label}
                               </span>
+                              {(log as any).isOptimistic && (
+                                <span className="text-[8px] font-black bg-accent/20 text-accent px-2 py-1 flex items-center gap-1">
+                                  <Clock size={8} className="animate-pulse" /> PENDING SYNC
+                                </span>
+                              )}
                               {log.previous_sku && (
                                 <span className="text-[8px] font-bold text-muted uppercase italic">
                                   (Was: {log.previous_sku})

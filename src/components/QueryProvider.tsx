@@ -17,8 +17,13 @@ export function QueryProvider({ children }: QueryProviderProps) {
             client={queryClient}
             persistOptions={{
                 persister,
-                // Optional: you can define which parts of the cache to persist here
                 maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+                dehydrateOptions: {
+                    shouldDehydrateMutation: (mutation) => {
+                        // Persist all mutations that are still pending or paused (offline)
+                        return true;
+                    },
+                },
             }}
         >
             {children}

@@ -75,6 +75,12 @@ export const queryClient = new QueryClient({
         mutations: {
             // Mutations stay PAUSED if there is no network
             networkMode: 'offlineFirst',
+            // Retry critical operations if network fails
+            retry: 3,
+            // Exponential backoff for mutations too
+            retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+            // Ensure mutation state survives as long as query state
+            gcTime: 1000 * 60 * 60 * 24 * 7,
         },
     },
     queryCache: new QueryCache({
