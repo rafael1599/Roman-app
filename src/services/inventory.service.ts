@@ -541,11 +541,12 @@ class InventoryService extends BaseService<'inventory', InventoryModel, Inventor
             from_location: sourceItem.location || undefined,
             to_warehouse: targetWarehouse,
             to_location: destination.name,
-            to_location_id: destination.id, // THE CRITICAL MISSING LINK
+            to_location_id: destination.id,
             quantity_change: -qty, // Deduct from source
             prev_quantity: serverQty,
             new_quantity: remainingQty,
             action_type: 'MOVE',
+            item_id: String(sourceItem.id),
             location_id: sourceItem.location_id, // Source location ID
             snapshot_before: {
                 id: sourceItem.id,
