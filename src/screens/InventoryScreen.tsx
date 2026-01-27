@@ -225,7 +225,7 @@ export const InventoryScreen = () => {
 
   const handleDelete = useCallback(() => {
     if (editingItem) {
-      deleteItem(editingItem.warehouse, editingItem.sku);
+      deleteItem(editingItem.warehouse, editingItem.sku, editingItem.location);
     }
   }, [editingItem, deleteItem]);
 

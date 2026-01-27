@@ -53,7 +53,7 @@ interface InventoryContextType {
     isReversal?: boolean
   ) => Promise<void>;
   undoAction: (logId: string) => Promise<void>;
-  deleteItem: (warehouse: string, sku: string) => Promise<void>;
+  deleteItem: (warehouse: string, sku: string, location?: string | null) => Promise<void>;
   exportData: () => void;
   syncInventoryLocations: () => Promise<{ successCount: number; failCount: number }>;
   updateInventory: (newData: InventoryItem[]) => void;
@@ -264,10 +264,10 @@ export const InventoryProvider = ({
       await trackLog(
         {
           sku: vars.sku,
-          from_warehouse: vars.finalDelta > 0 ? undefined : vars.resolvedWarehouse,
-          from_location: vars.finalDelta > 0 ? undefined : (item.location || undefined),
-          to_warehouse: vars.finalDelta > 0 ? vars.resolvedWarehouse : undefined,
-          to_location: vars.finalDelta > 0 ? (item.location || undefined) : undefined,
+          from_warehouse: vars.resolvedWarehouse,
+          from_location: item.location || undefined,
+          to_warehouse: vars.resolvedWarehouse,
+          to_location: item.location || undefined,
           quantity_change: vars.finalDelta,
           prev_quantity: currentDbQty,
           new_quantity: finalQuantity,
@@ -314,10 +314,10 @@ export const InventoryProvider = ({
             sku: vars.sku,
             action_type: vars.finalDelta > 0 ? 'ADD' : 'DEDUCT',
             quantity_change: vars.finalDelta,
-            from_warehouse: vars.finalDelta > 0 ? undefined : vars.resolvedWarehouse,
-            from_location: vars.finalDelta > 0 ? undefined : (item.location || undefined),
-            to_warehouse: vars.finalDelta > 0 ? vars.resolvedWarehouse : undefined,
-            to_location: vars.finalDelta > 0 ? (item.location || undefined) : undefined,
+            from_warehouse: vars.resolvedWarehouse,
+            from_location: item.location || undefined,
+            to_warehouse: vars.resolvedWarehouse,
+            to_location: item.location || undefined,
             prev_quantity: item.quantity,
             new_quantity: (item.quantity || 0) + vars.finalDelta,
             created_at: new Date().toISOString(),
@@ -414,8 +414,12 @@ export const InventoryProvider = ({
   const deleteItemMutation = useMutation({
     ...mutationOptions,
     mutationKey: ['inventory', 'deleteItem'],
-    mutationFn: (vars: { warehouse: string, sku: string, optimistic_id?: string }) => {
-      const item = inventoryDataRef.current.find(i => i.sku === vars.sku && i.warehouse === vars.warehouse);
+    mutationFn: (vars: { warehouse: string, sku: string, location?: string | null, optimistic_id?: string }) => {
+      const item = inventoryDataRef.current.find(i =>
+        i.sku === vars.sku &&
+        i.warehouse === vars.warehouse &&
+        (!vars.location || i.location === vars.location)
+      );
       if (!item) throw new Error('Item not found');
       return inventoryService.deleteItem(item, getServiceContext());
     },
@@ -723,10 +727,10 @@ export const InventoryProvider = ({
   );
 
   const deleteItem = useCallback(
-    async (warehouse: string, sku: string) => {
+    async (warehouse: string, sku: string, location: string | null = null) => {
       try {
         const optimistic_id = `del-${Date.now()}-${sku}`;
-        await deleteItemMutation.mutateAsync({ warehouse, sku, optimistic_id });
+        await deleteItemMutation.mutateAsync({ warehouse, sku, location, optimistic_id });
       } catch (err: any) {
         console.error('Error deleting item:', err);
         toast.error(err.message || 'Error deleting item');

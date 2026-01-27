@@ -189,6 +189,8 @@ class InventoryService extends BaseService<'inventory', InventoryModel, Inventor
             await trackLog(
                 {
                     sku: validatedInput.sku,
+                    from_warehouse: warehouse,
+                    from_location: destination.name,
                     to_warehouse: warehouse,
                     to_location: destination.name,
                     quantity_change: qty, // New explicit delta
@@ -239,6 +241,8 @@ class InventoryService extends BaseService<'inventory', InventoryModel, Inventor
         await trackLog(
             {
                 sku: validatedInput.sku,
+                from_warehouse: warehouse,
+                from_location: destination.name,
                 to_warehouse: warehouse,
                 to_location: destination.name,
                 quantity_change: qty,
@@ -414,6 +418,8 @@ class InventoryService extends BaseService<'inventory', InventoryModel, Inventor
 
         await trackLog({
             sku: originalItem.sku,
+            from_warehouse: originalItem.warehouse as any,
+            from_location: originalItem.location || undefined,
             to_warehouse: originalItem.warehouse as any,
             to_location: originalItem.location || undefined,
             quantity_change: newQty - originalItem.quantity,
@@ -456,6 +462,8 @@ class InventoryService extends BaseService<'inventory', InventoryModel, Inventor
             sku: item.sku,
             from_warehouse: item.warehouse as any,
             from_location: item.location || undefined,
+            to_warehouse: item.warehouse as any,
+            to_location: item.location || undefined,
             quantity_change: -item.quantity,
             prev_quantity: item.quantity,
             new_quantity: 0,

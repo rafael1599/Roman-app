@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Search, Calendar, Copy, Check, Info, FileText, Map as MapIcon, Package, Layers } from 'lucide-react';
+import { X, Search, Calendar, Copy, Check, Info, Map as MapIcon, Layers } from 'lucide-react';
 import { useInventorySnapshot, type SnapshotItem } from '../../../hooks/useInventorySnapshot';
 import { useInventory } from '../../../hooks/useInventoryData';
 import { toast } from 'react-hot-toast';
@@ -73,7 +73,8 @@ export const InventorySnapshotModal = ({ isOpen, onClose }: InventorySnapshotMod
                     const currentQty = currentStockMap.get(`${item.warehouse}-${item.location}-${item.sku}`) ?? 0;
                     const isDifferent = item.quantity !== currentQty;
                     const prefix = isDifferent ? 'T, ' : '';
-                    md += `- ${prefix}SKU: ${item.sku} | Qty: ${item.quantity ?? 0}\n`;
+                    const qtyText = (item.quantity ?? 0) === 0 ? '0 (OUT)' : (item.quantity ?? 0);
+                    md += `- ${prefix}SKU: ${item.sku} | Qty: ${qtyText}\n`;
                 });
                 md += '\n';
             });
@@ -209,16 +210,17 @@ export const InventorySnapshotModal = ({ isOpen, onClose }: InventorySnapshotMod
                                                         {items.map((item, idx) => {
                                                             const currentQty = currentStockMap.get(`${item.warehouse}-${item.location}-${item.sku}`) ?? 0;
                                                             const isDifferent = item.quantity !== currentQty;
+                                                            const isAgotado = (item.quantity ?? 0) === 0;
 
                                                             return (
-                                                                <div key={idx} className="flex justify-between items-center text-[11px] font-mono group/item">
-                                                                    <span className="text-content/80 flex items-center gap-1">
+                                                                <div key={idx} className={`flex justify-between items-center text-[11px] font-mono group/item ${isAgotado ? 'opacity-40 grayscale' : ''}`}>
+                                                                    <span className={`text-content/80 flex items-center gap-1 ${isAgotado ? 'text-muted line-through' : ''}`}>
                                                                         {isDifferent && <span className="text-accent font-black">T,</span>}
                                                                         {item.sku}
                                                                     </span>
                                                                     <div className="h-px flex-1 mx-2 bg-subtle group-hover/item:bg-accent/20 transition-colors" />
-                                                                    <span className="font-bold text-content">
-                                                                        Qty: {item.quantity ?? 0}
+                                                                    <span className={`font-bold ${isAgotado ? 'text-muted' : 'text-content'}`}>
+                                                                        {isAgotado ? 'OUT' : `Qty: ${item.quantity ?? 0}`}
                                                                     </span>
                                                                 </div>
                                                             );
