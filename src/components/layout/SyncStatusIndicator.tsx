@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useIsMutating, useIsFetching, useQueryClient, useMutationState } from '@tanstack/react-query';
+import { useIsMutating, useIsFetching, useMutationState } from '@tanstack/react-query';
 import { CheckCircle2, RefreshCw, CloudOff, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -11,15 +11,20 @@ import toast from 'react-hot-toast';
 export const SyncStatusIndicator: React.FC = () => {
     const isMutating = useIsMutating();
     const isFetching = useIsFetching();
-    const queryClient = useQueryClient();
     const [isOnline, setIsOnline] = useState(navigator.onLine);
-    const [hasPausedMutations, setHasPausedMutations] = useState(false);
 
     // Monitor mutations in error state
     const errorMutations = useMutationState({
         filters: { status: 'error' },
         select: (mutation) => mutation.state.error,
     });
+
+    // Monitor paused mutations in the cache using the official hook
+    const pausedMutations = useMutationState({
+        filters: { status: 'pending' },
+        select: (mutation) => mutation.state.isPaused,
+    });
+    const hasPausedMutations = pausedMutations.some(p => p === true);
 
     // Monitor online/offline status
     useEffect(() => {
@@ -34,21 +39,6 @@ export const SyncStatusIndicator: React.FC = () => {
             window.removeEventListener('offline', handleOffline);
         };
     }, []);
-
-    // Monitor paused mutations in the cache explicitly
-    useEffect(() => {
-        const checkPaused = () => {
-            const paused = queryClient.getMutationCache().getAll().some(m => m.state.isPaused);
-            setHasPausedMutations(paused);
-        };
-
-        checkPaused();
-        const unsubscribe = queryClient.getMutationCache().subscribe(() => {
-            checkPaused();
-        });
-
-        return unsubscribe;
-    }, [queryClient]);
 
     const isSyncing = isMutating > 0 || isFetching > 0;
     const hasErrors = errorMutations.length > 0;

@@ -86,7 +86,8 @@ export function updateInventoryCache(
             if (isMatch) {
                 const enriched: InventoryItemWithMetadata = {
                     ...newItem,
-                    sku_metadata: metadataMap?.[newItem.sku] || (newItem as any).sku_metadata
+                    sku_metadata: metadataMap?.[newItem.sku] || (newItem as any).sku_metadata,
+                    _lastUpdateSource: (newItem as any)._lastUpdateSource || 'remote'
                 };
                 nextItems = [enriched, ...nextItems];
             }
@@ -106,7 +107,8 @@ export function updateInventoryCache(
                             return {
                                 ...item,
                                 ...newItem,
-                                sku_metadata: item.sku_metadata || metadataMap?.[newItem.sku]
+                                sku_metadata: item.sku_metadata || metadataMap?.[newItem.sku],
+                                _lastUpdateSource: (newItem as any)._lastUpdateSource || 'remote'
                             };
                         }
                         return item;
@@ -115,7 +117,8 @@ export function updateInventoryCache(
             } else if (isMatch) {
                 const enriched: InventoryItemWithMetadata = {
                     ...newItem,
-                    sku_metadata: metadataMap?.[newItem.sku] || (newItem as any).sku_metadata
+                    sku_metadata: metadataMap?.[newItem.sku] || (newItem as any).sku_metadata,
+                    _lastUpdateSource: (newItem as any)._lastUpdateSource || 'remote'
                 };
                 nextItems = [enriched, ...nextItems];
             }

@@ -14,6 +14,7 @@ interface InventoryCardProps {
     mode?: 'stock' | 'picking' | 'building';
     reservedByOthers?: number;
     available?: number | null;
+    lastUpdateSource?: 'local' | 'remote';
 }
 
 export const InventoryCard = memo(
@@ -30,18 +31,26 @@ export const InventoryCard = memo(
         mode = 'stock',
         reservedByOthers = 0,
         available = null,
+        lastUpdateSource,
     }: InventoryCardProps) => {
         const [flash, setFlash] = useState(false);
         const prevQuantityRef = useRef(quantity);
 
         useEffect(() => {
             if (prevQuantityRef.current !== quantity) {
-                setFlash(true);
-                const timer = setTimeout(() => setFlash(false), 800);
-                prevQuantityRef.current = quantity;
-                return () => clearTimeout(timer);
+                // Only flash if the update came from a remote source
+                // Local updates (done by the user themselves) should be silent/smooth
+                if (lastUpdateSource === 'remote') {
+                    setFlash(true);
+                    const timer = setTimeout(() => setFlash(false), 800);
+                    prevQuantityRef.current = quantity;
+                    return () => clearTimeout(timer);
+                } else {
+                    // Update the ref without flashing
+                    prevQuantityRef.current = quantity;
+                }
             }
-        }, [quantity]);
+        }, [quantity, lastUpdateSource]);
 
         const getWarehouseColor = (wh: string | null | undefined) => {
             switch (wh?.toUpperCase()) {

@@ -60,6 +60,7 @@ export type InventoryItemInput = z.infer<typeof InventoryItemInputSchema>;
 
 export const InventoryItemWithMetadataSchema = InventoryItemSchema.extend({
   sku_metadata: SKUMetadataSchema.nullable().optional(),
+  _lastUpdateSource: z.enum(['local', 'remote']).optional(),
 });
 
 export type InventoryItemWithMetadata = z.infer<typeof InventoryItemWithMetadataSchema>;

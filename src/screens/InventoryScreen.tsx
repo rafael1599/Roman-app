@@ -496,6 +496,7 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
                         mode={viewMode === 'picking' ? sessionMode : 'stock'}
                         reservedByOthers={stockInfo?.reservedByOthers || 0}
                         available={stockInfo?.available}
+                        lastUpdateSource={(item as any)._lastUpdateSource}
                       />
                     </div>
                   );

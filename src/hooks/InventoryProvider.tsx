@@ -525,6 +525,7 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
         new: {
           ...currentItem,
           quantity: newQuantity,
+          _lastUpdateSource: 'local',
         } as any,
         old: currentItem as any,
       };
