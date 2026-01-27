@@ -555,7 +555,7 @@ export const HistoryScreen = () => {
           fillColor: [255, 255, 255],
           textColor: [0, 0, 0],
           font: 'times',
-          fontSize: 12,
+          fontSize: 13,
           fontStyle: 'bold',
           cellPadding: 0.08,
           lineColor: [0, 0, 0],
@@ -563,7 +563,7 @@ export const HistoryScreen = () => {
         },
         styles: {
           font: 'times',
-          fontSize: 12,
+          fontSize: 13,
           cellPadding: 0.08,
           lineColor: [0, 0, 0],
           lineWidth: 0.01,
@@ -582,7 +582,7 @@ export const HistoryScreen = () => {
           const pageHeight = pageSize.height ? pageSize.height : pageSize.getHeight();
 
           doc.setFont('times', 'normal');
-          doc.setFontSize(11);
+          doc.setFontSize(12);
           doc.setTextColor(100, 100, 100);
 
           const footerLine1 = `Resumen: Total SKU's: ${stats.total} | Total Qty: ${stats.qty}`;
