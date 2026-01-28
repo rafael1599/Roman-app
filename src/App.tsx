@@ -14,6 +14,7 @@ const HistoryScreen = React.lazy(() =>
 );
 const Settings = React.lazy(() => import('./screens/Settings.tsx'));
 const LoginScreen = React.lazy(() => import('./screens/LoginScreen').then(m => ({ default: m.LoginScreen })));
+const OrdersScreen = React.lazy(() => import('./screens/OrdersScreen').then(m => ({ default: m.OrdersScreen })));
 
 import { ViewModeProvider } from './context/ViewModeContext';
 import { PickingProvider } from './context/PickingContext';
@@ -40,6 +41,7 @@ const AuthenticatedContent = () => {
           <Routes>
             <Route path="/" element={<InventoryScreen />} />
             <Route path="/history" element={<HistoryScreen />} />
+            <Route path="/orders" element={<OrdersScreen />} />
             <Route
               path="/settings"
               element={isAdmin ? <Settings /> : <Navigate to="/" replace />}

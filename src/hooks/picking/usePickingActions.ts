@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
 import type { CartItem } from './usePickingCart';
+import { getOptimizedPickingPath, calculatePallets } from '../../utils/pickingLogic';
 
 interface UsePickingActionsProps {
   user: any;
@@ -101,6 +102,15 @@ export const usePickingActions = ({
 
         if (stockError) throw stockError;
 
+        // NEW: Fetch locations picking order for optimization
+        const locationsToFetch = Array.from(new Set(finalItems.map(i => i.location).filter((loc): loc is string => !!loc)));
+        const { data: locationsData, error: locsError } = await supabase
+          .from('locations')
+          .select('warehouse, location, picking_order')
+          .in('location', locationsToFetch);
+
+        if (locsError) console.error('Error fetching picking orders:', locsError);
+
         // B. Fetch ALL active allocations for these SKUs (excluding self)
         const { data: activeLists, error: listsError } = await supabase
           .from('picking_lists')
@@ -157,6 +167,11 @@ export const usePickingActions = ({
         }
         // --- End Validation ---
 
+        // Calculate Pallets using the same logic as UI
+        const optimizedItems = getOptimizedPickingPath(finalItems, (locationsData as any) || []);
+        const pallets = calculatePallets(optimizedItems);
+        const palletsQty = pallets.length;
+
         // Transition to double_checking immediately
         const { error } = await supabase
           .from('picking_lists')
@@ -166,6 +181,7 @@ export const usePickingActions = ({
             items: finalItems as any,
             order_number: finalOrderNum,
             correction_notes: null,
+            pallets_qty: palletsQty, // AUTOMATION: Save the calculated pallets count
           } as any)
           .eq('id', activeListId);
 

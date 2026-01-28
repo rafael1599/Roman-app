@@ -9,9 +9,10 @@ interface UserMenuProps {
   isOpen: boolean;
   onClose: () => void;
   onExport?: () => void;
+  navigate: (path: string) => void;
 }
 
-export const UserMenu = ({ isOpen, onClose, onExport }: UserMenuProps) => {
+export const UserMenu = ({ isOpen, onClose, onExport, navigate }: UserMenuProps) => {
   const {
     profile,
     signOut,
@@ -142,6 +143,37 @@ export const UserMenu = ({ isOpen, onClose, onExport }: UserMenuProps) => {
               )}
             </div>
 
+            {/* Orders Section */}
+            <div className="p-4 bg-surface rounded-2xl border border-subtle">
+              <label className="text-[10px] text-muted font-black uppercase tracking-widest mb-3 block">
+                Warehouse Activities
+              </label>
+              <button
+                onClick={() => {
+                  navigate('/orders');
+                  onClose();
+                }}
+                className="flex items-center justify-between w-full group text-left"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-card border border-subtle rounded-xl text-accent">
+                    <History size={16} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-content uppercase tracking-tight">
+                      My Orders
+                    </p>
+                    <p className="text-[9px] text-muted font-bold uppercase">
+                      View and Print labels
+                    </p>
+                  </div>
+                </div>
+                <div className="text-accent group-hover:translate-x-1 transition-transform">
+                  →
+                </div>
+              </button>
+            </div>
+
             {/* Actions */}
             <div className="space-y-2">
               {onExport && isAdmin && (
@@ -210,7 +242,7 @@ export const UserMenu = ({ isOpen, onClose, onExport }: UserMenuProps) => {
         isOpen={isSnapshotOpen}
         onClose={() => setIsSnapshotOpen(false)}
       />
-    </div>,
+    </div >,
     document.body
   );
 };

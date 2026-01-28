@@ -1,4 +1,4 @@
-import React, { ReactNode, useState, useEffect } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BottomNavigation } from './BottomNavigation';
 import { Save, Settings, User as UserIcon } from 'lucide-react';
@@ -82,6 +82,7 @@ export const LayoutMain = ({ children, onExport }: LayoutMainProps) => {
         isOpen={isUserMenuOpen}
         onClose={() => setIsUserMenuOpen(false)}
         onExport={onExport}
+        navigate={navigate}
       />
 
       {/* Content */}
