@@ -55,6 +55,18 @@ export const usePickingSync = ({
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
 
+  const normalizeItems = useCallback((items: any[]): CartItem[] => {
+    if (!Array.isArray(items)) return [];
+    return items.map((item) => ({
+      ...item,
+      sku: (item.sku || item.Sku || item.SKU || '').toString(),
+      quantity: Number(item.quantity ?? item.Quantity ?? item.qty ?? item.Qty ?? 0),
+      location: (item.location || item.Location || null)?.toString() || null,
+      warehouse: (item.warehouse || item.Warehouse || '').toString().toUpperCase(),
+      pickingQty: Number(item.pickingQty ?? item.PickingQty ?? item.picking_qty ?? item.quantity ?? item.Quantity ?? 0),
+    }));
+  }, []);
+
   const isInitialSyncRef = useRef(true);
   const isSyncingRef = useRef(false);
   const takeoverSyncRef = useRef<string | null>(null);
@@ -109,7 +121,7 @@ export const usePickingSync = ({
               .eq('id', doubleCheckData.id);
             resetSession();
           } else {
-            setCartItems((doubleCheckData.items as any as CartItem[]) || []);
+            setCartItems(normalizeItems(doubleCheckData.items as any[]));
             setActiveListId(doubleCheckData.id as string);
             setOrderNumber(doubleCheckData.order_number || null);
             setListStatus(doubleCheckData.status as string);
@@ -145,7 +157,7 @@ export const usePickingSync = ({
             await supabase.from('picking_lists').delete().eq('id', pickingData.id);
             resetSession();
           } else {
-            setCartItems((pickingData.items as any as CartItem[]) || []);
+            setCartItems(normalizeItems(pickingData.items as any[]));
             setActiveListId(pickingData.id as string);
             setOrderNumber(pickingData.order_number || null);
             setListStatus(pickingData.status as string);
@@ -220,12 +232,16 @@ export const usePickingSync = ({
       }
     };
 
+    let retryCount = 0;
     const setupSubscription = () => {
       const channelName = `list_status_sync_${activeListId}`;
-      console.log(`🔌 [Realtime] Attempting connection to ${channelName}...`);
+      console.log(`🔌 [Realtime] Attempting connection to ${channelName}... (Attempt ${retryCount + 1}/3)`);
 
       // Ensure any previous zombie channel is cleaned
-      if (channel) supabase.removeChannel(channel);
+      if (channel) {
+        supabase.removeChannel(channel);
+        channel = null;
+      }
 
       channel = supabase
         .channel(channelName)
@@ -259,13 +275,28 @@ export const usePickingSync = ({
           console.log(`Network status for ${channelName}:`, status);
 
           if (status === 'SUBSCRIBED') {
+            retryCount = 0; // Reset on success
             console.log(`✅ [Realtime] Subscribed to ${channelName}`);
           }
 
           if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-            console.error(`❌ [Realtime] Connection error (${status}). Retrying in 5s...`, err);
-            if (channel) supabase.removeChannel(channel);
-            retryTimeout = setTimeout(setupSubscription, 5000);
+            // CRITICAL: Only call removeChannel if NOT already closed to avoid infinite recursion
+            if (status !== 'CLOSED' && channel) {
+              supabase.removeChannel(channel);
+              channel = null;
+            }
+
+            retryCount++;
+            if (retryCount <= 3) {
+              console.warn(`❌ [Realtime] Connection error (${status}). Retrying ${retryCount}/3 in 5s...`, err);
+              retryTimeout = setTimeout(setupSubscription, 5000);
+            } else {
+              console.error(`❌ [Realtime] Max retries reached for ${channelName}. Live sync disabled.`);
+              toast.error('Sync lost for this order. Changes by others may not appear.', {
+                duration: 5000,
+                id: `sync-error-${activeListId}`
+              });
+            }
           }
         });
     };
@@ -287,15 +318,16 @@ export const usePickingSync = ({
     isSyncingRef.current = true;
     setIsSaving(true);
     try {
+      const sanitizedItems = normalizeItems(items); // Force lowercase properties
       if (listId) {
-        const { error } = await supabase.from('picking_lists').update({ items: items as any, order_number: orderNum }).eq('id', listId);
+        const { error } = await supabase.from('picking_lists').update({ items: sanitizedItems as any, order_number: orderNum }).eq('id', listId);
         if (error) throw error;
       } else if (items.length > 0) {
-        const { data, error } = await supabase.from('picking_lists').insert({ user_id: userId, items: items as any, status: 'active', order_number: orderNum } as any).select().single();
+        const { data, error } = await supabase.from('picking_lists').insert({ user_id: userId, items: sanitizedItems as any, status: 'active', order_number: orderNum } as any).select().single();
         if (error) throw error;
         if (data) {
           setActiveListId(data.id);
-          setListStatus(data.status);
+          setListStatus(data.status as string);
           setOwnerId(data.user_id);
         }
       }
@@ -334,7 +366,7 @@ export const usePickingSync = ({
       const { data, error } = await supabase.from('picking_lists').select('id, items, order_number, status, checked_by, user_id, correction_notes').eq('id', listId).single();
       if (error) throw error;
       if (data) {
-        setCartItems((data.items as any as CartItem[]) || []);
+        setCartItems(normalizeItems(data.items as any[]));
         setActiveListId(data.id as string);
         setOrderNumber(data.order_number || null);
         setListStatus(data.status as string);

@@ -436,17 +436,18 @@ export const InventoryProvider = ({
   useEffect(() => {
     let channel: ReturnType<typeof supabase.channel> | null = null;
     let retryTimeout: NodeJS.Timeout;
-
+    let retryCount = 0;
     const setupSubscription = () => {
-      // 1. Cleanup existing channel if any
+      // Ensure any previous zombie channel is cleaned
       if (channel) {
         supabase.removeChannel(channel);
+        channel = null;
       }
 
-      console.log(`[FORENSIC][REALTIME][INVENTORY_INIT] ${new Date().toISOString()} - Setting up channel inventory-changes`);
+      console.log(`[FORENSIC][REALTIME][INVENTORY_INIT] ${new Date().toISOString()} - Setting up channel inventory-status-sync`);
 
       channel = supabase
-        .channel('inventory-changes')
+        .channel('inventory-status-sync')
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'inventory' },
@@ -488,6 +489,7 @@ export const InventoryProvider = ({
           }
 
           if (status === 'SUBSCRIBED') {
+            retryCount = 0; // Reset on success
             if (isInitialConnection.current) {
               console.log('🔌 Realtime: Initial connection established.');
               isInitialConnection.current = false;
@@ -497,12 +499,26 @@ export const InventoryProvider = ({
             }
           }
 
-          // Handle disconnection/errors by retrying
+          // Handle disconnection/errors by retrying with exponential backoff or simple limit
           if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-            console.warn(`[FORENSIC][REALTIME][INVENTORY_RETRY] ${new Date().toISOString()} - Channel died, retrying in 5s...`);
-            if (channel) supabase.removeChannel(channel);
-            clearTimeout(retryTimeout);
-            retryTimeout = setTimeout(setupSubscription, 5000);
+            // CRITICAL: Only call removeChannel if NOT already closed to avoid infinite recursion
+            if (status !== 'CLOSED' && channel) {
+              supabase.removeChannel(channel);
+              channel = null;
+            }
+
+            retryCount++;
+            if (retryCount <= 3) {
+              console.warn(`[FORENSIC][REALTIME][INVENTORY_RETRY] ${new Date().toISOString()} - Status: ${status}. Retry ${retryCount}/3 in 5s...`);
+              clearTimeout(retryTimeout);
+              retryTimeout = setTimeout(setupSubscription, 5000);
+            } else {
+              console.error(`[FORENSIC][REALTIME][INVENTORY_FATAL] ${new Date().toISOString()} - Max retries reached.`);
+              toast.error('Inventory live updates disconnected. Please refresh if this persists.', {
+                duration: 6000,
+                id: 'realtime-inventory-error'
+              });
+            }
           }
         });
     };

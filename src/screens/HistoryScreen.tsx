@@ -266,15 +266,19 @@ export const HistoryScreen = () => {
   const error = queryError ? (queryError as any).message : null;
 
   useEffect(() => {
-    let channel: ReturnType<typeof supabase.channel> | null = null;
-    let retryTimeout: NodeJS.Timeout;
+    let channel: any = null;
+    let retryTimeout: any = null;
+    let retryCount = 0;
+    const MAX_RETRIES = 3;
 
     const setupSubscription = () => {
+      // CRITICAL: Prevent infinite recursion by checking status before removing
       if (channel) {
         supabase.removeChannel(channel);
+        channel = null;
       }
 
-      console.log(`[FORENSIC][REALTIME][LOGS_INIT] ${new Date().toISOString()} - Setting up channel log_updates`);
+      console.log(`[FORENSIC][REALTIME][LOGS_INIT] ${new Date().toISOString()} - Setting up channel log_updates (Attempt ${retryCount + 1}/${MAX_RETRIES})`);
 
       channel = supabase
         .channel('log_updates')
@@ -309,11 +313,26 @@ export const HistoryScreen = () => {
             console.error(`[FORENSIC][REALTIME][LOGS_ERROR] ${new Date().toISOString()}`, err);
           }
 
+          if (status === 'SUBSCRIBED') {
+            retryCount = 0; // Reset on success
+          }
+
           if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-            console.warn(`[FORENSIC][REALTIME][LOGS_RETRY] ${new Date().toISOString()} - Channel died, retrying in 5s...`);
-            if (channel) supabase.removeChannel(channel);
-            clearTimeout(retryTimeout);
-            retryTimeout = setTimeout(setupSubscription, 5000);
+            // CRITICAL: Only call removeChannel if NOT already closed to avoid infinite recursion
+            if (status !== 'CLOSED' && channel) {
+              supabase.removeChannel(channel);
+              channel = null;
+            }
+
+            if (retryCount < MAX_RETRIES) {
+              retryCount++;
+              console.warn(`[FORENSIC][REALTIME][LOGS_RETRY] ${new Date().toISOString()} - Channel died, retrying in 5s...`);
+              clearTimeout(retryTimeout);
+              retryTimeout = setTimeout(setupSubscription, 5000);
+            } else {
+              console.error(`[FORENSIC][REALTIME][LOGS_FATAL] ${new Date().toISOString()} - Max retries reached.`);
+              toast.error("Error connecting to real-time updates. Please refresh the page.", { id: 'realtime-logs-error' });
+            }
           }
         });
     };
@@ -322,7 +341,11 @@ export const HistoryScreen = () => {
 
     return () => {
       console.log(`[FORENSIC][REALTIME][LOGS_CLEANUP] ${new Date().toISOString()}`);
-      if (channel) supabase.removeChannel(channel);
+      if (channel) {
+        // Here we can safely call removeChannel as it's a cleanup, 
+        // but we check if it's already closed just in case.
+        supabase.removeChannel(channel);
+      }
       clearTimeout(retryTimeout);
     };
   }, [queryClient]);

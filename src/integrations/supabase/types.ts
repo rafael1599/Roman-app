@@ -211,9 +211,11 @@ export type Database = {
                     checked_by: string | null
                     correction_notes: string | null
                     created_at: string | null
+                    customer_name: string | null
                     id: string
                     items: Json | null
                     order_number: string | null
+                    pallets_qty: number | null
                     status: string | null
                     updated_at: string | null
                     user_id: string | null
@@ -222,9 +224,11 @@ export type Database = {
                     checked_by?: string | null
                     correction_notes?: string | null
                     created_at?: string | null
+                    customer_name?: string | null
                     id?: string
                     items?: Json | null
                     order_number?: string | null
+                    pallets_qty?: number | null
                     status?: string | null
                     updated_at?: string | null
                     user_id?: string | null
@@ -233,9 +237,11 @@ export type Database = {
                     checked_by?: string | null
                     correction_notes?: string | null
                     created_at?: string | null
+                    customer_name?: string | null
                     id?: string
                     items?: Json | null
                     order_number?: string | null
+                    pallets_qty?: number | null
                     status?: string | null
                     updated_at?: string | null
                     user_id?: string | null
