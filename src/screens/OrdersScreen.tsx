@@ -60,10 +60,13 @@ export const OrdersScreen = () => {
 
     const filteredOrders = orders.filter(order => {
         const query = searchQuery.toLowerCase();
+        const orderNum = String(order.order_number || '').toLowerCase();
+        const customer = String(order.customer_name || '').toLowerCase();
+
         return (
             !searchQuery ||
-            order.order_number?.toLowerCase().includes(query) ||
-            order.customer_name?.toLowerCase().includes(query)
+            orderNum.includes(query) ||
+            customer.includes(query)
         );
     });
 
