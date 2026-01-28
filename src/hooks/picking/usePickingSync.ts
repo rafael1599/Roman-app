@@ -55,17 +55,7 @@ export const usePickingSync = ({
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
 
-  const normalizeItems = useCallback((items: any[]): CartItem[] => {
-    if (!Array.isArray(items)) return [];
-    return items.map((item) => ({
-      ...item,
-      sku: (item.sku || item.Sku || item.SKU || '').toString(),
-      quantity: Number(item.quantity ?? item.Quantity ?? item.qty ?? item.Qty ?? 0),
-      location: (item.location || item.Location || null)?.toString() || null,
-      warehouse: (item.warehouse || item.Warehouse || '').toString().toUpperCase(),
-      pickingQty: Number(item.pickingQty ?? item.PickingQty ?? item.picking_qty ?? item.quantity ?? item.Quantity ?? 0),
-    }));
-  }, []);
+  // Legacy normalizeItems removed - database migration ensures consistent lowercase schema
 
   const isInitialSyncRef = useRef(true);
   const isSyncingRef = useRef(false);
@@ -121,7 +111,7 @@ export const usePickingSync = ({
               .eq('id', doubleCheckData.id);
             resetSession();
           } else {
-            setCartItems(normalizeItems(doubleCheckData.items as any[]));
+            setCartItems((doubleCheckData.items as any[]) || []);
             setActiveListId(doubleCheckData.id as string);
             setOrderNumber(doubleCheckData.order_number || null);
             setListStatus(doubleCheckData.status as string);
@@ -157,7 +147,7 @@ export const usePickingSync = ({
             await supabase.from('picking_lists').delete().eq('id', pickingData.id);
             resetSession();
           } else {
-            setCartItems(normalizeItems(pickingData.items as any[]));
+            setCartItems((pickingData.items as any[]) || []);
             setActiveListId(pickingData.id as string);
             setOrderNumber(pickingData.order_number || null);
             setListStatus(pickingData.status as string);
@@ -318,7 +308,7 @@ export const usePickingSync = ({
     isSyncingRef.current = true;
     setIsSaving(true);
     try {
-      const sanitizedItems = normalizeItems(items); // Force lowercase properties
+      const sanitizedItems = items; // Data already in correct format from database
       if (listId) {
         const { error } = await supabase.from('picking_lists').update({ items: sanitizedItems as any, order_number: orderNum }).eq('id', listId);
         if (error) throw error;
@@ -366,7 +356,7 @@ export const usePickingSync = ({
       const { data, error } = await supabase.from('picking_lists').select('id, items, order_number, status, checked_by, user_id, correction_notes').eq('id', listId).single();
       if (error) throw error;
       if (data) {
-        setCartItems(normalizeItems(data.items as any[]));
+        setCartItems((data.items as any[]) || []);
         setActiveListId(data.id as string);
         setOrderNumber(data.order_number || null);
         setListStatus(data.status as string);

@@ -575,18 +575,19 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
           onDelete={deleteList}
           onReturnToBuilding={returnToBuilding}
           onDeduct={async (items, isVerified: boolean) => {
-            if (!isVerified) {
-              await releaseCheck(activeListId!);
-              toast('Order sent to verification queue', {
-                icon: '📋',
-                duration: 4000,
-              });
-              return true;
-            }
-
             if (isProcessingDeduction) return false;
             setIsProcessingDeduction(true);
+
             try {
+              if (!isVerified) {
+                await releaseCheck(activeListId!);
+                toast('Order sent to verification queue', {
+                  icon: '📋',
+                  duration: 4000,
+                });
+                return true;
+              }
+
               await Promise.all(
                 items.map((item: any) => {
                   const delta = -(item.pickingQty || 0);
@@ -602,11 +603,14 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
                 })
               );
               await completeList();
-              // Success feedback is implicit via optimistic UI update
               return true;
-            } catch (error) {
-              console.error('Deduction error:', error);
-              showError('Failed to deduct inventory', 'Some items might not have been updated.');
+            } catch (error: any) {
+              console.error('Operation failed:', error);
+              const isVerification = !isVerified;
+              showError(
+                isVerification ? 'Verification failed' : 'Deduction failed',
+                error.message || 'Network error or connection lost.'
+              );
               throw error;
             } finally {
               setIsProcessingDeduction(false);

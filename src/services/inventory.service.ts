@@ -186,31 +186,35 @@ class InventoryService extends BaseService<'inventory', InventoryModel, Inventor
                 sku_note: updatedNote,
             } as any);
 
-            await trackLog(
-                {
-                    sku: validatedInput.sku,
-                    from_warehouse: warehouse,
-                    from_location: destination.name,
-                    to_warehouse: warehouse,
-                    to_location: destination.name,
-                    quantity_change: qty, // New explicit delta
-                    prev_quantity: existingItem.quantity || 0,
-                    new_quantity: newTotal,
-                    action_type: 'ADD',
-                    item_id: String(existingItem.id),
-                    location_id: destination.id,
-                    snapshot_before: {
-                        id: existingItem.id,
-                        sku: existingItem.sku,
-                        quantity: existingItem.quantity,
-                        location_id: existingItem.location_id,
-                        location: existingItem.location,
-                        warehouse: existingItem.warehouse
+            try {
+                await trackLog(
+                    {
+                        sku: validatedInput.sku,
+                        from_warehouse: warehouse,
+                        from_location: destination.name,
+                        to_warehouse: warehouse,
+                        to_location: destination.name,
+                        quantity_change: qty, // New explicit delta
+                        prev_quantity: existingItem.quantity || 0,
+                        new_quantity: newTotal,
+                        action_type: 'ADD',
+                        item_id: String(existingItem.id),
+                        location_id: destination.id,
+                        snapshot_before: {
+                            id: existingItem.id,
+                            sku: existingItem.sku,
+                            quantity: existingItem.quantity,
+                            location_id: existingItem.location_id,
+                            location: existingItem.location,
+                            warehouse: existingItem.warehouse
+                        },
+                        is_reversed: newItem.isReversal || false,
                     },
-                    is_reversed: newItem.isReversal || false,
-                },
-                userInfo
-            );
+                    userInfo
+                );
+            } catch (logError) {
+                console.warn('[InventoryService] Log failed for existing item merge, but update succeeded.', logError);
+            }
 
             return { action: 'updated', id: existingItem.id };
         }
@@ -238,24 +242,28 @@ class InventoryService extends BaseService<'inventory', InventoryModel, Inventor
             isReversal: newItem.isReversal || false
         });
 
-        await trackLog(
-            {
-                sku: validatedInput.sku,
-                from_warehouse: warehouse,
-                from_location: destination.name,
-                to_warehouse: warehouse,
-                to_location: destination.name,
-                quantity_change: qty,
-                prev_quantity: 0,
-                new_quantity: qty,
-                action_type: 'ADD',
-                item_id: String(inserted.id),
-                location_id: destination.id,
-                snapshot_before: null, // New item, no previous state
-                is_reversed: newItem.isReversal || false,
-            },
-            userInfo
-        );
+        try {
+            await trackLog(
+                {
+                    sku: validatedInput.sku,
+                    from_warehouse: warehouse,
+                    from_location: destination.name,
+                    to_warehouse: warehouse,
+                    to_location: destination.name,
+                    quantity_change: qty,
+                    prev_quantity: 0,
+                    new_quantity: qty,
+                    action_type: 'ADD',
+                    item_id: String(inserted.id),
+                    location_id: destination.id,
+                    snapshot_before: null, // New item, no previous state
+                    is_reversed: newItem.isReversal || false,
+                },
+                userInfo
+            );
+        } catch (logError) {
+            console.warn('[InventoryService] Log failed for new item, but creation succeeded.', logError);
+        }
 
         return { action: 'inserted', id: inserted.id };
     }
@@ -340,29 +348,33 @@ class InventoryService extends BaseService<'inventory', InventoryModel, Inventor
                 await this.delete(originalItem.id);
 
                 // Log as MOVE (Merge)
-                await trackLog({
-                    sku: newSku,
-                    from_warehouse: originalItem.warehouse as any,
-                    from_location: originalItem.location || undefined,
-                    to_warehouse: targetWarehouse,
-                    to_location: targetLocation,
-                    to_location_id: targetLocationId,
-                    quantity_change: -originalItem.quantity, // Log as deduction from source
-                    prev_quantity: originalItem.quantity,
-                    new_quantity: 0,
-                    action_type: 'MOVE',
-                    item_id: String(originalItem.id), // Source is the primary subject for resurrection
-                    location_id: originalItem.location_id,
-                    snapshot_before: {
-                        id: originalItem.id,
-                        sku: originalItem.sku,
-                        quantity: originalItem.quantity,
+                try {
+                    await trackLog({
+                        sku: newSku,
+                        from_warehouse: originalItem.warehouse as any,
+                        from_location: originalItem.location || undefined,
+                        to_warehouse: targetWarehouse,
+                        to_location: targetLocation,
+                        to_location_id: targetLocationId,
+                        quantity_change: -originalItem.quantity, // Log as deduction from source
+                        prev_quantity: originalItem.quantity,
+                        new_quantity: 0,
+                        action_type: 'MOVE',
+                        item_id: String(originalItem.id), // Source is the primary subject for resurrection
                         location_id: originalItem.location_id,
-                        location: originalItem.location,
-                        warehouse: originalItem.warehouse
-                    },
-                    is_reversed: updatedFormData.isReversal || false,
-                }, userInfo);
+                        snapshot_before: {
+                            id: originalItem.id,
+                            sku: originalItem.sku,
+                            quantity: originalItem.quantity,
+                            location_id: originalItem.location_id,
+                            location: originalItem.location,
+                            warehouse: originalItem.warehouse
+                        },
+                        is_reversed: updatedFormData.isReversal || false,
+                    }, userInfo);
+                } catch (logError) {
+                    console.warn('[InventoryService] Log failed for collision move, but operations succeeded.', logError);
+                }
 
                 return { action: 'consolidated', id: targetItem.id };
             }
@@ -381,30 +393,34 @@ class InventoryService extends BaseService<'inventory', InventoryModel, Inventor
             const isRename = hasSkuChanged;
             const actionType = isRename ? 'EDIT' : 'MOVE';
 
-            await trackLog({
-                sku: newSku,
-                from_warehouse: originalItem.warehouse as any,
-                from_location: originalItem.location || undefined,
-                to_warehouse: targetWarehouse,
-                to_location: targetLocation,
-                to_location_id: targetLocationId,
-                quantity_change: newQty - originalItem.quantity,
-                prev_quantity: originalItem.quantity,
-                new_quantity: newQty,
-                action_type: actionType,
-                previous_sku: isRename ? originalItem.sku : undefined,
-                item_id: String(originalItem.id),
-                location_id: originalItem.location_id, // Source location ID
-                snapshot_before: {
-                    id: originalItem.id,
-                    sku: originalItem.sku,
-                    quantity: originalItem.quantity,
-                    location_id: originalItem.location_id,
-                    location: originalItem.location,
-                    warehouse: originalItem.warehouse
-                },
-                is_reversed: updatedFormData.isReversal || false,
-            }, userInfo);
+            try {
+                await trackLog({
+                    sku: newSku,
+                    from_warehouse: originalItem.warehouse as any,
+                    from_location: originalItem.location || undefined,
+                    to_warehouse: targetWarehouse,
+                    to_location: targetLocation,
+                    to_location_id: targetLocationId,
+                    quantity_change: newQty - originalItem.quantity,
+                    prev_quantity: originalItem.quantity,
+                    new_quantity: newQty,
+                    action_type: actionType,
+                    previous_sku: isRename ? originalItem.sku : undefined,
+                    item_id: String(originalItem.id),
+                    location_id: originalItem.location_id, // Source location ID
+                    snapshot_before: {
+                        id: originalItem.id,
+                        sku: originalItem.sku,
+                        quantity: originalItem.quantity,
+                        location_id: originalItem.location_id,
+                        location: originalItem.location,
+                        warehouse: originalItem.warehouse
+                    },
+                    is_reversed: updatedFormData.isReversal || false,
+                }, userInfo);
+            } catch (logError) {
+                console.warn('[InventoryService] Log failed for standard move/rename, but operation succeeded.', logError);
+            }
 
             return { action: isRename ? 'renamed' : 'moved', id: originalItem.id };
         }
@@ -416,28 +432,32 @@ class InventoryService extends BaseService<'inventory', InventoryModel, Inventor
             status: validatedInput.status || originalItem.status,
         } as any);
 
-        await trackLog({
-            sku: originalItem.sku,
-            from_warehouse: originalItem.warehouse as any,
-            from_location: originalItem.location || undefined,
-            to_warehouse: originalItem.warehouse as any,
-            to_location: originalItem.location || undefined,
-            quantity_change: newQty - originalItem.quantity,
-            prev_quantity: originalItem.quantity,
-            new_quantity: newQty,
-            action_type: 'EDIT',
-            item_id: String(originalItem.id),
-            location_id: originalItem.location_id,
-            snapshot_before: {
-                id: originalItem.id,
+        try {
+            await trackLog({
                 sku: originalItem.sku,
-                quantity: originalItem.quantity,
+                from_warehouse: originalItem.warehouse as any,
+                from_location: originalItem.location || undefined,
+                to_warehouse: originalItem.warehouse as any,
+                to_location: originalItem.location || undefined,
+                quantity_change: newQty - originalItem.quantity,
+                prev_quantity: originalItem.quantity,
+                new_quantity: newQty,
+                action_type: 'EDIT',
+                item_id: String(originalItem.id),
                 location_id: originalItem.location_id,
-                location: originalItem.location,
-                warehouse: originalItem.warehouse
-            },
-            is_reversed: updatedFormData.isReversal || false,
-        }, userInfo);
+                snapshot_before: {
+                    id: originalItem.id,
+                    sku: originalItem.sku,
+                    quantity: originalItem.quantity,
+                    location_id: originalItem.location_id,
+                    location: originalItem.location,
+                    warehouse: originalItem.warehouse
+                },
+                is_reversed: updatedFormData.isReversal || false,
+            }, userInfo);
+        } catch (logError) {
+            console.warn('[InventoryService] Log failed for in-place edit, but operation succeeded.', logError);
+        }
 
         return { action: 'updated', id: originalItem.id };
     }
@@ -458,27 +478,31 @@ class InventoryService extends BaseService<'inventory', InventoryModel, Inventor
 
         await this.delete(item.id);
 
-        await trackLog({
-            sku: item.sku,
-            from_warehouse: item.warehouse as any,
-            from_location: item.location || undefined,
-            to_warehouse: item.warehouse as any,
-            to_location: item.location || undefined,
-            quantity_change: -item.quantity,
-            prev_quantity: item.quantity,
-            new_quantity: 0,
-            action_type: 'DELETE',
-            item_id: String(item.id),
-            location_id: item.location_id,
-            snapshot_before: {
-                id: item.id,
+        try {
+            await trackLog({
                 sku: item.sku,
-                quantity: item.quantity,
+                from_warehouse: item.warehouse as any,
+                from_location: item.location || undefined,
+                to_warehouse: item.warehouse as any,
+                to_location: item.location || undefined,
+                quantity_change: -item.quantity,
+                prev_quantity: item.quantity,
+                new_quantity: 0,
+                action_type: 'DELETE',
+                item_id: String(item.id),
                 location_id: item.location_id,
-                location: item.location,
-                warehouse: item.warehouse
-            },
-        }, userInfo);
+                snapshot_before: {
+                    id: item.id,
+                    sku: item.sku,
+                    quantity: item.quantity,
+                    location_id: item.location_id,
+                    location: item.location,
+                    warehouse: item.warehouse
+                },
+            }, userInfo);
+        } catch (logError) {
+            console.warn('[InventoryService] Log failed for deletion, but operation succeeded.', logError);
+        }
     }
 
     /**
@@ -543,29 +567,33 @@ class InventoryService extends BaseService<'inventory', InventoryModel, Inventor
         }
 
         // 5. Log
-        await trackLog({
-            sku: sourceItem.sku,
-            from_warehouse: sourceItem.warehouse as any,
-            from_location: sourceItem.location || undefined,
-            to_warehouse: targetWarehouse,
-            to_location: destination.name,
-            to_location_id: destination.id,
-            quantity_change: -qty, // Deduct from source
-            prev_quantity: serverQty,
-            new_quantity: remainingQty,
-            action_type: 'MOVE',
-            item_id: String(sourceItem.id),
-            location_id: sourceItem.location_id, // Source location ID
-            snapshot_before: {
-                id: sourceItem.id,
+        try {
+            await trackLog({
                 sku: sourceItem.sku,
-                quantity: serverQty,
-                location_id: sourceItem.location_id,
-                location: sourceItem.location,
-                warehouse: sourceItem.warehouse
-            },
-            is_reversed: isReversal,
-        }, userInfo);
+                from_warehouse: sourceItem.warehouse as any,
+                from_location: sourceItem.location || undefined,
+                to_warehouse: targetWarehouse,
+                to_location: destination.name,
+                to_location_id: destination.id,
+                quantity_change: -qty, // Deduct from source
+                prev_quantity: serverQty,
+                new_quantity: remainingQty,
+                action_type: 'MOVE',
+                item_id: String(sourceItem.id),
+                location_id: sourceItem.location_id, // Source location ID
+                snapshot_before: {
+                    id: sourceItem.id,
+                    sku: sourceItem.sku,
+                    quantity: serverQty,
+                    location_id: sourceItem.location_id,
+                    location: sourceItem.location,
+                    warehouse: sourceItem.warehouse
+                },
+                is_reversed: isReversal,
+            }, userInfo);
+        } catch (logError) {
+            console.warn('[InventoryService] Log failed for manual move, but operations succeeded.', logError);
+        }
     }
 
     /**

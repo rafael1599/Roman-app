@@ -1,0 +1,357 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e6]:
+          - button "Settings" [ref=e7] [cursor=pointer]:
+            - img [ref=e8]
+          - heading "ROMAN INV" [level=1] [ref=e11]
+        - generic [ref=e12]:
+          - button "Export Data" [ref=e13] [cursor=pointer]:
+            - img [ref=e14]
+          - button "Verification" [ref=e19] [cursor=pointer]:
+            - img [ref=e21]
+            - generic [ref=e25]: Verification
+            - img [ref=e26]
+          - generic "All changes saved and synchronized" [ref=e28]:
+            - img [ref=e29]
+            - generic [ref=e32]: Ready
+          - button "R" [ref=e33] [cursor=pointer]:
+            - generic [ref=e34]: R
+    - main [ref=e35]:
+      - generic [ref=e36]:
+        - generic [ref=e37]:
+          - generic [ref=e38]:
+            - heading "History" [level=1] [ref=e39]
+            - paragraph [ref=e40]:
+              - img [ref=e41]
+              - text: Live Activity Log
+          - button "Refresh Logs" [ref=e45] [cursor=pointer]:
+            - img [ref=e46]
+        - generic [ref=e49]:
+          - generic [ref=e50]:
+            - img [ref=e51]
+            - textbox "Search SKU or Location..." [ref=e54]
+          - generic [ref=e55]:
+            - button "ALL" [ref=e56] [cursor=pointer]
+            - button "MOVE" [ref=e57] [cursor=pointer]
+            - button "ADD" [ref=e58] [cursor=pointer]
+            - button "Picking" [ref=e59] [cursor=pointer]
+            - button "DELETE" [ref=e60] [cursor=pointer]
+          - generic [ref=e61]:
+            - img [ref=e63]
+            - button "All Users" [ref=e68] [cursor=pointer]
+            - button "Jed" [ref=e69] [cursor=pointer]:
+              - img [ref=e70]
+              - text: Jed
+            - button "Rafael Adm." [ref=e73] [cursor=pointer]:
+              - img [ref=e74]
+              - text: Rafael Adm.
+          - generic [ref=e77]:
+            - img [ref=e79]
+            - button "today" [ref=e82] [cursor=pointer]
+            - button "yesterday" [ref=e83] [cursor=pointer]
+            - button "week" [ref=e84] [cursor=pointer]
+            - button "month" [ref=e85] [cursor=pointer]
+            - button "all" [ref=e86] [cursor=pointer]
+        - generic [ref=e88]:
+          - heading "Today" [level=3] [ref=e89]:
+            - img [ref=e90]
+            - text: Today
+          - generic [ref=e92]:
+            - generic [ref=e93]:
+              - generic [ref=e94]:
+                - generic [ref=e95]:
+                  - img [ref=e97]
+                  - generic [ref=e98]:
+                    - generic [ref=e99]:
+                      - generic [ref=e100]: TEST-GHOST-1769611616499
+                      - generic [ref=e101]: Restock
+                    - paragraph [ref=e102]: 09:47 AM • Rafael Adm.
+                - button "Undo Action" [ref=e103] [cursor=pointer]:
+                  - img [ref=e104]
+              - generic [ref=e107]:
+                - generic [ref=e108]:
+                  - paragraph [ref=e109]: Location
+                  - generic [ref=e110]:
+                    - paragraph [ref=e111]: Row 1
+                    - generic [ref=e112]: LUDLOW
+                - generic [ref=e113]:
+                  - paragraph [ref=e114]: Qty
+                  - paragraph [ref=e115]: "9"
+              - generic [ref=e117]: "Stock: 0 → 9"
+            - generic [ref=e118]:
+              - generic [ref=e119]:
+                - generic [ref=e120]:
+                  - img [ref=e122]
+                  - generic [ref=e123]:
+                    - generic [ref=e124]:
+                      - generic [ref=e125]: TEST-GHOST-1769611616503
+                      - generic [ref=e126]: Restock
+                    - paragraph [ref=e127]: 09:47 AM • Rafael Adm.
+                - button "Undo Action" [ref=e128] [cursor=pointer]:
+                  - img [ref=e129]
+              - generic [ref=e132]:
+                - generic [ref=e133]:
+                  - paragraph [ref=e134]: Location
+                  - generic [ref=e135]:
+                    - paragraph [ref=e136]: Row 1
+                    - generic [ref=e137]: LUDLOW
+                - generic [ref=e138]:
+                  - paragraph [ref=e139]: Qty
+                  - paragraph [ref=e140]: "10"
+              - generic [ref=e142]: "Stock: 0 → 10"
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - img
+                  - generic:
+                    - generic:
+                      - generic: TEST-GHOST-1769610464348
+                      - generic: Restock
+                    - paragraph: 09:27 AM • Rafael Adm.
+                - generic: Reversed
+              - generic:
+                - generic:
+                  - paragraph: Location
+                  - generic:
+                    - paragraph: Row 1
+                    - generic: LUDLOW
+                - generic:
+                  - paragraph: Qty
+                  - paragraph: "9"
+              - generic:
+                - generic: "Stock: 0 → 9"
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - img
+                  - generic:
+                    - generic:
+                      - generic: TEST-GHOST-1769610353973
+                      - generic: Restock
+                    - paragraph: 09:25 AM • Rafael Adm.
+                - generic: Reversed
+              - generic:
+                - generic:
+                  - paragraph: Location
+                  - generic:
+                    - paragraph: Row 1
+                    - generic: LUDLOW
+                - generic:
+                  - paragraph: Qty
+                  - paragraph: "9"
+              - generic:
+                - generic: "Stock: 0 → 9"
+            - generic [ref=e143]:
+              - generic [ref=e144]:
+                - generic [ref=e145]:
+                  - img [ref=e147]
+                  - generic [ref=e148]:
+                    - generic [ref=e149]:
+                      - generic [ref=e150]: TEST-GHOST-1769610353976
+                      - generic [ref=e151]: Restock
+                    - paragraph [ref=e152]: 09:25 AM • Rafael Adm.
+                - button "Undo Action" [ref=e153] [cursor=pointer]:
+                  - img [ref=e154]
+              - generic [ref=e157]:
+                - generic [ref=e158]:
+                  - paragraph [ref=e159]: Location
+                  - generic [ref=e160]:
+                    - paragraph [ref=e161]: Row 1
+                    - generic [ref=e162]: LUDLOW
+                - generic [ref=e163]:
+                  - paragraph [ref=e164]: Qty
+                  - paragraph [ref=e165]: "10"
+              - generic [ref=e167]: "Stock: 0 → 10"
+            - generic [ref=e168]:
+              - generic [ref=e169]:
+                - generic [ref=e170]:
+                  - img [ref=e172]
+                  - generic [ref=e177]:
+                    - generic [ref=e178]:
+                      - generic [ref=e179]: 03-3899BL
+                      - generic [ref=e180]: Relocate
+                    - paragraph [ref=e181]: 09:25 AM • Jed
+                - button "Undo Action" [ref=e182] [cursor=pointer]:
+                  - img [ref=e183]
+              - generic [ref=e186]:
+                - generic [ref=e187]:
+                  - generic [ref=e188]:
+                    - paragraph [ref=e189]: From
+                    - generic [ref=e190]:
+                      - paragraph [ref=e191]: Row 6
+                      - generic [ref=e192]: LUDLOW
+                  - img [ref=e193]
+                  - generic [ref=e195]:
+                    - paragraph [ref=e196]: To
+                    - generic [ref=e197]:
+                      - paragraph [ref=e198]: Row 28
+                      - generic [ref=e199]: LUDLOW
+                - generic [ref=e200]:
+                  - paragraph [ref=e201]: Qty
+                  - paragraph [ref=e202]: "3"
+              - generic [ref=e204]: "Stock: 3 → 0"
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - img
+                  - generic:
+                    - generic:
+                      - generic: TEST-GHOST-1769609214321
+                      - generic: Restock
+                    - paragraph: 09:06 AM • Rafael Adm.
+                - generic: Reversed
+              - generic:
+                - generic:
+                  - paragraph: Location
+                  - generic:
+                    - paragraph: Row 1
+                    - generic: LUDLOW
+                - generic:
+                  - paragraph: Qty
+                  - paragraph: "9"
+              - generic:
+                - generic: "Stock: 0 → 9"
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - img
+                  - generic:
+                    - generic:
+                      - generic: TEST-GHOST-1769609214323
+                      - generic: Restock
+                    - paragraph: 09:06 AM • Rafael Adm.
+                - generic: Reversed
+              - generic:
+                - generic:
+                  - paragraph: Location
+                  - generic:
+                    - paragraph: Row 1
+                    - generic: LUDLOW
+                - generic:
+                  - paragraph: Qty
+                  - paragraph: "10"
+              - generic:
+                - generic: "Stock: 0 → 10"
+            - generic [ref=e205]:
+              - generic [ref=e206]:
+                - generic [ref=e207]:
+                  - img [ref=e209]
+                  - generic [ref=e214]:
+                    - generic [ref=e215]:
+                      - generic [ref=e216]: 06-4562BL
+                      - generic [ref=e217]: Relocate
+                    - paragraph [ref=e218]: 08:53 AM • Jed
+                - button "Undo Action" [ref=e219] [cursor=pointer]:
+                  - img [ref=e220]
+              - generic [ref=e223]:
+                - generic [ref=e224]:
+                  - generic [ref=e225]:
+                    - paragraph [ref=e226]: From
+                    - generic [ref=e227]:
+                      - paragraph [ref=e228]: Row 15
+                      - generic [ref=e229]: LUDLOW
+                  - img [ref=e230]
+                  - generic [ref=e232]:
+                    - paragraph [ref=e233]: To
+                    - generic [ref=e234]:
+                      - paragraph [ref=e235]: Row 4
+                      - generic [ref=e236]: LUDLOW
+                - generic [ref=e237]:
+                  - paragraph [ref=e238]: Qty
+                  - paragraph [ref=e239]: "25"
+              - generic [ref=e241]: "Stock: 25 → 0"
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - img
+                  - generic:
+                    - generic:
+                      - generic: 03-3995PD
+                      - generic: Manual Pick
+                    - paragraph: 07:03 AM • Rafael Adm.
+                - generic: Reversed
+              - generic:
+                - generic:
+                  - paragraph: Location
+                  - generic:
+                    - paragraph: Row 1
+                    - generic: LUDLOW
+                - generic:
+                  - paragraph: Qty
+                  - paragraph: "1"
+              - generic:
+                - generic: "Stock: 2 → 1"
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - img
+                  - generic:
+                    - generic:
+                      - generic: 03-3995PD
+                      - generic: Restock
+                    - paragraph: 07:03 AM • Rafael Adm.
+                - generic: Reversed
+              - generic:
+                - generic:
+                  - paragraph: Location
+                  - generic:
+                    - paragraph: Row 1
+                    - generic: LUDLOW
+                - generic:
+                  - paragraph: Qty
+                  - paragraph: "1"
+              - generic:
+                - generic: "Stock: 2 → 3"
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - img
+                  - generic:
+                    - generic:
+                      - generic: 03-3995PD
+                      - generic: Manual Pick
+                    - paragraph: 06:59 AM • Rafael Adm.
+                - generic: Reversed
+              - generic:
+                - generic:
+                  - paragraph: Location
+                  - generic:
+                    - paragraph: Row 1
+                    - generic: LUDLOW
+                - generic:
+                  - paragraph: Qty
+                  - paragraph: "1"
+              - generic:
+                - generic: "Stock: 2 → 1"
+        - generic [ref=e242]:
+          - button "Send Daily Email Now" [ref=e243] [cursor=pointer]:
+            - img [ref=e244]
+          - button "Download Daily Report" [ref=e247] [cursor=pointer]:
+            - img [ref=e248]
+    - generic [ref=e252]:
+      - button "STOCK" [ref=e253] [cursor=pointer]:
+        - img [ref=e255]
+        - generic [ref=e258]: STOCK
+      - button "PICKING" [ref=e259] [cursor=pointer]:
+        - img [ref=e261]
+        - generic [ref=e266]: PICKING
+      - button "HISTORY" [active] [ref=e267] [cursor=pointer]:
+        - img [ref=e269]
+        - generic [ref=e273]: HISTORY
+  - generic [ref=e274]:
+    - img [ref=e276]
+    - button "Open Tanstack query devtools" [ref=e324] [cursor=pointer]:
+      - img [ref=e325]
+```

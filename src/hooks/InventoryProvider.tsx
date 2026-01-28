@@ -8,13 +8,14 @@ import {
   useCallback,
   ReactNode,
 } from 'react';
-import { useQueryClient, useMutation } from '@tanstack/react-query';
+import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { inventoryKeys } from '../lib/query-keys';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { useInventoryLogs } from './useInventoryLogs';
 import { useLocationManagement } from './useLocationManagement';
+import { usePickingListsSubscription } from './usePickingListsSubscription';
 import { inventoryService, type InventoryServiceContext } from '../services/inventory.service';
 import { type InventoryItem, type InventoryItemWithMetadata, type InventoryItemInput } from '../schemas/inventory.schema';
 import { inventoryApi } from '../services/inventoryApi';
@@ -61,6 +62,7 @@ interface InventoryContextType {
   updateAtsInventory: (newData: InventoryItem[]) => void;
   updateSKUMetadata: (metadata: SKUMetadataInput) => Promise<void>;
   syncFilters: (filters: InventoryFilters) => void;
+  getAvailableStock: (sku: string, warehouse?: string) => number;
   isAdmin: boolean;
   user: any;
   profile: any;
@@ -88,6 +90,29 @@ export const InventoryProvider = ({
   // Sub-hooks
   const { trackLog, fetchLogs, undoAction: performUndo } = useInventoryLogs();
   const { locations } = useLocationManagement();
+
+  // Activate Realtime subscription for picking_lists (Level 3)
+  usePickingListsSubscription();
+
+  // Fetch active picking lists for reservation calculation (Level 2)
+  const { data: pickingLists = [] } = useQuery({
+    queryKey: ['picking_lists'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('picking_lists')
+        .select('id, items, status, user_id')
+        .in('status', ['active', 'needs_correction', 'ready_to_double_check', 'double_checking']);
+
+      if (error) {
+        console.error('[PICKING_LISTS_QUERY_ERROR]', error);
+        throw error;
+      }
+
+      return data || [];
+    },
+    staleTime: 0, // Always refetch on mount/invalidation
+    refetchOnWindowFocus: true,
+  });
 
   const inventoryDataRef = useRef(inventoryData);
   const skuMetadataMapRef = useRef(skuMetadataMap);
@@ -260,34 +285,40 @@ export const InventoryProvider = ({
 
       if (updateError) throw updateError;
 
-      // Record Log
-      await trackLog(
-        {
-          sku: vars.sku,
-          from_warehouse: vars.resolvedWarehouse,
-          from_location: item.location || undefined,
-          to_warehouse: vars.resolvedWarehouse,
-          to_location: item.location || undefined,
-          quantity_change: vars.finalDelta,
-          prev_quantity: currentDbQty,
-          new_quantity: finalQuantity,
-          action_type: vars.finalDelta > 0 ? 'ADD' : 'DEDUCT',
-          item_id: item.id as any, // ID is validated number, context needs union support
-          location_id: item.location_id,
-          snapshot_before: {
-            id: snapshotItem.id,
-            sku: snapshotItem.sku,
-            quantity: snapshotItem.quantity,
-            location_id: snapshotItem.location_id,
-            location: snapshotItem.location,
-            warehouse: snapshotItem.warehouse
+      // Record Log - Resilience: Wrap in try/catch so log failures don't 
+      // trigger a UI rollback if the inventory update actually succeeded.
+      // The trackLog mutation will still retry in the background.
+      try {
+        await trackLog(
+          {
+            sku: vars.sku,
+            from_warehouse: vars.resolvedWarehouse,
+            from_location: item.location || undefined,
+            to_warehouse: vars.resolvedWarehouse,
+            to_location: item.location || undefined,
+            quantity_change: vars.finalDelta,
+            prev_quantity: currentDbQty,
+            new_quantity: finalQuantity,
+            action_type: vars.finalDelta > 0 ? 'ADD' : 'DEDUCT',
+            item_id: item.id as any,
+            location_id: item.location_id,
+            snapshot_before: {
+              id: snapshotItem.id,
+              sku: snapshotItem.sku,
+              quantity: snapshotItem.quantity,
+              location_id: snapshotItem.location_id,
+              location: snapshotItem.location,
+              warehouse: snapshotItem.warehouse
+            },
+            is_reversed: vars.isReversal,
+            list_id: vars.listId,
+            order_number: vars.orderNumber,
           },
-          is_reversed: vars.isReversal,
-          list_id: vars.listId,
-          order_number: vars.orderNumber,
-        },
-        { performed_by: userName, user_id: user?.id }
-      );
+          { performed_by: userName, user_id: user?.id }
+        );
+      } catch (logError) {
+        console.warn('[FORENSIC][DB][LOG_DEFERRED] Log failed to sync, but inventory update succeeded. Query will retry log in background.', logError);
+      }
     },
     onMutate: async (vars) => {
       console.log(`[FORENSIC][MUTATION][QUANTITY_START] ${new Date().toISOString()} - SKU: ${vars.sku}, Delta: ${vars.finalDelta}, Optimistic ID: ${vars.optimistic_id}`);
@@ -844,6 +875,65 @@ export const InventoryProvider = ({
     []
   );
 
+  // Level 2: Calculate reservedQuantities from active picking lists
+  const reservedQuantities = useMemo(() => {
+    const reservations: Record<string, number> = {};
+
+    // Defensive coding: handle null/undefined pickingLists
+    if (!Array.isArray(pickingLists)) {
+      return reservations;
+    }
+
+    pickingLists.forEach((list) => {
+      // Defensive coding: handle null/empty items
+      if (!list.items || !Array.isArray(list.items)) {
+        return;
+      }
+
+      list.items.forEach((item: any) => {
+        // Defensive coding: validate required fields
+        if (!item.sku) {
+          console.warn('[RESERVED_QTY_CALCULATION] Item missing SKU:', item);
+          return;
+        }
+
+        const key = `${item.sku}-${item.warehouse || 'UNKNOWN'}`;
+        const qty = Number(item.pickingQty) || 0;
+
+        if (qty > 0) {
+          reservations[key] = (reservations[key] || 0) + qty;
+        }
+      });
+    });
+
+    console.log('[RESERVED_QTY_CALCULATED]', {
+      timestamp: new Date().toISOString(),
+      totalLists: pickingLists.length,
+      totalReservations: Object.keys(reservations).length,
+      sample: Object.entries(reservations).slice(0, 3),
+    });
+
+    return reservations;
+  }, [pickingLists]);
+
+  // Helper function: Get available stock (physical - reserved)
+  const getAvailableStock = useCallback(
+    (sku: string, warehouse?: string) => {
+      const targetWarehouse = warehouse || 'LUDLOW';
+      // Aggregate physical stock from all locations in the target warehouse
+      const physicalQty = inventoryData
+        .filter((item) => item.sku === sku && item.warehouse === targetWarehouse)
+        .reduce((sum, item) => sum + (item.quantity || 0), 0);
+
+      // Get reserved quantity
+      const reservationKey = `${sku}-${targetWarehouse}`;
+      const reservedQty = reservedQuantities[reservationKey] || 0;
+
+      return Math.max(0, physicalQty - reservedQty);
+    },
+    [inventoryData, reservedQuantities]
+  );
+
   const value: InventoryContextType = {
     inventoryData,
     ludlowData: ludlowInventory,
@@ -851,7 +941,7 @@ export const InventoryProvider = ({
     ludlowInventory,
     atsInventory,
     locationCapacities,
-    reservedQuantities: {},
+    reservedQuantities,
     fetchLogs,
     loading,
     error,
@@ -870,6 +960,7 @@ export const InventoryProvider = ({
     updateAtsInventory,
     updateSKUMetadata,
     syncFilters,
+    getAvailableStock,
     isAdmin: !!isAdmin,
     user,
     profile,

@@ -25,140 +25,175 @@ export const useInventoryLogs = () => {
    * Records an activity in the inventory_logs table
    * Implements "Write-Time Coalescing": Updates the last log if specific conditions met.
    */
+  /**
+   * trackLogMutation
+   * Wraps logging logic in a mutation for offline resilience and automatic retries.
+   */
+  const trackLogMutation = useMutation({
+    mutationKey: ['inventory', 'trackLog'],
+    networkMode: 'offlineFirst',
+    // Hardening: Limit retries for logs so they don't poison the queue forever
+    retry: 2,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 5000),
+    mutationFn: async ({
+      logData,
+      userInfo = {},
+      candidateLogId = null
+    }: {
+      logData: InventoryLogInput;
+      userInfo?: UserInfo;
+      candidateLogId?: string | null;
+    }) => {
+      // Defensive: Ensure we have the minimum data to attempt a log
+      if (!logData || !logData.sku) {
+        console.warn('[FORENSIC][DB][LOG_ABORT] Missing SKU or logData', logData);
+        return null;
+      }
+
+      const { performed_by } = userInfo;
+      const userName = performed_by || 'Warehouse Team';
+
+      try {
+        let targetLog: InventoryLog | null = null;
+
+        // STRATEGY 1: Direct Chained Update (Optimistic)
+        if (candidateLogId) {
+          const { data: candidate } = await supabase
+            .from('inventory_logs')
+            .select('*')
+            .eq('id', candidateLogId)
+            .single();
+
+          if (candidate) {
+            const typedCandidate = candidate as unknown as InventoryLog;
+            const isSameContext =
+              !typedCandidate.is_reversed &&
+              typedCandidate.sku === logData.sku &&
+              (typedCandidate.from_location || null) === (logData.from_location || null) &&
+              (typedCandidate.to_location || null) === (logData.to_location || null) &&
+              (typedCandidate.order_number || null) === (logData.order_number || null);
+
+            if (isSameContext) {
+              targetLog = typedCandidate;
+            }
+          }
+        }
+
+        // STRATEGY 2: Fallback to Time-Based Search
+        if (!targetLog) {
+          const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+          const { data: recentLogs } = await supabase
+            .from('inventory_logs')
+            .select('*')
+            .eq('performed_by', userName)
+            .gt('created_at', fiveMinutesAgo)
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+          const lastLog = recentLogs?.[0] as unknown as InventoryLog | undefined;
+
+          if (
+            lastLog &&
+            lastLog.sku === logData.sku &&
+            !lastLog.is_reversed &&
+            (lastLog.from_location || null) === (logData.from_location || null) &&
+            (lastLog.to_location || null) === (logData.to_location || null) &&
+            (lastLog.to_warehouse || null) === (logData.to_warehouse || null) &&
+            (lastLog.order_number || null) === (logData.order_number || null)
+          ) {
+            targetLog = lastLog;
+          }
+        }
+
+        // --- EXECUTE MERGE OR INSERT ---
+        if (targetLog) {
+          const sameType = targetLog.action_type === logData.action_type;
+          const isInverse =
+            (targetLog.action_type === 'ADD' && logData.action_type === 'DEDUCT') ||
+            (targetLog.action_type === 'DEDUCT' && logData.action_type === 'ADD');
+
+          if (sameType) {
+            const newTotalChange = (targetLog.quantity_change || 0) + (logData.quantity_change || 0);
+
+            console.log(
+              `[FORENSIC][DB][LOG_MERGE] Status: SUCCESS - Action: ${logData.action_type}, Delta: ${targetLog.quantity_change} + ${logData.quantity_change} = ${newTotalChange}`
+            );
+
+            await supabase
+              .from('inventory_logs')
+              .update({
+                quantity_change: newTotalChange,
+                new_quantity: logData.new_quantity,
+              })
+              .eq('id', targetLog.id);
+
+            return targetLog.id;
+          } else if (isInverse) {
+            const netChange = (targetLog.quantity_change || 0) + (logData.quantity_change || 0);
+
+            if (netChange === 0) {
+              console.log(`[FORENSIC][DB][LOG_CANCEL] Status: SUCCESS - SKU: ${logData.sku} - Net change is 0, deleting log.`);
+              await supabase.from('inventory_logs').delete().eq('id', targetLog.id);
+              return null;
+            } else {
+              console.log(`[FORENSIC][DB][LOG_INVERSE_MERGE] Status: SUCCESS - SKU: ${logData.sku} - Net change: ${netChange}`);
+              await supabase
+                .from('inventory_logs')
+                .update({
+                  quantity_change: netChange,
+                  action_type: netChange > 0 ? targetLog.action_type : logData.action_type,
+                  new_quantity: logData.new_quantity,
+                })
+                .eq('id', targetLog.id);
+              return targetLog.id;
+            }
+          }
+        }
+
+        // --- INSERT NEW LOG (Default) ---
+        console.log(`[FORENSIC][DB][INSERT_START] ${new Date().toISOString()} - SKU: ${logData.sku}`);
+        const { data: newLog, error } = await supabase
+          .from('inventory_logs')
+          .insert([
+            {
+              ...logData,
+              item_id: logData.item_id,
+              prev_quantity: logData.prev_quantity ?? null,
+              new_quantity: logData.new_quantity ?? null,
+              is_reversed: logData.is_reversed || false,
+              performed_by: userName,
+              created_at: new Date().toISOString(),
+            } as any,
+          ])
+          .select()
+          .single();
+
+        if (error) {
+          console.error(`[FORENSIC][DB][INSERT_ERROR] ${new Date().toISOString()}`, error);
+          throw error;
+        }
+
+        const newId = (newLog as any)?.id;
+        console.log(`[FORENSIC][DB][INSERT_SUCCESS] ${new Date().toISOString()} - New ID: ${newId}`);
+        return newId;
+      } catch (err) {
+        console.error(`[FORENSIC][DB][TRACK_FAILED] ${new Date().toISOString()}`, err);
+        throw err;
+      }
+    },
+    onSuccess: (logId) => {
+      if (logId) {
+        queryClient.invalidateQueries({ queryKey: ['inventory_logs'] });
+      }
+    }
+  });
+
   const trackLog = async (
     logData: InventoryLogInput,
     userInfo: UserInfo = {},
     candidateLogId: string | null = null
-  ): Promise<string | null> => {
-    const { performed_by } = userInfo;
-    const userName = performed_by || 'Warehouse Team';
-
-    try {
-      let targetLog: InventoryLog | null = null;
-
-      // STRATEGY 1: Direct Chained Update (Optimistic)
-      if (candidateLogId) {
-        const { data: candidate } = await supabase
-          .from('inventory_logs')
-          .select('*')
-          .eq('id', candidateLogId)
-          .single();
-
-        if (candidate) {
-          const typedCandidate = candidate as unknown as InventoryLog;
-          const isSameContext =
-            !typedCandidate.is_reversed &&
-            typedCandidate.sku === logData.sku &&
-            (typedCandidate.from_location || null) === (logData.from_location || null) &&
-            (typedCandidate.to_location || null) === (logData.to_location || null) &&
-            (typedCandidate.order_number || null) === (logData.order_number || null);
-
-          if (isSameContext) {
-            targetLog = typedCandidate;
-          }
-        }
-      }
-
-      // STRATEGY 2: Fallback to Time-Based Search
-      if (!targetLog) {
-        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-        const { data: recentLogs } = await supabase
-          .from('inventory_logs')
-          .select('*')
-          .eq('performed_by', userName)
-          .gt('created_at', fiveMinutesAgo)
-          .order('created_at', { ascending: false })
-          .limit(1);
-
-        const lastLog = recentLogs?.[0] as unknown as InventoryLog | undefined;
-
-        if (
-          lastLog &&
-          lastLog.sku === logData.sku &&
-          !lastLog.is_reversed &&
-          (lastLog.from_location || null) === (logData.from_location || null) &&
-          (lastLog.to_location || null) === (logData.to_location || null) &&
-          (lastLog.to_warehouse || null) === (logData.to_warehouse || null) &&
-          (lastLog.order_number || null) === (logData.order_number || null)
-        ) {
-          targetLog = lastLog;
-        }
-      }
-
-      // --- EXECUTE MERGE OR INSERT ---
-      if (targetLog) {
-        const sameType = targetLog.action_type === logData.action_type;
-        const isInverse =
-          (targetLog.action_type === 'ADD' && logData.action_type === 'DEDUCT') ||
-          (targetLog.action_type === 'DEDUCT' && logData.action_type === 'ADD');
-
-        if (sameType) {
-          const newTotalChange = (targetLog.quantity_change || 0) + (logData.quantity_change || 0);
-
-          console.log(
-            `[Log] Merging ${logData.action_type}: ${targetLog.quantity_change} + ${logData.quantity_change} = ${newTotalChange}`
-          );
-
-          await supabase
-            .from('inventory_logs')
-            .update({
-              quantity_change: newTotalChange,
-              new_quantity: logData.new_quantity,
-            })
-            .eq('id', targetLog.id);
-
-          return targetLog.id;
-        } else if (isInverse) {
-          const netChange = (targetLog.quantity_change || 0) + (logData.quantity_change || 0);
-
-          if (netChange === 0) {
-            await supabase.from('inventory_logs').delete().eq('id', targetLog.id);
-            return null;
-          } else {
-            // If we have a net change, update the log. 
-            // Note: netChange might be negative if DEDUCT > ADD, we use its absolute value for display if needed but store delta.
-            await supabase
-              .from('inventory_logs')
-              .update({
-                quantity_change: netChange,
-                action_type: netChange > 0 ? targetLog.action_type : logData.action_type,
-                new_quantity: logData.new_quantity,
-              })
-              .eq('id', targetLog.id);
-            return targetLog.id;
-          }
-        }
-      }
-
-      console.log(`[FORENSIC][DB][INSERT_START] ${new Date().toISOString()} - SKU: ${logData.sku}`);
-      // --- INSERT NEW LOG (Default) ---
-      const { data: newLog, error } = await supabase
-        .from('inventory_logs')
-        .insert([
-          {
-            ...logData,
-            item_id: logData.item_id,
-            prev_quantity: logData.prev_quantity ?? null,
-            new_quantity: logData.new_quantity ?? null,
-            is_reversed: logData.is_reversed || false,
-            performed_by: userName,
-            created_at: new Date().toISOString(),
-          } as any,
-        ])
-        .select()
-        .single();
-
-      if (error) {
-        console.error(`[FORENSIC][DB][INSERT_ERROR] ${new Date().toISOString()}`, error);
-        return null;
-      }
-
-      console.log(`[FORENSIC][DB][INSERT_SUCCESS] ${new Date().toISOString()} - New ID: ${(newLog as any)?.id}`);
-      return (newLog as any)?.id;
-    } catch (err) {
-      console.error(`[FORENSIC][DB][TRACK_FAILED] ${new Date().toISOString()}`, err);
-      return null;
-    }
+  ) => {
+    return trackLogMutation.mutateAsync({ logData, userInfo, candidateLogId });
   };
 
   /**

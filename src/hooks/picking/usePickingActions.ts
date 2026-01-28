@@ -194,49 +194,41 @@ export const usePickingActions = ({
   const lockForCheck = useCallback(
     async (listId: string) => {
       if (!user) return;
-      try {
-        const { error: releaseError } = await supabase
-          .from('picking_lists')
-          .update({
-            status: 'ready_to_double_check',
-            checked_by: null,
-          } as any)
-          .eq('checked_by', user.id)
-          .neq('id', listId);
+      const { error: releaseError } = await supabase
+        .from('picking_lists')
+        .update({
+          status: 'ready_to_double_check',
+          checked_by: null,
+        } as any)
+        .eq('checked_by', user.id)
+        .neq('id', listId);
 
-        if (releaseError) console.error('Error releasing previous locks:', releaseError);
+      if (releaseError) console.error('Error releasing previous locks:', releaseError);
 
-        const { error } = await supabase
-          .from('picking_lists')
-          .update({
-            status: 'double_checking',
-            checked_by: user.id,
-          } as any)
-          .eq('id', listId);
-        if (error) throw error;
-      } catch (err) {
-        console.error('Failed to lock list:', err);
-      }
+      const { error } = await supabase
+        .from('picking_lists')
+        .update({
+          status: 'double_checking',
+          checked_by: user.id,
+        } as any)
+        .eq('id', listId);
+      if (error) throw error;
     },
     [user]
   );
 
   const releaseCheck = useCallback(
     async (listId: string) => {
-      try {
-        const { error } = await supabase
-          .from('picking_lists')
-          .update({
-            status: 'ready_to_double_check',
-            checked_by: null,
-          } as any)
-          .eq('id', listId);
-        if (error) throw error;
+      const { error } = await supabase
+        .from('picking_lists')
+        .update({
+          status: 'ready_to_double_check',
+          checked_by: null,
+        } as any)
+        .eq('id', listId);
+      if (error) throw error;
 
-        resetSession();
-      } catch (err) {
-        console.error('Failed to release list:', err);
-      }
+      resetSession();
     },
     [resetSession]
   );

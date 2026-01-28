@@ -84,7 +84,7 @@ test.describe('Offline Sync & Rollback ("The Ghost Fix")', () => {
         await context.setOffline(false);
 
         // 4. Wait for sync to inventory and logs
-        // Wait for BOTH the inventory update and the log insertion
+        // Wait for BOTH the inventory update and the log insertion/update (could be PATCH due to coalescing)
         const [invResponse] = await Promise.all([
             page.waitForResponse(resp =>
                 resp.url().includes('/rest/v1/inventory') &&
@@ -92,7 +92,7 @@ test.describe('Offline Sync & Rollback ("The Ghost Fix")', () => {
                 , { timeout: 20000 }),
             page.waitForResponse(resp =>
                 resp.url().includes('/rest/v1/inventory_logs') &&
-                resp.request().method() === 'POST'
+                (resp.request().method() === 'POST' || resp.request().method() === 'PATCH')
                 , { timeout: 20000 })
         ]);
 

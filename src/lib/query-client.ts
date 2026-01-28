@@ -142,9 +142,8 @@ export async function cleanupCorruptedMutations() {
             let shouldRemove = false;
             let reason = '';
 
-            // Only check updateQuantity mutations (the problematic ones)
+            // 1. Clean updateQuantity mutations
             if (mutationType === 'updateQuantity') {
-                // Check for invalid preserved item (new format)
                 if (vars?.preservedItem) {
                     const item = vars.preservedItem;
                     const numericId = Number(item.id);
@@ -154,24 +153,31 @@ export async function cleanupCorruptedMutations() {
                         reason = `Invalid preservedItem.id: ${item.id}`;
                     }
                 }
+            }
 
-                // For legacy mutations without preservedItem, check if mutation is failing
-                // by looking at mutation state errors
+            // 2. Clean trackLog mutations (avoid poisoned log queue)
+            if (mutationType === 'trackLog') {
                 if (mutation.state.status === 'error') {
-                    const error = mutation.state.error as any;
-                    const errorMessage = error?.message || '';
+                    shouldRemove = true;
+                    reason = `Log mutation failed: ${((mutation.state.error as any)?.message || 'Unknown').substring(0, 50)}`;
+                }
+            }
 
-                    // Detect NaN, ID validation errors, or DB constraint violations
-                    if (
-                        errorMessage.includes('NaN') ||
-                        errorMessage.includes('ID inválido') ||
-                        errorMessage.includes('MUTATION ERROR') ||
-                        errorMessage.includes('null value in column "id"') || // Critical Fix for stuck Undos
-                        error?.code === '22P02' // Postgres invalid bigint error
-                    ) {
-                        shouldRemove = true;
-                        reason = `Failed mutation with ID error: ${errorMessage.substring(0, 50)}`;
-                    }
+            // 3. Generic error cleanup for any inventory mutation that is stuck in error
+            if (!shouldRemove && mutation.state.status === 'error') {
+                const error = mutation.state.error as any;
+                const errorMessage = error?.message || '';
+
+                if (
+                    errorMessage.includes('NaN') ||
+                    errorMessage.includes('ID inválido') ||
+                    errorMessage.includes('MUTATION ERROR') ||
+                    errorMessage.includes('null value in column "id"') ||
+                    errorMessage.includes('Failed to fetch') ||
+                    error?.code === '22P02'
+                ) {
+                    shouldRemove = true;
+                    reason = `Recoverable error detected: ${errorMessage.substring(0, 50)}`;
                 }
             }
 
