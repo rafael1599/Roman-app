@@ -38,10 +38,12 @@ interface PickingSessionViewProps {
     cartItems: CartItem[];
     activeListId?: string | null;
     orderNumber?: string | null;
+    customer?: import('../../../types/schema').Customer | null;
     correctionNotes?: string | null;
     notes?: any[]; // Keep as any if complex timeline object not defined
     isNotesLoading?: boolean;
     onUpdateOrderNumber: (newOrder: string | null) => void;
+    onUpdateCustomer?: (details: Partial<import('../../../types/schema').Customer>) => void;
     onGoToDoubleCheck: (orderId: string | null) => void;
     onUpdateQty: (item: CartItem, delta: number) => void;
     onRemoveItem: (item: CartItem) => void;
@@ -53,10 +55,12 @@ export const PickingSessionView: React.FC<PickingSessionViewProps> = ({
     cartItems,
     activeListId,
     orderNumber,
+    customer,
     correctionNotes,
     notes = [],
     isNotesLoading = false,
     onUpdateOrderNumber,
+    onUpdateCustomer,
     onGoToDoubleCheck,
     onUpdateQty,
     onRemoveItem,
@@ -76,11 +80,14 @@ export const PickingSessionView: React.FC<PickingSessionViewProps> = ({
     const [editingItemKey, setEditingItemKey] = useState<string | null>(null);
     const [editingQuantity, setEditingQuantity] = useState('');
     const [isEditingOrder, setIsEditingOrder] = useState(false);
+    const [isEditingCustomer, setIsEditingCustomer] = useState(false);
     const [isValidatingOrder, setIsValidatingOrder] = useState(false);
     const [tempOrder, setTempOrder] = useState(orderNumber || '');
+    const [tempCustomer, setTempCustomer] = useState(customer?.name || '');
 
     const inputRef = useRef<HTMLInputElement>(null);
     const orderInputRef = useRef<HTMLInputElement>(null);
+    const customerInputRef = useRef<HTMLInputElement>(null);
 
     const optimizedItems = useMemo(() => {
         return getOptimizedPickingPath(cartItems, locations);
@@ -108,12 +115,18 @@ export const PickingSessionView: React.FC<PickingSessionViewProps> = ({
         }
     }, [isEditingOrder]);
 
-    // Sync tempOrder when orderNumber prop changes
+    // Sync temp states when props change
     useEffect(() => {
         if (!isEditingOrder) {
             setTempOrder(orderNumber || '');
         }
     }, [orderNumber, isEditingOrder]);
+
+    useEffect(() => {
+        if (!isEditingCustomer) {
+            setTempCustomer(customer?.name || '');
+        }
+    }, [customer?.name, isEditingCustomer]);
 
     const getItemKey = (palletId: number | string, item: CartItem) => `${palletId}-${item.sku}-${item.location}`;
 
@@ -154,6 +167,11 @@ export const PickingSessionView: React.FC<PickingSessionViewProps> = ({
     const handleOrderClick = () => {
         setTempOrder(orderNumber || (activeListId ? activeListId.slice(-6).toUpperCase() : ''));
         setIsEditingOrder(true);
+    };
+
+    const handleCustomerClick = () => {
+        setTempCustomer(customer?.name || '');
+        setIsEditingCustomer(true);
     };
 
     // Check if order number is already in use by another user
@@ -239,6 +257,21 @@ export const PickingSessionView: React.FC<PickingSessionViewProps> = ({
             handleOrderSubmit();
         } else if (e.key === 'Escape') {
             setIsEditingOrder(false);
+        }
+    };
+
+    const handleCustomerSubmit = () => {
+        if (onUpdateCustomer) {
+            onUpdateCustomer({ name: tempCustomer.trim() || '' });
+        }
+        setIsEditingCustomer(false);
+    };
+
+    const handleCustomerKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            handleCustomerSubmit();
+        } else if (e.key === 'Escape') {
+            setIsEditingCustomer(false);
         }
     };
 
@@ -368,8 +401,31 @@ export const PickingSessionView: React.FC<PickingSessionViewProps> = ({
                             </span>
                         )}
                     </div>
-                    <p className="text-[10px] text-muted font-bold uppercase tracking-widest text-center">
-                        {pallets.length} Pallets • {totalUnits} Units
+                    <p className="text-[10px] text-muted font-bold uppercase tracking-widest text-center mt-1 flex items-center justify-center gap-1">
+                        {isEditingCustomer ? (
+                            <input
+                                ref={customerInputRef}
+                                type="text"
+                                value={tempCustomer}
+                                onChange={(e) => setTempCustomer(e.target.value)}
+                                onBlur={handleCustomerSubmit}
+                                onKeyDown={handleCustomerKeyDown}
+                                {...autoSelect}
+                                className="text-[10px] font-bold bg-accent/5 text-accent px-2 py-0.5 rounded border border-accent/10 w-32 focus:outline-none focus:border-accent text-center"
+                                placeholder="Customer Name"
+                            />
+                        ) : (
+                            <span
+                                onClick={handleCustomerClick}
+                                className="cursor-pointer hover:text-accent transition-colors"
+                            >
+                                {customer?.name || 'No Customer Set'}
+                            </span>
+                        )}
+                        <span className="opacity-30 mx-1">•</span>
+                        <span>{pallets.length} Pallets</span>
+                        <span className="opacity-30 mx-1">•</span>
+                        <span>{totalUnits} Units</span>
                     </p>
                 </div>
                 <button
@@ -377,8 +433,10 @@ export const PickingSessionView: React.FC<PickingSessionViewProps> = ({
                         showConfirmation(
                             'Cancel Order',
                             'Are you sure you want to cancel this order? This action cannot be undone.',
-                            () => {
-                                if (onDelete) onDelete(activeListId ?? null);
+                            async () => {
+                                if (onDelete) {
+                                    await onDelete(activeListId ?? null);
+                                }
                                 onClose();
                             },
                             undefined,

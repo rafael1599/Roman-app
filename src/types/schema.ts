@@ -32,3 +32,4 @@ export type PickingList = Tables<'picking_lists'>;
 export type WarehouseZone = Tables<'warehouse_zones'>;
 export type Location = Tables<'locations'>;
 export type SKUMetadata = Tables<'sku_metadata'>;
+export type Customer = Tables<'customers'>;

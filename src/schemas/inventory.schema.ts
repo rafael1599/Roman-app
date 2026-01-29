@@ -11,7 +11,7 @@ export const InventoryItemDBSchema = z.object({
     .trim()
     .min(1, 'sku cannot be empty')
     .refine((s) => !s.includes(' '), 'sku cannot contain spaces'),
-  quantity: z.coerce.number().int().nonnegative(),
+  quantity: z.coerce.number().int(),
   location: z.string().nullable(),
   location_id: z.string().nullable().optional(),
   sku_note: z.string().nullable().optional(),

@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { X, ArrowRightLeft } from 'lucide-react';
 import { usePickingSession } from '../../../context/PickingContext';
+import { CustomerAutocomplete } from './CustomerAutocomplete';
+import type { Customer } from '../../../types/schema';
 import { useAuth } from '../../../context/AuthContext';
 import { supabase } from '../../../lib/supabase';
 import toast from 'react-hot-toast';
@@ -12,6 +14,7 @@ export const SessionInitializationModal = () => {
     // Unused state removed: mode
 
     const [manualOrder, setManualOrder] = useState('');
+    const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
     const [isChecking, setIsChecking] = useState(false);
 
     // Check for resumable sessions (optional enhancement: could check DB too)
@@ -19,6 +22,7 @@ export const SessionInitializationModal = () => {
         if (!isInitializing) return;
 
         setManualOrder('');
+        setSelectedCustomer(null);
     }, [isInitializing]);
 
     if (!isInitializing) return null;
@@ -27,12 +31,15 @@ export const SessionInitializationModal = () => {
         if (!manualOrder.trim() || !user) return;
         setIsChecking(true);
 
+        const orderNum = manualOrder.trim();
+        const customerData = selectedCustomer || undefined;
+
         // Check if this order number is already active by SOMEONE ELSE
         try {
             const { data, error } = await supabase
                 .from('picking_lists')
                 .select('id, user_id, profiles!user_id(full_name)')
-                .eq('order_number', manualOrder.trim())
+                .eq('order_number', orderNum)
                 .in('status', ['active', 'needs_correction'])
                 .maybeSingle();
 
@@ -45,22 +52,22 @@ export const SessionInitializationModal = () => {
                 // If it exists, warn user
                 const owner = (data.profiles as any)?.full_name || 'Another User';
                 const confirmed = window.confirm(
-                    `Order #${manualOrder} is currently active by ${owner}. Do you want to take it over?`
+                    `Order #${orderNum} is currently active by ${owner}. Do you want to take it over?`
                 );
                 if (confirmed) {
                     await supabase.from('picking_lists').update({ user_id: user.id }).eq('id', data.id);
 
-                    startNewSession('manual', manualOrder.trim());
+                    startNewSession('manual', orderNum, undefined, customerData);
                     toast.success('You took over the order!');
                 }
             } else {
                 // Brand new order
-                startNewSession('manual', manualOrder.trim());
+                startNewSession('manual', orderNum, undefined, customerData);
             }
         } catch (err) {
             console.error('Check failed', err);
             // Fallback: just allow it
-            startNewSession('manual', manualOrder.trim());
+            startNewSession('manual', orderNum, undefined, customerData);
         } finally {
             setIsChecking(false);
         }
@@ -91,18 +98,26 @@ export const SessionInitializationModal = () => {
 
                 <div className="p-6 space-y-4">
                     <div className="space-y-4 animate-in slide-in-from-right-4 duration-200">
-                        <div className="relative">
-                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted font-black text-lg">
-                                #
-                            </span>
-                            <input
-                                autoFocus
-                                type="text"
-                                value={manualOrder}
-                                onChange={(e) => setManualOrder(e.target.value.toUpperCase())}
-                                placeholder="Order Number"
-                                className="w-full bg-main border-2 border-subtle focus:border-accent text-content rounded-xl pl-10 pr-4 py-4 font-mono text-xl font-bold uppercase tracking-widest outline-none transition-all placeholder:text-muted/50"
-                                onKeyDown={(e) => e.key === 'Enter' && handleManualSubmit()}
+                        <div className="space-y-4">
+                            <div className="relative">
+                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted font-black text-lg">
+                                    #
+                                </span>
+                                <input
+                                    autoFocus
+                                    type="text"
+                                    value={manualOrder}
+                                    onChange={(e) => setManualOrder(e.target.value.toUpperCase())}
+                                    placeholder="Order Number"
+                                    className="w-full bg-main border-2 border-subtle focus:border-accent text-content rounded-xl pl-10 pr-4 py-4 font-mono text-xl font-bold uppercase tracking-widest outline-none transition-all placeholder:text-muted/50"
+                                    onKeyDown={(e) => e.key === 'Enter' && handleManualSubmit()}
+                                />
+                            </div>
+
+                            <CustomerAutocomplete
+                                value={selectedCustomer}
+                                onChange={setSelectedCustomer}
+                                className="w-full"
                             />
                         </div>
 

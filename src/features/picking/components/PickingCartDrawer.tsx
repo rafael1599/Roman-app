@@ -16,7 +16,7 @@ interface Note {
 interface PickingCartDrawerProps {
     cartItems: PickingItem[];
     activeListId?: string | null;
-    orderNumber?: string | null;
+    customer?: import('../../../types/schema').Customer | null;
     sessionMode?: string; // e.g. 'picking', 'building', 'double_checking'
     checkedBy?: string | null;
     correctionNotes?: string | null;
@@ -30,6 +30,7 @@ interface PickingCartDrawerProps {
     onMarkAsReady: (items: PickingItem[], orderNo?: string) => Promise<string | null>;
     ownerId?: string | null;
     onUpdateOrderNumber: (newOrder: string | null) => void;
+    onUpdateCustomer?: (details: Partial<import('../../../types/schema').Customer>) => void;
     onUpdateQty: (item: PickingItem, delta: number) => void;
     onRemoveItem: (item: PickingItem) => void;
     onSetQty?: (item: PickingItem, qty: number) => void;
@@ -47,6 +48,7 @@ export const PickingCartDrawer: React.FC<PickingCartDrawerProps> = ({
     cartItems,
     activeListId,
     orderNumber,
+    customer,
     sessionMode,
     checkedBy,
     correctionNotes,
@@ -60,6 +62,7 @@ export const PickingCartDrawer: React.FC<PickingCartDrawerProps> = ({
     onMarkAsReady,
     ownerId,
     onUpdateOrderNumber,
+    onUpdateCustomer,
     onUpdateQty,
     onRemoveItem,
     onSetQty,
@@ -332,7 +335,9 @@ export const PickingCartDrawer: React.FC<PickingCartDrawerProps> = ({
                             <PickingSessionView
                                 activeListId={activeListId ?? null}
                                 orderNumber={orderNumber ?? null}
+                                customer={customer ?? null}
                                 onUpdateOrderNumber={onUpdateOrderNumber}
+                                onUpdateCustomer={onUpdateCustomer}
                                 cartItems={cartItems as any}
                                 correctionNotes={correctionNotes}
                                 notes={notes as any}
@@ -345,6 +350,7 @@ export const PickingCartDrawer: React.FC<PickingCartDrawerProps> = ({
                             />
                         ) : (
                             <DoubleCheckView
+                                customer={customer ?? null}
                                 cartItems={cartItems as any}
                                 orderNumber={orderNumber ?? null}
                                 activeListId={activeListId ?? null}

@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import type { InventoryItem } from '../../schemas/inventory.schema';
+import type { Customer } from '../../types/schema';
 
 export interface CartItem extends InventoryItem {
   pickingQty: number;
@@ -8,6 +9,8 @@ export interface CartItem extends InventoryItem {
 
 const LOCAL_STORAGE_KEY = 'picking_cart_items';
 const LOCAL_STORAGE_ORDER_KEY = 'picking_order_number';
+const LOCAL_STORAGE_CUSTOMER_KEY = 'picking_customer_obj';
+const LOCAL_STORAGE_LOAD_KEY = 'picking_load_number';
 
 interface UsePickingCartProps {
   sessionMode: 'building' | 'picking' | 'double_checking';
@@ -17,6 +20,8 @@ interface UsePickingCartProps {
 export const usePickingCart = ({ sessionMode, reservedQuantities }: UsePickingCartProps) => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [orderNumber, setOrderNumber] = useState<string | null>(null);
+  const [customer, setCustomer] = useState<Customer | null>(null);
+  const [loadNumber, setLoadNumber] = useState<string | null>(null);
 
   // Initial load from local storage only for picking mode demos or fallbacks
   // The main sync hook will handle loading from DB
@@ -29,6 +34,12 @@ export const usePickingCart = ({ sessionMode, reservedQuantities }: UsePickingCa
       }
       const localOrder = localStorage.getItem(LOCAL_STORAGE_ORDER_KEY);
       if (localOrder) setOrderNumber(localOrder);
+
+      const localCustomer = localStorage.getItem(LOCAL_STORAGE_CUSTOMER_KEY);
+      if (localCustomer) setCustomer(JSON.parse(localCustomer));
+
+      const localLoad = localStorage.getItem(LOCAL_STORAGE_LOAD_KEY);
+      if (localLoad) setLoadNumber(localLoad);
     } catch (e) {
       console.warn('Failed to parse local cart', e);
     }
@@ -48,8 +59,20 @@ export const usePickingCart = ({ sessionMode, reservedQuantities }: UsePickingCa
       } else {
         localStorage.removeItem(LOCAL_STORAGE_ORDER_KEY);
       }
+
+      if (customer) {
+        localStorage.setItem(LOCAL_STORAGE_CUSTOMER_KEY, JSON.stringify(customer));
+      } else {
+        localStorage.removeItem(LOCAL_STORAGE_CUSTOMER_KEY);
+      }
+
+      if (loadNumber) {
+        localStorage.setItem(LOCAL_STORAGE_LOAD_KEY, loadNumber);
+      } else {
+        localStorage.removeItem(LOCAL_STORAGE_LOAD_KEY);
+      }
     }
-  }, [cartItems, orderNumber, sessionMode]);
+  }, [cartItems, orderNumber, customer, loadNumber, sessionMode]);
 
   const isSameItem = useCallback((a: Partial<InventoryItem>, b: Partial<InventoryItem>) => {
     if (a.id && b.id) return a.id === b.id;
@@ -220,8 +243,12 @@ export const usePickingCart = ({ sessionMode, reservedQuantities }: UsePickingCa
   const clearCart = useCallback(() => {
     setCartItems([]);
     setOrderNumber(null);
+    setCustomer(null);
+    setLoadNumber(null);
     localStorage.removeItem(LOCAL_STORAGE_KEY);
     localStorage.removeItem(LOCAL_STORAGE_ORDER_KEY);
+    localStorage.removeItem(LOCAL_STORAGE_CUSTOMER_KEY);
+    localStorage.removeItem(LOCAL_STORAGE_LOAD_KEY);
   }, []);
 
   return {
@@ -229,6 +256,10 @@ export const usePickingCart = ({ sessionMode, reservedQuantities }: UsePickingCa
     setCartItems,
     orderNumber,
     setOrderNumber,
+    customer,
+    setCustomer,
+    loadNumber,
+    setLoadNumber,
     addToCart,
     updateCartQty,
     setCartQty,

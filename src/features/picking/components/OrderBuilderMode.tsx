@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Package, Truck, ArrowRight, Trash2, Minus, Plus } from 'lucide-react';
 import { usePickingSession } from '../../../context/PickingContext';
+import { CustomerAutocomplete } from './CustomerAutocomplete';
 import { useAutoSelect } from '../../../hooks/useAutoSelect';
 import toast from 'react-hot-toast';
 
@@ -21,7 +22,7 @@ interface OrderBuilderModeProps {
 }
 
 export const OrderBuilderMode: React.FC<OrderBuilderModeProps> = ({ cartItems, onGeneratePath }) => {
-    const { removeFromCart, updateCartQty, setCartQty, isSaving } = usePickingSession();
+    const { removeFromCart, updateCartQty, setCartQty, isSaving, customer, setCustomer } = usePickingSession();
     const autoSelect = useAutoSelect();
 
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -82,16 +83,27 @@ export const OrderBuilderMode: React.FC<OrderBuilderModeProps> = ({ cartItems, o
         <div className="flex flex-col h-full bg-card">
             {/* Header / Instructions */}
             <div className="px-4 py-3 bg-surface border-b border-subtle">
-                <div className="flex items-center gap-3 mb-1">
-                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                        <span className="text-blue-600 text-sm font-bold">1</span>
+                <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 mb-1">
+                        <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                            <span className="text-blue-600 text-sm font-bold">1</span>
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-bold text-content">Build Your Order</h3>
+                            <p className="text-[10px] text-muted">
+                                Add all items you need, then generate the picking path.
+                            </p>
+                        </div>
                     </div>
-                    <div>
-                        <h3 className="text-sm font-bold text-content">Build Your Order</h3>
-                        <p className="text-[10px] text-muted">
-                            Add all items you need, then generate the picking path.
-                        </p>
-                    </div>
+                </div>
+
+                <div className="mt-3">
+                    <CustomerAutocomplete
+                        value={customer}
+                        onChange={setCustomer}
+                        placeholder="Customer / Company Name (Optional)"
+                        className="w-full"
+                    />
                 </div>
             </div>
 

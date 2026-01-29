@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
 import type { CartItem } from './usePickingCart';
+import type { Customer } from '../../types/schema';
 import { getOptimizedPickingPath, calculatePallets } from '../../utils/pickingLogic';
 
 interface UsePickingActionsProps {
@@ -9,13 +10,18 @@ interface UsePickingActionsProps {
   activeListId: string | null;
   cartItems: CartItem[];
   orderNumber: string | null;
+  customer: Customer | null;
   sessionMode: 'building' | 'picking' | 'double_checking';
   setCartItems: (items: any[]) => void;
   setActiveListId: (id: string | null) => void;
   setOrderNumber: (num: string | null) => void;
+  setCustomer: (cust: Customer | null) => void;
   setListStatus: (status: string) => void;
   setCheckedBy: (id: string | null) => void;
   setOwnerId: (id: string | null) => void;
+  ownerId: string | null;
+  loadNumber: string | null;
+  setLoadNumber: (num: string | null) => void;
   setCorrectionNotes: (notes: string | null) => void;
   setSessionMode: (mode: 'building' | 'picking' | 'double_checking') => void;
   setIsSaving: (val: boolean) => void;
@@ -27,9 +33,11 @@ export const usePickingActions = ({
   activeListId,
   cartItems,
   orderNumber,
+  customer,
   setCartItems,
   setActiveListId,
   setOrderNumber,
+  setCustomer,
   setListStatus,
   setCheckedBy,
   setOwnerId,
@@ -37,17 +45,29 @@ export const usePickingActions = ({
   setSessionMode,
   setIsSaving,
   resetSession,
+  loadNumber,
+  setLoadNumber,
 }: UsePickingActionsProps) => {
   const completeList = useCallback(
-    async (listIdOverride?: string) => {
+    async (metrics?: { pallets_qty: number; total_units: number }, listIdOverride?: string) => {
       const targetId = listIdOverride || activeListId;
 
       if (!targetId || !user) return;
       setIsSaving(true);
       try {
+        const updateData: any = {
+          status: 'completed',
+          checked_by: user.id, // Record who verified it
+        };
+
+        if (metrics) {
+          updateData.pallets_qty = metrics.pallets_qty;
+          updateData.total_units = metrics.total_units;
+        }
+
         const { error } = await supabase
           .from('picking_lists')
-          .update({ status: 'completed' } as any)
+          .update(updateData)
           .eq('id', targetId);
 
         if (error) throw error;
@@ -57,6 +77,8 @@ export const usePickingActions = ({
         }
       } catch (err) {
         console.error('Failed to complete list:', err);
+        toast.error('Failed to complete order properly');
+        throw err;
       } finally {
         setIsSaving(false);
       }
@@ -180,6 +202,8 @@ export const usePickingActions = ({
             checked_by: user.id, // Auto-assign to self for verification
             items: finalItems as any,
             order_number: finalOrderNum,
+            customer_id: customer?.id,
+            load_number: loadNumber,
             correction_notes: null,
             pallets_qty: palletsQty, // AUTOMATION: Save the calculated pallets count
           } as any)
@@ -257,24 +281,23 @@ export const usePickingActions = ({
       }
 
       try {
-        // 1. Update list status and legacy notes field
+        // 1. Update list status (deprecating legacy notes column)
         const { error: listError } = await supabase
           .from('picking_lists')
           .update({
             status: 'needs_correction',
             checked_by: null,
-            correction_notes: notes,
           } as any)
           .eq('id', listId);
 
         if (listError) throw listError;
 
         // 2. Add to historical notes timeline
-        const { error: noteError } = await supabase.from('picking_list_notes').insert({
+        const { error: noteError } = await supabase.from('picking_list_notes' as any).insert({
           list_id: listId,
           user_id: user.id,
           message: notes,
-        } as any);
+        });
 
         if (noteError) {
           console.error('Failed to log historical note:', noteError);
@@ -433,6 +456,36 @@ export const usePickingActions = ({
         }
       }
 
+      // Ensure customer exists if it's a new one (name only)
+      let customerId = customer?.id;
+      if (!customerId && customer?.name) {
+        const normalizedName = customer.name.trim();
+
+        // 1. Try to find existing customer by name first
+        const { data: existing } = await supabase
+          .from('customers')
+          .select('id')
+          .eq('name', normalizedName)
+          .maybeSingle();
+
+        if (existing) {
+          customerId = existing.id;
+        } else {
+          // 2. Create new customer if not found
+          const { data: newCust, error: createError } = await supabase
+            .from('customers')
+            .insert({ name: normalizedName })
+            .select('id')
+            .single();
+
+          if (createError) {
+            console.error('Failed to create customer:', createError);
+            throw createError;
+          }
+          customerId = newCust.id;
+        }
+      }
+
       const { data, error } = await supabase
         .from('picking_lists')
         .insert({
@@ -440,6 +493,8 @@ export const usePickingActions = ({
           items: cartItems as any,
           status: 'active',
           order_number: orderNumber,
+          customer_id: customerId,
+          load_number: loadNumber,
         } as any)
         .select()
         .single();
@@ -448,10 +503,19 @@ export const usePickingActions = ({
 
       if (data) {
         setActiveListId(data.id);
-        const ownerId = (data as any).user_id;
+        const ownerId = (data as any).user_id; // Keeping as any to avoid type fight if needed, but ideally typed
         setListStatus('active');
         setOwnerId(ownerId);
         setSessionMode('picking');
+
+        // CRITICAL FIX: Update local customer state with the RESOLVED ID so the UI knows it's real
+        if (customerId && customer?.name) {
+          setCustomer({
+            ...customer,
+            id: customerId,
+            name: customer.name.trim() // Ensure consistent trimming
+          });
+        }
 
         localStorage.setItem('picking_session_mode', 'picking');
         localStorage.setItem('active_picking_list_id', data.id);
@@ -464,7 +528,32 @@ export const usePickingActions = ({
     } finally {
       setIsSaving(false);
     }
-  }, [user, cartItems, orderNumber, setActiveListId, setListStatus, setOwnerId, setSessionMode, setIsSaving]);
+  }, [user, cartItems, orderNumber, customer, setCustomer, setActiveListId, setListStatus, setOwnerId, setSessionMode, setIsSaving]);
+
+  const updateCustomerDetails = useCallback(
+    async (customerId: string, details: Partial<Customer>) => {
+      try {
+        const { error } = await supabase
+          .from('customers')
+          .update(details)
+          .eq('id', customerId);
+
+        if (error) throw error;
+
+        // Update local state if it's the current customer
+        if (customer && customer.id === customerId) {
+          setCustomer({ ...customer, ...details });
+        }
+
+        toast.success('Customer details updated');
+      } catch (err) {
+        console.error('Failed to update customer details:', err);
+        toast.error('Failed to update customer details');
+        throw err;
+      }
+    },
+    [customer, setCustomer]
+  );
 
   return {
     completeList,
@@ -475,5 +564,6 @@ export const usePickingActions = ({
     revertToPicking,
     deleteList,
     generatePickingPath,
+    updateCustomerDetails,
   };
 };

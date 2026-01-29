@@ -9,6 +9,7 @@ import {
     Send,
     ChevronDown,
     MapPin,
+    AlertCircle,
 } from 'lucide-react';
 import { getOptimizedPickingPath, calculatePallets } from '../../../utils/pickingLogic';
 import { CorrectionNotesTimeline, Note } from './CorrectionNotesTimeline';
@@ -43,6 +44,7 @@ interface DoubleCheckViewProps {
     notes?: Note[];
     isNotesLoading?: boolean;
     onAddNote: (note: string) => Promise<void> | void;
+    customer?: { name: string } | null;
 }
 
 export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
@@ -59,6 +61,7 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
     notes = [],
     isNotesLoading = false,
     onAddNote,
+    customer,
 }) => {
     const { locations } = useLocationManagement();
     const { showConfirmation } = useConfirmation();
@@ -80,8 +83,9 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
     }, [pallets]);
 
     const handleConfirm = async () => {
-        setIsDeducting(true);
         const isFullyVerified = checkedCount === totalCheckboxes;
+
+        setIsDeducting(true);
         try {
             await onDeduct(cartItems, isFullyVerified);
         } catch (error) {
@@ -163,6 +167,11 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
                                     ? `#${activeListId.slice(-6).toUpperCase()}`
                                     : 'STOCK DEDUCTION'}
                         </span>
+                        {customer?.name && (
+                            <span className="text-[10px] text-muted font-bold uppercase tracking-widest mt-1">
+                                {customer.name}
+                            </span>
+                        )}
                     </div>
                     <p className="text-[10px] text-muted font-bold uppercase tracking-widest text-center mt-1">
                         {checkedCount}/{totalCheckboxes} Items Checked
@@ -346,12 +355,21 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
 
             {/* Final Action Footer */}
             <div className="px-8 py-4 pb-20 border-t border-subtle bg-surface/80 backdrop-blur-xl shrink-0">
+                {checkedCount < totalCheckboxes && (
+                    <div className="mb-3 px-4 py-2 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2">
+                        <AlertCircle size={14} className="text-amber-500" />
+                        <span className="text-[10px] font-black text-amber-500/80 uppercase tracking-widest">
+                            Verify everything or return to BUILDING to edit
+                        </span>
+                    </div>
+                )}
                 <SlideToConfirm
                     onConfirm={handleConfirm}
                     isLoading={isDeducting}
                     text={checkedCount === totalCheckboxes ? "SLIDE TO DEDUCT" : "SEND TO VERIFY"}
                     confirmedText={checkedCount === totalCheckboxes ? "DEDUCTING..." : "SENDING..."}
                     variant={checkedCount === totalCheckboxes ? "default" : "info"}
+                    disabled={false}
                 />
             </div>
         </div>

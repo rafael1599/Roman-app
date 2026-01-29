@@ -24,6 +24,7 @@ export interface PickingList {
     checked_by: string | null;
     profiles?: Profile | null; // Joined profile
     checker_profile?: Profile | null; // Joined checker profile
+    customer?: { name: string } | null;
 }
 
 export const useDoubleCheckList = () => {
@@ -43,8 +44,10 @@ export const useDoubleCheckList = () => {
             updated_at, 
             user_id,
             checked_by,
+            checked_by,
             profiles!user_id (full_name),
-            checker_profile:profiles!checked_by (full_name)
+            checker_profile:profiles!checked_by (full_name),
+            customer:customers(name)
           `
                 )
                 .in('status', ['ready_to_double_check', 'double_checking', 'needs_correction'])

@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { debounce } from '../../utils/debounce';
 import toast from 'react-hot-toast';
 import type { CartItem } from './usePickingCart';
+import type { Customer } from '../../types/schema';
 
 interface UsePickingSyncProps {
   user: any;
@@ -16,6 +17,10 @@ interface UsePickingSyncProps {
   setCartItems: (items: CartItem[]) => void;
   setActiveListId: (id: string | null) => void;
   setOrderNumber: (num: string | null) => void;
+  customer: Customer | null;
+  setCustomer: (cust: Customer | null) => void;
+  loadNumber: string | null;
+  setLoadNumber: (num: string | null) => void;
   setListStatus: (status: string) => void;
   setCheckedBy: (id: string | null) => void;
   ownerId: string | null;
@@ -25,6 +30,12 @@ interface UsePickingSyncProps {
   loadFromLocalStorage: () => void;
   showError: (title: string, msg: string) => void;
   resetSession: () => void;
+  setIsSaving: (val: boolean) => void;
+  setIsLoaded: (val: boolean) => void;
+  setLastSaved: (val: Date | null) => void;
+  isSaving: boolean;
+  isLoaded: boolean;
+  lastSaved: Date | null;
 }
 
 const SYNC_DEBOUNCE_MS = 1000;
@@ -41,6 +52,10 @@ export const usePickingSync = ({
   setCartItems,
   setActiveListId,
   setOrderNumber,
+  customer,
+  setCustomer,
+  loadNumber,
+  setLoadNumber,
   setListStatus,
   setCheckedBy,
   ownerId,
@@ -50,10 +65,14 @@ export const usePickingSync = ({
   loadFromLocalStorage,
   showError,
   resetSession,
+  setIsSaving,
+  setIsLoaded,
+  setLastSaved,
+  isSaving,
+  isLoaded,
+  lastSaved,
 }: UsePickingSyncProps) => {
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  // State removed and moved to PickingProvider via props
 
   // Legacy normalizeItems removed - database migration ensures consistent lowercase schema
 
@@ -91,7 +110,7 @@ export const usePickingSync = ({
         // A. Check for double-check session first (Highest priority)
         const { data: doubleCheckData } = await supabase
           .from('picking_lists')
-          .select('id, items, order_number, status, checked_by, user_id, correction_notes, updated_at')
+          .select('*, customer:customers(*)')
           .eq('checked_by', user.id)
           .eq('status', 'double_checking')
           .limit(1)
@@ -114,6 +133,8 @@ export const usePickingSync = ({
             setCartItems((doubleCheckData.items as any[]) || []);
             setActiveListId(doubleCheckData.id as string);
             setOrderNumber(doubleCheckData.order_number || null);
+            setCustomer(doubleCheckData.customer as Customer || null);
+            setLoadNumber(doubleCheckData.load_number || null);
             setListStatus(doubleCheckData.status as string);
             setCheckedBy(doubleCheckData.checked_by || null);
             setOwnerId(doubleCheckData.user_id || null);
@@ -127,7 +148,7 @@ export const usePickingSync = ({
         // B. Check for active picking sessions owned by this user
         const { data: pickingData, error } = await supabase
           .from('picking_lists')
-          .select('id, items, order_number, status, checked_by, user_id, correction_notes, updated_at')
+          .select('*, customer:customers(*)')
           .eq('user_id', user.id)
           .in('status', ['active', 'needs_correction'])
           .order('updated_at', { ascending: false })
@@ -150,6 +171,8 @@ export const usePickingSync = ({
             setCartItems((pickingData.items as any[]) || []);
             setActiveListId(pickingData.id as string);
             setOrderNumber(pickingData.order_number || null);
+            setCustomer(pickingData.customer as Customer || null);
+            setLoadNumber(pickingData.load_number || null);
             setListStatus(pickingData.status as string);
             setCheckedBy(pickingData.checked_by || null);
             setOwnerId(pickingData.user_id || null);
@@ -310,10 +333,22 @@ export const usePickingSync = ({
     try {
       const sanitizedItems = items; // Data already in correct format from database
       if (listId) {
-        const { error } = await supabase.from('picking_lists').update({ items: sanitizedItems as any, order_number: orderNum }).eq('id', listId);
+        const { error } = await supabase.from('picking_lists').update({
+          items: sanitizedItems as any,
+          order_number: orderNum,
+          customer_id: customer?.id,
+          load_number: loadNumber
+        }).eq('id', listId);
         if (error) throw error;
       } else if (items.length > 0) {
-        const { data, error } = await supabase.from('picking_lists').insert({ user_id: userId, items: sanitizedItems as any, status: 'active', order_number: orderNum } as any).select().single();
+        const { data, error } = await supabase.from('picking_lists').insert({
+          user_id: userId,
+          items: sanitizedItems as any,
+          status: 'active',
+          order_number: orderNum,
+          customer_id: customer?.id,
+          load_number: loadNumber
+        } as any).select('*, customer:customers(*)').single();
         if (error) throw error;
         if (data) {
           setActiveListId(data.id);
@@ -353,12 +388,17 @@ export const usePickingSync = ({
     if (!user) return;
     setIsSaving(true);
     try {
-      const { data, error } = await supabase.from('picking_lists').select('id, items, order_number, status, checked_by, user_id, correction_notes').eq('id', listId).single();
+      const { data, error } = await supabase.from('picking_lists')
+        .select('*, customer:customers(*)')
+        .eq('id', listId)
+        .single();
       if (error) throw error;
       if (data) {
         setCartItems((data.items as any[]) || []);
         setActiveListId(data.id as string);
         setOrderNumber(data.order_number || null);
+        setCustomer(data.customer as Customer || null);
+        setLoadNumber(data.load_number || null);
         setListStatus(data.status as string);
         setCheckedBy(data.checked_by || null);
         setOwnerId(data.user_id || null);

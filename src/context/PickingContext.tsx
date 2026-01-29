@@ -7,6 +7,7 @@ import { usePickingCart, CartItem } from '../hooks/picking/usePickingCart';
 import { usePickingSync } from '../hooks/picking/usePickingSync';
 import { usePickingActions } from '../hooks/picking/usePickingActions';
 import { usePickingNotes, PickingNote } from '../hooks/picking/usePickingNotes';
+import type { Customer } from '../types/schema';
 
 interface PickingContextType {
   cartItems: CartItem[];
@@ -15,6 +16,10 @@ interface PickingContextType {
   setActiveListId: (id: string | null) => void;
   orderNumber: string | null;
   setOrderNumber: (num: string | null) => void;
+  customer: Customer | null;
+  setCustomer: (cust: Customer | null) => void;
+  loadNumber: string | null;
+  setLoadNumber: (num: string | null) => void;
   listStatus: string;
   checkedBy: string | null;
   ownerId: string | null;
@@ -37,7 +42,7 @@ interface PickingContextType {
     inMyCart: number;
   };
 
-  completeList: (id?: string) => void;
+  completeList: (metrics?: { pallets_qty: number; total_units: number }, id?: string) => Promise<void>;
   markAsReady: (items?: any[], orderNum?: string) => Promise<string | null>;
   lockForCheck: (id: string) => Promise<void>;
   releaseCheck: (id: string) => Promise<void>;
@@ -61,10 +66,12 @@ interface PickingContextType {
   startNewSession: (
     strategy: 'auto' | 'manual' | 'resume',
     manualOrderNumber?: string,
-    resumeId?: string
+    resumeId?: string,
+    customerData?: Customer | string
   ) => Promise<void>;
   pendingItem: any;
   cancelInitialization: () => void;
+  updateCustomerDetails: (customerId: string, details: Partial<Customer>) => Promise<void>;
 }
 
 const PickingContext = createContext<PickingContextType | undefined>(undefined);
@@ -88,6 +95,9 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
   // New Session Initialization State
   const [isInitializing, setIsInitializing] = useState(false);
   const [pendingItem, setPendingItem] = useState<any>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   // 3. Hook Integration
   const {
@@ -95,6 +105,10 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
     setCartItems,
     orderNumber,
     setOrderNumber,
+    customer,
+    setCustomer,
+    loadNumber,
+    setLoadNumber,
     addToCart: addToCartInternal,
     updateCartQty,
     setCartQty,
@@ -118,6 +132,7 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
       setCorrectionNotes(null);
       setSessionMode('building');
       setOrderNumber(null);
+      setCustomer(null);
     }
 
     // Comprehensive localStorage cleanup
@@ -140,12 +155,16 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
     console.log('🧹 [Atomic Reset] Session cleared');
   }, [clearCart, setOrderNumber]);
 
-  const { isLoaded, isSaving, lastSaved, loadExternalList } = usePickingSync({
+  const { loadExternalList } = usePickingSync({
     user,
     sessionMode,
     cartItems,
     orderNumber,
     activeListId,
+    customer,
+    setCustomer,
+    loadNumber,
+    setLoadNumber,
     listStatus,
     correctionNotes,
     checkedBy,
@@ -161,6 +180,12 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
     loadFromLocalStorage,
     showError,
     resetSession,
+    setIsSaving,
+    setIsLoaded,
+    setLastSaved,
+    isSaving,
+    isLoaded,
+    lastSaved,
   });
 
   const {
@@ -172,22 +197,28 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
     revertToPicking,
     deleteList,
     generatePickingPath,
+    updateCustomerDetails,
   } = usePickingActions({
     user,
     activeListId,
     cartItems,
     orderNumber,
+    customer,
     sessionMode,
     setCartItems,
     setActiveListId,
     setOrderNumber,
+    setCustomer,
     setListStatus,
     setCheckedBy,
     setOwnerId,
     setCorrectionNotes,
     setSessionMode,
-    setIsSaving: () => { },
+    setIsSaving,
     resetSession,
+    ownerId,
+    loadNumber,
+    setLoadNumber,
   });
 
   const { notes, isLoading: isNotesLoading, addNote: addNoteRaw } = usePickingNotes(activeListId);
@@ -256,7 +287,8 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
   const startNewSession = async (
     strategy: 'auto' | 'manual' | 'resume',
     manualOrderNumber?: string,
-    resumeId?: string
+    resumeId?: string,
+    customerData?: Customer | string
   ) => {
     setIsInitializing(false);
     const itemToAdd = pendingItem;
@@ -288,6 +320,18 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
       localStorage.setItem('picking_order_number', newOrderNumber);
     }
 
+    if (customerData) {
+      if (typeof customerData === 'string') {
+        // Temporary customer object for quick sessions
+        const quickCustomer = { name: customerData } as Customer;
+        setCustomer(quickCustomer);
+        localStorage.setItem('picking_customer_obj', JSON.stringify(quickCustomer));
+      } else {
+        setCustomer(customerData);
+        localStorage.setItem('picking_customer_obj', JSON.stringify(customerData));
+      }
+    }
+
     // Start in Building Mode
     setSessionMode('building');
     localStorage.setItem('picking_session_mode', 'building');
@@ -304,6 +348,10 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
     setActiveListId,
     orderNumber,
     setOrderNumber,
+    customer,
+    setCustomer,
+    loadNumber,
+    setLoadNumber,
     listStatus,
     checkedBy,
     ownerId,
@@ -342,6 +390,7 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
       setIsInitializing(false);
       setPendingItem(null);
     },
+    updateCustomerDetails,
   };
 
   return <PickingContext.Provider value={value}>{children}</PickingContext.Provider>;

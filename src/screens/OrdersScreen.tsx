@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
-import { Loader2, Package, Printer, ChevronRight, X, Save, Scale, Search, Calendar } from 'lucide-react';
+import { Loader2, Package, Printer, ChevronRight, X, Save, Scale, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PalletLabelsPrinter } from '../components/orders/PalletLabelsPrinter';
 
@@ -25,7 +25,7 @@ export const OrdersScreen = () => {
         try {
             let query = supabase
                 .from('picking_lists')
-                .select('*')
+                .select('*, customer:customers(name)')
                 .order('created_at', { ascending: false });
 
             const startOfToday = new Date();
@@ -49,7 +49,14 @@ export const OrdersScreen = () => {
             const { data, error } = await query;
 
             if (error) throw error;
-            setOrders(data || []);
+
+            // Map the joined customer name to customer_name for UI compatibility
+            const mappedData = (data || []).map((order: any) => ({
+                ...order,
+                customer_name: order.customer?.name || order.customer_name
+            }));
+
+            setOrders(mappedData);
         } catch (err: any) {
             console.error('Error fetching orders:', err);
             toast.error('Failed to load orders');
@@ -79,7 +86,8 @@ export const OrdersScreen = () => {
                 .from('picking_lists')
                 .update({
                     customer_name: selectedOrder.customer_name,
-                    pallets_qty: parseInt(selectedOrder.pallets_qty) || 1
+                    pallets_qty: parseInt(selectedOrder.pallets_qty) || 1,
+                    total_units: parseInt(selectedOrder.total_units) || 0
                 })
                 .eq('id', selectedOrder.id);
 
@@ -183,7 +191,7 @@ export const OrdersScreen = () => {
                                         {new Date(order.created_at).toLocaleDateString()} • {order.customer_name || 'Generic Customer'}
                                     </p>
                                     <p className="text-[9px] text-accent font-black uppercase tracking-tighter mt-0.5">
-                                        {order.pallets_qty || 1} Pallets
+                                        {order.pallets_qty || 1} Pallets • {order.total_units || 0} Units
                                     </p>
                                 </div>
                             </div>
@@ -249,6 +257,21 @@ export const OrdersScreen = () => {
                                         Change pallet quantity to generate corresponding labels.
                                     </p>
                                 </div>
+
+                                <div>
+                                    <label className="text-[10px] text-muted font-black uppercase tracking-widest mb-2 block">
+                                        Total Units
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        value={selectedOrder.total_units || ''}
+                                        onChange={(e) => setSelectedOrder({ ...selectedOrder, total_units: e.target.value })}
+                                        className="w-full bg-surface border border-subtle rounded-xl px-4 py-3 text-sm text-content focus:outline-none focus:border-accent transition-colors"
+                                        placeholder="Ex: 150"
+                                    />
+                                </div>
+
 
                                 <div className="flex gap-3 pt-4">
                                     <button

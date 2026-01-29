@@ -12,6 +12,7 @@ import { Plus, Warehouse, Sparkles, X } from 'lucide-react';
 import { MovementModal } from '../features/inventory/components/MovementModal';
 import { CapacityBar } from '../components/ui/CapacityBar.tsx';
 import toast from 'react-hot-toast';
+import { getOptimizedPickingPath, calculatePallets } from '../utils/pickingLogic';
 
 import { usePickingSession } from '../context/PickingContext';
 import { useAuth } from '../context/AuthContext';
@@ -180,6 +181,8 @@ export const InventoryScreen = () => {
     activeListId,
     orderNumber,
     setOrderNumber,
+    customer,
+    updateCustomerDetails,
     setCartItems,
     addToCart,
     updateCartQty,
@@ -553,6 +556,7 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
           cartItems={cartItems as any}
           activeListId={activeListId}
           orderNumber={orderNumber}
+          customer={customer}
           sessionMode={sessionMode}
           checkedBy={checkedBy}
           externalDoubleCheckId={externalDoubleCheckId}
@@ -569,6 +573,11 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
           onResetSession={resetSession}
           ownerId={ownerId}
           onUpdateOrderNumber={setOrderNumber}
+          onUpdateCustomer={(details) => {
+            if (customer?.id) {
+              updateCustomerDetails(customer.id, details);
+            }
+          }}
           onUpdateQty={updateCartQty}
           onSetQty={setCartQty}
           onRemoveItem={removeFromCart}
@@ -580,13 +589,23 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
 
             try {
               if (!isVerified) {
+                // Rule: All-or-nothing verification. 
+                // However, our current UI might call onDeduct with isVerified=false when "releasing"
+                // but the user wants to ENSURE that deductions only happen at 100%.
+                // Based on the new rule, we block deduction if not verified.
                 await releaseCheck(activeListId!);
-                toast('Order sent to verification queue', {
+                toast('Order released to queue (No deduction made)', {
                   icon: '📋',
                   duration: 4000,
                 });
                 return true;
               }
+
+              // Calculate final metrics before completing
+              const totalUnits = items.reduce((acc: number, item: any) => acc + (item.pickingQty || 0), 0);
+              const optimizedPath = getOptimizedPickingPath(items, allMappedLocations);
+              const calculatedPallets = calculatePallets(optimizedPath);
+              const pallets_qty = calculatedPallets.length;
 
               await Promise.all(
                 items.map((item: any) => {
@@ -602,7 +621,11 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
                   );
                 })
               );
-              await completeList();
+
+              await completeList({
+                pallets_qty,
+                total_units: totalUnits
+              });
               return true;
             } catch (error: any) {
               console.error('Operation failed:', error);

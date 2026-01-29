@@ -41,6 +41,45 @@ export type Database = {
                 }
                 Relationships: []
             }
+            customers: {
+                Row: {
+                    city: string | null
+                    created_at: string | null
+                    email: string | null
+                    id: string
+                    name: string
+                    phone: string | null
+                    state: string | null
+                    street: string | null
+                    updated_at: string | null
+                    zip_code: string | null
+                }
+                Insert: {
+                    city?: string | null
+                    created_at?: string | null
+                    email?: string | null
+                    id?: string
+                    name: string
+                    phone?: string | null
+                    state?: string | null
+                    street?: string | null
+                    updated_at?: string | null
+                    zip_code?: string | null
+                }
+                Update: {
+                    city?: string | null
+                    created_at?: string | null
+                    email?: string | null
+                    id?: string
+                    name?: string
+                    phone?: string | null
+                    state?: string | null
+                    street?: string | null
+                    updated_at?: string | null
+                    zip_code?: string | null
+                }
+                Relationships: []
+            }
             inventory: {
                 Row: {
                     capacity: number | null
@@ -98,7 +137,6 @@ export type Database = {
                     sku: string
                     to_location: string | null
                     to_warehouse: string | null
-                    user_id: string | null
                 }
                 Insert: {
                     action_type: string
@@ -117,7 +155,6 @@ export type Database = {
                     sku: string
                     to_location?: string | null
                     to_warehouse?: string | null
-                    user_id?: string | null
                 }
                 Update: {
                     action_type?: string
@@ -136,87 +173,112 @@ export type Database = {
                     sku?: string
                     to_location?: string | null
                     to_warehouse?: string | null
-                    user_id?: string | null
                 }
                 Relationships: []
             }
             locations: {
                 Row: {
+                    building: string | null
                     created_at: string | null
-                    description: string | null
                     id: string
-                    location: string
-                    max_capacity: number | null
-                    metadata: Json | null
-                    status: string | null
-                    type: string | null
-                    updated_at: string | null
-                    warehouse: string
+                    level: number | null
+                    name: string
+                    optimization_order: number | null
+                    position: number | null
+                    section: string | null
+                    warehouse: string | null
                     zone_id: string | null
                 }
                 Insert: {
+                    building?: string | null
                     created_at?: string | null
-                    description?: string | null
                     id?: string
-                    location: string
-                    max_capacity?: number | null
-                    metadata?: Json | null
-                    status?: string | null
-                    type?: string | null
-                    updated_at?: string | null
-                    warehouse: string
+                    level?: number | null
+                    name: string
+                    optimization_order?: number | null
+                    position?: number | null
+                    section?: string | null
+                    warehouse?: string | null
                     zone_id?: string | null
                 }
                 Update: {
+                    building?: string | null
                     created_at?: string | null
-                    description?: string | null
                     id?: string
-                    location?: string
-                    max_capacity?: number | null
-                    metadata?: Json | null
-                    status?: string | null
-                    type?: string | null
-                    updated_at?: string | null
-                    warehouse?: string
+                    level?: number | null
+                    name?: string
+                    optimization_order?: number | null
+                    position?: number | null
+                    section?: string | null
+                    warehouse?: string | null
                     zone_id?: string | null
                 }
-                Relationships: []
+                Relationships: [
+                    {
+                        foreignKeyName: "locations_zone_id_fkey"
+                        columns: ["zone_id"]
+                        isOneToOne: false
+                        referencedRelation: "warehouse_zones"
+                        referencedColumns: ["id"]
+                    },
+                ]
             }
-            picking_list_notes: {
+            optimization_reports: {
                 Row: {
-                    content: string
                     created_at: string | null
+                    created_by: string | null
+                    details: Json | null
                     id: string
-                    picking_list_id: string
-                    user_id: string
+                    list_id: string | null
+                    optimization_type: string
+                    path_data: Json | null
+                    warehouse: string | null
                 }
                 Insert: {
-                    content: string
                     created_at?: string | null
+                    created_by?: string | null
+                    details?: Json | null
                     id?: string
-                    picking_list_id: string
-                    user_id: string
+                    list_id?: string | null
+                    optimization_type: string
+                    path_data?: Json | null
+                    warehouse?: string | null
                 }
                 Update: {
-                    content?: string
                     created_at?: string | null
+                    created_by?: string | null
+                    details?: Json | null
                     id?: string
-                    picking_list_id?: string
-                    user_id?: string
+                    list_id?: string | null
+                    optimization_type?: string
+                    path_data?: Json | null
+                    warehouse?: string | null
                 }
-                Relationships: []
+                Relationships: [
+                    {
+                        foreignKeyName: "optimization_reports_list_id_fkey"
+                        columns: ["list_id"]
+                        isOneToOne: false
+                        referencedRelation: "picking_lists"
+                        referencedColumns: ["id"]
+                    },
+                ]
             }
             picking_lists: {
                 Row: {
                     checked_by: string | null
                     correction_notes: string | null
                     created_at: string | null
-                    customer_name: string | null
+                    customer_id: string | null
                     id: string
-                    items: Json | null
+                    items: Json
+                    load_number: string | null
+                    notes: string | null
                     order_number: string | null
                     pallets_qty: number | null
+                    priority: string | null
                     status: string | null
+                    total_units: number | null
                     updated_at: string | null
                     user_id: string | null
                 }
@@ -224,12 +286,16 @@ export type Database = {
                     checked_by?: string | null
                     correction_notes?: string | null
                     created_at?: string | null
-                    customer_name?: string | null
+                    customer_id?: string | null
                     id?: string
-                    items?: Json | null
+                    items: Json
+                    load_number?: string | null
+                    notes?: string | null
                     order_number?: string | null
                     pallets_qty?: number | null
+                    priority?: string | null
                     status?: string | null
+                    total_units?: number | null
                     updated_at?: string | null
                     user_id?: string | null
                 }
@@ -237,119 +303,119 @@ export type Database = {
                     checked_by?: string | null
                     correction_notes?: string | null
                     created_at?: string | null
-                    customer_name?: string | null
+                    customer_id?: string | null
                     id?: string
-                    items?: Json | null
+                    items?: Json
+                    load_number?: string | null
+                    notes?: string | null
                     order_number?: string | null
                     pallets_qty?: number | null
+                    priority?: string | null
                     status?: string | null
+                    total_units?: number | null
                     updated_at?: string | null
                     user_id?: string | null
                 }
-                Relationships: []
+                Relationships: [
+                    {
+                        foreignKeyName: "picking_lists_customer_id_fkey"
+                        columns: ["customer_id"]
+                        isOneToOne: false
+                        referencedRelation: "customers"
+                        referencedColumns: ["id"]
+                    },
+                ]
             }
             profiles: {
                 Row: {
-                    age: number | null
                     avatar_url: string | null
-                    email: string
-                    full_name: string
+                    full_name: string | null
                     id: string
-                    role: string | null
+                    updated_at: string | null
+                    username: string | null
+                    warehouse: string | null
                 }
                 Insert: {
-                    age?: number | null
                     avatar_url?: string | null
-                    email: string
-                    full_name: string
+                    full_name?: string | null
                     id: string
-                    role?: string | null
+                    updated_at?: string | null
+                    username?: string | null
+                    warehouse?: string | null
                 }
                 Update: {
-                    age?: number | null
                     avatar_url?: string | null
-                    email?: string
-                    full_name?: string
+                    full_name?: string | null
                     id?: string
-                    role?: string | null
+                    updated_at?: string | null
+                    username?: string | null
+                    warehouse?: string | null
                 }
                 Relationships: []
             }
             sku_metadata: {
                 Row: {
+                    barcode: string | null
+                    brand: string | null
+                    category: string | null
                     created_at: string | null
+                    description: string | null
+                    dimensions: Json | null
                     id: string
                     image_url: string | null
-                    name: string | null
                     sku: string
+                    unit_weight: number | null
                     updated_at: string | null
-                    length_ft: number | null
-                    width_in: number | null
                 }
                 Insert: {
+                    barcode?: string | null
+                    brand?: string | null
+                    category?: string | null
                     created_at?: string | null
+                    description?: string | null
+                    dimensions?: Json | null
                     id?: string
                     image_url?: string | null
-                    name?: string | null
                     sku: string
+                    unit_weight?: number | null
                     updated_at?: string | null
-                    length_ft?: number | null
-                    width_in?: number | null
                 }
                 Update: {
+                    barcode?: string | null
+                    brand?: string | null
+                    category?: string | null
                     created_at?: string | null
+                    description?: string | null
+                    dimensions?: Json | null
                     id?: string
                     image_url?: string | null
-                    name?: string | null
                     sku?: string
+                    unit_weight?: number | null
                     updated_at?: string | null
-                    length_ft?: number | null
-                    width_in?: number | null
                 }
                 Relationships: []
             }
             warehouse_zones: {
                 Row: {
-                    color: string | null
                     created_at: string | null
                     description: string | null
                     id: string
-                    name: string | null
-                    updated_at: string | null
-                    warehouse: string
-                    location: string
-                    zone: string
-                    picking_order: number | null
-                    is_shipping_area: boolean | null
-                    notes: string | null
+                    name: string
+                    warehouse: string | null
                 }
                 Insert: {
-                    color?: string | null
                     created_at?: string | null
                     description?: string | null
                     id?: string
-                    name?: string | null
-                    updated_at?: string | null
-                    warehouse: string
-                    location: string
-                    zone: string
-                    picking_order?: number | null
-                    is_shipping_area?: boolean | null
-                    notes?: string | null
+                    name: string
+                    warehouse?: string | null
                 }
                 Update: {
-                    color?: string | null
                     created_at?: string | null
                     description?: string | null
                     id?: string
-                    name?: string | null
-                    updated_at?: string | null
-                    warehouse?: string
-                    location?: string
-                    zone?: string
-                    picking_order?: number | null
-                    is_shipping_area?: boolean | null
-                    notes?: string | null
+                    name?: string
+                    warehouse?: string | null
                 }
                 Relationships: []
             }
@@ -369,44 +435,48 @@ export type Database = {
     }
 }
 
-type PublicSchema = Database['public']
+type PublicSchema = Database["public"]
 
 export type Tables<
     PublicTableNameOrOptions extends
-    | keyof (PublicSchema['Tables'] & PublicSchema['Views'])
+    | keyof (PublicSchema["Tables"] & PublicSchema["Views"])
     | { schema: keyof Database },
     TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof (Database[PublicTableNameOrOptions['schema']]['Tables'] &
-        Database[PublicTableNameOrOptions['schema']]['Views'])
+    ? keyof (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
+        Database[PublicTableNameOrOptions["schema"]]["Views"])
     : never = never,
 > = PublicTableNameOrOptions extends { schema: keyof Database }
-    ? (Database[PublicTableNameOrOptions['schema']]['Tables'] &
-        Database[PublicTableNameOrOptions['schema']]['Views'])[TableName] extends {
+    ? (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
+        Database[PublicTableNameOrOptions["schema"]]["Views"])[TableName] extends {
             Row: infer R
         }
     ? R
     : never
-    : PublicTableNameOrOptions extends keyof (PublicSchema['Tables'] & PublicSchema['Views'])
-    ? (PublicSchema['Tables'] & PublicSchema['Views'])[PublicTableNameOrOptions] extends {
-        Row: infer R
-    }
+    : PublicTableNameOrOptions extends keyof (PublicSchema["Tables"] &
+        PublicSchema["Views"])
+    ? (PublicSchema["Tables"] &
+        PublicSchema["Views"])[PublicTableNameOrOptions] extends {
+            Row: infer R
+        }
     ? R
     : never
     : never
 
 export type TablesInsert<
-    PublicTableNameOrOptions extends keyof PublicSchema['Tables'] | { schema: keyof Database },
+    PublicTableNameOrOptions extends
+    | keyof PublicSchema["Tables"]
+    | { schema: keyof Database },
     TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicTableNameOrOptions['schema']]['Tables']
+    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
     : never = never,
 > = PublicTableNameOrOptions extends { schema: keyof Database }
-    ? Database[PublicTableNameOrOptions['schema']]['Tables'][TableName] extends {
+    ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
         Insert: infer I
     }
     ? I
     : never
-    : PublicTableNameOrOptions extends keyof PublicSchema['Tables']
-    ? PublicSchema['Tables'][PublicTableNameOrOptions] extends {
+    : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
+    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
         Insert: infer I
     }
     ? I
@@ -414,18 +484,20 @@ export type TablesInsert<
     : never
 
 export type TablesUpdate<
-    PublicTableNameOrOptions extends keyof PublicSchema['Tables'] | { schema: keyof Database },
+    PublicTableNameOrOptions extends
+    | keyof PublicSchema["Tables"]
+    | { schema: keyof Database },
     TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicTableNameOrOptions['schema']]['Tables']
+    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
     : never = never,
 > = PublicTableNameOrOptions extends { schema: keyof Database }
-    ? Database[PublicTableNameOrOptions['schema']]['Tables'][TableName] extends {
+    ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
         Update: infer U
     }
     ? U
     : never
-    : PublicTableNameOrOptions extends keyof PublicSchema['Tables']
-    ? PublicSchema['Tables'][PublicTableNameOrOptions] extends {
+    : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
+    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
         Update: infer U
     }
     ? U
@@ -433,12 +505,29 @@ export type TablesUpdate<
     : never
 
 export type Enums<
-    PublicEnumNameOrOptions extends keyof PublicSchema['Enums'] | { schema: keyof Database },
+    PublicEnumNameOrOptions extends
+    | keyof PublicSchema["Enums"]
+    | { schema: keyof Database },
     EnumName extends PublicEnumNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicEnumNameOrOptions['schema']]['Enums']
+    ? keyof Database[PublicEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
 > = PublicEnumNameOrOptions extends { schema: keyof Database }
-    ? Database[PublicEnumNameOrOptions['schema']]['Enums'][EnumName]
-    : PublicEnumNameOrOptions extends keyof PublicSchema['Enums']
-    ? PublicSchema['Enums'][PublicEnumNameOrOptions]
+    ? Database[PublicEnumNameOrOptions["schema"]]["Enums"][EnumName]
+    : PublicEnumNameOrOptions extends keyof PublicSchema["Enums"]
+    ? PublicSchema["Enums"][PublicEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+    PublicCompositeTypeNameOrOptions extends
+    | keyof PublicSchema["CompositeTypes"]
+    | { schema: keyof Database },
+    CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+        schema: keyof Database
+    }
+    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
+    ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+    : PublicCompositeTypeNameOrOptions extends keyof PublicSchema["CompositeTypes"]
+    ? PublicSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
