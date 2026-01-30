@@ -33,7 +33,8 @@ export const useInventoryLogs = () => {
     mutationKey: ['inventory', 'trackLog'],
     networkMode: 'offlineFirst',
     // Hardening: Limit retries for logs so they don't poison the queue forever
-    retry: 2,
+    // Hardening: Increase retries for logs so they don't fail easily on flaky networks
+    retry: 5,
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 5000),
     mutationFn: async ({
       logData,
@@ -81,27 +82,31 @@ export const useInventoryLogs = () => {
 
         // STRATEGY 2: Fallback to Time-Based Search
         if (!targetLog) {
-          const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-          const { data: recentLogs } = await supabase
-            .from('inventory_logs')
-            .select('*')
-            .eq('performed_by', userName)
-            .gt('created_at', fiveMinutesAgo)
-            .order('created_at', { ascending: false })
-            .limit(1);
+          // Safety: Only coalesce if we have a user_id to avoid collisions
+          if (userInfo.user_id) {
+            const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+            const { data: recentLogs } = await supabase
+              .from('inventory_logs')
+              .select('*')
+              .eq('performed_by', userName)
+              .eq('user_id', userInfo.user_id) // ✅ Ensure same user
+              .gt('created_at', fiveMinutesAgo)
+              .order('created_at', { ascending: false })
+              .limit(1);
 
-          const lastLog = recentLogs?.[0] as unknown as InventoryLog | undefined;
+            const lastLog = recentLogs?.[0] as unknown as InventoryLog | undefined;
 
-          if (
-            lastLog &&
-            lastLog.sku === logData.sku &&
-            !lastLog.is_reversed &&
-            (lastLog.from_location || null) === (logData.from_location || null) &&
-            (lastLog.to_location || null) === (logData.to_location || null) &&
-            (lastLog.to_warehouse || null) === (logData.to_warehouse || null) &&
-            (lastLog.order_number || null) === (logData.order_number || null)
-          ) {
-            targetLog = lastLog;
+            if (
+              lastLog &&
+              lastLog.sku === logData.sku &&
+              !lastLog.is_reversed &&
+              (lastLog.from_location || null) === (logData.from_location || null) &&
+              (lastLog.to_location || null) === (logData.to_location || null) &&
+              (lastLog.to_warehouse || null) === (logData.to_warehouse || null) &&
+              (lastLog.order_number || null) === (logData.order_number || null)
+            ) {
+              targetLog = lastLog;
+            }
           }
         }
 
@@ -162,6 +167,7 @@ export const useInventoryLogs = () => {
               new_quantity: logData.new_quantity ?? null,
               is_reversed: logData.is_reversed || false,
               performed_by: userName,
+              user_id: userInfo.user_id,
               created_at: new Date().toISOString(),
             } as any,
           ])

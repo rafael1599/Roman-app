@@ -141,6 +141,22 @@ export const InventoryProvider = ({
         const { cleanupCorruptedMutations } = await import('../lib/query-client');
         await cleanupCorruptedMutations();
 
+        // ✅ ADD: Clean stale optimistic logs (>60s old)
+        const logs = queryClient.getQueryData(['inventory_logs', 'TODAY']);
+        if (Array.isArray(logs)) {
+          const now = Date.now();
+          const cleaned = logs.filter(log => {
+            if (!(log as any).isOptimistic) return true;
+            const created = new Date(log.created_at).getTime();
+            const age = now - created;
+            return age < 60000; // Keep only if <60s old
+          });
+          if (cleaned.length !== logs.length) {
+            console.log(`[CLEANUP] Removed ${logs.length - cleaned.length} stale optimistic logs`);
+            queryClient.setQueryData(['inventory_logs', 'TODAY'], cleaned);
+          }
+        }
+
         const [inv, meta] = await Promise.all([
           inventoryApi.fetchInventory(),
           inventoryApi.fetchAllMetadata(),
@@ -527,6 +543,8 @@ export const InventoryProvider = ({
             } else {
               console.log('🔄 Realtime: Reconnected. Resyncing inventory...');
               queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
+              // Invalidate logs to prevent cache drift
+              queryClient.invalidateQueries({ queryKey: ['inventory_logs'] });
             }
           }
 

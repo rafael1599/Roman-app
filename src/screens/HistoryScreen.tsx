@@ -1051,7 +1051,7 @@ export const HistoryScreen = () => {
                           <p className="text-[7px] text-muted font-black uppercase tracking-widest mb-1">
                             Qty
                           </p>
-                          <p className="text-2xl font-black leading-none text-content">
+                          <p className="text-2xl font-black leading-none text-content" data-testid="quantity-change">
                             {typeof log.quantity_change === 'number' ? Math.abs(log.quantity_change) : '??'}
                           </p>
                         </div>

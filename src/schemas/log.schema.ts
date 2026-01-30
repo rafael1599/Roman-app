@@ -29,6 +29,7 @@ export const InventoryLogSchema = z.object({
   snapshot_before: z.any().optional().nullable(), // For offline resilience snapshots
   list_id: z.string().uuid().optional().nullable(),
   order_number: z.string().optional().nullable(),
+  user_id: z.string().uuid().optional().nullable(),
 });
 
 /**
@@ -53,6 +54,7 @@ export const InventoryLogInputSchema = z.object({
   snapshot_before: z.any().optional().nullable(),
   list_id: z.string().uuid().optional().nullable(),
   order_number: z.string().optional().nullable(),
+  user_id: z.string().uuid().optional().nullable(),
 });
 
 // Type exports

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { createPortal } from 'react-dom';
 import { useTheme } from '../../context/ThemeContext';
-import { LogOut, X, Check, Sun, Moon, Save, Eye, ShieldCheck, History } from 'lucide-react';
+import { LogOut, X, Check, Sun, Moon, Save, Eye, ShieldCheck, History, RotateCcw } from 'lucide-react';
 import { InventorySnapshotModal } from '../../features/inventory/components/InventorySnapshotModal';
 
 interface UserMenuProps {
@@ -40,6 +40,49 @@ export const UserMenu = ({ isOpen, onClose, onExport, navigate }: UserMenuProps)
     setIsSaving(false);
   };
 
+  const handleFactoryReset = async () => {
+    if (window.confirm('⚠️ DANGER: This will wipe EVERYTHING (Login, Cache, Offline Data) and reset the app as if it were new. Are you sure?')) {
+      console.log("🧹 PROCEEDING WITH FACTORY RESET...");
+
+      // 1. Clear Storage
+      localStorage.clear();
+      sessionStorage.clear();
+
+      // 2. Clear Cookies
+      document.cookie.split(";").forEach((c) => {
+        document.cookie = c
+          .replace(/^ +/, "")
+          .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+      });
+
+      // 3. Nuke All IndexedDBs
+      if (window.indexedDB && window.indexedDB.databases) {
+        try {
+          const dbs = await window.indexedDB.databases();
+          for (const db of dbs) {
+            if (db.name) {
+              await window.indexedDB.deleteDatabase(db.name);
+              console.log(`🗑️ Database Deleted: ${db.name}`);
+            }
+          }
+        } catch (e) {
+          console.warn("⚠️ Error clearing databases:", e);
+        }
+      }
+
+      // 4. Kill Service Workers
+      if (navigator.serviceWorker) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (const registration of registrations) {
+          await registration.unregister();
+        }
+      }
+
+      // 5. Reload
+      window.location.reload();
+    }
+  };
+
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
@@ -51,9 +94,19 @@ export const UserMenu = ({ isOpen, onClose, onExport, navigate }: UserMenuProps)
               <h2 className="text-xl font-black uppercase tracking-tight text-content">
                 User Profile
               </h2>
-              <p className="text-[10px] text-muted font-bold uppercase tracking-widest mt-1">
-                Manage your account
-              </p>
+              <div className="flex items-center gap-2 mt-1">
+                <p className="text-[10px] text-muted font-bold uppercase tracking-widest">
+                  Manage your account
+                </p>
+                <span className="text-muted/30">•</span>
+                <button
+                  onClick={handleFactoryReset}
+                  className="text-[9px] text-red-500 hover:text-red-600 font-black uppercase tracking-widest transition-colors flex items-center gap-1"
+                >
+                  <RotateCcw size={10} />
+                  Reset App
+                </button>
+              </div>
             </div>
             <button
               onClick={onClose}

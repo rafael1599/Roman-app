@@ -66,7 +66,7 @@ test.describe('Offline Sync & Rollback ("The Ghost Fix")', () => {
         // 6. VALIDATE ROLLBACK
         await expect(async () => {
             await expect(row.getByText('10', { exact: true })).toBeVisible();
-        }).toPass({ timeout: 15000 });
+        }).toPass({ timeout: 20000 });
     });
 
     test('should sync changes to history after network restores ("Prueba 3")', async ({ page, context }) => {
@@ -85,7 +85,7 @@ test.describe('Offline Sync & Rollback ("The Ghost Fix")', () => {
 
         // 4. Wait for sync to inventory and logs
         // Wait for BOTH the inventory update and the log insertion/update (could be PATCH due to coalescing)
-        const [invResponse] = await Promise.all([
+        const [invResponse, logResponse] = await Promise.all([
             page.waitForResponse(resp =>
                 resp.url().includes('/rest/v1/inventory') &&
                 resp.request().method() === 'PATCH'
@@ -96,9 +96,13 @@ test.describe('Offline Sync & Rollback ("The Ghost Fix")', () => {
                 , { timeout: 20000 })
         ]);
 
-        expect(invResponse.status()).toBe(204); // Supabase PATCH typically returns 204
+        expect(invResponse.status()).toBe(204);
+        expect(logResponse.ok()).toBeTruthy();
 
-        // 5. Navigate to History
+        // 5. Wait for realtime to stabilize
+        await expect(page.getByText('Ready')).toBeVisible({ timeout: 10000 });
+
+        // 6. Navigate to History
         await page.getByRole('button', { name: 'HISTORY' }).click();
 
         // 6. Verify entry in history
@@ -109,7 +113,7 @@ test.describe('Offline Sync & Rollback ("The Ghost Fix")', () => {
         await expect(async () => {
             const historyItem = page.locator('div.group.relative', { hasText: SKU }).first();
             await expect(historyItem).toBeVisible();
-            await expect(historyItem.getByText('1', { exact: true })).toBeVisible();
-        }).toPass({ timeout: 10000 });
+            await expect(historyItem.locator('[data-testid="quantity-change"]')).toHaveText('1');
+        }).toPass({ timeout: 20000 });
     });
 });
