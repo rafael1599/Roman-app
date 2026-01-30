@@ -168,9 +168,9 @@ export const LocationList = () => {
               <div className="flex items-center gap-2 mb-3">
                 {/* Zone Badge */}
                 <span
-                  className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getZoneColor(loc.zone_type)}`}
+                  className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getZoneColor(loc.zone)}`}
                 >
-                  {loc.zone_type || 'UNASSIGNED'}
+                  {loc.zone || 'UNASSIGNED'}
                 </span>
 
                 {/* Capacity Badge */}
