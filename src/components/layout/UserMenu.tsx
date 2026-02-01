@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { createPortal } from 'react-dom';
 import { useTheme } from '../../context/ThemeContext';
-import { LogOut, X, Check, Sun, Moon, Save, Eye, ShieldCheck, History, RotateCcw } from 'lucide-react';
+import { LogOut, X, Check, Sun, Moon, Save, Eye, ShieldCheck, History, RefreshCw } from 'lucide-react';
 import { InventorySnapshotModal } from '../../features/inventory/components/InventorySnapshotModal';
 
 interface UserMenuProps {
@@ -40,45 +40,19 @@ export const UserMenu = ({ isOpen, onClose, onExport, navigate }: UserMenuProps)
     setIsSaving(false);
   };
 
-  const handleFactoryReset = async () => {
-    if (window.confirm('⚠️ DANGER: This will wipe EVERYTHING (Login, Cache, Offline Data) and reset the app as if it were new. Are you sure?')) {
-      console.log("🧹 PROCEEDING WITH FACTORY RESET...");
-
-      // 1. Clear Storage
-      localStorage.clear();
-      sessionStorage.clear();
-
-      // 2. Clear Cookies
-      document.cookie.split(";").forEach((c) => {
-        document.cookie = c
-          .replace(/^ +/, "")
-          .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
-      });
-
-      // 3. Nuke All IndexedDBs
-      if (window.indexedDB && window.indexedDB.databases) {
+  const handleSyncRepair = async () => {
+    if (window.confirm('Are you sure? This will remove all pending offline actions.')) {
+      console.log("🟡 PROCEEDING WITH SYNC REPAIR...");
+      const dbs = ['query-cache', 'REACT_QUERY_OFFLINE_CACHE'];
+      dbs.forEach((dbName) => {
         try {
-          const dbs = await window.indexedDB.databases();
-          for (const db of dbs) {
-            if (db.name) {
-              await window.indexedDB.deleteDatabase(db.name);
-              console.log(`🗑️ Database Deleted: ${db.name}`);
-            }
-          }
+          indexedDB.deleteDatabase(dbName);
+          console.log(`🗑️ Database Deleted: ${dbName}`);
         } catch (e) {
-          console.warn("⚠️ Error clearing databases:", e);
+          console.error(`Failed to delete ${dbName}`, e);
         }
-      }
-
-      // 4. Kill Service Workers
-      if (navigator.serviceWorker) {
-        const registrations = await navigator.serviceWorker.getRegistrations();
-        for (const registration of registrations) {
-          await registration.unregister();
-        }
-      }
-
-      // 5. Reload
+      });
+      localStorage.removeItem('tanstack-query-persist-client-v5');
       window.location.reload();
     }
   };
@@ -100,11 +74,11 @@ export const UserMenu = ({ isOpen, onClose, onExport, navigate }: UserMenuProps)
                 </p>
                 <span className="text-muted/30">•</span>
                 <button
-                  onClick={handleFactoryReset}
-                  className="text-[9px] text-red-500 hover:text-red-600 font-black uppercase tracking-widest transition-colors flex items-center gap-1"
+                  onClick={handleSyncRepair}
+                  className="text-[9px] text-yellow-500 hover:text-yellow-600 font-black uppercase tracking-widest transition-colors flex items-center gap-1"
                 >
-                  <RotateCcw size={10} />
-                  Reset App
+                  <RefreshCw size={10} />
+                  Sync Repair
                 </button>
               </div>
             </div>
