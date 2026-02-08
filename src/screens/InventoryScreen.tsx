@@ -438,7 +438,10 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
 
       // Call the daily-snapshot function
       const { data, error } = await supabase.functions.invoke('daily-snapshot', {
-        body: { snapshot_date }
+        body: {
+          snapshot_date,
+          to: 'rafaelukf@gmail.com'
+        }
       });
 
       if (error) throw error;
@@ -469,8 +472,8 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
             onClick={triggerDailySnapshot}
             disabled={isSendingEmail}
             className={`w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-all ${isSendingEmail
-                ? 'bg-subtle text-muted cursor-wait'
-                : 'bg-surface text-accent border border-accent/20 hover:bg-accent hover:text-white'
+              ? 'bg-subtle text-muted cursor-wait'
+              : 'bg-surface text-accent border border-accent/20 hover:bg-accent hover:text-white'
               }`}
             title="Trigger Daily Snapshot Email"
           >

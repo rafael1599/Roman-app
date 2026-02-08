@@ -66,11 +66,15 @@ serve(async (req) => {
     const publicUrl = `${publicDomain}/${fileName}`;
 
     // 5. Fetch Daily Activity (Logs) for the email summary
-    // Query logs from the start of the current NY day
+    // Robust date query: From 00:00:00 to 23:59:59 of the target day in NY
+    const startOfDay = `${targetDateForDB}T00:00:00.000Z`;
+    const endOfDay = `${targetDateForDB}T23:59:59.999Z`;
+
     const { data: logs, error: logsError } = await supabase
       .from('inventory_logs')
       .select('*')
-      .gte('created_at', `${targetDateForDB}T00:00:00Z`) // Using the calculated NY date
+      .gte('created_at', startOfDay)
+      .lte('created_at', endOfDay)
       .order('created_at', { ascending: false });
 
     if (logsError) console.error('Error fetching logs for summary:', logsError);
@@ -110,41 +114,43 @@ serve(async (req) => {
     } else {
       console.log(`Sending email to ${targetEmail} using Resend...`);
 
+      const emailBody = {
+        from: 'onboarding@resend.dev',
+        to: targetEmail, // Pass as string, not array, to match History
+        subject: body.snapshot_date
+          ? `Historic Snapshot Report - ${targetDateForDB}`
+          : `Daily Inventory Report - ${targetDateForDB}`,
+        html: `
+          <div style="font-family: sans-serif; padding: 20px; color: #111827; max-width: 600px; margin: auto; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px;">
+            <h2 style="margin-top: 0; color: #4f46e5;">Daily Inventory Activity</h2>
+            <p>Summary of SKU movements for <strong>${targetDateForDB}</strong>:</p>
+            
+            <div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 25px;">
+              ${movementSummaryHtml}
+            </div>
+
+            <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #f3f4f6;">
+              <p style="margin-bottom: 20px;">The full inventory snapshot has been saved to Cloudflare R2.</p>
+              <a href="${publicUrl}" style="background-color: #4f46e5; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
+                SEE FULL INVENTORY
+              </a>
+            </div>
+            
+            <p style="color: #6b7280; font-size: 11px; margin-top: 30px; text-align: center;">
+              Automated Report &bull; Roman Inventory System<br>
+              Link: <a href="${publicUrl}" style="color: #4f46e5;">${publicUrl}</a>
+            </p>
+          </div>
+        `,
+      };
+
       const emailResponse = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${RESEND_API_KEY}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          from: 'onboarding@resend.dev', // HARDCODED: Required for free tier
-          to: [targetEmail],
-          subject: body.snapshot_date
-            ? `📦 Historic Snapshot Report - ${targetDateForDB}`
-            : `📦 Daily Inventory Report - ${targetDateForDB}`,
-          html: `
-            <div style="font-family: sans-serif; padding: 20px; color: #111827; max-width: 600px; margin: auto; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px;">
-              <h2 style="margin-top: 0; color: #4f46e5;">Daily Inventory Activity</h2>
-              <p>Summary of SKU movements for <strong>${targetDateForDB}</strong>:</p>
-              
-              <div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 25px;">
-                ${movementSummaryHtml}
-              </div>
-
-              <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #f3f4f6;">
-                <p style="margin-bottom: 20px;">The full inventory snapshot has been saved to Cloudflare R2.</p>
-                <a href="${publicUrl}" style="background-color: #4f46e5; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
-                  SEE FULL INVENTORY
-                </a>
-              </div>
-              
-              <p style="color: #6b7280; font-size: 11px; margin-top: 30px; text-align: center;">
-                Automated Report &bull; Roman Inventory System<br>
-                Link: <a href="${publicUrl}" style="color: #4f46e5;">${publicUrl}</a>
-              </p>
-            </div>
-          `,
-        }),
+        body: JSON.stringify(emailBody),
       });
 
       const emailData = await emailResponse.json();
@@ -169,7 +175,10 @@ serve(async (req) => {
       success: true,
       url: publicUrl,
       fileName,
-      total_movements: logs?.length || 0
+      total_movements: logs?.length || 0,
+      email_id: emailData.id,
+      target_email: targetEmail,
+      debug_date: targetDateForDB
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
