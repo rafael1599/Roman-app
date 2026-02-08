@@ -133,46 +133,159 @@ function generatePremiumHTML(stats: any, data: any[]): string {
 <head>
     <meta charset="UTF-8">
     <title>Inventory Snapshot - ${stats.date}</title>
+    <style>
+        :root {
+            --report-bg: var(--bg-surface, #ffffff);
+            --report-text: var(--text-main, #111827);
+            --report-muted: var(--text-muted, #64748b);
+            --report-accent: var(--accent-primary, #4f46e5);
+            --report-border: var(--border-subtle, #e5e7eb);
+            --report-row-bg: var(--bg-main, #f8fafc);
+        }
+
+        /* Standalone / Email fallback for dark mode */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --report-bg: #1c1c1e;
+                --report-text: #ffffff;
+                --report-muted: #8e8e93;
+                --report-accent: #30d158;
+                --report-border: rgba(255, 255, 255, 0.1);
+                --report-row-bg: #000000;
+            }
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: transparent;
+            color: var(--report-text);
+            margin: 0;
+            padding: 20px;
+            transition: color 0.3s ease;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: var(--report-bg);
+            padding: 30px;
+            border-radius: 12px;
+            border: 1px solid var(--report-border);
+        }
+
+        .header {
+            border-bottom: 2px solid var(--report-border);
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: var(--report-row-bg);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid var(--report-border);
+        }
+
+        .warehouse-title {
+            font-size: 14px;
+            font-weight: bold;
+            text-transform: uppercase;
+            color: var(--report-accent);
+            border-left: 4px solid var(--report-accent);
+            padding-left: 10px;
+            margin-bottom: 15px;
+            margin-top: 30px;
+        }
+
+        .location-group {
+            margin-bottom: 20px;
+            padding-left: 15px;
+        }
+
+        .location-title {
+            font-weight: bold;
+            color: var(--report-muted);
+            font-size: 13px;
+            margin-bottom: 8px;
+        }
+
+        .sku-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .sku-row {
+            border-bottom: 1px solid var(--report-border);
+        }
+
+        .sku-cell {
+            padding: 8px 0;
+            font-size: 13px;
+        }
+
+        .sku-note {
+            color: var(--report-muted);
+            font-size: 11px;
+            margin-left: 8px;
+            opacity: 0.8;
+        }
+
+        .quantity-cell {
+            padding: 8px 0;
+            text-align: right;
+            font-weight: bold;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 14px;
+        }
+
+        .footer {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 11px;
+            color: var(--report-muted);
+            border-top: 1px solid var(--report-border);
+            padding-top: 20px;
+        }
+    </style>
 </head>
-<body style="font-family: sans-serif; background-color: #f9fafb; color: #111827; margin: 0; padding: 20px;">
-    <div style="max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; border: 1px solid #e5e7eb;">
-        <div style="border-bottom: 2px solid #f3f4f6; padding-bottom: 20px; margin-bottom: 30px;">
+<body>
+    <div class="container">
+        <div class="header">
             <h1 style="margin: 0; font-size: 24px;">Inventory Snapshot</h1>
-            <p style="color: #64748b; margin: 5px 0 0 0;">Date: ${stats.date}</p>
+            <p style="color: var(--report-muted); margin: 5px 0 0 0;">Date: ${stats.date}</p>
         </div>
 
         <div style="margin-bottom: 30px;">
             <table style="width: 100%; border-collapse: collapse;">
                 <tr>
-                    <td style="background: #f8fafc; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #f1f5f9;">
-                        <div style="font-size: 10px; color: #64748b; text-transform: uppercase;">Active SKUs</div>
-                        <div style="font-size: 20px; font-weight: bold; color: #4f46e5;">${stats.total_skus}</div>
+                    <td class="stat-card">
+                        <div style="font-size: 10px; color: var(--report-muted); text-transform: uppercase;">Active SKUs</div>
+                        <div style="font-size: 20px; font-weight: bold; color: var(--report-accent);">${stats.total_skus}</div>
                     </td>
                     <td style="width: 20px;"></td>
-                    <td style="background: #f8fafc; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #f1f5f9;">
-                        <div style="font-size: 10px; color: #64748b; text-transform: uppercase;">Total Units</div>
-                        <div style="font-size: 20px; font-weight: bold; color: #4f46e5;">${stats.total_units.toLocaleString()}</div>
+                    <td class="stat-card">
+                        <div style="font-size: 10px; color: var(--report-muted); text-transform: uppercase;">Total Units</div>
+                        <div style="font-size: 20px; font-weight: bold; color: var(--report-accent);">${stats.total_units.toLocaleString()}</div>
                     </td>
                 </tr>
             </table>
         </div>
 
         ${Object.keys(grouped).map(wh => `
-            <div style="margin-top: 30px;">
-                <div style="font-size: 14px; font-weight: bold; text-transform: uppercase; color: #4f46e5; border-left: 4px solid #4f46e5; padding-left: 10px; margin-bottom: 15px;">
-                    ${wh}
-                </div>
+            <div>
+                <div class="warehouse-title">${wh}</div>
                 ${Object.keys(grouped[wh]).map(loc => `
-                    <div style="margin-bottom: 20px; padding-left: 15px;">
-                        <div style="font-weight: bold; color: #475569; font-size: 13px; margin-bottom: 8px;">[${loc}]</div>
-                        <table style="width: 100%; border-collapse: collapse;">
+                    <div class="location-group">
+                        <div class="location-title">[${loc}]</div>
+                        <table class="sku-table">
                             ${grouped[wh][loc].map((item: any) => `
-                                <tr style="border-bottom: 1px solid #f1f5f9;">
-                                    <td style="padding: 8px 0; font-size: 13px;">
+                                <tr class="sku-row">
+                                    <td class="sku-cell">
                                         ${item.sku} 
-                                        <span style="color:#94a3b8; font-size:11px; margin-left: 8px;">${item.sku_note || ''}</span>
+                                        <span class="sku-note">${item.sku_note || ''}</span>
                                     </td>
-                                    <td style="padding: 8px 0; text-align: right; font-weight: bold; font-family: monospace; font-size: 14px;">
+                                    <td class="quantity-cell">
                                         ${item.quantity}
                                     </td>
                                 </tr>
@@ -183,7 +296,7 @@ function generatePremiumHTML(stats: any, data: any[]): string {
             </div>
         `).join('')}
 
-        <div style="margin-top: 40px; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #f3f4f6; padding-top: 20px;">
+        <div class="footer">
             Roman Inventory System &bull; Generated Automatically
         </div>
     </div>
