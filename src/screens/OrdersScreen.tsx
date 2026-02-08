@@ -1,7 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
-import { Loader2, Package, Printer, ChevronRight, X, Save, Scale, Search } from 'lucide-react';
+import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
+import Package from 'lucide-react/dist/esm/icons/package';
+import Printer from 'lucide-react/dist/esm/icons/printer';
+import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right';
+import X from 'lucide-react/dist/esm/icons/x';
+import Save from 'lucide-react/dist/esm/icons/save';
+import Scale from 'lucide-react/dist/esm/icons/scale';
+import Search from 'lucide-react/dist/esm/icons/search';
 import toast from 'react-hot-toast';
 import { PalletLabelsPrinter } from '../components/orders/PalletLabelsPrinter';
 

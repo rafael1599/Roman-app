@@ -1,13 +1,12 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
+
 import { createPortal } from 'react-dom';
-import {
-    X,
-    ArrowRightLeft,
-    CheckCircle2,
-    AlertTriangle,
-    Zap,
-    AlertCircle,
-} from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x';
+import ArrowRightLeft from 'lucide-react/dist/esm/icons/arrow-right-left';
+import CheckCircle2 from 'lucide-react/dist/esm/icons/check-circle-2';
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle';
+import Zap from 'lucide-react/dist/esm/icons/zap';
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle';
 import { useInventory } from '../../../hooks/useInventoryData';
 import { useMovementForm } from '../../../hooks/useMovementForm';
 import { useLocationSuggestions } from '../../../hooks/useLocationSuggestions';
@@ -47,7 +46,8 @@ export const MovementModal: React.FC<MovementModalProps> = ({ isOpen, onClose, o
         excludeLoc
     );
 
-    const [confirmCreateNew, setConfirmCreateNew] = useState(false);
+    // const [confirmCreateNew, setConfirmCreateNew] = useState(false); // REMOVED
+
 
     const validLocationNames = useMemo(() => {
         if (!locations || locations.length === 0) return [];
@@ -64,10 +64,11 @@ export const MovementModal: React.FC<MovementModalProps> = ({ isOpen, onClose, o
         [formData.targetLocation, validLocationNames]
     );
 
-    const isNewLocation = useMemo(() => {
-        if (!formData.targetLocation) return false;
-        return !prediction.exactMatch;
-    }, [formData.targetLocation, prediction]);
+    // const isNewLocation = useMemo(() => {
+    //     if (!formData.targetLocation) return false;
+    //     return !prediction.exactMatch;
+    // }, [formData.targetLocation, prediction]);
+
 
     useEffect(() => {
         if (isOpen) {
@@ -75,7 +76,8 @@ export const MovementModal: React.FC<MovementModalProps> = ({ isOpen, onClose, o
         } else {
             setIsNavHidden!(false);
         }
-        setConfirmCreateNew(false);
+        // setConfirmCreateNew(false);
+
         return () => setIsNavHidden!(false);
     }, [formData.targetLocation, isOpen, setIsNavHidden]);
 
@@ -95,7 +97,8 @@ export const MovementModal: React.FC<MovementModalProps> = ({ isOpen, onClose, o
                     score: 100,
                     current: cap?.current || 0,
                     max: cap?.max || locObj?.max_capacity || 550,
-                    zone_type: locObj?.zone_type || 'UNKNOWN',
+                    zone_type: locObj?.zone || 'UNKNOWN',
+
                 };
             });
         }
@@ -136,8 +139,8 @@ export const MovementModal: React.FC<MovementModalProps> = ({ isOpen, onClose, o
 
     const isValid =
         validate().isValid &&
-        (!isNewLocation || (isNewLocation && confirmCreateNew)) &&
         !isSameLocation;
+
 
     if (!isOpen) return null;
 
@@ -347,39 +350,7 @@ export const MovementModal: React.FC<MovementModalProps> = ({ isOpen, onClose, o
                                 </div>
                             )}
 
-                            {isNewLocation && formData.targetLocation && (
-                                <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl animate-in fade-in slide-in-from-top-2">
-                                    <div className="flex items-start gap-3">
-                                        <AlertCircle className="text-yellow-500 shrink-0 mt-0.5" size={20} />
-                                        <div>
-                                            <p className="text-[10px] font-black uppercase text-yellow-500 tracking-widest">
-                                                Unrecognized Location
-                                            </p>
-                                        </div>
-                                    </div>
 
-                                    <div className="mt-4 pt-4 border-t border-yellow-500/10">
-                                        <label className="flex items-center gap-3 cursor-pointer group">
-                                            <div
-                                                className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${confirmCreateNew ? 'bg-yellow-500 border-yellow-500' : 'border-neutral-500 group-hover:border-yellow-500'}`}
-                                            >
-                                                {confirmCreateNew && <CheckCircle2 size={14} className="text-black" />}
-                                            </div>
-                                            <input
-                                                type="checkbox"
-                                                className="hidden"
-                                                checked={confirmCreateNew}
-                                                onChange={(e) => setConfirmCreateNew(e.target.checked)}
-                                            />
-                                            <span
-                                                className={`text-[10px] font-black uppercase tracking-wide ${confirmCreateNew ? 'text-content' : 'text-muted'}`}
-                                            >
-                                                Confirm New Location
-                                            </span>
-                                        </label>
-                                    </div>
-                                </div>
-                            )}
                         </div>
                     </div>
                 </div>
@@ -394,7 +365,8 @@ export const MovementModal: React.FC<MovementModalProps> = ({ isOpen, onClose, o
                             }`}
                     >
                         <CheckCircle2 size={20} />
-                        {isNewLocation ? 'Create & Move' : 'Confirm Move'}
+                        Confirm Move
+
                     </button>
                 </div>
             </div>

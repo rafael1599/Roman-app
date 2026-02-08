@@ -16,8 +16,9 @@ export interface LocationInfo {
 
 export interface SuggestionPromo {
     sku: string;
-    location: string | null;
+    location: string;
     warehouse: string;
+    quantity: number;
 }
 
 export interface Suggestion {
@@ -181,13 +182,15 @@ export const useOptimizationReports = () => {
                             details: `Swap ${fastItem.sku} (Fast: ${fastItem.velocity.toFixed(1)}/day) from WARM with ${swapCandidate.sku} (Slow: ${swapCandidate.velocity.toFixed(1)}/day) from HOT.`,
                             promote: {
                                 sku: fastItem.sku,
-                                location: fastItem.location,
+                                location: fastItem.location || 'UNKNOWN',
                                 warehouse: fastItem.warehouse,
+                                quantity: fastItem.quantity,
                             },
                             demote: {
                                 sku: swapCandidate.sku,
-                                location: swapCandidate.location,
+                                location: swapCandidate.location || 'UNKNOWN',
                                 warehouse: swapCandidate.warehouse,
+                                quantity: swapCandidate.quantity,
                             },
                             action_label: `Move ${fastItem.sku} to ${swapCandidate.location}`,
                         });

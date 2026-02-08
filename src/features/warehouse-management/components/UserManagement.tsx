@@ -1,17 +1,15 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { supabase } from '../../../lib/supabase';
-import {
-  UserPlus,
-  UserRoundPen,
-  Mail,
-  Shield,
-  User as UserIcon,
-  Loader2,
-  Key,
-  Save,
-  ShieldCheck,
-  ShieldOff,
-} from 'lucide-react';
+import UserPlus from 'lucide-react/dist/esm/icons/user-plus';
+import UserRoundPen from 'lucide-react/dist/esm/icons/user-round-pen';
+import Mail from 'lucide-react/dist/esm/icons/mail';
+import Shield from 'lucide-react/dist/esm/icons/shield';
+import UserIcon from 'lucide-react/dist/esm/icons/user';
+import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
+import Key from 'lucide-react/dist/esm/icons/key';
+import Save from 'lucide-react/dist/esm/icons/save';
+import ShieldCheck from 'lucide-react/dist/esm/icons/shield-check';
+import ShieldOff from 'lucide-react/dist/esm/icons/shield-off';
 import toast from 'react-hot-toast';
 import { useConfirmation } from '../../../context/ConfirmationContext';
 
@@ -20,11 +18,11 @@ interface Profile {
   full_name: string | null;
   email: string | null;
   role: string | null;
-  is_active?: boolean;
-  last_seen_at?: string | null;
-  created_at?: string;
-  age?: number | null;
-  avatar_url?: string | null;
+  is_active: boolean | null;
+  last_seen_at: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+  created_by: string | null;
 }
 
 const formatRelativeTime = (dateString: string) => {

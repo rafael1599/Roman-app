@@ -1,6 +1,10 @@
 import { useState } from 'react';
 import { useInventory } from '../../../hooks/useInventoryData';
-import { ArrowRight, Check, X, TrendingUp, Clock } from 'lucide-react';
+import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right';
+import Check from 'lucide-react/dist/esm/icons/check';
+import X from 'lucide-react/dist/esm/icons/x';
+import TrendingUp from 'lucide-react/dist/esm/icons/trending-up';
+import Clock from 'lucide-react/dist/esm/icons/clock';
 import toast from 'react-hot-toast';
 import { useError } from '../../../context/ErrorContext';
 
@@ -24,7 +28,7 @@ interface Suggestion {
 }
 
 interface Report {
-  id: string;
+  id?: string | number;
   report_date: string;
   suggestions: {
     items: Suggestion[];

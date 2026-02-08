@@ -1,240 +1,249 @@
 import { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Search, Calendar, Copy, Check, Info, Map as MapIcon, Layers } from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x';
+import MapIcon from 'lucide-react/dist/esm/icons/map';
+import Layers from 'lucide-react/dist/esm/icons/layers';
+import LinkIcon from 'lucide-react/dist/esm/icons/link';
+import Check from 'lucide-react/dist/esm/icons/check';
+import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle';
+
 import { useInventorySnapshot, type SnapshotItem } from '../../../hooks/useInventorySnapshot';
-import { useInventory } from '../../../hooks/useInventoryData';
 import { toast } from 'react-hot-toast';
 
-interface InventorySnapshotModalProps {
-    isOpen: boolean;
-    onClose: () => void;
-}
+const naturalSort = (a: string, b: string) =>
+    a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
 
-export const InventorySnapshotModal = ({ isOpen, onClose }: InventorySnapshotModalProps) => {
+export const InventorySnapshotModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
     const { loading, data, fetchSnapshot } = useInventorySnapshot();
-    const { inventoryData } = useInventory();
     const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
     const [searchQuery, setSearchQuery] = useState('');
-    const [copied, setCopied] = useState(false);
 
-    useEffect(() => {
-        if (isOpen) {
-            const date = new Date(selectedDate);
-            fetchSnapshot(date);
-        }
-    }, [isOpen, selectedDate]);
+    const [copiedLink, setCopiedLink] = useState(false);
+    const [copiedMarkdown, setCopiedMarkdown] = useState(false);
 
-    // Create a map of current inventory for "T" logic comparison
-    const currentStockMap = useMemo(() => {
-        const map = new Map<string, number>();
-        inventoryData.forEach(item => {
-            const key = `${item.warehouse}-${item.location}-${item.sku}`;
-            map.set(key, (map.get(key) || 0) + (item.quantity || 0));
-        });
-        return map;
-    }, [inventoryData]);
+    // Estados para la validación del link
+    const [linkExists, setLinkExists] = useState(false);
+    const [verifyingLink, setVerifyingLink] = useState(false);
 
+    const R2_PUBLIC_DOMAIN = "https://pub-1a61139939fa4f3ba21ee7909510985c.r2.dev";
+
+    // 1. Lógica de Filtrado (Debe ir primero)
     const filteredData = useMemo(() => {
-        if (!searchQuery) return data;
-        const query = searchQuery.toLowerCase();
-        return data.filter(item =>
+        const activeItems = data.filter(item => {
+            const qty = typeof item.quantity === 'number' ? item.quantity : Number(item.quantity);
+            return !isNaN(qty) && qty > 0;
+        });
+        if (!searchQuery) return activeItems;
+        const query = searchQuery.toLowerCase().trim();
+        return activeItems.filter(item =>
             item.sku.toLowerCase().includes(query) ||
             item.location.toLowerCase().includes(query) ||
             item.warehouse.toLowerCase().includes(query)
         );
     }, [data, searchQuery]);
 
-    // Grouping logic: Warehouse -> Location -> Items
+    // 2. Lógica de Agrupamiento (Debe ir antes de usarla en Markdown)
     const groupedData = useMemo(() => {
         const groups: Record<string, Record<string, SnapshotItem[]>> = {};
-
         filteredData.forEach(item => {
             const wh = item.warehouse || 'UNKNOWN';
             const loc = item.location || 'GENERAL';
-
             if (!groups[wh]) groups[wh] = {};
             if (!groups[wh][loc]) groups[wh][loc] = [];
-
             groups[wh][loc].push(item);
         });
-
-        return groups;
-    }, [filteredData]);
-
-    const markdownContent = useMemo(() => {
-        if (!data.length) return '';
-        let md = `# Inventory Snapshot - ${selectedDate}\n\n`;
-
-        Object.entries(groupedData).forEach(([wh, locations]) => {
-            md += `## Warehouse: ${wh}\n\n`;
-            Object.entries(locations).forEach(([loc, items]) => {
-                md += `### Location: ${loc}\n`;
-                items.forEach(item => {
-                    const currentQty = currentStockMap.get(`${item.warehouse}-${item.location}-${item.sku}`) ?? 0;
-                    const isDifferent = item.quantity !== currentQty;
-                    const prefix = isDifferent ? 'T, ' : '';
-                    const qtyText = (item.quantity ?? 0) === 0 ? '0 (OUT)' : (item.quantity ?? 0);
-                    md += `- ${prefix}SKU: ${item.sku} | Qty: ${qtyText}\n`;
-                });
-                md += '\n';
+        const sortedWarehouses = Object.keys(groups).sort(naturalSort);
+        const sortedGroups: Record<string, Record<string, SnapshotItem[]>> = {};
+        sortedWarehouses.forEach(wh => {
+            const locations = groups[wh];
+            sortedGroups[wh] = {};
+            Object.keys(locations).sort(naturalSort).forEach(loc => {
+                sortedGroups[wh][loc] = locations[loc];
             });
         });
-        return md;
-    }, [groupedData, selectedDate, data, currentStockMap]);
+        return sortedGroups;
+    }, [filteredData]);
 
-    const handleCopy = () => {
+    // 3. Lógica de Markdown (Usa groupedData)
+    const markdownContent = useMemo(() => {
+        if (!filteredData.length) return '';
+        let md = `INVENTORY SNAPSHOT - ${selectedDate}\n`;
+        md += `==========================================\n\n`;
+
+        Object.entries(groupedData).forEach(([wh, locations]) => {
+            md += `WAREHOUSE: ${wh.toUpperCase()}\n`;
+            md += `------------------------------------------\n`;
+
+            Object.entries(locations).forEach(([loc, items]) => {
+                md += `\n[${loc}]\n`;
+                items.forEach(item => {
+                    const noteStr = item.sku_note ? ` (${item.sku_note})` : '';
+                    const displayQty = Math.max(0, item.quantity);
+                    if (displayQty > 0) {
+                        md += `- ${item.sku}${noteStr} | Qty: ${displayQty}\n`;
+                    }
+                });
+            });
+            md += `\n\n`;
+        });
+        return md;
+    }, [groupedData, selectedDate, filteredData]);
+
+    // 4. Lógica de Links y Efectos
+    const dailyLink = useMemo(() => {
+        const [year, month, day] = selectedDate.split('-');
+        const usDate = `${month}-${day}-${year}`;
+        return `${R2_PUBLIC_DOMAIN}/inventory-snapshot-${usDate}.html`;
+    }, [selectedDate, R2_PUBLIC_DOMAIN]);
+
+    // Efecto para cargar datos y VERIFICAR si el link existe en R2
+    useEffect(() => {
+        if (!isOpen) return;
+
+        // 1. Cargar datos de la DB para la previsualización
+        fetchSnapshot(selectedDate);
+
+        // 2. Verificación de archivo en Cloudflare
+        const checkFile = async () => {
+            setVerifyingLink(true);
+            setLinkExists(false);
+            try {
+                // Hacemos una petición HEAD (solo para ver si existe, sin descargar todo)
+                const response = await fetch(dailyLink, { method: 'HEAD' });
+                setLinkExists(response.ok);
+            } catch (err) {
+                setLinkExists(false);
+            } finally {
+                setVerifyingLink(false);
+            }
+        };
+
+        checkFile();
+    }, [isOpen, selectedDate, dailyLink, fetchSnapshot]);
+
+    const handleCopyLink = () => {
+        if (!linkExists) return;
+        navigator.clipboard.writeText(dailyLink);
+        toast.success('Shareable link copied to clipboard!');
+        setCopiedLink(true);
+        setTimeout(() => setCopiedLink(false), 2000);
+    };
+
+    const handleCopyMarkdown = () => {
         navigator.clipboard.writeText(markdownContent);
-        setCopied(true);
-        toast.success('Inventory Map copied to clipboard');
-        setTimeout(() => setCopied(false), 2000);
+        setCopiedMarkdown(true);
+        toast.success('Inventory Map copied to clipboard (Markdown)');
+        setTimeout(() => setCopiedMarkdown(false), 2000);
     };
 
     if (!isOpen) return null;
 
     return createPortal(
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={onClose} />
-
-            <div className="relative w-full max-w-4xl bg-card border border-subtle rounded-[2.5rem] overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-300 flex flex-col h-[800px] max-h-[95vh]">
-                {/* Header */}
-                <div className="p-8 pb-4 flex justify-between items-start bg-surface/30">
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-main/80 backdrop-blur-sm" onClick={onClose} />
+            <div className="relative w-full max-w-4xl bg-surface border border-subtle rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                <div className="px-8 py-6 border-b border-subtle flex justify-between items-center bg-card">
                     <div>
-                        <h2 className="text-3xl font-black uppercase tracking-tighter text-content flex items-center gap-3">
-                            <MapIcon className="text-accent" size={32} />
-                            Warehouse Map Snapshot
+                        <h2 className="text-2xl font-black uppercase tracking-tighter flex items-center gap-2">
+                            <MapIcon className="text-accent" /> Inventory Map
                         </h2>
-                        <p className="text-[10px] text-muted font-bold uppercase tracking-[0.2em] mt-2">
-                            Snapshot context at {selectedDate} (6:00 PM)
-                        </p>
                     </div>
-                    <div className="flex gap-2">
-                        <button
-                            onClick={handleCopy}
-                            disabled={loading || !data.length}
-                            className="flex items-center gap-2 px-6 py-3 bg-accent text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 shadow-lg shadow-accent/20 disabled:opacity-50"
-                        >
-                            {copied ? <Check size={16} /> : <Copy size={16} />}
-                            {copied ? 'Copied' : 'Copy Full Map (MD)'}
-                        </button>
-                        <button
-                            onClick={onClose}
-                            className="p-3 hover:bg-surface rounded-full text-muted transition-all active:scale-90 border border-subtle"
-                        >
-                            <X size={24} />
-                        </button>
-                    </div>
+                    <button onClick={onClose} className="p-2 hover:bg-main rounded-full transition-colors"><X size={24} /></button>
                 </div>
 
                 <div className="px-8 py-6 space-y-6 overflow-hidden flex flex-col flex-1">
-                    {/* Controls */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         <div className="space-y-2">
-                            <label className="text-[10px] text-muted font-black uppercase tracking-widest pl-1">
-                                Audit Date
-                            </label>
-                            <div className="relative group">
-                                <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-muted group-focus-within:text-accent transition-colors" size={18} />
-                                <input
-                                    type="date"
-                                    min="2024-01-01"
-                                    max={new Date().toISOString().split('T')[0]}
-                                    value={selectedDate}
-                                    onChange={(e) => setSelectedDate(e.target.value)}
-                                    className="w-full bg-surface border border-subtle rounded-2xl py-3.5 pl-12 pr-4 text-sm font-bold focus:outline-none focus:border-accent/50 focus:ring-4 focus:ring-accent/10 transition-all text-content"
-                                />
-                            </div>
+                            <label className="text-[10px] text-muted font-black uppercase tracking-widest pl-1">Audit Date</label>
+                            <input
+                                type="date"
+                                value={selectedDate}
+                                onChange={(e) => setSelectedDate(e.target.value)}
+                                className="w-full bg-surface border border-subtle rounded-2xl py-3.5 px-4 text-xs font-bold focus:outline-none focus:border-accent text-content"
+                            />
                         </div>
-
-                        <div className="space-y-2">
-                            <label className="text-[10px] text-muted font-black uppercase tracking-widest pl-1">
-                                Global Filter (SKU, Location, Wh)
-                            </label>
-                            <div className="relative group">
-                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted group-focus-within:text-accent transition-colors" size={18} />
-                                <input
-                                    type="text"
-                                    placeholder="Search in map..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full bg-surface border border-subtle rounded-2xl py-3.5 pl-12 pr-4 text-sm font-bold focus:outline-none focus:border-accent/50 focus:ring-4 focus:ring-accent/10 transition-all text-content"
-                                />
-                            </div>
+                        <div className="sm:col-span-1 lg:col-span-2 space-y-2">
+                            <label className="text-[10px] text-muted font-black uppercase tracking-widest pl-1">Instant Search</label>
+                            <input
+                                type="text"
+                                placeholder="Search SKU, location or warehouse..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full bg-surface border border-subtle rounded-2xl py-3.5 px-4 text-xs font-bold focus:outline-none focus:border-accent text-content"
+                            />
                         </div>
                     </div>
 
-                    {/* Warning Message */}
-                    <div className="p-4 bg-accent/5 border border-accent/10 rounded-2xl flex items-start gap-3">
-                        <Info className="text-accent shrink-0 mt-0.5" size={18} />
-                        <p className="text-[11px] font-bold text-muted leading-relaxed uppercase tracking-tight">
-                            Note: SKUs marked with <span className="text-accent font-black">'T,'</span> represent a quantity difference compared to current live stock.
-                        </p>
-                    </div>
-
-                    {/* Results Area */}
-                    <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide pb-8">
+                    <div className="flex-1 overflow-y-auto space-y-8 scrollbar-hide">
                         {loading ? (
-                            <div className="h-full flex flex-col items-center justify-center gap-4 text-muted">
-                                <div className="w-16 h-16 border-4 border-accent/10 border-t-accent animate-spin rounded-full" />
-                                <span className="font-black uppercase tracking-widest text-[10px] animate-pulse">Reconstructing warehouse history...</span>
-                            </div>
-                        ) : Object.keys(groupedData).length === 0 ? (
-                            <div className="h-full flex flex-col items-center justify-center gap-4 text-muted opacity-30">
-                                <Layers size={64} />
-                                <span className="font-black uppercase tracking-widest text-xs">No records found</span>
+                            <div className="flex flex-col items-center justify-center py-20 opacity-30">
+                                <Loader2 className="animate-spin mb-4" size={40} />
+                                <p className="text-xs font-black uppercase tracking-widest">Loading Live Data...</p>
                             </div>
                         ) : (
-                            <div className="space-y-12">
-                                {Object.entries(groupedData).map(([wh, locations]) => (
-                                    <div key={wh} className="space-y-6">
-                                        <div className="flex items-center gap-4">
-                                            <div className="h-px flex-1 bg-subtle" />
-                                            <h3 className="text-2xl font-black uppercase tracking-tighter text-content bg-surface px-6 py-2 rounded-full border border-subtle shadow-sm flex items-center gap-3">
-                                                <Layers className="text-accent" size={20} />
-                                                {wh}
-                                            </h3>
-                                            <div className="h-px flex-1 bg-subtle" />
-                                        </div>
-
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                            {Object.entries(locations).map(([loc, items]) => (
-                                                <div key={loc} className="bg-surface/50 border border-subtle rounded-[2rem] p-6 hover:border-accent/30 transition-all group shadow-sm">
-                                                    <div className="flex justify-between items-center mb-4 border-b border-subtle pb-3">
-                                                        <span className="text-xs font-black uppercase tracking-[0.2em] text-accent">
-                                                            {loc}
-                                                        </span>
-                                                        <span className="text-[9px] font-black text-muted uppercase">
-                                                            {items.length} Items
-                                                        </span>
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        {items.map((item, idx) => {
-                                                            const currentQty = currentStockMap.get(`${item.warehouse}-${item.location}-${item.sku}`) ?? 0;
-                                                            const isDifferent = item.quantity !== currentQty;
-                                                            const isAgotado = (item.quantity ?? 0) === 0;
-
-                                                            return (
-                                                                <div key={idx} className={`flex justify-between items-center text-[11px] font-mono group/item ${isAgotado ? 'opacity-40 grayscale' : ''}`}>
-                                                                    <span className={`text-content/80 flex items-center gap-1 ${isAgotado ? 'text-muted line-through' : ''}`}>
-                                                                        {isDifferent && <span className="text-accent font-black">T,</span>}
-                                                                        {item.sku}
-                                                                    </span>
-                                                                    <div className="h-px flex-1 mx-2 bg-subtle group-hover/item:bg-accent/20 transition-colors" />
-                                                                    <span className={`font-bold ${isAgotado ? 'text-muted' : 'text-content'}`}>
-                                                                        {isAgotado ? 'OUT' : `Qty: ${item.quantity ?? 0}`}
-                                                                    </span>
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
+                            Object.entries(groupedData).map(([wh, locations]) => (
+                                <div key={wh} className="space-y-4">
+                                    <h3 className="text-sm font-black uppercase tracking-[0.2em] border-l-4 border-accent pl-2">{wh}</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        {Object.entries(locations).map(([loc, items]) => (
+                                            <div key={loc} className="bg-card/30 border border-subtle rounded-3xl p-5">
+                                                <div className="flex justify-between items-center mb-3">
+                                                    <span className="text-[10px] font-black uppercase text-muted">[ {loc} ]</span>
+                                                    <span className="text-[10px] font-bold text-accent">{items.length} units</span>
                                                 </div>
-                                            ))}
-                                        </div>
+                                                <div className="space-y-1">
+                                                    {items.map(item => (
+                                                        <div key={item.sku} className="flex justify-between text-xs">
+                                                            <span className="font-bold">{item.sku}</span>
+                                                            <span className="font-black text-accent">{item.quantity}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
-                                ))}
-                            </div>
+                                </div>
+                            ))
                         )}
                     </div>
                 </div>
+
+                <div className="px-8 py-6 bg-card border-t border-subtle flex gap-4">
+                    <button
+                        onClick={handleCopyMarkdown}
+                        disabled={loading || !markdownContent}
+                        className={`flex-1 flex items-center justify-center gap-3 transition-all py-5 rounded-2xl text-xs font-black uppercase tracking-widest border border-subtle hover:border-accent/30 ${copiedMarkdown ? 'bg-green-500/10 text-green-500 border-green-500/20' : 'bg-surface text-content active:scale-95'
+                            }`}
+                    >
+                        {copiedMarkdown ? <Check size={18} /> : <Layers size={18} />}
+                        {copiedMarkdown ? 'Markdown Copied!' : 'Copy Markdown'}
+                    </button>
+
+                    <button
+                        onClick={handleCopyLink}
+                        disabled={loading || verifyingLink || !linkExists}
+                        className={`flex-1 flex items-center justify-center gap-3 transition-all py-5 rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl ${!linkExists
+                            ? 'bg-subtle text-muted opacity-50 cursor-not-allowed'
+                            : copiedLink
+                                ? 'bg-green-500 text-white shadow-green-500/20'
+                                : 'bg-content text-main active:scale-95 shadow-accent/20'
+                            }`}
+                    >
+                        {verifyingLink ? <Loader2 className="animate-spin" size={18} /> :
+                            !linkExists ? <AlertCircle size={18} /> :
+                                copiedLink ? <Check size={18} /> : <LinkIcon size={18} />}
+
+                        {verifyingLink ? 'Verifying...' : !linkExists ? `No Snapshot` : copiedLink ? 'Link Copied!' : `Shareable Link`}
+                    </button>
+                </div>
+                {!linkExists && !verifyingLink && !loading && (
+                    <div className="pb-6 px-8 bg-card text-center">
+                        <p className="text-[9px] text-accent font-black uppercase tracking-widest animate-pulse">
+                            Wait for daily sync at 6:00 PM (NY Time)
+                        </p>
+                    </div>
+                )}
             </div>
         </div>,
         document.body

@@ -24,35 +24,13 @@ import { validateData, validateArray } from '../utils/validate';
  * Provides type-safe methods and centralized validation.
  */
 export const inventoryApi = {
-  /**
-   * Fetch all inventory items
-   */
-  async fetchInventory(): Promise<InventoryItem[]> {
-    const { data, error } = await supabase
-      .from('inventory')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-    return validateArray(InventoryItemSchema, data || []);
-  },
-
-  /**
-   * Fetch metadata for all SKUs
-   */
-  async fetchAllMetadata(): Promise<SKUMetadata[]> {
-    const { data, error } = await supabase.from('sku_metadata').select('*');
-
-    if (error) throw error;
-    return validateArray(SKUMetadataSchema, data || []);
-  },
 
   /**
    * OPTIMIZED: Fetch inventory with metadata in single query (reduces round-trips)
    * Use this instead of calling fetchInventory() + fetchAllMetadata() separately
    */
-  async fetchInventoryWithMetadata(): Promise<any[]> {
-    const { data, error } = await supabase
+  async fetchInventoryWithMetadata(includeInactive = false): Promise<any[]> {
+    let query = supabase
       .from('inventory')
       .select(
         `
@@ -61,6 +39,12 @@ export const inventoryApi = {
             `
       )
       .order('created_at', { ascending: false });
+
+    if (!includeInactive) {
+      query = query.eq('is_active', true);
+    }
+
+    const { data, error } = await query;
 
     if (error) throw error;
     // Since this is a nested join, we use unknown[] and then validate each partially or fully if needed.

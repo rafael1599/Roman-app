@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
 
@@ -7,29 +7,38 @@ export interface SnapshotItem {
     location: string;
     sku: string;
     quantity: number;
+    sku_note?: string | null;
+    location_id?: string | null;
 }
 
 export const useInventorySnapshot = () => {
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState<SnapshotItem[]>([]);
 
-    const fetchSnapshot = async (date: Date) => {
+    const fetchSnapshot = useCallback(async (date: Date | string) => {
         setLoading(true);
         try {
-            // Rule: Set time to 18:00:00 (6:00 PM) local time
-            const targetDate = new Date(date);
-            targetDate.setHours(18, 0, 0, 0);
+            // Manejar tanto objetos Date como strings YYYY-MM-DD
+            const targetDate = typeof date === 'string'
+                ? date
+                : date.toISOString().split('T')[0];
 
-            const targetTimestamp = targetDate.toISOString();
+            console.log('Fetching snapshot for date:', targetDate);
 
-            // @ts-ignore - RPC manually added to database
-            const { data: snapshotData, error } = await supabase.rpc('get_stock_at_timestamp', {
-                target_timestamp: targetTimestamp,
+            // Call new RPC: get_snapshot
+            const { data: snapshotData, error } = await supabase.rpc('get_snapshot', {
+                p_target_date: targetDate,
             });
 
-            if (error) throw error;
+            if (error) {
+                console.error('Snapshot RPC error:', error);
+                throw error;
+            }
 
-            console.log('Snapshot Data:', snapshotData);
+            if (!snapshotData || snapshotData.length === 0) {
+                setData([]);
+                return;
+            }
 
             setData(snapshotData || []);
         } catch (err: any) {
@@ -39,7 +48,7 @@ export const useInventorySnapshot = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
     return {
         loading,

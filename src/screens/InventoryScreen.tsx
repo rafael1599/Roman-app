@@ -8,7 +8,10 @@ import { InventoryModal } from '../features/inventory/components/InventoryModal'
 import { PickingCartDrawer } from '../features/picking/components/PickingCartDrawer';
 import CamScanner from '../features/smart-picking/components/CamScanner';
 import { naturalSort } from '../utils/sortUtils';
-import { Plus, Warehouse, Sparkles, X } from 'lucide-react';
+import Plus from 'lucide-react/dist/esm/icons/plus';
+import Warehouse from 'lucide-react/dist/esm/icons/warehouse';
+import Sparkles from 'lucide-react/dist/esm/icons/sparkles';
+import X from 'lucide-react/dist/esm/icons/x';
 import { MovementModal } from '../features/inventory/components/MovementModal';
 import { CapacityBar } from '../components/ui/CapacityBar.tsx';
 import toast from 'react-hot-toast';
@@ -24,6 +27,21 @@ import { SessionInitializationModal } from '../features/picking/components/Sessi
 import { InventoryItemWithMetadata } from '../schemas/inventory.schema';
 import { Location } from '../schemas/location.schema';
 
+const SEARCHING_MESSAGE = (
+  <div className="py-20 text-center text-muted font-bold uppercase tracking-widest animate-pulse">
+    Searching Inventory...
+  </div>
+);
+
+const NO_INVENTORY_MESSAGE = (
+  <div className="text-center text-muted mt-20 py-20 border-2 border-dashed border-subtle rounded-3xl">
+    <Warehouse className="mx-auto mb-4 opacity-20" size={48} />
+    <p className="text-xl font-black uppercase tracking-widest opacity-30">
+      No inventory found
+    </p>
+  </div>
+);
+
 export const InventoryScreen = () => {
   const {
     inventoryData,
@@ -33,8 +51,11 @@ export const InventoryScreen = () => {
     updateItem,
     moveItem,
     deleteItem,
+    processPickingList,
     loading,
     syncFilters,
+    showInactive,
+    setShowInactive,
   } = useInventory();
 
   const [localSearch, setLocalSearch] = useState('');
@@ -51,8 +72,9 @@ export const InventoryScreen = () => {
   const filteredInventory = useMemo(() => {
     const s = debouncedSearch.toLowerCase().trim();
     return inventoryData.filter((item) => {
-      // Basic stock filter (match server behavior: quantity > 0)
-      if ((item.quantity || 0) <= 0) return false;
+      // Show all active items (even with quantity 0)
+      // We no longer filter out quantity <= 0 here because the user wants them visible
+      // unless specifically deactivated (is_active = FALSE), which is handled by the initial query.
 
       if (!s) return true;
 
@@ -188,7 +210,6 @@ export const InventoryScreen = () => {
     updateCartQty,
     setCartQty,
     removeFromCart,
-    completeList,
     markAsReady,
     lockForCheck,
     releaseCheck,
@@ -403,7 +424,7 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
     <div className="pb-4 relative">
       <SessionInitializationModal />
 
-      {showWelcome && (
+      {showWelcome ? (
         <div className="mx-4 mt-4 relative group animate-in fade-in slide-in-from-top-4 duration-1000">
           <div className="absolute -inset-0.5 bg-gradient-to-r from-accent to-blue-600 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
           <div className="relative bg-surface border border-accent/20 rounded-2xl p-6 overflow-hidden">
@@ -435,7 +456,7 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
             </div>
           </div>
         </div>
-      )}
+      ) : null}
 
       <SearchInput
         value={localSearch}
@@ -445,80 +466,108 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
         onScanClick={() => setShowScanner(true)}
       />
 
+      <div className="px-4 pt-2 flex items-center gap-2">
+        <input
+          type="checkbox"
+          id="show-inactive"
+          checked={showInactive}
+          onChange={(e) => setShowInactive(e.target.checked)}
+          className="rounded border-neutral-600 bg-surface text-accent focus:ring-accent focus:ring-offset-0 h-4 w-4"
+        />
+        <label htmlFor="show-inactive" className="text-sm text-muted font-medium cursor-pointer select-none">
+          Show Deleted Items
+        </label>
+      </div>
+
+
       <div className="p-4 space-y-12 min-h-[50vh]">
         {isLoading && !locationBlocks.length ? (
-          <div className="py-20 text-center text-muted font-bold uppercase tracking-widest animate-pulse">
-            Searching Inventory...
-          </div>
+          SEARCHING_MESSAGE
         ) : (
-          locationBlocks.map(({ wh, location, items, locationId }) => (
-            <div key={`${wh}-${location}`} className="space-y-4">
-              <div className="sticky top-[84px] bg-main/95 backdrop-blur-sm z-30 py-3 border-b border-subtle group">
-                <div className="flex items-center gap-4 px-1">
-                  <div className="flex-[3]">
-                    <CapacityBar
-                      current={locationCapacities[`${wh}-${location}`]?.current || 0}
-                      max={locationCapacities[`${wh}-${location}`]?.max || 550}
-                    />
+          locationBlocks.map(({ wh, location, items, locationId }, index) => {
+            const isFirstInWarehouse = index === 0 || locationBlocks[index - 1].wh !== wh;
+
+            return (
+              <div key={`${wh}-${location}`} className="space-y-4">
+                {isFirstInWarehouse && (
+                  <div className="flex items-center gap-4 pt-8 pb-2">
+                    <div className="h-px flex-1 bg-subtle" />
+                    <h2 className="text-2xl font-black uppercase tracking-tighter text-content bg-surface px-6 py-2 rounded-full border border-subtle shadow-sm flex items-center gap-3">
+                      <Warehouse className="text-accent" size={24} />
+                      {wh === 'DELETED ITEMS' ? 'Warehouse: Deleted Items' : `Warehouse: ${wh}`}
+                    </h2>
+                    <div className="h-px flex-1 bg-subtle" />
                   </div>
+                )}
 
-                  <div className="flex-1 min-w-0">
-                    <h3
-                      className={`text-content text-xl font-black uppercase tracking-tighter truncate ${isAdmin && viewMode === 'stock' ? 'cursor-pointer hover:text-accent transition-colors' : ''}`}
-                      title={isAdmin && viewMode === 'stock' ? 'Click to edit location' : location}
-                      onClick={() => handleOpenLocationEditor(wh, location, locationId)}
-                    >
-                      {location}
-                    </h3>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-1">
-                {items.map((item) => {
-                  const isInCart = cartItems.some(
-                    (c) =>
-                      c.sku === item.sku &&
-                      c.warehouse === item.warehouse &&
-                      c.location === item.location
-                  );
-
-                  // Calculate availability for picking mode
-                  const stockInfo = viewMode === 'picking' ? getAvailableStock(item) : null;
-
-                  return (
-                    <div
-                      key={`inv-row-${item.id}-${item.sku}`}
-                      className={`animate-slide-in-new ${isInCart && viewMode === 'picking' ? 'ring-1 ring-accent rounded-lg' : ''
-                        }`}
-                    >
-                      <InventoryCard
-                        sku={item.sku}
-                        quantity={item.quantity}
-                        detail={item.sku_note}
-                        warehouse={item.warehouse}
-                        onIncrement={() =>
-                          updateQuantity(item.sku, 1, item.warehouse, item.location)
-                        }
-                        onDecrement={() =>
-                          updateQuantity(item.sku, -1, item.warehouse, item.location)
-                        }
-                        onMove={() => handleQuickMove(item)}
-                        onClick={() => handleCardClick(item)}
-                        mode={viewMode === 'picking' ? sessionMode : 'stock'}
-                        reservedByOthers={stockInfo?.reservedByOthers || 0}
-                        available={stockInfo?.available}
-                        lastUpdateSource={(item as any)._lastUpdateSource}
+                <div className="sticky top-[84px] bg-main/95 backdrop-blur-sm z-30 py-3 border-b border-subtle group">
+                  <div className="flex items-center gap-4 px-1">
+                    <div className="flex-[3]">
+                      <CapacityBar
+                        current={locationCapacities[`${wh}-${location}`]?.current || 0}
+                        max={locationCapacities[`${wh}-${location}`]?.max || 550}
                       />
                     </div>
-                  );
-                })}
+
+                    <div className="flex-1 min-w-0">
+                      <h3
+                        className={`text-content text-xl font-black uppercase tracking-tighter truncate ${isAdmin && viewMode === 'stock' ? 'cursor-pointer hover:text-accent transition-colors' : ''}`}
+                        title={isAdmin && viewMode === 'stock' ? 'Click to edit location' : location}
+                        onClick={() => handleOpenLocationEditor(wh, location, locationId)}
+                      >
+                        {location}
+                      </h3>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-1">
+                  {items.map((item) => {
+                    const isInCart = cartItems.some(
+                      (c) =>
+                        c.sku === item.sku &&
+                        c.warehouse === item.warehouse &&
+                        c.location === item.location
+                    );
+
+                    // Calculate availability for picking mode
+                    const stockInfo = viewMode === 'picking' ? getAvailableStock(item) : null;
+
+                    return (
+                      <div
+                        key={`inv-row-${item.id}-${item.sku}`}
+                        className={`animate-slide-in-new ${isInCart && viewMode === 'picking' ? 'ring-1 ring-accent rounded-lg' : ''
+                          }`}
+                      >
+                        <InventoryCard
+                          sku={item.sku}
+                          quantity={item.quantity}
+                          detail={item.sku_note}
+                          warehouse={item.warehouse}
+                          onIncrement={() =>
+                            updateQuantity(item.sku, 1, item.warehouse, item.location)
+                          }
+                          onDecrement={() =>
+                            updateQuantity(item.sku, -1, item.warehouse, item.location)
+                          }
+                          onMove={() => handleQuickMove(item)}
+                          onClick={() => handleCardClick(item)}
+                          mode={viewMode === 'picking' ? sessionMode : 'stock'}
+                          reservedByOthers={stockInfo?.reservedByOthers || 0}
+                          available={stockInfo?.available}
+                          lastUpdateSource={(item as any)._lastUpdateSource}
+                          is_active={item.is_active}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
 
-        {hasNextPage && (
+        {hasNextPage ? (
           <div className="flex flex-col items-center gap-4 py-8">
             <button
               onClick={loadMore}
@@ -527,19 +576,12 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
               Load More Locations ({remaining} remaining)
             </button>
           </div>
-        )}
+        ) : null}
 
-        {allLocationBlocks.length === 0 && (
-          <div className="text-center text-muted mt-20 py-20 border-2 border-dashed border-subtle rounded-3xl">
-            <Warehouse className="mx-auto mb-4 opacity-20" size={48} />
-            <p className="text-xl font-black uppercase tracking-widest opacity-30">
-              No inventory found
-            </p>
-          </div>
-        )}
+        {allLocationBlocks.length === 0 ? NO_INVENTORY_MESSAGE : null}
       </div>
 
-      {viewMode === 'stock' && (
+      {viewMode === 'stock' ? (
         <div className="fixed bottom-24 right-4 flex flex-col gap-3 z-40">
           <button
             onClick={() => handleAddItem('LUDLOW')}
@@ -549,9 +591,9 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
             <Plus size={32} strokeWidth={3} />
           </button>
         </div>
-      )}
+      ) : null}
 
-      {viewMode === 'picking' && (
+      {viewMode === 'picking' ? (
         <PickingCartDrawer
           cartItems={cartItems as any}
           activeListId={activeListId}
@@ -607,25 +649,11 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
               const calculatedPallets = calculatePallets(optimizedPath);
               const pallets_qty = calculatedPallets.length;
 
-              await Promise.all(
-                items.map((item: any) => {
-                  const delta = -(item.pickingQty || 0);
-                  return updateQuantity(
-                    item.sku,
-                    delta,
-                    item.warehouse,
-                    item.location ?? undefined,
-                    false,
-                    activeListId ?? undefined,
-                    orderNumber ?? undefined
-                  );
-                })
-              );
-
-              await completeList({
+              await processPickingList(
+                activeListId!,
                 pallets_qty,
-                total_units: totalUnits
-              });
+                totalUnits
+              );
               return true;
             } catch (error: any) {
               console.error('Operation failed:', error);
@@ -640,7 +668,7 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
             }
           }}
         />
-      )}
+      ) : null}
 
       <InventoryModal
         isOpen={isModalOpen}
@@ -652,9 +680,9 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
         screenType={selectedWarehouseForAdd || editingItem?.warehouse}
       />
 
-      {showScanner && (
+      {showScanner ? (
         <CamScanner onScanComplete={handleScanComplete} onCancel={() => setShowScanner(false)} />
-      )}
+      ) : null}
       <MovementModal
         isOpen={isMovementModalOpen}
         onClose={() => setIsMovementModalOpen(false)}
@@ -662,14 +690,14 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
         initialSourceItem={editingItem}
       />
 
-      {!!locationBeingEdited && (
+      {locationBeingEdited ? (
         <LocationEditorModal
           location={locationBeingEdited}
           onSave={handleSaveLocation}
           onDelete={handleDeleteLocation}
           onCancel={() => setLocationBeingEdited(null)}
         />
-      )}
+      ) : null}
     </div>
   );
 };

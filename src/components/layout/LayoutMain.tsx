@@ -1,7 +1,9 @@
 import { ReactNode, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BottomNavigation } from './BottomNavigation';
-import { Save, Settings, User as UserIcon } from 'lucide-react';
+import Save from 'lucide-react/dist/esm/icons/save';
+import Settings from 'lucide-react/dist/esm/icons/settings';
+import UserIcon from 'lucide-react/dist/esm/icons/user';
 import { useAuth } from '../../context/AuthContext';
 import { UserMenu } from './UserMenu';
 import { DoubleCheckHeader } from '../../features/picking/components/DoubleCheckHeader';

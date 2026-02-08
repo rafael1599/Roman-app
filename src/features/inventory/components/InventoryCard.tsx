@@ -1,5 +1,7 @@
 import { memo, useState, useRef, useEffect } from 'react';
-import { Plus, Minus, ArrowRightLeft } from 'lucide-react';
+import Plus from 'lucide-react/dist/esm/icons/plus';
+import Minus from 'lucide-react/dist/esm/icons/minus';
+import ArrowRightLeft from 'lucide-react/dist/esm/icons/arrow-right-left';
 
 interface InventoryCardProps {
     sku: string;
@@ -15,6 +17,7 @@ interface InventoryCardProps {
     reservedByOthers?: number;
     available?: number | null;
     lastUpdateSource?: 'local' | 'remote';
+    is_active?: boolean;
 }
 
 export const InventoryCard = memo(
@@ -32,6 +35,7 @@ export const InventoryCard = memo(
         reservedByOthers = 0,
         available = null,
         lastUpdateSource,
+        is_active = true,
     }: InventoryCardProps) => {
         const [flash, setFlash] = useState(false);
         const prevQuantityRef = useRef(quantity);
@@ -70,8 +74,13 @@ export const InventoryCard = memo(
         // In picking mode, we care if available (stock - reserved) is 0.
         const isFullyReserved = isPicking && available !== null && available <= 0;
         const isOutOfStock = (isBuilding || mode === 'stock') && quantity <= 0;
+        const isZeroStock = (mode === 'stock') && quantity <= 0;
 
-        const isDisabled = isFullyReserved || isOutOfStock;
+        // In building mode, we care about physical stock.
+        // In picking mode, we care if available is 0.
+        // In stock mode, we DON'T disable even if stock is 0 (so we can edit/add).
+        const isDisabled = isFullyReserved || (isBuilding && isOutOfStock);
+
         const hasReservations = isPicking && reservedByOthers > 0;
 
         return (
@@ -79,8 +88,9 @@ export const InventoryCard = memo(
                 onClick={isDisabled ? undefined : onClick}
                 className={`bg-card border rounded-lg p-4 mb-3 flex flex-col shadow-sm transition-premium origin-center ${isDisabled
                     ? 'opacity-50 cursor-not-allowed border-red-500/30'
-                    : `border-subtle active:border-accent/30 cursor-pointer ${flash ? 'animate-flash-update scale-[1.02] border-accent/50 z-10' : 'hover:scale-[1.01]'}`
+                    : `border-subtle active:border-accent/30 cursor-pointer ${isZeroStock ? 'opacity-70 border-dashed bg-main/30' : ''} ${flash ? 'animate-flash-update scale-[1.02] border-accent/50 z-10' : 'hover:scale-[1.01]'}`
                     }`}
+
             >
                 <div className="flex justify-between items-start mb-2">
                     <div className="flex-1">
@@ -90,56 +100,61 @@ export const InventoryCard = memo(
                             </div>
                         )}
                         <div className="flex items-center gap-2 mb-2">
-                            <div className="text-2xl font-black text-content font-mono tracking-tighter leading-none">
+                            <div className={`text-2xl font-black text-content font-mono tracking-tighter leading-none ${!is_active ? 'line-through opacity-60' : ''}`}>
                                 {sku}
                             </div>
-                            {warehouse && (
-                                <span
-                                    className={`px-1.5 py-0.5 rounded text-[10px] font-black uppercase border ${getWarehouseColor(warehouse)}`}
-                                >
-                                    {warehouse}
+                            {!is_active && (
+                                <span className="text-xs font-bold uppercase tracking-wide px-2 py-0.5 rounded bg-red-500/20 text-red-400 border border-red-500/30">
+                                    Deleted
                                 </span>
                             )}
                         </div>
-                        {detail && (
-                            <div className="px-1.5 py-0.5 rounded bg-surface text-muted text-[9px] font-bold uppercase tracking-tight inline-flex items-center border border-subtle">
-                                {detail}
-                            </div>
-                        )}
-                    </div>
-                    <div className="text-2xl font-black text-accent flex flex-col items-end">
-                        <span className="text-[10px] text-muted uppercase tracking-widest mb-0.5">Stock</span>
-                        <span className="tabular-nums leading-none">{quantity}</span>
-
-                        {/* Picking Mode: Show Available vs Reserved */}
-                        {isPicking && available !== null && (
-                            <div className="flex flex-col items-center gap-1 mt-1">
-                                {available <= 0 ? (
-                                    <span className="text-[9px] font-black uppercase tracking-widest text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded border border-red-500/20">
-                                        🚫 Fully Reserved
-                                    </span>
-                                ) : (
-                                    <div className="flex items-center gap-2">
-                                        {hasReservations && (
-                                            <span className="text-[9px] font-black uppercase tracking-widest text-orange-500 bg-orange-500/10 px-1.5 py-0.5 rounded border border-orange-500/20">
-                                                {reservedByOthers} Res
-                                            </span>
-                                        )}
-                                        <span className="text-[9px] font-black uppercase tracking-widest text-green-500">
-                                            {available} Avail
-                                        </span>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {/* Building Mode: Simple Out of Stock Indicator */}
-                        {isBuilding && quantity <= 0 && (
-                            <span className="text-[9px] font-black uppercase tracking-widest text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded border border-red-500/20 mt-1">
-                                Out of Stock
+                        {warehouse && (
+                            <span
+                                className={`px-1.5 py-0.5 rounded text-[10px] font-black uppercase border ${getWarehouseColor(warehouse)}`}
+                            >
+                                {warehouse}
                             </span>
                         )}
                     </div>
+                    {detail && (
+                        <div className="px-1.5 py-0.5 rounded bg-surface text-muted text-[9px] font-bold uppercase tracking-tight inline-flex items-center border border-subtle">
+                            {detail}
+                        </div>
+                    )}
+                </div>
+                <div className="text-2xl font-black text-accent flex flex-col items-end">
+                    <span className="text-[10px] text-muted uppercase tracking-widest mb-0.5">Stock</span>
+                    <span className="tabular-nums leading-none">{quantity}</span>
+
+                    {/* Picking Mode: Show Available vs Reserved */}
+                    {isPicking && available !== null && (
+                        <div className="flex flex-col items-center gap-1 mt-1">
+                            {available <= 0 ? (
+                                <span className="text-[9px] font-black uppercase tracking-widest text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded border border-red-500/20">
+                                    🚫 Fully Reserved
+                                </span>
+                            ) : (
+                                <div className="flex items-center gap-2">
+                                    {hasReservations && (
+                                        <span className="text-[9px] font-black uppercase tracking-widest text-orange-500 bg-orange-500/10 px-1.5 py-0.5 rounded border border-orange-500/20">
+                                            {reservedByOthers} Res
+                                        </span>
+                                    )}
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-green-500">
+                                        {available} Avail
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Building Mode: Simple Out of Stock Indicator */}
+                    {isBuilding && quantity <= 0 && (
+                        <span className="text-[9px] font-black uppercase tracking-widest text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded border border-red-500/20 mt-1">
+                            Out of Stock
+                        </span>
+                    )}
                 </div>
 
                 {mode === 'stock' && (

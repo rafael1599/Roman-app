@@ -1,58 +1,76 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/test-base';
+import { BasePage } from '../pages';
 
-const SKU = 'TEST-SYNC-' + Date.now();
-const WAREHOUSE = 'LUDLOW';
+const SKU = BasePage.generateSKU('GHOST-SYNC');
 const LOCATION = 'Row 1';
 
 test.describe('Offline Sync (Happy Path)', () => {
 
-    test.beforeEach(async ({ page }) => {
-        await page.goto('/');
-        // Implicitly waits for login via global setup
-        await expect(page.getByRole('heading', { level: 1 })).toContainText('ROMAN INV');
+    test.beforeEach(async ({ inventoryPage }) => {
+        await inventoryPage.goto('/');
 
         // Ensure item exists
-        await page.getByRole('button', { name: 'Add New SKU' }).click();
-        await page.getByLabel('SKU', { exact: true }).fill(SKU);
-        await page.getByLabel('Location', { exact: true }).fill(LOCATION);
-        await page.getByLabel('Quantity', { exact: true }).fill('50');
-        await page.getByRole('button', { name: 'Save' }).click();
+        await inventoryPage.addItem({
+            sku: SKU,
+            quantity: 50,
+            location: LOCATION
+        });
 
-        await expect(page.getByText(`${SKU}`)).toBeVisible();
+        // Search for it to ensure it's visible
+        await inventoryPage.reloadAndSearch(SKU);
+        await inventoryPage.verifyItemExists(SKU, LOCATION);
     });
 
-    test('should sync offline changes when network restores', async ({ page, context }) => {
-        const row = page.locator('div.bg-card', { hasText: SKU });
+    test('should sync offline changes when network restores', async ({ page, context, inventoryPage }) => {
+        const card = inventoryPage.getCard(SKU, LOCATION);
 
         // 1. Go OFFLINE
         await context.setOffline(true);
         console.log('Went Offline');
 
         // 2. Perform Action (Pick -1)
-        // Assuming UI has a minus button or similar
-        await row.getByRole('button', { name: 'Decrease quantity' }).click();
+        await card.getByRole('button', { name: 'Decrease quantity' }).click();
 
         // 3. Verify Optimistic Update (50 -> 49)
-        await expect(row.getByText('49', { exact: true })).toBeVisible();
+        await expect(card.getByText('49', { exact: true })).toBeVisible();
+
+        // 3.5 Wait for debounce (1500ms) to ensure it's queued/attempted
+        await page.waitForTimeout(2000);
 
         // 4. Go ONLINE
         await context.setOffline(false);
         console.log('Went Online');
 
         // 5. Verify Persistence
-        // Wait for potential sync requests to complete
-        // Supabase Patch to inventory
-        await page.waitForResponse(resp =>
-            resp.url().includes('/rest/v1/inventory') &&
-            (resp.request().method() === 'PATCH' || resp.request().method() === 'POST')
-            , { timeout: 10000 }).catch(() => console.log('No sync request detected, maybe already synced or failed'));
+        // RPC to adjust_inventory_quantity
+        // We wait for a 2xx response, skipping any redirects (3xx)
+        console.log('Waiting for successful sync response (2xx)...');
+        const syncResp = await page.waitForResponse(resp =>
+            resp.url().includes('/rpc/adjust_inventory_quantity') &&
+            resp.request().method() === 'POST' &&
+            resp.status() < 300
+            , { timeout: 30000 }).catch(() => null);
 
-        // Reload page to fetch from server and ensure change stuck
+        if (syncResp) {
+            console.log(`Sync Final Response Status: ${syncResp.status()}`);
+        } else {
+            console.log('Timed out waiting for a 2xx sync response');
+        }
+
+        // 6. Verification
+        // Give some extra time for DB to commit before reload
+        await page.waitForTimeout(1000);
         await page.reload();
 
+        // Refill search if cleared by reload
+        await inventoryPage.search(SKU);
+
         // Use polling assert to be robust against data loading lag
+        console.log('Starting final polling verification...');
         await expect(async () => {
-            await expect(row.getByText('49', { exact: true })).toBeVisible();
-        }).toPass({ timeout: 10000 });
+            const currentQty = await card.innerText();
+            console.log(`Current Card Text: ${currentQty}`);
+            await expect(card.getByText('49', { exact: true })).toBeVisible();
+        }).toPass({ timeout: 15000 });
     });
 });

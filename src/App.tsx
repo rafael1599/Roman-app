@@ -19,7 +19,7 @@ const OrdersScreen = React.lazy(() => import('./screens/OrdersScreen').then(m =>
 import { ViewModeProvider } from './context/ViewModeContext';
 import { PickingProvider } from './context/PickingContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { Loader2 } from 'lucide-react';
+import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
 import { ThemeProvider } from './context/ThemeContext';
 import { Suspense } from 'react';
 

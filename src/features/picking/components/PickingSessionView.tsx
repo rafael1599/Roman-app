@@ -1,15 +1,13 @@
 import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react';
-import {
-    Package,
-    MapPin,
-    Printer,
-    Minus,
-    Plus,
-    Trash2,
-    ChevronDown,
-    AlertCircle,
-    ArrowLeft,
-} from 'lucide-react';
+import Package from 'lucide-react/dist/esm/icons/package';
+import MapPin from 'lucide-react/dist/esm/icons/map-pin';
+import Printer from 'lucide-react/dist/esm/icons/printer';
+import Minus from 'lucide-react/dist/esm/icons/minus';
+import Plus from 'lucide-react/dist/esm/icons/plus';
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down';
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle';
+import ArrowLeft from 'lucide-react/dist/esm/icons/arrow-left';
 import { getOptimizedPickingPath, calculatePallets } from '../../../utils/pickingLogic';
 import { generatePickingPdf } from '../../../utils/pickingPdf';
 import { useLocationManagement } from '../../../hooks/useLocationManagement';

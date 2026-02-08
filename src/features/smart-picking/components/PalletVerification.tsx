@@ -1,5 +1,11 @@
 import { useState, useRef, ChangeEvent } from 'react';
-import { Camera, Upload, X, Loader2, CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
+import XCircle from 'lucide-react/dist/esm/icons/x-circle';
+import Camera from 'lucide-react/dist/esm/icons/camera';
+import Upload from 'lucide-react/dist/esm/icons/upload';
+import X from 'lucide-react/dist/esm/icons/x';
+import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle';
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle';
 import { verifyPalletImage } from '../../../services/aiScanner';
 import { PalletVerificationResult, VerificationItem } from '../types';
 
@@ -150,8 +156,8 @@ export default function PalletVerification({ expectedItems, onVerified, onCancel
               {/* Status Banner */}
               <div
                 className={`rounded-lg p-4 border-2 ${allMatched
-                    ? 'bg-green-500/10 border-green-500/30'
-                    : 'bg-yellow-500/10 border-yellow-500/30'
+                  ? 'bg-green-500/10 border-green-500/30'
+                  : 'bg-yellow-500/10 border-yellow-500/30'
                   }`}
               >
                 <div className="flex items-center gap-3">

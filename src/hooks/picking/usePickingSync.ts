@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import { debounce } from '../../utils/debounce';
 import toast from 'react-hot-toast';
@@ -274,7 +274,15 @@ export const usePickingSync = ({
               return;
             }
 
-            if (newData.status !== listStatusRef.current) setListStatus(newData.status as string);
+            if (newData.status !== listStatusRef.current) {
+              // TERMINAL STATUS AUTO-CLEANUP
+              if (newData.status === 'completed' || newData.status === 'cancelled') {
+                console.log(`🏁 [PickingSync] List ${activeListId} reached terminal status: ${newData.status}. Resetting local session.`);
+                resetSession();
+                return; // Early exit, session is gone
+              }
+              setListStatus(newData.status as string);
+            }
             if (newData.correction_notes !== correctionNotesRef.current) setCorrectionNotes(newData.correction_notes as string | null);
             if (newData.checked_by !== checkedByRef.current) setCheckedBy(newData.checked_by as string | null);
             if (newData.user_id !== ownerIdRef.current) setOwnerId(newData.user_id as string | null);

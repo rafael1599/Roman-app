@@ -46,7 +46,6 @@ export const usePickingActions = ({
   setIsSaving,
   resetSession,
   loadNumber,
-  setLoadNumber,
 }: UsePickingActionsProps) => {
   const completeList = useCallback(
     async (metrics?: { pallets_qty: number; total_units: number }, listIdOverride?: string) => {
@@ -71,10 +70,6 @@ export const usePickingActions = ({
           .eq('id', targetId);
 
         if (error) throw error;
-
-        if (targetId === activeListId) {
-          resetSession();
-        }
       } catch (err) {
         console.error('Failed to complete list:', err);
         toast.error('Failed to complete order properly');
@@ -136,7 +131,7 @@ export const usePickingActions = ({
         // B. Fetch ALL active allocations for these SKUs (excluding self)
         const { data: activeLists, error: listsError } = await supabase
           .from('picking_lists')
-          .select('id, items')
+          .select('id, items, order_number')
           .in('status', ['active', 'needs_correction', 'ready_to_double_check', 'double_checking'])
           .neq('id', activeListId);
 
@@ -148,7 +143,7 @@ export const usePickingActions = ({
         // Fill stock
         currentStock?.forEach((row: any) => {
           const key = `${row.sku}-${row.warehouse}-${row.location}`;
-          stockMap.set(key, { stock: Number(row.quantity || 0), reserved: 0 });
+          stockMap.set(key, { stock: Number(row.quantity || 0), reserved: 0, reservingOrders: new Set() } as any);
         });
 
         // Fill reservations
@@ -158,8 +153,9 @@ export const usePickingActions = ({
             listItems.forEach((li: any) => {
               const key = `${li.sku}-${li.warehouse}-${li.location}`;
               if (stockMap.has(key)) {
-                const entry = stockMap.get(key)!;
+                const entry = stockMap.get(key) as any;
                 entry.reserved += li.pickingQty || 0;
+                if (list.order_number) entry.reservingOrders.add(list.order_number);
               }
             });
           }
@@ -180,9 +176,13 @@ export const usePickingActions = ({
           const myQty = myItem.pickingQty || 0;
 
           if (myQty > availableForMe) {
+            const orders = Array.from((entry as any).reservingOrders).join(', ');
+            const reservedInfo = orders ? `is reserved in ${orders}.` : 'is reserved.';
+            const availabilityInfo = availableForMe > 0 ? `There is only ${availableForMe} available.` : 'There are no more items available.';
+
             toast.error(
-              `Stock conflict! ${myItem.sku}: Only ${availableForMe} available (you need ${myQty}). Another user may have taken it.`,
-              { duration: 5000 }
+              `${myItem.sku} ${reservedInfo} ${availabilityInfo} (You need ${myQty}).`,
+              { duration: 6000 }
             );
             return null; // Abort
           }
@@ -410,7 +410,7 @@ export const usePickingActions = ({
 
       const { data: activeLists, error: listsError } = await supabase
         .from('picking_lists')
-        .select('id, items')
+        .select('id, items, order_number')
         .in('status', ['active', 'needs_correction', 'ready_to_double_check', 'double_checking']);
 
       if (listsError) throw listsError;
@@ -419,7 +419,7 @@ export const usePickingActions = ({
 
       currentStock?.forEach((row: any) => {
         const key = `${row.sku}-${row.warehouse}-${row.location}`;
-        stockMap.set(key, { stock: Number(row.quantity || 0), reserved: 0 });
+        stockMap.set(key, { stock: Number(row.quantity || 0), reserved: 0, reservingOrders: new Set() } as any);
       });
 
       activeLists?.forEach((list: any) => {
@@ -428,8 +428,9 @@ export const usePickingActions = ({
           listItems.forEach((li: any) => {
             const key = `${li.sku}-${li.warehouse}-${li.location}`;
             if (stockMap.has(key)) {
-              const entry = stockMap.get(key)!;
+              const entry = stockMap.get(key) as any;
               entry.reserved += li.pickingQty || 0;
+              if (list.order_number) entry.reservingOrders.add(list.order_number);
             }
           });
         }
@@ -448,9 +449,13 @@ export const usePickingActions = ({
         const myQty = myItem.pickingQty || 0;
 
         if (myQty > availableAcrossSystem) {
+          const orders = Array.from((entry as any).reservingOrders).join(', ');
+          const reservedInfo = orders ? `is reserved in ${orders}.` : 'is reserved.';
+          const availabilityInfo = availableAcrossSystem > 0 ? `There is only ${availableAcrossSystem} available.` : 'There are no more items available.';
+
           toast.error(
-            `Constraint Error: ${myItem.sku} - Only ${availableAcrossSystem} available.`,
-            { duration: 5000 }
+            `${myItem.sku} ${reservedInfo} ${availabilityInfo} (You need ${myQty}).`,
+            { duration: 6000 }
           );
           return;
         }

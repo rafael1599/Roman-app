@@ -1,5 +1,12 @@
 import { useState, useRef, ChangeEvent } from 'react';
-import { Camera, Upload, X, Loader2, AlertCircle, Trash2, FileText, Plus } from 'lucide-react';
+import Camera from 'lucide-react/dist/esm/icons/camera';
+import Upload from 'lucide-react/dist/esm/icons/upload';
+import X from 'lucide-react/dist/esm/icons/x';
+import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle';
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
+import FileText from 'lucide-react/dist/esm/icons/file-text';
+import Plus from 'lucide-react/dist/esm/icons/plus';
 import { scanOrderImage } from '../../../services/aiScanner';
 
 interface Photo {

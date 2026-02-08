@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { InventoryProvider, useInventory } from '../InventoryProvider';
 
@@ -21,6 +21,7 @@ vi.mock('../../lib/supabase', () => ({
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
         single: vi.fn().mockResolvedValue({ data: {}, error: null }),
+        rpc: vi.fn(),
     },
 }));
 
@@ -46,7 +47,7 @@ vi.mock('../useInventoryLogs', () => ({
 vi.mock('../useLocationManagement', () => ({
     useLocationManagement: vi.fn().mockReturnValue({
         locations: [
-            { id: 'loc1', warehouse: 'LUDLOW', location: 'Row 1', max_capacity: 100 },
+            { id: 'loc1', warehouse: 'LUDLOW', location: 'ROW 1', max_capacity: 100 },
         ],
     }),
 }));
@@ -66,8 +67,7 @@ vi.mock('../../services/inventory.service', () => ({
 // Mock InventoryAPI
 vi.mock('../../services/inventoryApi', () => ({
     inventoryApi: {
-        fetchInventory: vi.fn().mockResolvedValue([]),
-        fetchAllMetadata: vi.fn().mockResolvedValue([]),
+        fetchInventoryWithMetadata: vi.fn().mockResolvedValue([]),
         upsertMetadata: vi.fn().mockResolvedValue(null),
     }
 }));
@@ -116,15 +116,16 @@ describe('InventoryProvider', () => {
             id: 1,
             sku: 'TEST-SKU',
             warehouse: 'LUDLOW' as const,
-            location: 'Row 1',
+            location: 'ROW 1',
             quantity: 10,
             sku_metadata: null,
+            is_active: true,
             created_at: new Date()
         };
 
         // Mock API return for initial load
         const { inventoryApi } = await import('../../services/inventoryApi');
-        vi.mocked(inventoryApi.fetchInventory).mockResolvedValue([initialItem]);
+        vi.mocked(inventoryApi.fetchInventoryWithMetadata).mockResolvedValue([initialItem]);
 
         const { result } = renderHook(() => useInventory(), { wrapper });
 
@@ -135,7 +136,7 @@ describe('InventoryProvider', () => {
         // ACTION: Update Quantity (+5)
         await act(async () => {
             // Calling updateQuantity
-            await result.current.updateQuantity('TEST-SKU', 5, 'LUDLOW', 'Row 1');
+            await result.current.updateQuantity('TEST-SKU', 5, 'LUDLOW', 'ROW 1');
         });
 
         // ASSERT: Optimistic Update (Immediate)
@@ -157,14 +158,15 @@ describe('InventoryProvider', () => {
             id: 2,
             sku: 'FAIL-SKU',
             warehouse: 'LUDLOW' as const,
-            location: 'Row 1',
+            location: 'ROW 1',
             quantity: 100,
             sku_metadata: null,
+            is_active: true,
             created_at: new Date()
         };
 
         const { inventoryApi } = await import('../../services/inventoryApi');
-        vi.mocked(inventoryApi.fetchInventory).mockResolvedValue([initialItem]);
+        vi.mocked(inventoryApi.fetchInventoryWithMetadata).mockResolvedValue([initialItem]);
 
         // Mock Supabase Update to FAIL
         const { supabase } = await import('../../lib/supabase');
@@ -181,15 +183,14 @@ describe('InventoryProvider', () => {
             }))
         }));
 
-        const updateMock = vi.fn().mockImplementation(() => ({
-            eq: vi.fn().mockResolvedValue({ error: new Error('Simulated Database Error') })
-        }));
+        const rpcMock = vi.fn().mockResolvedValue({ error: new Error('Simulated Database Error') });
+        vi.mocked(supabase.rpc).mockImplementation(rpcMock);
 
         vi.mocked(supabase.from).mockImplementation((table) => {
             if (table === 'inventory') {
                 return {
                     select: selectMock,
-                    update: updateMock,
+                    update: vi.fn(),
                     insert: vi.fn(),
                     delete: vi.fn(),
                 } as any;
@@ -206,18 +207,18 @@ describe('InventoryProvider', () => {
 
         // 1. Optimistic Update
         await act(async () => {
-            await result.current.updateQuantity('FAIL-SKU', -10, 'LUDLOW', 'Row 1');
+            await result.current.updateQuantity('FAIL-SKU', -10, 'LUDLOW', 'ROW 1');
         });
 
         // Verify Optimistic State
         expect(result.current.inventoryData[0].quantity).toBe(90);
-        
+
         // 3. Verify Rollback
         await waitFor(() => {
             expect(result.current.inventoryData[0].quantity).toBe(100);
         }, { timeout: 2000 }); // Wait for the debounce + mutation to fail
 
-        expect(updateMock).toHaveBeenCalled();
+        expect(rpcMock).toHaveBeenCalled();
     });
 
     /*
@@ -231,27 +232,28 @@ describe('InventoryProvider', () => {
             id: 3,
             sku: 'BATCH-SKU',
             warehouse: 'ATS' as const,
-            location: 'Row 2',
+            location: 'ROW 2',
             quantity: 50,
             sku_metadata: null,
+            is_active: true,
             created_at: new Date()
         };
 
         const { inventoryApi } = await import('../../services/inventoryApi');
-        vi.mocked(inventoryApi.fetchInventory).mockResolvedValue([initialItem]);
+        vi.mocked(inventoryApi.fetchInventoryWithMetadata).mockResolvedValue([initialItem]);
 
         // Reset supabase mocks to be successful
         const { supabase } = await import('../../lib/supabase');
-        const updateMock = vi.fn().mockImplementation(() => ({
-            eq: vi.fn().mockResolvedValue({ data: null, error: null })
-        }));
+        const rpcMock = vi.fn().mockResolvedValue({ data: null, error: null });
+        vi.mocked(supabase.rpc).mockImplementation(rpcMock);
+
         vi.mocked(supabase.from).mockReturnValue({
             select: vi.fn().mockReturnValue({
                 eq: vi.fn().mockReturnValue({
                     single: vi.fn().mockResolvedValue({ data: initialItem })
                 })
             }),
-            update: updateMock
+            update: vi.fn()
         } as any);
 
         const debouncedWrapper = ({ children }: { children: ReactNode }) => (
@@ -267,27 +269,27 @@ describe('InventoryProvider', () => {
 
         // Fire 3 rapid updates
         await act(async () => {
-            await result.current.updateQuantity('BATCH-SKU', 1, 'ATS', 'Row 2');
+            await result.current.updateQuantity('BATCH-SKU', 1, 'ATS', 'ROW 2');
         });
         await act(async () => {
-            await result.current.updateQuantity('BATCH-SKU', 2, 'ATS', 'Row 2');
+            await result.current.updateQuantity('BATCH-SKU', 2, 'ATS', 'ROW 2');
         });
         await act(async () => {
-            await result.current.updateQuantity('BATCH-SKU', 3, 'ATS', 'Row 2');
+            await result.current.updateQuantity('BATCH-SKU', 3, 'ATS', 'ROW 2');
         });
 
         // Verify optimistic total: 50 + 1 + 2 + 3 = 56
         expect(result.current.inventoryData[0].quantity).toBe(56);
 
         // Verify mutation hasn't fired yet
-        expect(updateMock).not.toHaveBeenCalled();
+        expect(rpcMock).not.toHaveBeenCalled();
 
         // Verify mutation called ONCE with total delta 6
         await waitFor(() => {
-            expect(updateMock).toHaveBeenCalledTimes(1);
-            // The final quantity in the DB would be the original + delta
-            expect(updateMock).toHaveBeenCalledWith(expect.objectContaining({
-                quantity: 56
+            expect(rpcMock).toHaveBeenCalledTimes(1);
+            // The final quantity in the DB would be predicted by rpc params
+            expect(rpcMock).toHaveBeenCalledWith('adjust_inventory_quantity', expect.objectContaining({
+                p_delta: 6
             }));
         }, { timeout: 200 }); // Wait for 50ms debounce + buffer
     });

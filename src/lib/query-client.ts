@@ -8,7 +8,7 @@ import {
 /**
  * Cache Versioning - increment this to force-invalidate all client caches.
  */
-const CACHE_VERSION = 'v1.1.0';
+const CACHE_VERSION = 'v1.2.0';
 const BASE_CACHE_KEY = 'roman-inventory-cache';
 const VERSIONED_KEY = `${BASE_CACHE_KEY}-${CACHE_VERSION}`;
 
@@ -174,10 +174,13 @@ export async function cleanupCorruptedMutations() {
                     errorMessage.includes('MUTATION ERROR') ||
                     errorMessage.includes('null value in column "id"') ||
                     errorMessage.includes('Failed to fetch') ||
-                    error?.code === '22P02'
+                    errorMessage.includes('not unique') || // Error: function is not unique
+                    error?.code === '22P02' ||
+                    error?.code === '42725' || // Ambiguous function/parameter
+                    error?.code === 'PGRST202' // Auto-remove if RPC wasn't found (Zombie mutations)
                 ) {
                     shouldRemove = true;
-                    reason = `Recoverable error detected: ${errorMessage.substring(0, 50)}`;
+                    reason = `Recoverable/Schema error detected: ${errorMessage.substring(0, 50)}`;
                 }
             }
 

@@ -17,10 +17,11 @@ export const InventoryItemDBSchema = z.object({
   sku_note: z.string().nullable().optional(),
   warehouse: z.preprocess(
     (val) => (typeof val === 'string' ? val.trim().toUpperCase() : val),
-    z.enum(['LUDLOW', 'ATS'])
+    z.enum(['LUDLOW', 'ATS', 'DELETED ITEMS'])
   ),
   status: z.string().nullable().optional(),
   capacity: z.coerce.number().int().positive().optional().nullable(),
+  is_active: z.boolean().default(true),
   created_at: z.coerce.date(),
 });
 
@@ -44,7 +45,7 @@ export const InventoryItemInputSchema = z.object({
   sku_note: z.string().optional().nullable(),
   warehouse: z.preprocess(
     (val) => (typeof val === 'string' ? val.trim().toUpperCase() : val),
-    z.enum(['LUDLOW', 'ATS'])
+    z.enum(['LUDLOW', 'ATS', 'DELETED ITEMS'])
   ),
   status: z.string().optional().nullable(),
   capacity: z.coerce.number().int().positive().optional(),

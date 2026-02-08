@@ -1,4 +1,4 @@
-import { Settings as SettingsIcon } from 'lucide-react';
+import SettingsIcon from 'lucide-react/dist/esm/icons/settings';
 import { IntegratedMapManager } from '../features/warehouse-management/components/IntegratedMapManager';
 import { useTheme } from '../context/ThemeContext';
 

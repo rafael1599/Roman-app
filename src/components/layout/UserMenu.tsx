@@ -2,7 +2,16 @@ import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { createPortal } from 'react-dom';
 import { useTheme } from '../../context/ThemeContext';
-import { LogOut, X, Check, Sun, Moon, Save, Eye, ShieldCheck, History, RefreshCw } from 'lucide-react';
+import LogOut from 'lucide-react/dist/esm/icons/log-out';
+import X from 'lucide-react/dist/esm/icons/x';
+import Check from 'lucide-react/dist/esm/icons/check';
+import Sun from 'lucide-react/dist/esm/icons/sun';
+import Moon from 'lucide-react/dist/esm/icons/moon';
+import Save from 'lucide-react/dist/esm/icons/save';
+import Eye from 'lucide-react/dist/esm/icons/eye';
+import ShieldCheck from 'lucide-react/dist/esm/icons/shield-check';
+import History from 'lucide-react/dist/esm/icons/history';
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw';
 import { InventorySnapshotModal } from '../../features/inventory/components/InventorySnapshotModal';
 
 interface UserMenuProps {
@@ -58,19 +67,19 @@ export const UserMenu = ({ isOpen, onClose, onExport, navigate }: UserMenuProps)
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-main/60 backdrop-blur-md" onClick={onClose} />
 
-      <div className="relative w-full max-w-sm bg-card border border-subtle rounded-3xl overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
+      <div className="relative w-full max-w-sm bg-surface border border-subtle rounded-[2.5rem] overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
         <div className="p-6">
           <div className="flex justify-between items-start mb-6">
             <div>
               <h2 className="text-xl font-black uppercase tracking-tight text-content">
-                User Profile
+                User Account
               </h2>
               <div className="flex items-center gap-2 mt-1">
-                <p className="text-[10px] text-muted font-bold uppercase tracking-widest">
-                  Manage your account
+                <p className="text-[10px] text-muted font-bold uppercase tracking-widest leading-none">
+                  {profile?.full_name || 'Personalize Profile'}
                 </p>
                 <span className="text-muted/30">•</span>
                 <button

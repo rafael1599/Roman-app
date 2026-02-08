@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Warehouse, Package, AlertCircle, X } from 'lucide-react';
+import Warehouse from 'lucide-react/dist/esm/icons/warehouse';
+import Package from 'lucide-react/dist/esm/icons/package';
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle';
+import X from 'lucide-react/dist/esm/icons/x';
 import { useError } from '../../../context/ErrorContext';
 import { ValidatedItem } from '../types';
 

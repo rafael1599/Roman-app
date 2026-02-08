@@ -1,5 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Package, Truck, ArrowRight, Trash2, Minus, Plus } from 'lucide-react';
+import Package from 'lucide-react/dist/esm/icons/package';
+import Truck from 'lucide-react/dist/esm/icons/truck';
+import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right';
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
+import Minus from 'lucide-react/dist/esm/icons/minus';
+import Plus from 'lucide-react/dist/esm/icons/plus';
 import { usePickingSession } from '../../../context/PickingContext';
 import { CustomerAutocomplete } from './CustomerAutocomplete';
 import { useAutoSelect } from '../../../hooks/useAutoSelect';

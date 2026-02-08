@@ -3,30 +3,28 @@ import { useQuery, useQueryClient, useMutationState } from '@tanstack/react-quer
 import { supabase } from '../lib/supabase';
 import { useDebounce } from '../hooks/useDebounce';
 import { useInventory } from '../hooks/useInventoryData';
-import {
-  Clock,
-  Undo2,
-  FileDown,
-  ArrowRight,
-  Plus,
-  Minus,
-  RotateCcw,
-  Trash2,
-  Move as MoveIcon,
-  AlertCircle,
-  Calendar,
-  Search,
-  Mail,
-  User,
-  Users,
-  Settings,
-} from 'lucide-react';
+import Clock from 'lucide-react/dist/esm/icons/clock';
+import Undo2 from 'lucide-react/dist/esm/icons/undo-2';
+import FileDown from 'lucide-react/dist/esm/icons/file-down';
+import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right';
+import Plus from 'lucide-react/dist/esm/icons/plus';
+import Minus from 'lucide-react/dist/esm/icons/minus';
+import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw';
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
+import MoveIcon from 'lucide-react/dist/esm/icons/move';
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle';
+import Calendar from 'lucide-react/dist/esm/icons/calendar';
+import Search from 'lucide-react/dist/esm/icons/search';
+import Mail from 'lucide-react/dist/esm/icons/mail';
+import User from 'lucide-react/dist/esm/icons/user';
+import Users from 'lucide-react/dist/esm/icons/users';
+import Settings from 'lucide-react/dist/esm/icons/settings';
 import { getUserColor, getUserBgColor } from '../utils/userUtils';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
 import { useConfirmation } from '../context/ConfirmationContext';
-import { useInventoryLogs } from '../hooks/useInventoryLogs';
+
 import type { InventoryLog, LogActionTypeValue } from '../schemas/log.schema';
 
 export const HistoryScreen = () => {
@@ -35,7 +33,7 @@ export const HistoryScreen = () => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const { showError } = useError();
   const { showConfirmation } = useConfirmation();
-  const { undoAction: undoLogAction } = useInventoryLogs();
+  const { undoAction } = useInventory();
   const [manualLoading, setManualLoading] = useState(false);
 
   const queryClient = useQueryClient();
@@ -269,10 +267,13 @@ export const HistoryScreen = () => {
     let channel: any = null;
     let retryTimeout: any = null;
     let retryCount = 0;
+    let isMounted = true;
     const MAX_RETRIES = 3;
 
     const setupSubscription = () => {
-      // CRITICAL: Prevent infinite recursion by checking status before removing
+      if (!isMounted) return;
+
+      // Ensure any previous zombie channel is cleaned
       if (channel) {
         supabase.removeChannel(channel);
         channel = null;
@@ -286,6 +287,7 @@ export const HistoryScreen = () => {
           'postgres_changes',
           { event: 'INSERT', schema: 'public', table: 'inventory_logs' },
           (payload) => {
+            if (!isMounted) return;
             console.log(`[FORENSIC][REALTIME][LOGS_EVENT] ${new Date().toISOString()} - INSERT, SKU: ${payload.new?.sku}`);
             queryClient.invalidateQueries({ queryKey: ['inventory_logs'] });
           }
@@ -294,6 +296,7 @@ export const HistoryScreen = () => {
           'postgres_changes',
           { event: 'UPDATE', schema: 'public', table: 'inventory_logs' },
           (payload) => {
+            if (!isMounted) return;
             console.log(`[FORENSIC][REALTIME][LOGS_EVENT] ${new Date().toISOString()} - UPDATE, SKU: ${payload.new?.sku}`);
             queryClient.invalidateQueries({ queryKey: ['inventory_logs'] });
           }
@@ -302,11 +305,14 @@ export const HistoryScreen = () => {
           'postgres_changes',
           { event: 'DELETE', schema: 'public', table: 'inventory_logs' },
           (payload) => {
+            if (!isMounted) return;
             console.log(`[FORENSIC][REALTIME][LOGS_EVENT] ${new Date().toISOString()} - DELETE, ID: ${payload.old?.id}`);
             queryClient.invalidateQueries({ queryKey: ['inventory_logs'] });
           }
         )
         .subscribe((status, err) => {
+          if (!isMounted) return;
+
           console.log(`[FORENSIC][REALTIME][LOGS_STATUS] ${new Date().toISOString()} - Status: ${status}`);
 
           if (err) {
@@ -317,21 +323,19 @@ export const HistoryScreen = () => {
             retryCount = 0; // Reset on success
           }
 
+          // Handle disconnection/errors
           if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-            // CRITICAL: Only call removeChannel if NOT already closed to avoid infinite recursion
-            if (status !== 'CLOSED' && channel) {
-              supabase.removeChannel(channel);
-              channel = null;
-            }
-
-            if (retryCount < MAX_RETRIES) {
-              retryCount++;
-              console.warn(`[FORENSIC][REALTIME][LOGS_RETRY] ${new Date().toISOString()} - Channel died, retrying in 5s...`);
-              clearTimeout(retryTimeout);
-              retryTimeout = setTimeout(setupSubscription, 5000);
-            } else {
-              console.error(`[FORENSIC][REALTIME][LOGS_FATAL] ${new Date().toISOString()} - Max retries reached.`);
-              toast.error("Error connecting to real-time updates. Please refresh the page.", { id: 'realtime-logs-error' });
+            // Only retry if the component is still mounted and it wasn't an intentional closure
+            if (isMounted && status !== 'CLOSED') {
+              if (retryCount < MAX_RETRIES) {
+                retryCount++;
+                console.warn(`[FORENSIC][REALTIME][LOGS_RETRY] ${new Date().toISOString()} - Channel ${status}, retrying in 5s...`);
+                clearTimeout(retryTimeout);
+                retryTimeout = setTimeout(setupSubscription, 5000);
+              } else {
+                console.error(`[FORENSIC][REALTIME][LOGS_FATAL] ${new Date().toISOString()} - Max retries reached.`);
+                toast.error("Error connecting to real-time updates. Please refresh the page.", { id: 'realtime-logs-error' });
+              }
             }
           }
         });
@@ -340,13 +344,12 @@ export const HistoryScreen = () => {
     setupSubscription();
 
     return () => {
+      isMounted = false;
       console.log(`[FORENSIC][REALTIME][LOGS_CLEANUP] ${new Date().toISOString()}`);
+      clearTimeout(retryTimeout);
       if (channel) {
-        // Here we can safely call removeChannel as it's a cleanup, 
-        // but we check if it's already closed just in case.
         supabase.removeChannel(channel);
       }
-      clearTimeout(retryTimeout);
     };
   }, [queryClient]);
 
@@ -359,8 +362,8 @@ export const HistoryScreen = () => {
     return logs
       .filter((log) => filter === 'ALL' || log.action_type === filter)
       .filter((log) => userFilter === 'ALL' || log.performed_by === userFilter)
-      .filter((log) => {
-        if (!isAdmin && log.is_reversed) return false;
+      .filter(() => {
+        // Show reversed logs to everyone now that everyone can undo
         return true;
       })
       .filter((log) => {
@@ -411,7 +414,7 @@ export const HistoryScreen = () => {
           try {
             setUndoingId(id);
             // Non-blocking call to support offline queueing
-            await undoLogAction(id);
+            await undoAction(id);
             // Implicit feedback via optimistic UI (badge)
           } catch (err: any) {
             // Check if it's a network error (meant to be queued)
@@ -430,7 +433,7 @@ export const HistoryScreen = () => {
         'Undo'
       );
     },
-    [undoLogAction, fetchLogs, showConfirmation, undoingId]
+    [undoAction, fetchLogs, showConfirmation, undoingId]
   );
 
   const getActionTypeInfo = (type: LogActionTypeValue, log: InventoryLog) => {
@@ -975,7 +978,7 @@ export const HistoryScreen = () => {
                           </div>
                         </div>
 
-                        {!log.is_reversed && isAdmin && (
+                        {!log.is_reversed && !log.order_number && !log.list_id && (
                           <button
                             onClick={() => handleUndo(log.id)}
                             disabled={(log as any).isOptimistic || undoingId === log.id}

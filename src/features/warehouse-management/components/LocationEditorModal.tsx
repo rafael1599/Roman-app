@@ -1,16 +1,18 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { Edit3, Save, X, AlertTriangle, AlertCircle, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
+import Edit3 from 'lucide-react/dist/esm/icons/edit-3';
+import Save from 'lucide-react/dist/esm/icons/save';
+import X from 'lucide-react/dist/esm/icons/x';
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle';
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle';
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
 import { useInventory } from '../../../hooks/useInventoryData';
-import { useOptimizationReports } from '../../../hooks/useOptimizationReports';
-import { useError } from '../../../context/ErrorContext';
 import { useConfirmation } from '../../../context/ConfirmationContext';
 import {
   validateCapacityChange,
   calculateLocationChangeImpact,
 } from '../../../utils/locationValidations';
 import { DEFAULT_MAX_CAPACITY } from '../../../utils/capacityUtils';
-import { useViewMode } from '../../../context/ViewModeContext';
 import { useAutoSelect } from '../../../hooks/useAutoSelect';
 import { type Location } from '../../../schemas/location.schema';
 
@@ -23,8 +25,7 @@ interface LocationEditorModalProps {
 
 export default function LocationEditorModal({ location, onSave, onCancel, onDelete }: LocationEditorModalProps) {
   const { ludlowData, atsData } = useInventory();
-  const { allReports } = useOptimizationReports();
-  const { requestConfirmation } = useConfirmation();
+  const { showConfirmation } = useConfirmation();
   const autoSelect = useAutoSelect();
 
   const [formData, setFormData] = useState<any>({
@@ -107,13 +108,14 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
   const handleDelete = () => {
     if (!onDelete) return;
 
-    requestConfirmation({
-      title: 'Delete Location?',
-      message: `Are you sure you want to delete location ${location.location}? This cannot be undone and may affect inventory.`,
-      type: 'danger',
-      confirmText: 'Delete Forever',
-      onConfirm: () => onDelete(location.id),
-    });
+    showConfirmation(
+      'Delete Location?',
+      `Are you sure you want to delete location ${location.location}? This cannot be undone and may affect inventory.`,
+      () => onDelete(location.id),
+      () => { },
+      'Delete Forever',
+      'Cancel'
+    );
   };
 
   return createPortal(

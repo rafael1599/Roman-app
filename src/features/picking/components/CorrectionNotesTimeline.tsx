@@ -1,5 +1,9 @@
 import React, { useState } from 'react';
-import { MessageSquare, User, Clock, ChevronDown, ChevronUp } from 'lucide-react';
+import MessageSquare from 'lucide-react/dist/esm/icons/message-square';
+import User from 'lucide-react/dist/esm/icons/user';
+import Clock from 'lucide-react/dist/esm/icons/clock';
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down';
+import ChevronUp from 'lucide-react/dist/esm/icons/chevron-up';
 
 export interface Note {
     id: string | number;

@@ -1,5 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Building2, Search, X, Loader2, Plus } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import Building2 from 'lucide-react/dist/esm/icons/building-2';
+import Search from 'lucide-react/dist/esm/icons/search';
+import X from 'lucide-react/dist/esm/icons/x';
+import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
+import Plus from 'lucide-react/dist/esm/icons/plus';
 import { useCustomerSearch } from '../../../hooks/useCustomerSearch';
 import type { Customer } from '../../../types/schema';
 
@@ -20,6 +24,11 @@ export const CustomerAutocomplete = ({
     const [isOpen, setIsOpen] = useState(false);
     const { customers, isLoading } = useCustomerSearch(query);
     const containerRef = useRef<HTMLDivElement>(null);
+
+    // Sync query when value changes (e.g. session reset)
+    useEffect(() => {
+        setQuery(value?.name || '');
+    }, [value]);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -43,7 +52,8 @@ export const CustomerAutocomplete = ({
             onChange(null);
         } else {
             // Create a temporary customer object for new names
-            onChange({ name: name.trim() } as Customer);
+            // Removed .trim() to allow spaces during typing
+            onChange({ name: name } as Customer);
         }
     };
 

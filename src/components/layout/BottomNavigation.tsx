@@ -1,4 +1,6 @@
-import { Box, Scan, History } from 'lucide-react';
+import Box from 'lucide-react/dist/esm/icons/box';
+import Scan from 'lucide-react/dist/esm/icons/scan';
+import History from 'lucide-react/dist/esm/icons/history';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useViewMode } from '../../context/ViewModeContext';
 

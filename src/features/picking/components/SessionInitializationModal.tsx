@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { X, ArrowRightLeft } from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x';
+import ArrowRightLeft from 'lucide-react/dist/esm/icons/arrow-right-left';
 import { usePickingSession } from '../../../context/PickingContext';
 import { CustomerAutocomplete } from './CustomerAutocomplete';
 import type { Customer } from '../../../types/schema';
@@ -23,6 +24,11 @@ export const SessionInitializationModal = () => {
 
         setManualOrder('');
         setSelectedCustomer(null);
+
+        return () => {
+            setManualOrder('');
+            setSelectedCustomer(null);
+        };
     }, [isInitializing]);
 
     if (!isInitializing) return null;

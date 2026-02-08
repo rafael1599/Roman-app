@@ -20,6 +20,7 @@ import { inventoryService, type InventoryServiceContext } from '../services/inve
 import { type InventoryItem, type InventoryItemWithMetadata, type InventoryItemInput } from '../schemas/inventory.schema';
 import { inventoryApi } from '../services/inventoryApi';
 import { type SKUMetadata, type SKUMetadataInput } from '../schemas/skuMetadata.schema';
+import { type InventoryLog } from '../schemas/log.schema';
 import { updateInventoryCache, type InventoryFilters, type RealtimeInventoryEvent } from '../utils/inventorySync';
 
 interface InventoryContextType {
@@ -55,6 +56,7 @@ interface InventoryContextType {
   ) => Promise<void>;
   undoAction: (logId: string) => Promise<void>;
   deleteItem: (warehouse: string, sku: string, location?: string | null) => Promise<void>;
+  processPickingList: (listId: string, palletsQty?: number, totalUnits?: number) => Promise<void>;
   exportData: () => void;
   syncInventoryLocations: () => Promise<{ successCount: number; failCount: number }>;
   updateInventory: (newData: InventoryItem[]) => void;
@@ -63,6 +65,8 @@ interface InventoryContextType {
   updateSKUMetadata: (metadata: SKUMetadataInput) => Promise<void>;
   syncFilters: (filters: InventoryFilters) => void;
   getAvailableStock: (sku: string, warehouse?: string) => number;
+  showInactive: boolean;
+  setShowInactive: (show: boolean) => void;
   isAdmin: boolean;
   user: any;
   profile: any;
@@ -79,6 +83,7 @@ export const InventoryProvider = ({
 }) => {
   const [inventoryData, setInventoryData] = useState<InventoryItemWithMetadata[]>([]);
   const [skuMetadataMap, setSkuMetadataMap] = useState<Record<string, SKUMetadata>>({});
+  const [showInactive, setShowInactive] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const queryClient = useQueryClient();
@@ -157,24 +162,26 @@ export const InventoryProvider = ({
           }
         }
 
-        const [inv, meta] = await Promise.all([
-          inventoryApi.fetchInventory(),
-          inventoryApi.fetchAllMetadata(),
-        ]);
-        console.log('📦 Inventory loaded:', inv.length);
+        const data = await inventoryApi.fetchInventoryWithMetadata(showInactive);
+        console.log('📦 Inventory loaded with metadata:', data.length);
 
         const metaMap: Record<string, SKUMetadata> = {};
-        (meta || []).forEach((m: any) => {
-          metaMap[m.sku] = m;
+        const enriched: InventoryItemWithMetadata[] = (data || []).map((item: any) => {
+          // If this item has joined metadata, store it in our lookup map for quick access elsewhere
+          if (item.sku_metadata && !metaMap[item.sku]) {
+            metaMap[item.sku] = item.sku_metadata;
+          }
+
+          return {
+            ...item,
+            // Ensure the item carries its metadata or falls back to what's in the map 
+            // (though in this JOIN they are the same)
+            sku_metadata: item.sku_metadata || (item as any).sku_metadata,
+          } as InventoryItemWithMetadata;
         });
+
         setSkuMetadataMap(metaMap);
-
-        const enriched: InventoryItemWithMetadata[] = inv.map((item) => ({
-          ...item,
-          sku_metadata: metaMap[item.sku] || (item as any).sku_metadata,
-        }));
-
-        setInventoryData(enriched || []);
+        setInventoryData(enriched);
       } catch (err: unknown) {
         const errorMsg = err instanceof Error ? err.message : 'Failed to load inventory data';
         console.error('Error loading inventory data:', err);
@@ -212,7 +219,7 @@ export const InventoryProvider = ({
       }
     };
     loadAllData();
-  }, []);
+  }, [showInactive]);
 
   // --- MUTATIONS (Persistence Layer) ---
 
@@ -234,107 +241,22 @@ export const InventoryProvider = ({
       listId?: string;
       orderNumber?: string;
       optimistic_id?: string;
-      preservedItem?: any; // The item captured before optimistic update
+      preservedItem?: InventoryItemWithMetadata;
     }) => {
-      // Use preserved item if available (preferred), otherwise fallback to ref lookup
-      let item = vars.preservedItem;
+      const { data, error } = await supabase.rpc('adjust_inventory_quantity', {
+        p_sku: vars.sku,
+        p_warehouse: vars.resolvedWarehouse,
+        p_location: vars.location || '',
+        p_delta: vars.finalDelta,
+        p_performed_by: userName,
+        p_user_id: (user?.id || undefined) as any,
+        p_user_role: profile?.role || 'staff',
+        p_list_id: vars.listId,
+        p_order_number: vars.orderNumber
+      });
 
-      if (!item) {
-        // Fallback: Find item in state (Ref) to get ID
-        item = inventoryDataRef.current.find(
-          (i) =>
-            i.sku === vars.sku &&
-            i.warehouse === vars.resolvedWarehouse &&
-            (!vars.location || i.location === vars.location)
-        );
-      }
-
-      if (!item) {
-        const errorMsg = `[MUTATION ERROR] Item not found for SKU ${vars.sku}`;
-        console.error(errorMsg, {
-          searchCriteria: { sku: vars.sku, warehouse: vars.resolvedWarehouse, location: vars.location },
-          preservedItemProvided: !!vars.preservedItem,
-          currentInventoryCount: inventoryDataRef.current.length
-        });
-        throw new Error(errorMsg);
-      }
-
-      if (!item.id) {
-        const errorMsg = `[MUTATION ERROR] Item has undefined/null ID for SKU ${vars.sku}`;
-        console.error(errorMsg, {
-          item: JSON.stringify(item),
-          itemKeys: Object.keys(item),
-          vars
-        });
-        throw new Error(errorMsg);
-      }
-
-      const numericId = Number(item.id);
-      if (isNaN(numericId) || numericId <= 0) {
-        const errorMsg = `[MUTATION ERROR] Item has invalid ID (${item.id}) for SKU ${vars.sku}`;
-        console.error(errorMsg, {
-          rawId: item.id,
-          idType: typeof item.id,
-          numericId,
-          item: JSON.stringify(item),
-          vars
-        });
-        throw new Error(errorMsg);
-      }
-
-      // SNAPSHOT & WRITE
-      const { data: snapshotItem, error: fetchError } = await supabase
-        .from('inventory')
-        .select('*')
-        .eq('id', item.id)
-        .single();
-
-      if (fetchError || !snapshotItem) throw fetchError || new Error('Item not found');
-
-      const currentDbQty = Number(snapshotItem.quantity || 0);
-      const finalQuantity = currentDbQty + vars.finalDelta;
-
-      const { error: updateError } = await supabase
-        .from('inventory')
-        .update({ quantity: finalQuantity })
-        .eq('id', item.id);
-
-      if (updateError) throw updateError;
-
-      // Record Log - Resilience: Wrap in try/catch so log failures don't 
-      // trigger a UI rollback if the inventory update actually succeeded.
-      // The trackLog mutation will still retry in the background.
-      try {
-        await trackLog(
-          {
-            sku: vars.sku,
-            from_warehouse: vars.resolvedWarehouse,
-            from_location: item.location || undefined,
-            to_warehouse: vars.resolvedWarehouse,
-            to_location: item.location || undefined,
-            quantity_change: vars.finalDelta,
-            prev_quantity: currentDbQty,
-            new_quantity: finalQuantity,
-            action_type: vars.finalDelta > 0 ? 'ADD' : 'DEDUCT',
-            item_id: item.id as any,
-            location_id: item.location_id,
-            snapshot_before: {
-              id: snapshotItem.id,
-              sku: snapshotItem.sku,
-              quantity: snapshotItem.quantity,
-              location_id: snapshotItem.location_id,
-              location: snapshotItem.location,
-              warehouse: snapshotItem.warehouse
-            },
-            is_reversed: vars.isReversal,
-            list_id: vars.listId,
-            order_number: vars.orderNumber,
-          },
-          { performed_by: userName, user_id: user?.id }
-        );
-      } catch (logError) {
-        console.warn('[FORENSIC][DB][LOG_DEFERRED] Log failed to sync, but inventory update succeeded. Query will retry log in background.', logError);
-      }
+      if (error) throw error;
+      return data;
     },
     onMutate: async (vars) => {
       console.log(`[FORENSIC][MUTATION][QUANTITY_START] ${new Date().toISOString()} - SKU: ${vars.sku}, Delta: ${vars.finalDelta}, Optimistic ID: ${vars.optimistic_id}`);
@@ -447,8 +369,22 @@ export const InventoryProvider = ({
   const moveItemMutation = useMutation({
     ...mutationOptions,
     mutationKey: ['inventory', 'moveItem'],
-    mutationFn: (vars: { sourceItem: InventoryItem, targetWarehouse: string, targetLocation: string, qty: number, isReversal?: boolean; optimistic_id?: string }) =>
-      inventoryService.moveItem(vars.sourceItem, vars.targetWarehouse, vars.targetLocation, vars.qty, locations, getServiceContext(), vars.isReversal),
+    mutationFn: async (vars: {
+      sourceItem: InventoryItem;
+      targetWarehouse: string;
+      targetLocation: string;
+      qty: number;
+      isReversal?: boolean;
+      optimistic_id?: string;
+    }) => {
+      return inventoryService.moveItem(
+        vars.sourceItem,
+        vars.targetWarehouse,
+        vars.targetLocation,
+        vars.qty,
+        getServiceContext()
+      );
+    },
     onMutate: (vars) => {
       console.log(`[FORENSIC][MUTATION][MOVE_START] ${new Date().toISOString()} - SKU: ${vars.sourceItem.sku}, Qty: ${vars.qty}, Optimistic ID: ${vars.optimistic_id}`);
     },
@@ -461,14 +397,27 @@ export const InventoryProvider = ({
   const deleteItemMutation = useMutation({
     ...mutationOptions,
     mutationKey: ['inventory', 'deleteItem'],
-    mutationFn: (vars: { warehouse: string, sku: string, location?: string | null, optimistic_id?: string }) => {
+    mutationFn: async (vars: {
+      warehouse: string;
+      sku: string;
+      location?: string | null;
+      optimistic_id?: string;
+    }) => {
       const item = inventoryDataRef.current.find(i =>
         i.sku === vars.sku &&
         i.warehouse === vars.warehouse &&
         (!vars.location || i.location === vars.location)
       );
       if (!item) throw new Error('Item not found');
-      return inventoryService.deleteItem(item, getServiceContext());
+
+      const { error } = await supabase.rpc('delete_inventory_item', {
+        p_item_id: Number(item.id),
+        p_performed_by: userName,
+        p_user_id: user?.id
+      });
+
+      if (error) throw error;
+      return true;
     },
     onMutate: (vars) => {
       console.log(`[FORENSIC][MUTATION][DELETE_START] ${new Date().toISOString()} - SKU: ${vars.sku}, Optimistic ID: ${vars.optimistic_id}`);
@@ -476,6 +425,40 @@ export const InventoryProvider = ({
     onSuccess: () => {
       console.log(`[FORENSIC][MUTATION][DELETE_SUCCESS] ${new Date().toISOString()}`);
       queryClient.invalidateQueries({ queryKey: inventoryKeys.lists() });
+    }
+  });
+
+  const processPickingListMutation = useMutation({
+    ...mutationOptions,
+    mutationKey: ['inventory', 'processPickingList'],
+    mutationFn: async (vars: {
+      listId: string;
+      palletsQty?: number;
+      totalUnits?: number;
+    }) => {
+      console.log(`[FORENSIC][MUTATION][PICKING_RPC_START] ${new Date().toISOString()} - ListID: ${vars.listId}`);
+
+      const { data, error } = await supabase.rpc('process_picking_list', {
+        p_list_id: vars.listId,
+        p_performed_by: userName,
+        p_user_id: user?.id,
+        p_pallets_qty: vars.palletsQty,
+        p_total_units: vars.totalUnits,
+        p_user_role: profile?.role || 'staff'
+      });
+
+      if (error) {
+        console.error('[PICKING_RPC_ERROR]', error);
+        throw error;
+      }
+      return data;
+    },
+    onSuccess: () => {
+      console.log(`[FORENSIC][MUTATION][PICKING_RPC_SUCCESS] ${new Date().toISOString()}`);
+      queryClient.invalidateQueries({ queryKey: inventoryKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: ['inventory_logs'] });
+      queryClient.invalidateQueries({ queryKey: ['picking_lists'] });
+      toast.success('Inventory updated successfully!');
     }
   });
 
@@ -640,14 +623,15 @@ export const InventoryProvider = ({
       orderNumber?: string
     ) => {
       const resolvedWarehouse = warehouse || 'LUDLOW';
-      const key = `${sku}-${resolvedWarehouse}-${location || 'default'}`;
+      const normalizedLocation = location ? location.trim().toUpperCase() : null;
+      const key = `${sku}-${resolvedWarehouse}-${normalizedLocation || 'default'}`;
 
       // 1. OPTIMISTIC UI: Find the current item to preserve all fields
       const currentItem = inventoryDataRef.current.find(
         (i) =>
           i.sku === sku &&
           i.warehouse === resolvedWarehouse &&
-          (!location || i.location === location)
+          (!normalizedLocation || i.location === normalizedLocation)
       );
 
       // Early return if item not found
@@ -665,6 +649,8 @@ export const InventoryProvider = ({
         new: {
           ...currentItem,
           quantity: newQuantity,
+          location: normalizedLocation || currentItem.location,
+          is_active: newQuantity > 0 ? true : currentItem.is_active,
           _lastUpdateSource: 'local',
         } as any,
         old: currentItem as any,
@@ -717,7 +703,7 @@ export const InventoryProvider = ({
         updateQuantityMutation.mutate({
           sku,
           resolvedWarehouse,
-          location,
+          location: normalizedLocation,
           finalDelta,
           isReversal,
           listId,
@@ -804,15 +790,132 @@ export const InventoryProvider = ({
     [deleteItemMutation]
   );
 
+  // Helper to apply reverse arithmetic to inventory
+  const applyLogReversal = useCallback((currentData: InventoryItemWithMetadata[], log: InventoryLog): InventoryItemWithMetadata[] => {
+    let newData = [...currentData];
+
+    try {
+      if (log.action_type === 'MOVE') {
+        const qty = Math.abs(log.quantity_change);
+
+        // Deduct from Target
+        if (log.to_warehouse && (log.to_location || log.to_location_id)) {
+          const targetIndex = newData.findIndex(
+            i => i.sku === log.sku &&
+              i.warehouse === log.to_warehouse &&
+              (log.to_location_id ? i.location_id === log.to_location_id : i.location === log.to_location)
+          );
+
+          if (targetIndex > -1) {
+            newData[targetIndex] = {
+              ...newData[targetIndex],
+              quantity: Math.max(0, newData[targetIndex].quantity - qty)
+            };
+          }
+        }
+
+        // Add back to Source
+        if (log.from_warehouse && (log.from_location || log.location_id)) {
+          const sourceIndex = newData.findIndex(
+            i => i.sku === log.sku &&
+              i.warehouse === log.from_warehouse &&
+              (log.location_id ? i.location_id === log.location_id : i.location === log.from_location)
+          );
+
+          if (sourceIndex > -1) {
+            newData[sourceIndex] = {
+              ...newData[sourceIndex],
+              quantity: newData[sourceIndex].quantity + qty
+            };
+          } else {
+            // Create if missing (simplified restoration)
+            const newItem: InventoryItemWithMetadata = {
+              id: log.item_id ? Number(log.item_id) : -Math.floor(Math.random() * 1000000),
+              sku: log.sku,
+              warehouse: log.from_warehouse! as any,
+              location: log.from_location || 'Unknown',
+              location_id: log.location_id || undefined,
+              quantity: qty,
+              is_active: true,
+              sku_note: log.snapshot_before?.sku_note,
+              created_at: new Date()
+            };
+            newData.push(newItem);
+          }
+        }
+      } else if (log.action_type === 'ADD') {
+        // Reverse ADD = Deduct
+        const qty = Math.abs(log.quantity_change);
+        const wh = log.to_warehouse || log.from_warehouse;
+        const loc = log.to_location || log.from_location;
+
+        const idx = newData.findIndex(i => i.sku === log.sku && i.warehouse === wh && i.location === loc);
+        if (idx > -1) {
+          newData[idx] = { ...newData[idx], quantity: Math.max(0, newData[idx].quantity - qty) };
+        }
+      } else if (log.action_type === 'DEDUCT') {
+        // Reverse DEDUCT = Add
+        const qty = Math.abs(log.quantity_change);
+        const wh = log.from_warehouse || log.to_warehouse;
+        const loc = log.from_location || log.to_location;
+
+        const idx = newData.findIndex(i => i.sku === log.sku && i.warehouse === wh && i.location === loc);
+        if (idx > -1) {
+          newData[idx] = { ...newData[idx], quantity: newData[idx].quantity + qty };
+        } else {
+          // Restore if missing
+          const newItem: InventoryItemWithMetadata = {
+            id: log.item_id ? Number(log.item_id) : -Math.floor(Math.random() * 1000000),
+            sku: log.sku,
+            warehouse: wh! as any,
+            location: loc || 'Unknown',
+            location_id: log.location_id || undefined,
+            quantity: qty,
+            is_active: true,
+            created_at: new Date()
+          };
+          newData.push(newItem);
+        }
+      } else if (log.action_type === 'DELETE') {
+        // Restore item
+        if (log.snapshot_before) {
+          const snap = log.snapshot_before;
+          newData.push({
+            ...snap,
+            id: snap.id ? Number(snap.id) : -Math.floor(Math.random() * 1000000),
+            is_active: true
+          } as InventoryItemWithMetadata);
+        }
+      }
+    } catch (e) {
+      console.warn('Optimistic undo calculation failed:', e);
+    }
+    return newData;
+  }, []);
+
   const undoAction = useCallback(
     async (logId: string) => {
       try {
+        // 1. Optimistic Update of Local State (for instant offline feedback)
+        // Retrieve log from react-query cache
+        const logs = queryClient.getQueryData<InventoryLog[]>(['inventory_logs', 'TODAY']) || [];
+        const targetLog = logs.find(l => l.id === logId);
+
+        if (targetLog) {
+          console.log(`[Undo] Optimistically reversing log ${logId} in local state`);
+          setInventoryData(prev => applyLogReversal(prev, targetLog));
+        }
+
+        // 2. Perform actual undo (Queued if offline)
         await performUndo(logId);
       } catch (err: any) {
         toast.error(err.message || 'Undo failed');
+        // We could revert the state here if we stored previous state, but
+        // for typical errors (network), we want to keep the optimistic state.
+        // Critical errors will force a refetch anyway.
       }
     },
-    [performUndo]
+    [performUndo, queryClient, applyLogReversal]
   );
 
   const syncInventoryLocations = useCallback(async () => {
@@ -971,6 +1074,9 @@ export const InventoryProvider = ({
     moveItem,
     undoAction,
     deleteItem,
+    processPickingList: async (listId: string, palletsQty?: number, totalUnits?: number) => {
+      await processPickingListMutation.mutateAsync({ listId, palletsQty, totalUnits });
+    },
     exportData,
     syncInventoryLocations,
     updateInventory,
@@ -979,6 +1085,8 @@ export const InventoryProvider = ({
     updateSKUMetadata,
     syncFilters,
     getAvailableStock,
+    showInactive,
+    setShowInactive,
     isAdmin: !!isAdmin,
     user,
     profile,

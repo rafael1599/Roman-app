@@ -1,24 +1,20 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { useDoubleCheckList, PickingList, PickingItem } from '../../../hooks/useDoubleCheckList';
+import { useState, useRef, useEffect } from 'react';
+import { useDoubleCheckList, PickingList } from '../../../hooks/useDoubleCheckList';
 import { useViewMode } from '../../../context/ViewModeContext';
-import {
-    ClipboardCheck,
-    ChevronDown,
-    AlertCircle,
-    Clock,
-    CheckCircle2,
-    Trash2,
-} from 'lucide-react';
+import ClipboardCheck from 'lucide-react/dist/esm/icons/clipboard-check';
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down';
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle';
+import Clock from 'lucide-react/dist/esm/icons/clock';
+import CheckCircle2 from 'lucide-react/dist/esm/icons/check-circle-2';
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
 import { usePickingSession } from '../../../context/PickingContext';
-import { useAuth } from '../../../context/AuthContext';
 import { useConfirmation } from '../../../context/ConfirmationContext';
 import toast from 'react-hot-toast';
 
 export const DoubleCheckHeader = () => {
-    const { orders, readyCount, correctionCount, loading, refresh } = useDoubleCheckList();
+    const { orders, readyCount, correctionCount, refresh } = useDoubleCheckList();
     const { setExternalDoubleCheckId, setViewMode } = useViewMode();
     const { cartItems, sessionMode, deleteList } = usePickingSession();
-    const { isAdmin } = useAuth();
     const { showConfirmation } = useConfirmation();
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);

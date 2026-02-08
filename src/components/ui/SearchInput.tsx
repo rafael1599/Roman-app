@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
-import { Search, Scan, Type, Hash } from 'lucide-react';
+import Search from 'lucide-react/dist/esm/icons/search';
+import Scan from 'lucide-react/dist/esm/icons/scan';
+import Type from 'lucide-react/dist/esm/icons/type';
+import Hash from 'lucide-react/dist/esm/icons/hash';
 
 interface SearchInputProps {
     value: string;
@@ -44,20 +47,20 @@ export const SearchInput: React.FC<SearchInputProps> = ({
                         className="w-full bg-surface border border-subtle text-content rounded-lg pl-10 pr-12 py-3 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors placeholder:text-muted/50 text-lg font-mono"
                     />
 
-                    {mode === 'picking' && (
+                    {mode === 'picking' ? (
                         <button
                             onClick={onScanClick}
                             className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 bg-card text-accent rounded-md hover:opacity-80 transition-colors"
                         >
                             <Scan size={20} />
                         </button>
-                    )}
+                    ) : null}
                 </div>
                 <button
                     onClick={toggleMode}
                     className={`flex items-center justify-center w-12 border rounded-lg active:scale-95 transition-all ${keyboardMode === 'numeric'
-                            ? 'bg-accent/10 border-accent/30 text-accent'
-                            : 'bg-surface border-subtle text-muted'
+                        ? 'bg-accent/10 border-accent/30 text-accent'
+                        : 'bg-surface border-subtle text-muted'
                         }`}
                     title={
                         keyboardMode === 'numeric' ? 'Switch to Text Keyboard' : 'Switch to Numeric Keyboard'

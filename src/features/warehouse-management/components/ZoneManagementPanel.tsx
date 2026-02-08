@@ -1,10 +1,25 @@
 import { useState, useMemo } from 'react';
-import { Search, Info, Wand2 } from 'lucide-react';
-import { useError } from '../../context/ErrorContext';
+import Search from 'lucide-react/dist/esm/icons/search';
+import Wand2 from 'lucide-react/dist/esm/icons/wand-2';
+import { useError } from '../../../context/ErrorContext';
 import { useConfirmation } from '../../../context/ConfirmationContext';
 import toast from 'react-hot-toast';
 
-export const ZoneManagementPanel = ({ locations, zones, getZone, updateZone, autoAssignZones }) => {
+interface ZoneManagementProps {
+  locations: string[];
+  zones: Record<string, string>;
+  getZone: (warehouse: string, location: string) => string;
+  updateZone: (warehouse: string, location: string, zone: string) => void;
+  autoAssignZones: () => Promise<void>;
+}
+
+export const ZoneManagementPanel = ({
+  locations,
+  zones,
+  getZone,
+  updateZone,
+  autoAssignZones,
+}: ZoneManagementProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterZone, setFilterZone] = useState('ALL');
   const [isAutoAssigning, setIsAutoAssigning] = useState(false);
@@ -38,13 +53,13 @@ export const ZoneManagementPanel = ({ locations, zones, getZone, updateZone, aut
         try {
           await autoAssignZones();
           toast.success('Zones auto-assigned successfully');
-        } catch (err) {
-          showError('Auto-assign failed', err.message);
+        } catch (err: any) {
+          showError('Auto-assign failed', err.message || 'Unknown error');
         } finally {
           setIsAutoAssigning(false);
         }
       },
-      () => {},
+      () => { },
       'Assign zones',
       'Cancel'
     );
@@ -56,7 +71,10 @@ export const ZoneManagementPanel = ({ locations, zones, getZone, updateZone, aut
       <div className="flex flex-col md:flex-row gap-4 justify-between items-end bg-card border border-subtle p-4 rounded-xl">
         <div className="w-full md:w-auto flex-1">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" size={18} />
+            <Search
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted"
+              size={18}
+            />
             <input
               type="text"
               placeholder="Search location..."
@@ -109,7 +127,7 @@ export const ZoneManagementPanel = ({ locations, zones, getZone, updateZone, aut
                 warehouse={wh}
                 location={loc}
                 zone={currentZone}
-                onUpdate={(newZone) => updateZone(wh, loc, newZone)}
+                onUpdate={(newZone: string) => updateZone(wh, loc, newZone)}
               />
             );
           })}
@@ -125,8 +143,15 @@ export const ZoneManagementPanel = ({ locations, zones, getZone, updateZone, aut
   );
 };
 
-const LocationRow = ({ warehouse, location, zone, onUpdate }) => {
-  const getZoneColor = (z) => {
+interface LocationRowProps {
+  warehouse: string;
+  location: string;
+  zone: string;
+  onUpdate: (zone: string) => void;
+}
+
+const LocationRow = ({ warehouse, location, zone, onUpdate }: LocationRowProps) => {
+  const getZoneColor = (z: string) => {
     switch (z) {
       case 'HOT':
         return 'bg-red-500/10 text-red-500 border-red-500/20';
@@ -150,11 +175,10 @@ const LocationRow = ({ warehouse, location, zone, onUpdate }) => {
             onClick={() => onUpdate(z)}
             className={`
                             text-[10px] font-black uppercase px-3 py-1.5 rounded-md border transition-all
-                            ${
-                              zone === z
-                                ? getZoneColor(z) + ' ring-1 ring-inset ring-content/10'
-                                : 'bg-transparent border-transparent text-muted hover:bg-surface'
-                            }
+                            ${zone === z
+                ? getZoneColor(z) + ' ring-1 ring-inset ring-content/10'
+                : 'bg-transparent border-transparent text-muted hover:bg-surface'
+              }
                         `}
           >
             {z}

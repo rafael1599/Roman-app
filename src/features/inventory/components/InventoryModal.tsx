@@ -1,7 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { z } from 'zod';
 import { createPortal } from 'react-dom';
-import { X, Save, Trash2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x';
+import Save from 'lucide-react/dist/esm/icons/save';
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle';
+import CheckCircle2 from 'lucide-react/dist/esm/icons/check-circle-2';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import toast from 'react-hot-toast';
@@ -32,7 +36,15 @@ const extendedSchema = InventoryItemInputSchema.extend({
     width_in: z.coerce.number().optional().nullable(),
 });
 
-type InventoryFormValues = z.input<typeof extendedSchema>;
+interface InventoryFormValues {
+    sku: string;
+    location: string;
+    quantity: number;
+    sku_note: string | null;
+    warehouse: 'LUDLOW' | 'ATS' | 'DELETED ITEMS';
+    length_ft?: number | null;
+    width_in?: number | null;
+}
 
 export const InventoryModal: React.FC<InventoryModalProps> = ({
     isOpen,
@@ -49,7 +61,8 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
     const { showConfirmation } = useConfirmation();
     const autoSelect = useAutoSelect();
 
-    const [confirmCreateNew, setConfirmCreateNew] = useState(false);
+    // const [confirmCreateNew, setConfirmCreateNew] = useState(false); // REMOVED: Ghost Location simplification
+
 
     const {
         register,
@@ -59,7 +72,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
         reset,
         formState: { errors, isValid }
     } = useForm<InventoryFormValues>({
-        resolver: zodResolver(extendedSchema),
+        resolver: zodResolver(extendedSchema) as any,
         mode: 'onChange',
         defaultValues: {
             sku: '',
@@ -78,7 +91,8 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
     useEffect(() => {
         if (isOpen) {
             setIsNavHidden?.(true);
-            setConfirmCreateNew(false);
+            // setConfirmCreateNew(false); // REMOVED
+
 
             if (mode === 'edit' && initialData) {
                 reset({
@@ -120,14 +134,16 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
         [formData.location, validLocationNames]
     );
 
-    const isNewLocation = useMemo(() => {
-        if (!formData.location) return false;
-        return !prediction.exactMatch;
-    }, [formData.location, prediction]);
+    // const isNewLocation = useMemo(() => {
+    //     if (!formData.location) return false;
+    //     return !prediction.exactMatch;
+    // }, [formData.location, prediction]);
 
-    useEffect(() => {
-        setConfirmCreateNew(false);
-    }, [formData.location]);
+
+    // useEffect(() => {
+    //     setConfirmCreateNew(false);
+    // }, [formData.location]);
+
 
     const currentInventory = formData.warehouse === 'ATS' ? atsData : ludlowData;
 
@@ -175,7 +191,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
     // Use a custom debounce hook or simple timeout for now
     useEffect(() => {
         // LEVEL 1: DIRTY CHECK (Has anything changed?)
-        const normalize = (str?: string | null) => (str || '').trim();
+        const normalize = (str: any) => (String(str || '')).trim();
 
         const currentSKU = normalize(formData.sku);
         const originalSKU = normalize(initialData?.sku);
@@ -184,7 +200,8 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
         const originalLocation = normalize(initialData?.location);
 
         const currentWh = normalize(formData.warehouse);
-        const originalWh = normalize(initialData?.warehouse || (screenType as any) || 'LUDLOW');
+        const originalWh = normalize((screenType as any) || 'LUDLOW');
+
 
         const skuChanged = currentSKU !== originalSKU;
         const locationChanged = currentLocation !== originalLocation;
@@ -304,10 +321,11 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
     };
 
     const onFormSubmit = (data: any) => {
-        if (isNewLocation && !confirmCreateNew) {
-            toast.error('Please confirm creating the new location.');
-            return;
-        }
+        // if (isNewLocation && !confirmCreateNew) {
+        //     toast.error('Please confirm creating the new location.');
+        //     return;
+        // }
+
 
         // Rename Confirmation
         if (mode === 'edit' && initialData && data.sku !== initialData.sku) {
@@ -383,7 +401,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
                             id="inventory_sku"
                             label="SKU"
                             value={formData.sku}
-                            onChange={(v: string) => setValue('sku', v)}
+                            onChange={(v: string) => setValue('sku', v, { shouldValidate: true })}
                             suggestions={skuSuggestions}
                             placeholder="Enter SKU..."
                             minChars={2}
@@ -391,8 +409,8 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
                             onSelect={(s: any) => {
                                 const match = currentInventory.find(i => i.sku === s.value);
                                 if (match && mode === 'add') {
-                                    setValue('location', match.location || '');
-                                    setValue('sku_note', match.sku_note || '');
+                                    setValue('location', match.location || '', { shouldValidate: true });
+                                    setValue('sku_note', match.sku_note || '', { shouldValidate: true });
                                 }
                             }}
                         />
@@ -434,7 +452,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
                                 id="inventory_location"
                                 label="Location"
                                 value={formData.location || ''}
-                                onChange={(v: string) => setValue('location', v)}
+                                onChange={(v: string) => setValue('location', v, { shouldValidate: true })}
                                 onBlur={handleLocationBlur}
                                 suggestions={locationSuggestions}
                                 placeholder="Row/Bin..."
@@ -442,28 +460,14 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
                                 initialKeyboardMode="numeric"
                             />
 
-                            {isNewLocation && formData.location && (
-                                <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-xl animate-in fade-in slide-in-from-top-2">
-                                    <div className="flex items-start gap-2">
-                                        <AlertCircle className="text-yellow-500 shrink-0 mt-0.5" size={16} />
-                                        <p className="text-[10px] font-black text-yellow-500 uppercase">Unrecognized Location</p>
-                                    </div>
-                                    <label className="mt-2 flex items-center gap-2 cursor-pointer group">
-                                        <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${confirmCreateNew ? 'bg-yellow-500 border-yellow-500' : 'border-neutral-500 group-hover:border-yellow-500'}`}>
-                                            {confirmCreateNew && <CheckCircle2 size={12} className="text-black" />}
-                                        </div>
-                                        <input type="checkbox" className="hidden" checked={confirmCreateNew} onChange={(e) => setConfirmCreateNew(e.target.checked)} />
-                                        <span className={`text-[10px] font-black uppercase tracking-wide ${confirmCreateNew ? 'text-content' : 'text-muted'}`}>Confirm New Location</span>
-                                    </label>
-                                </div>
-                            )}
                         </div>
+
 
                         <AutocompleteInput
                             id="sku_note"
                             label="Internal Note"
                             value={formData.sku_note || ''}
-                            onChange={(v: string) => setValue('sku_note', v)}
+                            onChange={(v: string) => setValue('sku_note', v, { shouldValidate: true })}
                             suggestions={[]}
                             placeholder="e.g. T, ø, P..."
                         />
@@ -516,12 +520,13 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
                         </button>
                     )}
                     <button
-                        disabled={!isValid || !formData.sku?.trim() || !formData.location?.trim() || (isNewLocation && !confirmCreateNew) || validationState.status === 'error' || validationState.status === 'checking'}
+                        disabled={!isValid || !formData.sku?.trim() || !formData.location?.trim() || validationState.status === 'error' || validationState.status === 'checking'}
                         onClick={handleSubmit(onFormSubmit)}
-                        className={`flex-1 font-black uppercase tracking-widest h-14 rounded-2xl flex items-center justify-center gap-2 transition-transform shadow-lg shadow-accent/20 ${(!isValid || !formData.sku?.trim() || !formData.location?.trim() || (isNewLocation && !confirmCreateNew) || validationState.status === 'error' || validationState.status === 'checking')
+                        className={`flex-1 font-black uppercase tracking-widest h-14 rounded-2xl flex items-center justify-center gap-2 transition-transform shadow-lg shadow-accent/20 ${(!isValid || !formData.sku?.trim() || !formData.location?.trim() || validationState.status === 'error' || validationState.status === 'checking')
                             ? 'bg-neutral-800 text-neutral-500 border border-neutral-700 cursor-not-allowed opacity-50'
                             : 'bg-accent hover:opacity-90 text-main active:scale-95'
                             }`}
+
                     >
                         <Save className="w-5 h-5" />
                         {mode === 'edit' ? 'Update' : 'Save'}

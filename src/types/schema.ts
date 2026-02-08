@@ -29,7 +29,7 @@ export type Profile = Tables<'profiles'>;
 export type Inventory = Tables<'inventory'>;
 export type InventoryLog = Tables<'inventory_logs'>;
 export type PickingList = Tables<'picking_lists'>;
-export type WarehouseZone = Tables<'warehouse_zones'>;
+
 export type Location = Tables<'locations'>;
 export type SKUMetadata = Tables<'sku_metadata'>;
 export type Customer = Tables<'customers'>;

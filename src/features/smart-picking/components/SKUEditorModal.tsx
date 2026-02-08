@@ -1,5 +1,8 @@
 import { useState, useMemo } from 'react';
-import { Edit3, Check, X, AlertCircle } from 'lucide-react';
+import Edit3 from 'lucide-react/dist/esm/icons/edit-3';
+import Check from 'lucide-react/dist/esm/icons/check';
+import X from 'lucide-react/dist/esm/icons/x';
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle';
 import AutocompleteInput from '../../../components/ui/AutocompleteInput';
 import { ValidatedItem } from '../types';
 

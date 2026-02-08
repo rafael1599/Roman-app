@@ -1,7 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useIsMutating, useIsFetching, useMutationState } from '@tanstack/react-query';
-import { CheckCircle2, RefreshCw, CloudOff, AlertCircle } from 'lucide-react';
+import CheckCircle2 from 'lucide-react/dist/esm/icons/check-circle-2';
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw';
+import CloudOff from 'lucide-react/dist/esm/icons/cloud-off';
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle';
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
 import toast from 'react-hot-toast';
+import { queryClient } from '../../lib/query-client';
 
 /**
  * SyncStatusIndicator Component
@@ -55,17 +60,37 @@ export const SyncStatusIndicator: React.FC = () => {
         }
     };
 
+    const handlePurgeErrors = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (window.confirm('Do you want to clear all sync errors? This will remove failed actions from your browser queue.')) {
+            const cache = queryClient.getMutationCache();
+            const errors = cache.getAll().filter(m => m.state.status === 'error');
+            errors.forEach(m => cache.remove(m));
+            queryClient.invalidateQueries();
+            toast.success('Sync queue cleared.');
+        }
+    };
+
     // 1. RED STATE: Errors (Server rejection, logic error, etc.)
     if (hasErrors) {
         return (
-            <button
-                onClick={handleShowErrors}
-                className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-500 hover:bg-red-500/20 transition-colors"
-                title="Synchronization Error - Click for details"
-            >
-                <AlertCircle size={16} />
-                <span className="text-[10px] font-bold uppercase hidden sm:inline">Error</span>
-            </button>
+            <div className="flex items-center gap-1">
+                <button
+                    onClick={handleShowErrors}
+                    className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-500 hover:bg-red-500/20 transition-colors"
+                    title="Synchronization Error - Click for details"
+                >
+                    <AlertCircle size={16} />
+                    <span className="text-[10px] font-bold uppercase hidden sm:inline">Error</span>
+                </button>
+                <button
+                    onClick={handlePurgeErrors}
+                    className="p-1 rounded-full bg-red-500/5 hover:bg-red-500/20 text-red-400 border border-red-500/10 transition-colors"
+                    title="Clear Error Queue"
+                >
+                    <Trash2 size={13} />
+                </button>
+            </div>
         );
     }
 

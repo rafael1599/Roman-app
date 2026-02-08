@@ -4,7 +4,9 @@ import { useOptimizationReports } from '../../../hooks/useOptimizationReports';
 import { OptimizationReportCard } from './OptimizationReportCard';
 import { LocationList } from './LocationList';
 import { UserManagement } from './UserManagement';
-import { BarChart3, MapPin, Users } from 'lucide-react';
+import BarChart3 from 'lucide-react/dist/esm/icons/bar-chart-3';
+import MapPin from 'lucide-react/dist/esm/icons/map-pin';
+import Users from 'lucide-react/dist/esm/icons/users';
 import { useAuth } from '../../../context/AuthContext';
 
 type TabType = 'locations' | 'reports' | 'users';

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useCallback, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import { useAuth } from './AuthContext';
 import { useInventory } from '../hooks/useInventoryData';
@@ -133,12 +133,16 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
       setSessionMode('building');
       setOrderNumber(null);
       setCustomer(null);
+      setLoadNumber(null);
+      setIsInitializing(false);
     }
 
     // Comprehensive localStorage cleanup
     const keysToRemove = [
       'picking_cart_items',
       'picking_order_number',
+      'picking_customer_obj',
+      'picking_load_number',
       'active_picking_list_id',
       'picking_session_mode',
     ];
@@ -223,13 +227,13 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
 
   const { notes, isLoading: isNotesLoading, addNote: addNoteRaw } = usePickingNotes(activeListId);
 
-  const addNote = async (message: string) => {
+  const addNote = useCallback(async (message: string) => {
     if (!user) return;
     await addNoteRaw(user.id, message);
-  };
+  }, [user, addNoteRaw]);
 
   // Return to Building: Revert from Picking mode back to Building mode
-  const returnToBuilding = async (id?: string | null) => {
+  const returnToBuilding = useCallback(async (id?: string | null) => {
     const targetId = id || activeListId;
 
     if (!targetId) {
@@ -261,10 +265,10 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
       console.error('Failed to return to building:', err);
       toast.error('Failed to return to building mode');
     }
-  };
+  }, [activeListId, deleteList, setSessionMode, setActiveListId]);
 
   // Intercept Add to Cart to ensure session is initialized
-  const addToCart = async (item: any) => {
+  const addToCart = useCallback(async (item: any) => {
     // Block adding items in picking mode
     if (sessionMode === 'picking') {
       toast.error('Cannot add items in picking mode. Use "Return to Building" to make changes.', {
@@ -282,9 +286,9 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
     // Otherwise, need to initialize session first
     setPendingItem(item);
     setIsInitializing(true);
-  };
+  }, [sessionMode, activeListId, orderNumber, addToCartInternal, setPendingItem, setIsInitializing]);
 
-  const startNewSession = async (
+  const startNewSession = useCallback(async (
     strategy: 'auto' | 'manual' | 'resume',
     manualOrderNumber?: string,
     resumeId?: string,
@@ -339,9 +343,14 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
     if (itemToAdd) {
       addToCartInternal(itemToAdd);
     }
-  };
+  }, [pendingItem, setPendingItem, loadExternalList, addToCartInternal, resetSession, setOrderNumber, setCustomer, setSessionMode]);
 
-  const value: PickingContextType = {
+  const cancelInitialization = useCallback(() => {
+    setIsInitializing(false);
+    setPendingItem(null);
+  }, [setIsInitializing, setPendingItem]);
+
+  const value: PickingContextType = useMemo(() => ({
     cartItems,
     setCartItems,
     activeListId,
@@ -386,12 +395,55 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
     setIsInitializing,
     startNewSession,
     pendingItem,
-    cancelInitialization: () => {
-      setIsInitializing(false);
-      setPendingItem(null);
-    },
+    cancelInitialization,
     updateCustomerDetails,
-  };
+  }), [
+    cartItems,
+    setCartItems,
+    activeListId,
+    setActiveListId,
+    orderNumber,
+    setOrderNumber,
+    customer,
+    setCustomer,
+    loadNumber,
+    setLoadNumber,
+    listStatus,
+    checkedBy,
+    ownerId,
+    correctionNotes,
+    notes,
+    isNotesLoading,
+    addNote,
+    sessionMode,
+    setSessionMode,
+    addToCart,
+    updateCartQty,
+    setCartQty,
+    removeFromCart,
+    clearCart,
+    getAvailableStock,
+    completeList,
+    markAsReady,
+    lockForCheck,
+    releaseCheck,
+    returnToPicker,
+    revertToPicking,
+    deleteList,
+    loadExternalList,
+    generatePickingPath,
+    returnToBuilding,
+    isLoaded,
+    isSaving,
+    lastSaved,
+    resetSession,
+    isInitializing,
+    setIsInitializing,
+    startNewSession,
+    pendingItem,
+    cancelInitialization,
+    updateCustomerDetails,
+  ]);
 
   return <PickingContext.Provider value={value}>{children}</PickingContext.Provider>;
 };

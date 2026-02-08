@@ -1,533 +1,794 @@
 export type Json =
-    | string
-    | number
-    | boolean
-    | null
-    | { [key: string]: Json | undefined }
-    | Json[]
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
 
 export type Database = {
-    // Allows to automatically instantiate createClient with right options
-    // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-    __InternalSupabase: {
-        PostgrestVersion: "14.1"
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
     }
-    public: {
-        Tables: {
-            app_users: {
-                Row: {
-                    age: number | null
-                    created_at: string | null
-                    email: string
-                    full_name: string
-                    id: string
-                    role: string | null
-                }
-                Insert: {
-                    age?: number | null
-                    created_at?: string | null
-                    email: string
-                    full_name: string
-                    id?: string
-                    role?: string | null
-                }
-                Update: {
-                    age?: number | null
-                    created_at?: string | null
-                    email?: string
-                    full_name?: string
-                    id?: string
-                    role?: string | null
-                }
-                Relationships: []
-            }
-            customers: {
-                Row: {
-                    city: string | null
-                    created_at: string | null
-                    email: string | null
-                    id: string
-                    name: string
-                    phone: string | null
-                    state: string | null
-                    street: string | null
-                    updated_at: string | null
-                    zip_code: string | null
-                }
-                Insert: {
-                    city?: string | null
-                    created_at?: string | null
-                    email?: string | null
-                    id?: string
-                    name: string
-                    phone?: string | null
-                    state?: string | null
-                    street?: string | null
-                    updated_at?: string | null
-                    zip_code?: string | null
-                }
-                Update: {
-                    city?: string | null
-                    created_at?: string | null
-                    email?: string | null
-                    id?: string
-                    name?: string
-                    phone?: string | null
-                    state?: string | null
-                    street?: string | null
-                    updated_at?: string | null
-                    zip_code?: string | null
-                }
-                Relationships: []
-            }
-            inventory: {
-                Row: {
-                    capacity: number | null
-                    created_at: string | null
-                    id: number
-                    location: string | null
-                    location_detail: string | null
-                    location_id: string | null
-                    quantity: number | null
-                    sku: string
-                    status: string | null
-                    warehouse: string | null
-                }
-                Insert: {
-                    capacity?: number | null
-                    created_at?: string | null
-                    id?: never
-                    location?: string | null
-                    location_detail?: string | null
-                    location_id?: string | null
-                    quantity?: number | null
-                    sku: string
-                    status?: string | null
-                    warehouse?: string | null
-                }
-                Update: {
-                    capacity?: number | null
-                    created_at?: string | null
-                    id?: never
-                    location?: string | null
-                    location_detail?: string | null
-                    location_id?: string | null
-                    quantity?: number | null
-                    sku?: string
-                    status?: string | null
-                    warehouse?: string | null
-                }
-                Relationships: []
-            }
-            inventory_logs: {
-                Row: {
-                    action_type: string
-                    created_at: string | null
-                    from_location: string | null
-                    from_warehouse: string | null
-                    id: string
-                    is_reversed: boolean | null
-                    item_id: number | null
-                    list_id: string | null
-                    new_quantity: number | null
-                    order_number: string | null
-                    performed_by: string | null
-                    prev_quantity: number | null
-                    quantity_change: number
-                    sku: string
-                    to_location: string | null
-                    to_warehouse: string | null
-                }
-                Insert: {
-                    action_type: string
-                    created_at?: string | null
-                    from_location?: string | null
-                    from_warehouse?: string | null
-                    id?: string
-                    is_reversed?: boolean | null
-                    item_id?: number | null
-                    list_id?: string | null
-                    new_quantity?: number | null
-                    order_number?: string | null
-                    performed_by?: string | null
-                    prev_quantity?: number | null
-                    quantity_change: number
-                    sku: string
-                    to_location?: string | null
-                    to_warehouse?: string | null
-                }
-                Update: {
-                    action_type?: string
-                    created_at?: string | null
-                    from_location?: string | null
-                    from_warehouse?: string | null
-                    id?: string
-                    is_reversed?: boolean | null
-                    item_id?: number | null
-                    list_id?: string | null
-                    new_quantity?: number | null
-                    order_number?: string | null
-                    performed_by?: string | null
-                    prev_quantity?: number | null
-                    quantity_change?: number
-                    sku?: string
-                    to_location?: string | null
-                    to_warehouse?: string | null
-                }
-                Relationships: []
-            }
-            locations: {
-                Row: {
-                    building: string | null
-                    created_at: string | null
-                    id: string
-                    level: number | null
-                    name: string
-                    optimization_order: number | null
-                    position: number | null
-                    section: string | null
-                    warehouse: string | null
-                    zone_id: string | null
-                }
-                Insert: {
-                    building?: string | null
-                    created_at?: string | null
-                    id?: string
-                    level?: number | null
-                    name: string
-                    optimization_order?: number | null
-                    position?: number | null
-                    section?: string | null
-                    warehouse?: string | null
-                    zone_id?: string | null
-                }
-                Update: {
-                    building?: string | null
-                    created_at?: string | null
-                    id?: string
-                    level?: number | null
-                    name?: string
-                    optimization_order?: number | null
-                    position?: number | null
-                    section?: string | null
-                    warehouse?: string | null
-                    zone_id?: string | null
-                }
-                Relationships: [
-                    {
-                        foreignKeyName: "locations_zone_id_fkey"
-                        columns: ["zone_id"]
-                        isOneToOne: false
-                        referencedRelation: "warehouse_zones"
-                        referencedColumns: ["id"]
-                    },
-                ]
-            }
-            optimization_reports: {
-                Row: {
-                    created_at: string | null
-                    created_by: string | null
-                    details: Json | null
-                    id: string
-                    list_id: string | null
-                    optimization_type: string
-                    path_data: Json | null
-                    warehouse: string | null
-                }
-                Insert: {
-                    created_at?: string | null
-                    created_by?: string | null
-                    details?: Json | null
-                    id?: string
-                    list_id?: string | null
-                    optimization_type: string
-                    path_data?: Json | null
-                    warehouse?: string | null
-                }
-                Update: {
-                    created_at?: string | null
-                    created_by?: string | null
-                    details?: Json | null
-                    id?: string
-                    list_id?: string | null
-                    optimization_type?: string
-                    path_data?: Json | null
-                    warehouse?: string | null
-                }
-                Relationships: [
-                    {
-                        foreignKeyName: "optimization_reports_list_id_fkey"
-                        columns: ["list_id"]
-                        isOneToOne: false
-                        referencedRelation: "picking_lists"
-                        referencedColumns: ["id"]
-                    },
-                ]
-            }
-            picking_lists: {
-                Row: {
-                    checked_by: string | null
-                    correction_notes: string | null
-                    created_at: string | null
-                    customer_id: string | null
-                    id: string
-                    items: Json
-                    load_number: string | null
-                    notes: string | null
-                    order_number: string | null
-                    pallets_qty: number | null
-                    priority: string | null
-                    status: string | null
-                    total_units: number | null
-                    updated_at: string | null
-                    user_id: string | null
-                }
-                Insert: {
-                    checked_by?: string | null
-                    correction_notes?: string | null
-                    created_at?: string | null
-                    customer_id?: string | null
-                    id?: string
-                    items: Json
-                    load_number?: string | null
-                    notes?: string | null
-                    order_number?: string | null
-                    pallets_qty?: number | null
-                    priority?: string | null
-                    status?: string | null
-                    total_units?: number | null
-                    updated_at?: string | null
-                    user_id?: string | null
-                }
-                Update: {
-                    checked_by?: string | null
-                    correction_notes?: string | null
-                    created_at?: string | null
-                    customer_id?: string | null
-                    id?: string
-                    items?: Json
-                    load_number?: string | null
-                    notes?: string | null
-                    order_number?: string | null
-                    pallets_qty?: number | null
-                    priority?: string | null
-                    status?: string | null
-                    total_units?: number | null
-                    updated_at?: string | null
-                    user_id?: string | null
-                }
-                Relationships: [
-                    {
-                        foreignKeyName: "picking_lists_customer_id_fkey"
-                        columns: ["customer_id"]
-                        isOneToOne: false
-                        referencedRelation: "customers"
-                        referencedColumns: ["id"]
-                    },
-                ]
-            }
-            profiles: {
-                Row: {
-                    avatar_url: string | null
-                    full_name: string | null
-                    id: string
-                    updated_at: string | null
-                    username: string | null
-                    warehouse: string | null
-                }
-                Insert: {
-                    avatar_url?: string | null
-                    full_name?: string | null
-                    id: string
-                    updated_at?: string | null
-                    username?: string | null
-                    warehouse?: string | null
-                }
-                Update: {
-                    avatar_url?: string | null
-                    full_name?: string | null
-                    id?: string
-                    updated_at?: string | null
-                    username?: string | null
-                    warehouse?: string | null
-                }
-                Relationships: []
-            }
-            sku_metadata: {
-                Row: {
-                    barcode: string | null
-                    brand: string | null
-                    category: string | null
-                    created_at: string | null
-                    description: string | null
-                    dimensions: Json | null
-                    id: string
-                    image_url: string | null
-                    sku: string
-                    unit_weight: number | null
-                    updated_at: string | null
-                }
-                Insert: {
-                    barcode?: string | null
-                    brand?: string | null
-                    category?: string | null
-                    created_at?: string | null
-                    description?: string | null
-                    dimensions?: Json | null
-                    id?: string
-                    image_url?: string | null
-                    sku: string
-                    unit_weight?: number | null
-                    updated_at?: string | null
-                }
-                Update: {
-                    barcode?: string | null
-                    brand?: string | null
-                    category?: string | null
-                    created_at?: string | null
-                    description?: string | null
-                    dimensions?: Json | null
-                    id?: string
-                    image_url?: string | null
-                    sku?: string
-                    unit_weight?: number | null
-                    updated_at?: string | null
-                }
-                Relationships: []
-            }
-            warehouse_zones: {
-                Row: {
-                    created_at: string | null
-                    description: string | null
-                    id: string
-                    name: string
-                    warehouse: string | null
-                }
-                Insert: {
-                    created_at?: string | null
-                    description?: string | null
-                    id?: string
-                    name: string
-                    warehouse?: string | null
-                }
-                Update: {
-                    created_at?: string | null
-                    description?: string | null
-                    id?: string
-                    name?: string
-                    warehouse?: string | null
-                }
-                Relationships: []
-            }
-        }
-        Views: {
-            [_ in never]: never
-        }
-        Functions: {
-            [_ in never]: never
-        }
-        Enums: {
-            [_ in never]: never
-        }
-        CompositeTypes: {
-            [_ in never]: never
-        }
+    Views: {
+      [_ in never]: never
     }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+  public: {
+    Tables: {
+      app_users: {
+        Row: {
+          age: number | null
+          created_at: string | null
+          email: string
+          full_name: string
+          id: string
+          role: string | null
+        }
+        Insert: {
+          age?: number | null
+          created_at?: string | null
+          email: string
+          full_name: string
+          id?: string
+          role?: string | null
+        }
+        Update: {
+          age?: number | null
+          created_at?: string | null
+          email?: string
+          full_name?: string
+          id?: string
+          role?: string | null
+        }
+        Relationships: []
+      }
+      customers: {
+        Row: {
+          city: string | null
+          created_at: string | null
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+          state: string | null
+          street: string | null
+          updated_at: string | null
+          zip_code: string | null
+        }
+        Insert: {
+          city?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+          state?: string | null
+          street?: string | null
+          updated_at?: string | null
+          zip_code?: string | null
+        }
+        Update: {
+          city?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          state?: string | null
+          street?: string | null
+          updated_at?: string | null
+          zip_code?: string | null
+        }
+        Relationships: []
+      }
+      daily_inventory_snapshots: {
+        Row: {
+          created_at: string | null
+          id: number
+          location: string
+          location_id: string | null
+          quantity: number
+          sku: string
+          snapshot_date: string
+          warehouse: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: number
+          location: string
+          location_id?: string | null
+          quantity: number
+          sku: string
+          snapshot_date: string
+          warehouse: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: number
+          location?: string
+          location_id?: string | null
+          quantity?: number
+          sku?: string
+          snapshot_date?: string
+          warehouse?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_inventory_snapshots_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory: {
+        Row: {
+          capacity: number | null
+          created_at: string | null
+          id: number
+          is_active: boolean | null
+          location: string | null
+          location_id: string | null
+          quantity: number | null
+          sku: string
+          sku_note: string | null
+          updated_at: string | null
+          warehouse: string | null
+        }
+        Insert: {
+          capacity?: number | null
+          created_at?: string | null
+          id?: number
+          is_active?: boolean | null
+          location?: string | null
+          location_id?: string | null
+          quantity?: number | null
+          sku: string
+          sku_note?: string | null
+          updated_at?: string | null
+          warehouse?: string | null
+        }
+        Update: {
+          capacity?: number | null
+          created_at?: string | null
+          id?: number
+          is_active?: boolean | null
+          location?: string | null
+          location_id?: string | null
+          quantity?: number | null
+          sku?: string
+          sku_note?: string | null
+          updated_at?: string | null
+          warehouse?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_logs: {
+        Row: {
+          action_type: string
+          created_at: string | null
+          from_location: string | null
+          from_warehouse: string | null
+          id: string
+          is_reversed: boolean | null
+          item_id: number | null
+          list_id: string | null
+          location_id: string | null
+          new_quantity: number | null
+          order_number: string | null
+          performed_by: string | null
+          prev_quantity: number | null
+          previous_quantity: number | null
+          previous_sku: string | null
+          quantity_change: number
+          sku: string
+          snapshot_before: Json | null
+          to_location: string | null
+          to_location_id: string | null
+          to_warehouse: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action_type: string
+          created_at?: string | null
+          from_location?: string | null
+          from_warehouse?: string | null
+          id?: string
+          is_reversed?: boolean | null
+          item_id?: number | null
+          list_id?: string | null
+          location_id?: string | null
+          new_quantity?: number | null
+          order_number?: string | null
+          performed_by?: string | null
+          prev_quantity?: number | null
+          previous_quantity?: number | null
+          previous_sku?: string | null
+          quantity_change: number
+          sku: string
+          snapshot_before?: Json | null
+          to_location?: string | null
+          to_location_id?: string | null
+          to_warehouse?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action_type?: string
+          created_at?: string | null
+          from_location?: string | null
+          from_warehouse?: string | null
+          id?: string
+          is_reversed?: boolean | null
+          item_id?: number | null
+          list_id?: string | null
+          location_id?: string | null
+          new_quantity?: number | null
+          order_number?: string | null
+          performed_by?: string | null
+          prev_quantity?: number | null
+          previous_quantity?: number | null
+          previous_sku?: string | null
+          quantity_change?: number
+          sku?: string
+          snapshot_before?: Json | null
+          to_location?: string | null
+          to_location_id?: string | null
+          to_warehouse?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_logs_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "picking_lists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_logs_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_logs_to_location_id_fkey"
+            columns: ["to_location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      locations: {
+        Row: {
+          bike_line: number | null
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          is_shipping_area: boolean | null
+          length_ft: number | null
+          location: string
+          max_capacity: number | null
+          notes: string | null
+          picking_order: number | null
+          total_bikes: number | null
+          updated_at: string | null
+          warehouse: string
+          zone: string | null
+        }
+        Insert: {
+          bike_line?: number | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_shipping_area?: boolean | null
+          length_ft?: number | null
+          location: string
+          max_capacity?: number | null
+          notes?: string | null
+          picking_order?: number | null
+          total_bikes?: number | null
+          updated_at?: string | null
+          warehouse: string
+          zone?: string | null
+        }
+        Update: {
+          bike_line?: number | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_shipping_area?: boolean | null
+          length_ft?: number | null
+          location?: string
+          max_capacity?: number | null
+          notes?: string | null
+          picking_order?: number | null
+          total_bikes?: number | null
+          updated_at?: string | null
+          warehouse?: string
+          zone?: string | null
+        }
+        Relationships: []
+      }
+      optimization_reports: {
+        Row: {
+          applied_count: number | null
+          generated_at: string | null
+          id: number
+          report_date: string
+          report_type: string | null
+          suggestions: Json
+          total_suggestions: number
+        }
+        Insert: {
+          applied_count?: number | null
+          generated_at?: string | null
+          id?: number
+          report_date?: string
+          report_type?: string | null
+          suggestions: Json
+          total_suggestions: number
+        }
+        Update: {
+          applied_count?: number | null
+          generated_at?: string | null
+          id?: number
+          report_date?: string
+          report_type?: string | null
+          suggestions?: Json
+          total_suggestions?: number
+        }
+        Relationships: []
+      }
+      picking_list_notes: {
+        Row: {
+          created_at: string
+          id: string
+          list_id: string
+          message: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          list_id: string
+          message: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          list_id?: string
+          message?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "picking_list_notes_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "picking_lists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "picking_list_notes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      picking_lists: {
+        Row: {
+          checked_by: string | null
+          correction_notes: string | null
+          created_at: string | null
+          customer_id: string | null
+          id: string
+          items: Json | null
+          load_number: string | null
+          notes: string | null
+          order_number: string | null
+          pallets_qty: number | null
+          priority: string | null
+          status: string | null
+          total_units: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          checked_by?: string | null
+          correction_notes?: string | null
+          created_at?: string | null
+          customer_id?: string | null
+          id?: string
+          items?: Json | null
+          load_number?: string | null
+          notes?: string | null
+          order_number?: string | null
+          pallets_qty?: number | null
+          priority?: string | null
+          status?: string | null
+          total_units?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          checked_by?: string | null
+          correction_notes?: string | null
+          created_at?: string | null
+          customer_id?: string | null
+          id?: string
+          items?: Json | null
+          load_number?: string | null
+          notes?: string | null
+          order_number?: string | null
+          pallets_qty?: number | null
+          priority?: string | null
+          status?: string | null
+          total_units?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "picking_lists_checked_by_fkey"
+            columns: ["checked_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "picking_lists_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "picking_lists_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          email: string | null
+          full_name: string | null
+          id: string
+          is_active: boolean | null
+          last_seen_at: string | null
+          role: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          email?: string | null
+          full_name?: string | null
+          id: string
+          is_active?: boolean | null
+          last_seen_at?: string | null
+          role?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_seen_at?: string | null
+          role?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sku_metadata: {
+        Row: {
+          created_at: string
+          length_ft: number | null
+          sku: string
+          width_in: number | null
+        }
+        Insert: {
+          created_at?: string
+          length_ft?: number | null
+          sku: string
+          width_in?: number | null
+        }
+        Update: {
+          created_at?: string
+          length_ft?: number | null
+          sku?: string
+          width_in?: number | null
+        }
+        Relationships: []
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      adjust_inventory_quantity: {
+        Args: {
+          p_delta: number
+          p_list_id?: string
+          p_location: string
+          p_order_number?: string
+          p_performed_by: string
+          p_sku: string
+          p_user_id: string
+          p_user_role?: string
+          p_warehouse: string
+        }
+        Returns: Json
+      }
+      create_daily_snapshot: {
+        Args: { p_snapshot_date?: string }
+        Returns: Json
+      }
+      current_user_id: { Args: never; Returns: string }
+      delete_inventory_item: {
+        Args: { p_item_id: number; p_performed_by: string; p_user_id?: string }
+        Returns: boolean
+      }
+      get_snapshot: {
+        Args: { p_target_date: string }
+        Returns: {
+          location: string
+          location_id: string
+          quantity: number
+          sku: string
+          warehouse: string
+        }[]
+      }
+      get_snapshot_summary: { Args: { p_target_date?: string }; Returns: Json }
+      get_stock_at_timestamp: {
+        Args: { target_timestamp: string }
+        Returns: {
+          location: string
+          quantity: number
+          sku: string
+          warehouse: string
+        }[]
+      }
+      is_admin: { Args: never; Returns: boolean }
+      is_manager: { Args: never; Returns: boolean }
+      move_inventory_stock: {
+        Args: {
+          p_from_location: string
+          p_from_warehouse: string
+          p_performed_by: string
+          p_qty: number
+          p_sku: string
+          p_to_location: string
+          p_to_warehouse: string
+          p_user_id: string
+          p_user_role?: string
+        }
+        Returns: Json
+      }
+      process_picking_list: {
+        Args: {
+          p_list_id: string
+          p_pallets_qty?: number
+          p_performed_by: string
+          p_total_units?: number
+          p_user_id?: string
+          p_user_role?: string
+        }
+        Returns: boolean
+      }
+      resolve_location: {
+        Args: {
+          p_location_name: string
+          p_user_role?: string
+          p_warehouse: string
+        }
+        Returns: string
+      }
+      undo_inventory_action: { Args: { target_log_id: string }; Returns: Json }
+      upsert_inventory_log: {
+        Args: {
+          p_action_type: string
+          p_from_location: string
+          p_from_warehouse: string
+          p_is_reversed?: boolean
+          p_item_id: number
+          p_list_id?: string
+          p_location_id: string
+          p_new_quantity: number
+          p_order_number?: string
+          p_performed_by: string
+          p_prev_quantity: number
+          p_quantity_change: number
+          p_sku: string
+          p_snapshot_before?: Json
+          p_to_location: string
+          p_to_location_id: string
+          p_to_warehouse: string
+          p_user_id: string
+        }
+        Returns: string
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
 }
 
-type PublicSchema = Database["public"]
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
-    PublicTableNameOrOptions extends
-    | keyof (PublicSchema["Tables"] & PublicSchema["Views"])
-    | { schema: keyof Database },
-    TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
-        Database[PublicTableNameOrOptions["schema"]]["Views"])
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
-> = PublicTableNameOrOptions extends { schema: keyof Database }
-    ? (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
-        Database[PublicTableNameOrOptions["schema"]]["Views"])[TableName] extends {
-            Row: infer R
-        }
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
     ? R
     : never
-    : PublicTableNameOrOptions extends keyof (PublicSchema["Tables"] &
-        PublicSchema["Views"])
-    ? (PublicSchema["Tables"] &
-        PublicSchema["Views"])[PublicTableNameOrOptions] extends {
-            Row: infer R
-        }
-    ? R
-    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
     : never
 
 export type TablesInsert<
-    PublicTableNameOrOptions extends
-    | keyof PublicSchema["Tables"]
-    | { schema: keyof Database },
-    TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = PublicTableNameOrOptions extends { schema: keyof Database }
-    ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-        Insert: infer I
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
     }
     ? I
     : never
-    : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
-    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
         Insert: infer I
-    }
-    ? I
-    : never
+      }
+      ? I
+      : never
     : never
 
 export type TablesUpdate<
-    PublicTableNameOrOptions extends
-    | keyof PublicSchema["Tables"]
-    | { schema: keyof Database },
-    TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = PublicTableNameOrOptions extends { schema: keyof Database }
-    ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-        Update: infer U
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
     }
     ? U
     : never
-    : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
-    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
         Update: infer U
-    }
-    ? U
-    : never
+      }
+      ? U
+      : never
     : never
 
 export type Enums<
-    PublicEnumNameOrOptions extends
-    | keyof PublicSchema["Enums"]
-    | { schema: keyof Database },
-    EnumName extends PublicEnumNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicEnumNameOrOptions["schema"]]["Enums"]
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
-> = PublicEnumNameOrOptions extends { schema: keyof Database }
-    ? Database[PublicEnumNameOrOptions["schema"]]["Enums"][EnumName]
-    : PublicEnumNameOrOptions extends keyof PublicSchema["Enums"]
-    ? PublicSchema["Enums"][PublicEnumNameOrOptions]
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
 
 export type CompositeTypes<
-    PublicCompositeTypeNameOrOptions extends
-    | keyof PublicSchema["CompositeTypes"]
-    | { schema: keyof Database },
-    CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-        schema: keyof Database
-    }
-    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
-> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
-    ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
-    : PublicCompositeTypeNameOrOptions extends keyof PublicSchema["CompositeTypes"]
-    ? PublicSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
+
+export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
+  public: {
+    Enums: {},
+  },
+} as const
+

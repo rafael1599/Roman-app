@@ -40,37 +40,40 @@ class InventoryService extends BaseService<'inventory', InventoryModel, Inventor
         warehouse: string,
         inputLocation: string
     ): ResolvedLocation {
-        if (!inputLocation) return { name: '', id: null, isNew: false };
+        if (!inputLocation || inputLocation.trim() === '') return { name: '', id: null, isNew: false };
 
-        // 1. Check if exact match exists
+        // Force UPPERCASE and TRIM
+        const normalizedInput = inputLocation.trim().toUpperCase();
+
+        // 1. Check if match exists (case-insensitive search, but we will return UPPERCASED)
         const exactMatch = locations.find(
-            (l) => l.warehouse === warehouse && l.location.toLowerCase() === inputLocation.toLowerCase()
+            (l) => l.warehouse === warehouse && l.location.toUpperCase() === normalizedInput
         );
 
         if (exactMatch) {
-            return { name: exactMatch.location, id: exactMatch.id, isNew: false };
+            return { name: exactMatch.location.toUpperCase(), id: exactMatch.id, isNew: false };
         }
 
-        // 2. Business Rule: Mapping numeric "9" to "Row 9"
-        const isNumeric = /^\d+$/.test(inputLocation);
+        // 2. Business Rule: Mapping numeric "9" to "ROW 9"
+        const isNumeric = /^\d+$/.test(normalizedInput);
         if (isNumeric) {
-            const rowLocation = `Row ${inputLocation}`;
+            const rowLocation = `ROW ${normalizedInput}`;
             const rowMatch = locations.find(
-                (l) => l.warehouse === warehouse && l.location.toLowerCase() === rowLocation.toLowerCase()
+                (l) => l.warehouse === warehouse && l.location.toUpperCase() === rowLocation
             );
 
             if (rowMatch) {
-                return { name: rowMatch.location, id: rowMatch.id, isNew: false };
+                return { name: rowMatch.location.toUpperCase(), id: rowMatch.id, isNew: false };
             }
 
             const existsInArray = locations.some(
-                (l) => l.warehouse === warehouse && l.location === rowLocation
+                (l) => l.warehouse === warehouse && l.location.toUpperCase() === rowLocation
             );
 
             return { name: rowLocation, id: null, isNew: !existsInArray };
         }
 
-        return { name: inputLocation, id: null, isNew: true };
+        return { name: normalizedInput, id: null, isNew: true };
     }
 
     /**
@@ -82,7 +85,7 @@ class InventoryService extends BaseService<'inventory', InventoryModel, Inventor
         locations: Location[],
         ctx: { isAdmin: boolean; onLocationCreated?: (newLoc: Location) => void }
     ): Promise<{ id: string | null; name: string }> {
-        const { isAdmin, onLocationCreated } = ctx;
+        const { onLocationCreated } = ctx;
 
         const resolved = this.resolveLocationName(locations, warehouse, locationName);
 
@@ -90,9 +93,10 @@ class InventoryService extends BaseService<'inventory', InventoryModel, Inventor
             return { id: resolved.id, name: resolved.name };
         }
 
-        if (!isAdmin) {
-            throw new AppError(`Unauthorized: Only administrators can create new locations ("${resolved.name}").`, 403);
-        }
+        // REMOVED STRICT CHECK: User requested removing overhead.
+        // if (!isAdmin) {
+        //     throw new AppError(`Unauthorized: Only administrators can create new locations ("${resolved.name}").`, 403);
+        // }
 
         try {
             const { data: newLoc, error } = await this.supabase
@@ -169,11 +173,14 @@ class InventoryService extends BaseService<'inventory', InventoryModel, Inventor
             const existingItem = this.validate(existingItemData);
             const newTotal = (existingItem.quantity || 0) + qty;
 
-            // Smart Description Merge: Overwrite only if source has content
+            // Concatenated Description Merge: Join with ' | ' if both exist
             const incomingNote = validatedInput.sku_note?.trim();
-            const updatedNote = (incomingNote && incomingNote.length > 0)
-                ? validatedInput.sku_note
-                : existingItem.sku_note;
+            const existingNote = existingItem.sku_note?.trim();
+            const updatedNote = (incomingNote && existingNote && incomingNote !== existingNote)
+                ? `\${existingNote} | \${incomingNote}`
+                : (incomingNote || existingNote);
+
+
 
             if (!existingItem.id || isNaN(Number(existingItem.id))) {
                 console.error("Critical Error: Invalid ID on existing item during merge", { existingItem });
@@ -184,6 +191,7 @@ class InventoryService extends BaseService<'inventory', InventoryModel, Inventor
                 quantity: newTotal,
                 location_id: destination.id,
                 sku_note: updatedNote,
+                is_active: newTotal > 0 ? true : existingItem.is_active, // Automatic Reactivation
             } as any);
 
             try {
@@ -228,6 +236,7 @@ class InventoryService extends BaseService<'inventory', InventoryModel, Inventor
             warehouse: warehouse,
             location: destination.name,
             location_id: destination.id,
+            is_active: true, // New items are always active
         };
 
         if (newItem.force_id) {
@@ -326,26 +335,36 @@ class InventoryService extends BaseService<'inventory', InventoryModel, Inventor
                 const targetItem = this.validate(collisionData);
                 const consolidatedQty = (targetItem.quantity || 0) + originalItem.quantity;
 
-                // Smart Description Merge: Overwrite only if source has content
+                // Concatenated Description Merge: Join with ' | ' if both exist
                 const incomingNote = validatedInput.sku_note?.trim();
-                const updatedNote = (incomingNote && incomingNote.length > 0)
-                    ? validatedInput.sku_note
-                    : targetItem.sku_note;
+                const existingNote = targetItem.sku_note?.trim();
+                const updatedNote = (incomingNote && existingNote && incomingNote !== existingNote)
+                    ? `\${existingNote} | \${incomingNote}`
+                    : (incomingNote || existingNote);
+
+
 
                 if (!targetItem.id || isNaN(Number(targetItem.id))) {
                     console.error("Critical Error: Invalid Target ID during collision merge", { targetItem });
                     throw new AppError(`Operation aborted: Invalid destination ID.`, 400);
                 }
 
-                // Update Target
+                // Update Target (handles reactivation and normalization)
                 await this.update(targetItem.id, {
                     quantity: consolidatedQty,
                     location_id: targetLocationId,
                     sku_note: updatedNote,
+                    is_active: consolidatedQty > 0 ? true : targetItem.is_active,
                 } as any);
 
-                // Delete Origin
-                await this.delete(originalItem.id);
+                // Check Zero Stock Persistence rule for origin
+                // If we are merging, we effectively DELETE the origin.
+                // In soft-delete mode, we should just set quantity to 0 and is_active to true?
+                // No, a manual merge/move should probably deactivate the source if it's 0.
+                await this.update(originalItem.id, {
+                    quantity: 0,
+                    is_active: true, // Keep persistent but with 0 stock
+                } as any);
 
                 // Log as MOVE (Merge)
                 try {
@@ -388,6 +407,7 @@ class InventoryService extends BaseService<'inventory', InventoryModel, Inventor
                 quantity: newQty, // Absolute truth
                 sku_note: validatedInput.sku_note,
                 status: validatedInput.status || originalItem.status,
+                is_active: newQty > 0 ? true : originalItem.is_active,
             } as any);
 
             const isRename = hasSkuChanged;
@@ -430,6 +450,7 @@ class InventoryService extends BaseService<'inventory', InventoryModel, Inventor
             quantity: newQty,
             sku_note: validatedInput.sku_note,
             status: validatedInput.status || originalItem.status,
+            is_active: newQty > 0 ? true : originalItem.is_active,
         } as any);
 
         try {
@@ -514,86 +535,34 @@ class InventoryService extends BaseService<'inventory', InventoryModel, Inventor
         targetWarehouse: string,
         targetLocation: string,
         qty: number,
-        locations: Location[],
         ctx: InventoryServiceContext,
-        isReversal = false
     ) {
-        const { userInfo, trackLog } = ctx;
+        const { userInfo } = ctx;
 
-        // 1. Resolve destination
-        const destination = await this.ensureLocationExists(targetWarehouse, targetLocation, locations, ctx);
+        // Use the atomic RPC for moving stock
+        // This avoids race conditions and leverages server-side validation/normalization
+        const { data, error } = await this.supabase.rpc('move_inventory_stock', {
+            p_sku: sourceItem.sku,
+            p_from_warehouse: sourceItem.warehouse,
+            p_from_location: sourceItem.location || '',
+            p_to_warehouse: targetWarehouse,
+            p_to_location: targetLocation,
+            p_qty: qty,
+            p_performed_by: userInfo.performed_by,
+            p_user_id: userInfo.user_id || '',
+            p_user_role: 'staff'
+        });
 
-        // 2. Fetch server qty to prevent over-drawing
-        const { data: serverItem } = await this.supabase
-            .from(this.table)
-            .select('quantity')
-            .eq('id', sourceItem.id as any)
-            .single();
-
-        const serverQty = (serverItem as any)?.quantity ?? 0;
-        if (serverQty < qty) {
-            throw new AppError(`Stock mismatch: Found ${serverQty}, tried to move ${qty}.`, 409);
+        if (error) {
+            console.error('[InventoryService] RPC move failed:', error);
+            // Translate common DB errors to AppErrors
+            if (error.message?.includes('Insufficient source stock')) {
+                throw new AppError(`Stock mismatch: Insufficient stock in source to move ${qty}.`, 409);
+            }
+            throw new AppError(error.message || 'Failed to move inventory item', 500, error);
         }
 
-        // 3. Update source
-        const remainingQty = serverQty - qty;
-        await this.update(sourceItem.id, { quantity: remainingQty } as any);
-
-        // 4. Update/Create Target
-        const { data: existingTargetData } = await this.supabase
-            .from(this.table)
-            .select('*')
-            .eq('sku', sourceItem.sku)
-            .eq('warehouse', targetWarehouse)
-            .eq('location', destination.name)
-            .maybeSingle();
-
-        if (existingTargetData) {
-            const existingTarget = this.validate(existingTargetData);
-            await this.update(existingTarget.id, {
-                quantity: (existingTarget.quantity || 0) + qty,
-                location_id: destination.id,
-            } as any);
-        } else {
-            await this.create({
-                sku: sourceItem.sku,
-                warehouse: targetWarehouse,
-                location: destination.name,
-                location_id: destination.id,
-                quantity: qty,
-                sku_note: sourceItem.sku_note,
-                status: sourceItem.status || 'Active',
-            } as any);
-        }
-
-        // 5. Log
-        try {
-            await trackLog({
-                sku: sourceItem.sku,
-                from_warehouse: sourceItem.warehouse as any,
-                from_location: sourceItem.location || undefined,
-                to_warehouse: targetWarehouse,
-                to_location: destination.name,
-                to_location_id: destination.id,
-                quantity_change: -qty, // Deduct from source
-                prev_quantity: serverQty,
-                new_quantity: remainingQty,
-                action_type: 'MOVE',
-                item_id: String(sourceItem.id),
-                location_id: sourceItem.location_id, // Source location ID
-                snapshot_before: {
-                    id: sourceItem.id,
-                    sku: sourceItem.sku,
-                    quantity: serverQty,
-                    location_id: sourceItem.location_id,
-                    location: sourceItem.location,
-                    warehouse: sourceItem.warehouse
-                },
-                is_reversed: isReversal,
-            }, userInfo);
-        } catch (logError) {
-            console.warn('[InventoryService] Log failed for manual move, but operations succeeded.', logError);
-        }
+        return { action: 'moved', data };
     }
 
     /**

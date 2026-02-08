@@ -19,7 +19,7 @@ export function QueryProvider({ children }: QueryProviderProps) {
                 persister,
                 maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
                 dehydrateOptions: {
-                    shouldDehydrateMutation: (mutation) => {
+                    shouldDehydrateMutation: (_mutation) => {
                         // Persist all mutations that are still pending or paused (offline)
                         return true;
                     },

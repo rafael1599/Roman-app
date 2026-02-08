@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef, ReactNode } from 'react';
 import { useAutoSelect } from '../../hooks/useAutoSelect';
-import { Search, X, Hash, Type } from 'lucide-react';
+import Search from 'lucide-react/dist/esm/icons/search';
+import X from 'lucide-react/dist/esm/icons/x';
+import Hash from 'lucide-react/dist/esm/icons/hash';
+import Type from 'lucide-react/dist/esm/icons/type';
 
 interface Suggestion {
     value: string;

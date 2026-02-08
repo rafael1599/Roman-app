@@ -49,7 +49,7 @@ export const useLocationSuggestions = (
           const simpleLogs: InventoryLogSimple[] = logs.map((l) => ({
             sku: l.sku,
             action_type: l.action_type,
-            quantity: l.quantity,
+            quantity_change: l.quantity_change,
             created_at: l.created_at,
           }));
 

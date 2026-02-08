@@ -32,10 +32,23 @@ export const useInventoryLogs = () => {
   const trackLogMutation = useMutation({
     mutationKey: ['inventory', 'trackLog'],
     networkMode: 'offlineFirst',
-    // Hardening: Limit retries for logs so they don't poison the queue forever
-    // Hardening: Increase retries for logs so they don't fail easily on flaky networks
-    retry: 5,
-    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 5000),
+    // Infinite retry for network errors, immediate fail for logical errors
+    retry: (failureCount, error: any) => {
+      const code = error?.code || error?.originalError?.code;
+      const message = error?.message || '';
+
+      // Don't retry logical errors (auth, validation, etc)
+      if (code === 'PGRST301' || code === '42501' || code === '23505') return false;
+
+      // Infinite retry for network errors
+      if (message.includes('fetch') || message.includes('network') || !navigator.onLine) {
+        return true;
+      }
+
+      // Default: retry up to 5 times for other errors
+      return failureCount < 5;
+    },
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 30000),
     mutationFn: async ({
       logData,
       userInfo = {},
@@ -236,7 +249,37 @@ export const useInventoryLogs = () => {
   const undoMutation = useMutation({
     mutationKey: ['inventory', 'undo'],
     networkMode: 'offlineFirst',
+    // Infinite retry for network errors to ensure undo completes
+    retry: (failureCount, error: any) => {
+      const code = error?.code || error?.originalError?.code;
+      const message = error?.message || '';
+
+      // Don't retry logical errors
+      if (code === 'PGRST301' || code === '42501' || message.includes('cannot be undone')) {
+        return false;
+      }
+
+      // Infinite retry for network errors
+      if (message.includes('fetch') || message.includes('network') || !navigator.onLine) {
+        return true;
+      }
+
+      // Default: retry up to 3 times
+      return failureCount < 3;
+    },
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 30000),
     mutationFn: async (logId: string) => {
+      // Security Guard: Prevent undoing orders via API/RPC if UI is bypassed
+      const { data: logInfo } = await supabase
+        .from('inventory_logs')
+        .select('order_number, list_id')
+        .eq('id', logId)
+        .single();
+
+      if (logInfo?.order_number || logInfo?.list_id) {
+        throw new Error('Actions associated with an order cannot be undone from the history.');
+      }
+
       // @ts-ignore - RPC function added manually
       const { data, error } = await (supabase as any)
         .rpc('undo_inventory_action', { target_log_id: logId });

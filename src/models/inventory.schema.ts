@@ -15,11 +15,12 @@ export const inventorySchema = z.object({
     sku: z.string().min(1, 'SKU is required'),
     quantity: z.number().nullable(),
     location: z.string().nullable(),
-    location_detail: z.string().nullable(),
     warehouse: z.string().nullable(),
-    status: z.string().nullable(),
     capacity: z.number().nullable(),
     location_id: z.string().nullable(),
+    is_active: z.boolean().nullable(),
+    sku_note: z.string().nullable(),
+    updated_at: z.string().nullable(),
     created_at: z.string().nullable(),
 }) satisfies z.ZodType<DBInventory>;
 

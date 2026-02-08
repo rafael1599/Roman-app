@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronUp } from 'lucide-react';
+import ChevronUp from 'lucide-react/dist/esm/icons/chevron-up';
 import { PickingSessionView } from './PickingSessionView';
 import { DoubleCheckView, PickingItem } from './DoubleCheckView';
 import { useAuth } from '../../../context/AuthContext';
@@ -50,7 +50,6 @@ export const PickingCartDrawer: React.FC<PickingCartDrawerProps> = ({
     orderNumber,
     customer,
     sessionMode,
-    checkedBy,
     correctionNotes,
     externalDoubleCheckId,
     onClearExternalTrigger,
@@ -58,19 +57,16 @@ export const PickingCartDrawer: React.FC<PickingCartDrawerProps> = ({
     onLockForCheck,
     onReleaseCheck,
     onReturnToPicker,
-    onRevertToPicking,
     onMarkAsReady,
     ownerId,
     onUpdateOrderNumber,
     onUpdateCustomer,
     onUpdateQty,
     onRemoveItem,
-    onSetQty,
     onDeduct,
     notes,
     isNotesLoading,
     onAddNote,
-    onResetSession,
     onReturnToBuilding,
     onDelete,
     ...restProps
@@ -235,7 +231,6 @@ export const PickingCartDrawer: React.FC<PickingCartDrawerProps> = ({
     const [dragY, setDragY] = useState(0);
     const [isDragging, setIsDragging] = useState(false);
     const startYRef = React.useRef(0);
-    // const currentYRef = React.useRef(0);
 
     const handleTouchStart = (e: React.TouchEvent) => {
         // Only allow dragging from header handle

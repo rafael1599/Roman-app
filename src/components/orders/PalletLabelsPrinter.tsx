@@ -1,6 +1,10 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Printer, FileText, Loader2, MapPin, Hash } from 'lucide-react';
+import Printer from 'lucide-react/dist/esm/icons/printer';
+import FileText from 'lucide-react/dist/esm/icons/file-text';
+import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
+import MapPin from 'lucide-react/dist/esm/icons/map-pin';
+import Hash from 'lucide-react/dist/esm/icons/hash';
 import { usePickingSession } from '../../context/PickingContext';
 import toast from 'react-hot-toast';
 

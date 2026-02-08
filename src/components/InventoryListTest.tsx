@@ -1,5 +1,7 @@
 import { useInventoryList } from '../hooks/useInventory';
-import { Loader2, Package, MapPin } from 'lucide-react';
+import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
+import Package from 'lucide-react/dist/esm/icons/package';
+import MapPin from 'lucide-react/dist/esm/icons/map-pin';
 
 /**
  * Proof of Concept component to verify the data flow:

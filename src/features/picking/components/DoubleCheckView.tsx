@@ -1,16 +1,14 @@
 import React, { useMemo, useState } from 'react';
-import {
-    Package,
-    Printer,
-    Check,
-    ChevronLeft,
-    MessageSquare,
-    X,
-    Send,
-    ChevronDown,
-    MapPin,
-    AlertCircle,
-} from 'lucide-react';
+import Package from 'lucide-react/dist/esm/icons/package';
+import Printer from 'lucide-react/dist/esm/icons/printer';
+import Check from 'lucide-react/dist/esm/icons/check';
+import ChevronLeft from 'lucide-react/dist/esm/icons/chevron-left';
+import MessageSquare from 'lucide-react/dist/esm/icons/message-square';
+import X from 'lucide-react/dist/esm/icons/x';
+import Send from 'lucide-react/dist/esm/icons/send';
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down';
+import MapPin from 'lucide-react/dist/esm/icons/map-pin';
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle';
 import { getOptimizedPickingPath, calculatePallets } from '../../../utils/pickingLogic';
 import { CorrectionNotesTimeline, Note } from './CorrectionNotesTimeline';
 import { generatePickingPdf } from '../../../utils/pickingPdf';

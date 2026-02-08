@@ -1,6 +1,9 @@
 import { useState, FormEvent } from 'react';
 import { supabase } from '../lib/supabase';
-import { Loader2, KeyRound, Mail, ArrowRight } from 'lucide-react';
+import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
+import KeyRound from 'lucide-react/dist/esm/icons/key-round';
+import Mail from 'lucide-react/dist/esm/icons/mail';
+import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right';
 
 export const LoginScreen = () => {
   const [email, setEmail] = useState('');

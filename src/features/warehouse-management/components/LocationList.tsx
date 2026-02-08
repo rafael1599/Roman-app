@@ -1,5 +1,8 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Search, MapPin, Package, ChevronRight } from 'lucide-react';
+import Search from 'lucide-react/dist/esm/icons/search';
+import MapPin from 'lucide-react/dist/esm/icons/map-pin';
+import Package from 'lucide-react/dist/esm/icons/package';
+import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right';
 import { useLocationManagement } from '../../../hooks/useLocationManagement';
 import { useInventory } from '../../../hooks/useInventoryData';
 import LocationEditorModal from './LocationEditorModal';
