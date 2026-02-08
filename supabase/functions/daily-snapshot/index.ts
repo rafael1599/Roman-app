@@ -24,7 +24,60 @@ serve(async (req) => {
         return new Response('Snapshot not found', { status: 404, headers: corsHeaders });
       }
 
-      const html = await fileRes.text();
+      let html = await fileRes.text();
+
+      // Inject theme support and fix hardcoded white backgrounds for existing snapshots
+      const themeStyles = `
+    <style>
+        :root {
+            --report-bg: var(--bg-surface, #ffffff);
+            --report-text: var(--text-main, #111827);
+            --report-muted: var(--text-muted, #64748b);
+            --report-accent: var(--accent-primary, #4f46e5);
+            --report-border: var(--border-subtle, #e5e7eb);
+            --report-row-bg: var(--bg-main, #f8fafc);
+        }
+
+        /* Standalone / Email fallback for dark mode */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --report-bg: #1c1c1e;
+                --report-text: #ffffff;
+                --report-muted: #8e8e93;
+                --report-accent: #30d158;
+                --report-border: rgba(255, 255, 255, 0.1);
+                --report-row-bg: #000000;
+            }
+        }
+
+        /* Force overrides for old snapshots with inline styles */
+        body { background-color: transparent !important; color: var(--report-text) !important; }
+        .container, div[style*="background: white"], div[style*="background-color: white"] { 
+            background: var(--report-bg) !important; 
+            background-color: var(--report-bg) !important;
+            color: var(--report-text) !important;
+            border-color: var(--report-border) !important;
+        }
+        td[style*="background: #f8fafc"], .stat-card { 
+            background: var(--report-row-bg) !important; 
+            border-color: var(--report-border) !important;
+        }
+        h1, h2, h3, div[style*="font-weight: bold"] { color: var(--report-text) !important; }
+        p, span[style*="color: #64748b"], span[style*="color: #94a3b8"], .sku-note { 
+            color: var(--report-muted) !important; 
+        }
+        div[style*="color: #4f46e5"], .warehouse-title { color: var(--report-accent) !important; border-left-color: var(--report-accent) !important; }
+        tr, .sku-row { border-bottom-color: var(--report-border) !important; }
+    </style>
+`;
+
+      // Insert before </head> if exists, otherwise at the start
+      if (html.includes('</head>')) {
+        html = html.replace('</head>', `${themeStyles}</head>`);
+      } else {
+        html = themeStyles + html;
+      }
+
       return new Response(html, {
         headers: {
           ...corsHeaders,
@@ -134,42 +187,31 @@ function generatePremiumHTML(stats: any, data: any[]): string {
     <meta charset="UTF-8">
     <title>Inventory Snapshot - ${stats.date}</title>
     <style>
-        /* Inherit or Fallback Variables */
         :root {
-            --rep-bg: var(--bg-surface, #ffffff);
-            --rep-text: var(--text-main, #111827);
-            --rep-muted: var(--text-muted, #64748b);
-            --rep-accent: var(--accent-primary, #4f46e5);
-            --rep-border: var(--border-subtle, #e5e7eb);
-            --rep-row-bg: var(--bg-main, #f8fafc);
+            --report-bg: var(--bg-surface, #ffffff);
+            --report-text: var(--text-main, #111827);
+            --report-muted: var(--text-muted, #64748b);
+            --report-accent: var(--accent-primary, #4f46e5);
+            --report-border: var(--border-subtle, #e5e7eb);
+            --report-row-bg: var(--bg-main, #f8fafc);
         }
 
         /* Standalone / Email fallback for dark mode */
         @media (prefers-color-scheme: dark) {
             :root {
-                --rep-bg: #1c1c1e;
-                --rep-text: #ffffff;
-                --rep-muted: #8e8e93;
-                --rep-accent: #30d158;
-                --rep-border: rgba(255, 255, 255, 0.1);
-                --rep-row-bg: #000000;
+                --report-bg: #1c1c1e;
+                --report-text: #ffffff;
+                --report-muted: #8e8e93;
+                --report-accent: #30d158;
+                --report-border: rgba(255, 255, 255, 0.1);
+                --report-row-bg: #000000;
             }
-        }
-
-        /* Ensure parent dark theme classes also trigger variables if not inherited */
-        [data-theme='dark'] :root {
-            --rep-bg: #1c1c1e;
-            --rep-text: #ffffff;
-            --rep-muted: #8e8e93;
-            --rep-accent: #30d158;
-            --rep-border: rgba(255, 255, 255, 0.1);
-            --rep-row-bg: #000000;
         }
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: transparent !important;
-            color: var(--rep-text) !important;
+            background-color: transparent;
+            color: var(--report-text);
             margin: 0;
             padding: 20px;
             transition: color 0.3s ease;
@@ -178,33 +220,32 @@ function generatePremiumHTML(stats: any, data: any[]): string {
         .container {
             max-width: 800px;
             margin: 0 auto;
-            background: var(--rep-bg);
+            background: var(--report-bg);
             padding: 30px;
             border-radius: 12px;
-            border: 1px solid var(--rep-border);
-            color: var(--rep-text);
+            border: 1px solid var(--report-border);
         }
 
         .header {
-            border-bottom: 2px solid var(--rep-border);
+            border-bottom: 2px solid var(--report-border);
             padding-bottom: 20px;
             margin-bottom: 30px;
         }
 
         .stat-card {
-            background: var(--rep-row-bg);
+            background: var(--report-row-bg);
             padding: 15px;
             border-radius: 8px;
             text-align: center;
-            border: 1px solid var(--rep-border);
+            border: 1px solid var(--report-border);
         }
 
         .warehouse-title {
             font-size: 14px;
             font-weight: bold;
             text-transform: uppercase;
-            color: var(--rep-accent);
-            border-left: 4px solid var(--rep-accent);
+            color: var(--report-accent);
+            border-left: 4px solid var(--report-accent);
             padding-left: 10px;
             margin-bottom: 15px;
             margin-top: 30px;
@@ -217,7 +258,7 @@ function generatePremiumHTML(stats: any, data: any[]): string {
 
         .location-title {
             font-weight: bold;
-            color: var(--rep-muted);
+            color: var(--report-muted);
             font-size: 13px;
             margin-bottom: 8px;
         }
@@ -228,17 +269,16 @@ function generatePremiumHTML(stats: any, data: any[]): string {
         }
 
         .sku-row {
-            border-bottom: 1px solid var(--rep-border);
+            border-bottom: 1px solid var(--report-border);
         }
 
         .sku-cell {
             padding: 8px 0;
             font-size: 13px;
-            color: var(--rep-text);
         }
 
         .sku-note {
-            color: var(--rep-muted);
+            color: var(--report-muted);
             font-size: 11px;
             margin-left: 8px;
             opacity: 0.8;
@@ -250,15 +290,14 @@ function generatePremiumHTML(stats: any, data: any[]): string {
             font-weight: bold;
             font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
             font-size: 14px;
-            color: var(--rep-text);
         }
 
         .footer {
             margin-top: 40px;
             text-align: center;
             font-size: 11px;
-            color: var(--rep-muted);
-            border-top: 1px solid var(--rep-border);
+            color: var(--report-muted);
+            border-top: 1px solid var(--report-border);
             padding-top: 20px;
         }
     </style>
@@ -267,20 +306,20 @@ function generatePremiumHTML(stats: any, data: any[]): string {
     <div class="container">
         <div class="header">
             <h1 style="margin: 0; font-size: 24px;">Inventory Snapshot</h1>
-            <p style="color: var(--rep-muted); margin: 5px 0 0 0;">Date: ${stats.date}</p>
+            <p style="color: var(--report-muted); margin: 5px 0 0 0;">Date: ${stats.date}</p>
         </div>
 
         <div style="margin-bottom: 30px;">
             <table style="width: 100%; border-collapse: collapse;">
                 <tr>
                     <td class="stat-card">
-                        <div style="font-size: 10px; color: var(--rep-muted); text-transform: uppercase;">Active SKUs</div>
-                        <div style="font-size: 20px; font-weight: bold; color: var(--rep-accent);">${stats.total_skus}</div>
+                        <div style="font-size: 10px; color: var(--report-muted); text-transform: uppercase;">Active SKUs</div>
+                        <div style="font-size: 20px; font-weight: bold; color: var(--report-accent);">${stats.total_skus}</div>
                     </td>
                     <td style="width: 20px;"></td>
                     <td class="stat-card">
-                        <div style="font-size: 10px; color: var(--rep-muted); text-transform: uppercase;">Total Units</div>
-                        <div style="font-size: 20px; font-weight: bold; color: var(--rep-accent);">${stats.total_units.toLocaleString()}</div>
+                        <div style="font-size: 10px; color: var(--report-muted); text-transform: uppercase;">Total Units</div>
+                        <div style="font-size: 20px; font-weight: bold; color: var(--report-accent);">${stats.total_units.toLocaleString()}</div>
                     </td>
                 </tr>
             </table>
