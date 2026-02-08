@@ -422,39 +422,112 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
   // Removed isError check as we are using local data now
 
 
-  // --- Manual Snapshot Trigger ---
+  // --- Manual Snapshot Trigger (Plan 2.0: Mirror History Success) ---
   const [isSendingEmail, setIsSendingEmail] = useState(false);
 
   const triggerDailySnapshot = useCallback(async () => {
     try {
-      if (!confirm('Are you sure you want to trigger the Daily Snapshot email now?')) return;
+      if (!confirm('Are you sure you want to trigger the Daily Snapshot email now? (Using History Screen Logic)')) return;
 
       setIsSendingEmail(true);
+      toast.loading('Fetching today\'s activity...', { id: 'snapshot-toast' });
+
+      // 1. Calculate Date Range (NY Time compatible)
       const now = new Date();
-      // YYYY-MM-DD
-      const snapshot_date = now.toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+      const todayStr = now.toLocaleDateString();
+      const todayStrComp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
-      toast.loading('Generating snapshot and sending email...', { id: 'snapshot-toast' });
+      // 2. Fetch Logs directly to ensure we get what's on the screen
+      const { data: logs, error: logsError } = await supabase
+        .from('inventory_logs')
+        .select('*')
+        .gte('created_at', `${todayStrComp}T00:00:00Z`)
+        .lte('created_at', `${todayStrComp}T23:59:59Z`)
+        .order('created_at', { ascending: false });
 
-      // Call the daily-snapshot function
-      const { data, error } = await supabase.functions.invoke('daily-snapshot', {
+      if (logsError) throw logsError;
+
+      const todaysLogs = (logs || []).filter(l => !l.is_reversed);
+
+      const moveCount = todaysLogs.filter((l) => l.action_type === 'MOVE').length;
+      const pickCount = todaysLogs.filter((l) => l.action_type === 'DEDUCT').length;
+      const addCount = todaysLogs.filter((l) => l.action_type === 'ADD').length;
+
+      // 3. Generate HTML (Mirroring HistoryScreen exactly)
+      const htmlContent = `
+                <div style="font-family: sans-serif; max-width: 600px; margin: auto;">
+                <h1 style="color: #4f46e5;">Daily Inventory Summary - ${todayStr}</h1>
+                <p><strong>Total Actions:</strong> ${todaysLogs.length}</p>
+                <ul style="color: #4b5563;">
+                    <li>Moves: ${moveCount}</li>
+                    <li>Picks: ${pickCount}</li>
+                    <li>Restocks: ${addCount}</li>
+                </ul>
+                
+                <h2 style="margin-top: 30px;">Activity Details</h2>
+                <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                    <thead>
+                        <tr style="background-color: #f3f4f6; color: #374151;">
+                            <th style="padding: 12px; border-bottom: 2px solid #e5e7eb; width: 80px;">Time</th>
+                            <th style="padding: 12px; border-bottom: 2px solid #e5e7eb; width: 120px;">SKU</th>
+                            <th style="padding: 12px; border-bottom: 2px solid #e5e7eb;">Activity</th>
+                            <th style="padding: 12px; border-bottom: 2px solid #e5e7eb; text-align: right; width: 60px;">Qty</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${todaysLogs.map((log) => {
+        const time = new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        let desc = '';
+        const from = log.from_location ? `[${log.from_location}]` : '';
+        const to = log.to_location ? `[${log.to_location}]` : '';
+
+        if (log.action_type === 'MOVE') desc = `Relocated ${from} &rarr; ${to}`;
+        else if (log.action_type === 'ADD') desc = `Added to ${to || from}`;
+        else if (log.action_type === 'DEDUCT') desc = `Picked from ${from}`;
+        else desc = `${log.action_type} at ${from || to}`;
+
+        return `
+                            <tr style="border-bottom: 1px solid #f3f4f6;">
+                                <td style="padding: 12px; color: #6b7280; font-size: 12px;">${time}</td>
+                                <td style="padding: 12px; font-weight: bold;">${log.sku}</td>
+                                <td style="padding: 12px; color: #374151; font-size: 13px;">${desc}</td>
+                                <td style="padding: 12px; text-align: right; font-weight: bold;">${Math.abs(log.quantity_change || 0)}</td>
+                            </tr>
+                          `;
+      }).join('')}
+                    </tbody>
+                </table>
+                
+                <p style="margin-top: 30px; font-size: 11px; color: #9ca3af; text-align: center; border-top: 1px solid #f3f4f6; padding-top: 20px;">
+                    Report generated by Roman App • Stock Mode Trigger<br/>
+                    ${new Date().toLocaleString()}
+                </p>
+                </div>
+            `;
+
+      // 4. Invoke send-daily-report (The proven winner)
+      toast.loading('Sending report to rafaelukf@gmail.com...', { id: 'snapshot-toast' });
+      const { data, error } = await supabase.functions.invoke('send-daily-report', {
         body: {
-          snapshot_date,
-          to: 'rafaelukf@gmail.com'
+          to: 'rafaelukf@gmail.com',
+          subject: `📦 Inventory Report - ${todayStr} (Stock Trigger)`,
+          html: htmlContent,
         }
       });
 
       if (error) throw error;
+      if (data?.error) throw new Error(JSON.stringify(data.error));
 
-      if (data?.email_error) {
-        throw new Error(`Email Error: ${JSON.stringify(data.email_error)}`);
-      }
+      toast.success('Email sent successfully!', { id: 'snapshot-toast' });
+      console.log('Stock Report Success:', data);
 
-      toast.success('Snapshot generated and email sent!', { id: 'snapshot-toast' });
-      console.log('Snapshot success:', data);
+      // 5. Trigger archive snapshot in background (Optional)
+      supabase.functions.invoke('daily-snapshot', {
+        body: { snapshot_date: todayStrComp }
+      }).catch(e => console.warn('R2 Archive background trigger failed:', e));
 
     } catch (err: any) {
-      console.error('Snapshot failed:', err);
+      console.error('Stock Report failed:', err);
       toast.error(`Failed: ${err.message || 'Unknown error'}`, { id: 'snapshot-toast' });
     } finally {
       setIsSendingEmail(false);
