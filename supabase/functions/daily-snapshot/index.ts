@@ -164,16 +164,52 @@ serve(async (req: Request) => {
         const todaysLogs = (logs || []).filter((l: any) => !l.is_reversed);
 
         if (todaysLogs.length === 0) {
-          console.log('No inventory activity detected. Skipping email report.');
-          emailStatus = { success: true, message: 'No activity today, email skipped.' };
+          console.log('No inventory activity detected. Sending status alert to personal email.');
+
+          const alertHtml = `
+            <div style="font-family: sans-serif; padding: 20px;">
+              <h1>Daily Inventory Alert</h1>
+              <p>Hello Rafael,</p>
+              <p>This is an automated status update for <strong>${todayStr}</strong>.</p>
+              <div style="margin: 20px 0; padding: 15px; background-color: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px;">
+                <p style="margin: 0; color: #92400e; font-weight: bold;">No inventory activity was detected today.</p>
+              </div>
+              <p>As a result, no corporate report was sent to Jamis Bikes.</p>
+              <p>You can still view the current inventory snapshot here:</p>
+              <a href="https://roman-app.vercel.app/snapshot/${fileName}" style="color: #4f46e5; font-weight: bold; text-decoration: underline;">
+                VIEW FULL INVENTORY MAP
+              </a>
+              <p style="margin-top: 30px; font-size: 11px; color: #9ca3af;">
+                Roman App Status Alert • ${now.toLocaleString()}
+              </p>
+            </div>
+          `;
+
+          const emailRes = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-daily-report`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
+            },
+            body: JSON.stringify({
+              to: 'rafaelukf@gmail.com',
+              account: 'personal',
+              subject: `Roman App ALERT - No Activity Today (${todayStr})`,
+              html: alertHtml
+            })
+          });
+
+          const emailResData = await emailRes.json();
+          emailStatus = { success: emailRes.ok, data: emailResData, reason: 'No activity, alert sent' };
         } else {
+          console.log('Activity detected. Sending full report to Jamis.');
           const moveCount = todaysLogs.filter((l: any) => l.action_type === 'MOVE').length;
           const pickCount = todaysLogs.filter((l: any) => l.action_type === 'DEDUCT').length;
           const addCount = todaysLogs.filter((l: any) => l.action_type === 'ADD').length;
 
           const htmlSummary = `
           <div style="font-family: sans-serif; padding: 20px;">
-            <h1>Daily Inventory Summary - ${todayStr}</h1>
+            <h1>Daily Inventory Report - ${todayStr}</h1>
             <p><strong>Total Actions:</strong> ${todaysLogs.length}</p>
             <ul>
               <li>Moves: ${moveCount}</li>
@@ -226,7 +262,8 @@ serve(async (req: Request) => {
               'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
             },
             body: JSON.stringify({
-              to: 'rafaelukf@gmail.com',
+              to: 'rcordova@jamisbikes.com',
+              account: 'jamis',
               subject: `Daily Inventory Report - ${todayStr}`,
               html: htmlSummary
             })
