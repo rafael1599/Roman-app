@@ -96,19 +96,20 @@ serve(async (req) => {
       </div>
     `).join('') || '<p style="color: #9ca3af; font-style: italic;">No movements recorded today.</p>';
 
-    // 7. Send email via Resend
-    // --- RESEND CONFIGURATION NOTES ---
-    // Use RESEND_API_KEY_PERSONAL for testing (rafaelukf@gmail.com)
-    // Use RESEND_API_KEY_INSTITUTIONAL for production
-    // Ensure the corresponding NOTIFICATION_EMAIL matches the account.
+    // 7. Send email via Resend (Standardized with send-daily-report pattern)
+    // CRITICAL: For Resend Free Tier, 'from' MUST be 'onboarding@resend.dev'
+    // and 'to' MUST be the registered account email (rafaelukf@gmail.com).
 
     const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
-    const NOTIFICATION_EMAIL = Deno.env.get('NOTIFICATION_EMAIL') || 'rafaelukf@gmail.com';
-    const fromEmail = Deno.env.get('RESEND_FROM_EMAIL') || 'Inventory System <onboarding@resend.dev>';
+
+    // Use the specific email that works in History screen
+    const targetEmail = 'rafaelukf@gmail.com';
 
     if (!RESEND_API_KEY) {
       console.error('RESEND_API_KEY is not defined');
     } else {
+      console.log(`Sending email to ${targetEmail} using Resend...`);
+
       const emailResponse = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
@@ -116,9 +117,11 @@ serve(async (req) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: fromEmail,
-          to: [NOTIFICATION_EMAIL],
-          subject: `📦 Daily Inventory Report - ${targetDateForDB}`,
+          from: 'onboarding@resend.dev', // HARDCODED: Required for free tier
+          to: [targetEmail],
+          subject: body.snapshot_date
+            ? `📦 Historic Snapshot Report - ${targetDateForDB}`
+            : `📦 Daily Inventory Report - ${targetDateForDB}`,
           html: `
             <div style="font-family: sans-serif; padding: 20px; color: #111827; max-width: 600px; margin: auto; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px;">
               <h2 style="margin-top: 0; color: #4f46e5;">Daily Inventory Activity</h2>
@@ -145,8 +148,20 @@ serve(async (req) => {
       });
 
       const emailData = await emailResponse.json();
+
       if (!emailResponse.ok) {
         console.error('Email failed:', emailData);
+        // Important: Return error in JSON so we can debug from client
+        return new Response(JSON.stringify({
+          success: true, // Snapshot still succeeded
+          url: publicUrl,
+          total_movements: logs?.length || 0,
+          email_error: emailData
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      } else {
+        console.log('Email sent successfully:', emailData);
       }
     }
 

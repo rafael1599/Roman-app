@@ -12,6 +12,7 @@ import Plus from 'lucide-react/dist/esm/icons/plus';
 import Warehouse from 'lucide-react/dist/esm/icons/warehouse';
 import Sparkles from 'lucide-react/dist/esm/icons/sparkles';
 import X from 'lucide-react/dist/esm/icons/x';
+import Mail from 'lucide-react/dist/esm/icons/mail'; // Added Mail icon
 import { MovementModal } from '../features/inventory/components/MovementModal';
 import { CapacityBar } from '../components/ui/CapacityBar.tsx';
 import toast from 'react-hot-toast';
@@ -26,6 +27,7 @@ import { useConfirmation } from '../context/ConfirmationContext';
 import { SessionInitializationModal } from '../features/picking/components/SessionInitializationModal';
 import { InventoryItemWithMetadata } from '../schemas/inventory.schema';
 import { Location } from '../schemas/location.schema';
+import { supabase } from '../lib/supabase';
 
 const SEARCHING_MESSAGE = (
   <div className="py-20 text-center text-muted font-bold uppercase tracking-widest animate-pulse">
@@ -420,9 +422,67 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
   // Removed isError check as we are using local data now
 
 
+  // --- Manual Snapshot Trigger ---
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+
+  const triggerDailySnapshot = useCallback(async () => {
+    try {
+      if (!confirm('Are you sure you want to trigger the Daily Snapshot email now?')) return;
+
+      setIsSendingEmail(true);
+      const now = new Date();
+      // YYYY-MM-DD
+      const snapshot_date = now.toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+
+      toast.loading('Generating snapshot and sending email...', { id: 'snapshot-toast' });
+
+      // Call the daily-snapshot function
+      const { data, error } = await supabase.functions.invoke('daily-snapshot', {
+        body: { snapshot_date }
+      });
+
+      if (error) throw error;
+
+      if (data?.email_error) {
+        throw new Error(`Email Error: ${JSON.stringify(data.email_error)}`);
+      }
+
+      toast.success('Snapshot generated and email sent!', { id: 'snapshot-toast' });
+      console.log('Snapshot success:', data);
+
+    } catch (err: any) {
+      console.error('Snapshot failed:', err);
+      toast.error(`Failed: ${err.message || 'Unknown error'}`, { id: 'snapshot-toast' });
+    } finally {
+      setIsSendingEmail(false);
+    }
+  }, []);
+
   return (
     <div className="pb-4 relative">
       <SessionInitializationModal />
+
+      {/* Manual Snapshot Button (Admin Stock Mode Only) */}
+      {isAdmin && viewMode === 'stock' && (
+        <div className="fixed bottom-40 right-4 z-40 flex flex-col gap-3">
+          <button
+            onClick={triggerDailySnapshot}
+            disabled={isSendingEmail}
+            className={`w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-all ${isSendingEmail
+                ? 'bg-subtle text-muted cursor-wait'
+                : 'bg-surface text-accent border border-accent/20 hover:bg-accent hover:text-white'
+              }`}
+            title="Trigger Daily Snapshot Email"
+          >
+            {isSendingEmail ? (
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent" />
+            ) : (
+              <Mail size={20} />
+            )}
+          </button>
+        </div>
+      )}
+
 
       {showWelcome ? (
         <div className="mx-4 mt-4 relative group animate-in fade-in slide-in-from-top-4 duration-1000">
