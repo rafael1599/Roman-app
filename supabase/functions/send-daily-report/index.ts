@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        from: 'roman-app@resend.dev', // Use a more generic name if possible
+        from: 'Inventory System <onboarding@resend.dev>',
         to: to,
         subject: subject,
         html: html
