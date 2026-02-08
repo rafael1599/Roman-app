@@ -195,63 +195,49 @@ function generatePremiumHTML(stats: any, data: any[]): string {
     <html lang="en">
     <head>
         <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Inventory Snapshot - ${stats.date}</title>
-        <style>
-            :root { --accent: #4f46e5; --bg: #f9fafb; }
-            body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: #111827; margin: 0; padding: 40px 20px; }
-            .container { max-width: 800px; margin: 0 auto; background: white; padding: 40px; border-radius: 24px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); }
-            .header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #f3f4f6; padding-bottom: 20px; margin-bottom: 30px; }
-            h1 { margin: 0; font-size: 32px; letter-spacing: -1px; }
-            .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 40px; }
-            .stat-card { background: #f8fafc; padding: 20px; border-radius: 16px; text-align: center; }
-            .stat-val { font-size: 24px; font-weight: 800; color: var(--accent); }
-            .stat-label { font-size: 10px; font-weight: 800; text-transform: uppercase; color: #64748b; letter-spacing: 1px; }
-            .warehouse-section { margin-top: 40px; }
-            .warehouse-name { font-size: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: 2px; color: #94a3b8; border-left: 4px solid var(--accent); padding-left: 15px; }
-            .location-block { margin: 20px 0; }
-            .location-name { font-weight: 700; color: #475569; font-size: 14px; margin-bottom: 10px; }
-            table { width: 100%; border-collapse: collapse; }
-            td { padding: 10px; border-bottom: 1px solid #f1f5f9; font-size: 14px; }
-            .qty { text-align: right; font-weight: 700; font-family: monospace; font-size: 16px; }
-            .footer { margin-top: 50px; text-align: center; font-size: 12px; color: #94a3b8; }
-        </style>
     </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                <div>
-                    <div class="stat-label">Official Snapshot</div>
-                    <h1>Inventory Map</h1>
-                </div>
-                <div style="text-align: right;">
-                    <div class="stat-label">Date</div>
-                    <div style="font-weight: 700;">${stats.date}</div>
-                </div>
+    <body style="font-family: sans-serif; background-color: #f9fafb; color: #111827; margin: 0; padding: 20px;">
+        <div style="max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; border: 1px solid #e5e7eb;">
+            <div style="border-bottom: 2px solid #f3f4f6; padding-bottom: 20px; margin-bottom: 30px;">
+                <h1 style="margin: 0; font-size: 24px;">Inventory Snapshot</h1>
+                <p style="color: #64748b; margin: 5px 0 0 0;">Date: ${stats.date}</p>
             </div>
 
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-val">${stats.total_skus}</div>
-                    <div class="stat-label">Active SKUs</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-val">${stats.total_units.toLocaleString()}</div>
-                    <div class="stat-label">Total Units</div>
-                </div>
+            <div style="margin-bottom: 30px;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr>
+                        <td style="background: #f8fafc; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #f1f5f9;">
+                            <div style="font-size: 10px; color: #64748b; text-transform: uppercase;">Active SKUs</div>
+                            <div style="font-size: 20px; font-weight: bold; color: #4f46e5;">${stats.total_skus}</div>
+                        </td>
+                        <td style="width: 20px;"></td>
+                        <td style="background: #f8fafc; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #f1f5f9;">
+                            <div style="font-size: 10px; color: #64748b; text-transform: uppercase;">Total Units</div>
+                            <div style="font-size: 20px; font-weight: bold; color: #4f46e5;">${stats.total_units.toLocaleString()}</div>
+                        </td>
+                    </tr>
+                </table>
             </div>
 
             ${Object.keys(grouped).map(wh => `
-                <div class="warehouse-section">
-                    <div class="warehouse-name">${wh}</div>
+                <div style="margin-top: 30px;">
+                    <div style="font-size: 14px; font-weight: bold; text-transform: uppercase; color: #4f46e5; border-left: 4px solid #4f46e5; padding-left: 10px; margin-bottom: 15px;">
+                        ${wh}
+                    </div>
                     ${Object.keys(grouped[wh]).map(loc => `
-                        <div class="location-block">
-                            <div class="location-name">[${loc}]</div>
-                            <table>
+                        <div style="margin-bottom: 20px; padding-left: 15px;">
+                            <div style="font-weight: bold; color: #475569; font-size: 13px; margin-bottom: 8px;">[${loc}]</div>
+                            <table style="width: 100%; border-collapse: collapse;">
                                 ${grouped[wh][loc].map((item: any) => `
-                                    <tr>
-                                        <td>${item.sku} <span style="color:#94a3b8; font-size:11px;">${item.sku_note || ''}</span></td>
-                                        <td class="qty">${item.quantity}</td>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 8px 0; font-size: 13px;">
+                                            ${item.sku} 
+                                            <span style="color:#94a3b8; font-size:11px; margin-left: 8px;">${item.sku_note || ''}</span>
+                                        </td>
+                                        <td style="padding: 8px 0; text-align: right; font-weight: bold; font-family: monospace; font-size: 14px;">
+                                            ${item.quantity}
+                                        </td>
                                     </tr>
                                 `).join('')}
                             </table>
@@ -260,7 +246,7 @@ function generatePremiumHTML(stats: any, data: any[]): string {
                 </div>
             `).join('')}
 
-            <div class="footer">
+            <div style="margin-top: 40px; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #f3f4f6; padding-top: 20px;">
                 Roman Inventory System &bull; Generated Automatically
             </div>
         </div>
