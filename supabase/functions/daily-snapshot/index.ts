@@ -162,11 +162,16 @@ serve(async (req: Request) => {
 
         // Use the logs we already fetched for the summary
         const todaysLogs = (logs || []).filter((l: any) => !l.is_reversed);
-        const moveCount = todaysLogs.filter((l: any) => l.action_type === 'MOVE').length;
-        const pickCount = todaysLogs.filter((l: any) => l.action_type === 'DEDUCT').length;
-        const addCount = todaysLogs.filter((l: any) => l.action_type === 'ADD').length;
 
-        const htmlSummary = `
+        if (todaysLogs.length === 0) {
+          console.log('No inventory activity detected. Skipping email report.');
+          emailStatus = { success: true, message: 'No activity today, email skipped.' };
+        } else {
+          const moveCount = todaysLogs.filter((l: any) => l.action_type === 'MOVE').length;
+          const pickCount = todaysLogs.filter((l: any) => l.action_type === 'DEDUCT').length;
+          const addCount = todaysLogs.filter((l: any) => l.action_type === 'ADD').length;
+
+          const htmlSummary = `
           <div style="font-family: sans-serif; padding: 20px;">
             <h1>Daily Inventory Summary - ${todayStr}</h1>
             <p><strong>Total Actions:</strong> ${todaysLogs.length}</p>
@@ -192,20 +197,20 @@ serve(async (req: Request) => {
               </thead>
               <tbody>
                 ${todaysLogs.slice(0, 50).map((log: any) => {
-          const time = new Date(log.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'America/New_York' });
-          let desc = log.action_type;
-          if (log.action_type === 'MOVE') desc = `Relocated [${log.from_location || ''}] to [${log.to_location || ''}]`;
-          else if (log.action_type === 'ADD') desc = `Added to [${log.to_location || log.from_location || ''}]`;
-          else if (log.action_type === 'DEDUCT') desc = `Picked from [${log.from_location || ''}]`;
+            const time = new Date(log.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'America/New_York' });
+            let desc = log.action_type;
+            if (log.action_type === 'MOVE') desc = `Relocated [${log.from_location || ''}] to [${log.to_location || ''}]`;
+            else if (log.action_type === 'ADD') desc = `Added to [${log.to_location || log.from_location || ''}]`;
+            else if (log.action_type === 'DEDUCT') desc = `Picked from [${log.from_location || ''}]`;
 
-          return `
+            return `
                     <tr style="border-bottom: 1px solid #f3f4f6;">
                       <td style="padding: 12px; color: #6b7280; font-size: 12px;">${time}</td>
                       <td style="padding: 12px; font-weight: bold;">${log.sku}</td>
                       <td style="padding: 12px; color: #374151; font-size: 13px;">${desc} (Qty: ${Math.abs(log.quantity_change)})</td>
                     </tr>
                   `;
-        }).join('')}
+          }).join('')}
               </tbody>
             </table>
             <p style="margin-top: 30px; font-size: 11px; color: #9ca3af; text-align: center;">
@@ -214,22 +219,23 @@ serve(async (req: Request) => {
           </div>
         `;
 
-        const emailRes = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-daily-report`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
-          },
-          body: JSON.stringify({
-            to: 'rafaelukf@gmail.com',
-            subject: `Daily Inventory Report - ${todayStr}`,
-            html: htmlSummary
-          })
-        });
+          const emailRes = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-daily-report`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
+            },
+            body: JSON.stringify({
+              to: 'rafaelukf@gmail.com',
+              subject: `Daily Inventory Report - ${todayStr}`,
+              html: htmlSummary
+            })
+          });
 
-        const emailResData = await emailRes.json();
-        emailStatus = { success: emailRes.ok, data: emailResData };
-        console.log('Email delivery status:', emailStatus);
+          const emailResData = await emailRes.json();
+          emailStatus = { success: emailRes.ok, data: emailResData };
+          console.log('Email delivery status:', emailStatus);
+        }
 
       } catch (err: any) {
         console.error('Email orchestration failed:', err);
