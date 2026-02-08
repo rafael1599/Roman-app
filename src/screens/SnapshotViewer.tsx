@@ -3,8 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
 import ChevronLeft from 'lucide-react/dist/esm/icons/chevron-left';
 import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle';
-
-const R2_PUBLIC_DOMAIN = 'https://pub-1a61139939fa4f3ba21ee7909510985c.r2.dev';
+import { supabase } from '../lib/supabase';
 
 export const SnapshotViewer: React.FC = () => {
     const { fileName } = useParams<{ fileName: string }>();
@@ -18,13 +17,28 @@ export const SnapshotViewer: React.FC = () => {
             if (!fileName) return;
             try {
                 setLoading(true);
-                const response = await fetch(`${R2_PUBLIC_DOMAIN}/${fileName}`);
-                if (!response.ok) throw new Error('Snapshot not found or unauthorized');
+
+                // We use the edge function as a proxy to bypass CORS on R2.
+                // We call it via standard fetch to ensure we get raw text/html.
+                const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/daily-snapshot?file=${fileName}`;
+
+                const response = await fetch(functionUrl, {
+                    method: 'GET',
+                    headers: {
+                        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY
+                    }
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(errorText || 'Failed to load snapshot from archive');
+                }
+
                 const content = await response.text();
                 setHtml(content);
             } catch (err: any) {
                 console.error('Failed to load snapshot:', err);
-                setError(err.message || 'Error loading snapshot');
+                setError(err.message || 'Error loading snapshot content');
             } finally {
                 setLoading(false);
             }
@@ -37,7 +51,7 @@ export const SnapshotViewer: React.FC = () => {
         return (
             <div className="min-h-screen bg-main flex flex-col items-center justify-center p-4">
                 <Loader2 className="animate-spin text-accent w-10 h-10 mb-4" />
-                <p className="text-muted text-sm">Loading historical snapshot...</p>
+                <p className="text-muted text-sm font-medium">Archiving inventory data...</p>
             </div>
         );
     }
@@ -46,46 +60,48 @@ export const SnapshotViewer: React.FC = () => {
         return (
             <div className="min-h-screen bg-main flex flex-col items-center justify-center p-4 text-center">
                 <AlertCircle className="text-destructive w-12 h-12 mb-4 opacity-50" />
-                <h1 className="text-xl font-bold mb-2">Oops! Couldn't load snapshot</h1>
+                <h1 className="text-xl font-bold mb-2">Unavailable</h1>
                 <p className="text-muted mb-6 max-w-md">{error}</p>
                 <button
                     onClick={() => navigate('/')}
-                    className="flex items-center gap-2 px-6 py-2 bg-accent text-white rounded-lg font-medium"
+                    className="flex items-center gap-2 px-6 py-2 bg-accent text-white rounded-lg font-medium shadow-lg hover:brightness-110 active:scale-95 transition-all"
                 >
                     <ChevronLeft size={18} />
-                    Return to Dashboard
+                    Dashboard
                 </button>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-neutral-100 flex flex-col">
-            {/* Top Bar */}
-            <div className="bg-surface border-b border-subtle p-4 sticky top-0 z-10 flex items-center justify-between">
+        <div className="min-h-screen bg-[#f3f4f6] flex flex-col font-sans">
+            {/* Minimal Header */}
+            <div className="bg-white border-b border-gray-200 p-3 px-6 sticky top-0 z-50 flex items-center justify-between shadow-sm">
                 <button
                     onClick={() => navigate('/')}
-                    className="flex items-center gap-2 text-muted hover:text-accent transition-colors"
+                    className="flex items-center gap-2 text-gray-500 hover:text-accent transition-colors text-sm"
                 >
-                    <ChevronLeft size={20} />
-                    <span className="font-medium">Back to App</span>
+                    <ChevronLeft size={18} />
+                    <span className="font-semibold">Exit Preview</span>
                 </button>
-                <div className="text-xs text-muted font-mono bg-subtle/50 px-2 py-1 rounded">
+                <div className="text-[10px] text-gray-400 font-mono bg-gray-50 px-3 py-1 rounded-full border border-gray-100">
                     {fileName}
                 </div>
             </div>
 
-            {/* Content Area */}
-            <div className="flex-1 w-full max-w-5xl mx-auto p-4 md:p-8">
+            {/* Snapshot Content (Rendered inside a clean wrapper) */}
+            <main className="flex-1 w-full max-w-4xl mx-auto py-6 px-4 md:py-10">
                 <div
-                    className="bg-white rounded-xl shadow-xl overflow-hidden border border-subtle min-h-[80vh]"
+                    className="bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-100 min-h-[85vh] transition-opacity duration-500 animate-in fade-in"
                     dangerouslySetInnerHTML={{ __html: html || '' }}
                 />
-            </div>
+            </main>
 
-            {/* Footer */}
-            <footer className="p-8 text-center text-muted text-xs">
-                Archived Inventory Snapshot • Secure View
+            {/* Secure Footer */}
+            <footer className="pb-10 pt-4 text-center">
+                <p className="text-gray-400 text-[10px] uppercase tracking-widest font-bold">
+                    Authenticated Archives • Roman Inventory System
+                </p>
             </footer>
         </div>
     );

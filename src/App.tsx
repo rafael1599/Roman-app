@@ -47,7 +47,6 @@ const AuthenticatedContent = () => {
               path="/settings"
               element={isAdmin ? <Settings /> : <Navigate to="/" replace />}
             />
-            <Route path="/snapshot/:fileName" element={<SnapshotViewer />} />
             {/* Catch-all for unknown routes */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
@@ -127,9 +126,17 @@ function App() {
         <BrowserRouter>
           <ErrorProvider>
             <ConfirmationProvider>
-              {' '}
-              {/* Wrap with ConfirmationProvider */}
-              <AuthGuard />
+              <Routes>
+                {/* Public Snapshot View - No Layout, No Auth */}
+                <Route path="/snapshot/:fileName" element={
+                  <Suspense fallback={<div className="min-h-screen bg-main flex items-center justify-center"><Loader2 className="animate-spin text-accent w-10 h-10" /></div>}>
+                    <SnapshotViewer />
+                  </Suspense>
+                } />
+
+                {/* All other routes protected by AuthGuard */}
+                <Route path="*" element={<AuthGuard />} />
+              </Routes>
             </ConfirmationProvider>
           </ErrorProvider>
         </BrowserRouter>

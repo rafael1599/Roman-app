@@ -11,6 +11,28 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
+    const url = new URL(req.url);
+    const fileNameParam = url.searchParams.get('file');
+
+    // --- MODE 1: RETRIEVAL (CORS Proxy for Viewer) ---
+    if (req.method === 'GET' && fileNameParam) {
+      console.log(`Retrieving snapshot: ${fileNameParam}`);
+      const publicDomain = Deno.env.get('R2_PUBLIC_DOMAIN');
+      const fileRes = await fetch(`${publicDomain}/${fileNameParam}`);
+
+      if (!fileRes.ok) {
+        return new Response('Snapshot not found', { status: 404, headers: corsHeaders });
+      }
+
+      const html = await fileRes.text();
+      return new Response(html, {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'text/html; charset=utf-8'
+        }
+      });
+    }
+
     const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
     const body = await req.json().catch(() => ({}));
 
