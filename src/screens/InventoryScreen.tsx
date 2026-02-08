@@ -461,58 +461,63 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
       const pickCount = todaysLogs.filter((l) => l.action_type === 'DEDUCT').length;
       const addCount = todaysLogs.filter((l) => l.action_type === 'ADD').length;
 
-      // 3. Generate HTML with Button
+      // 3. Generate Simple HTML (Proven path)
       const htmlContent = `
-                <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 12px; background: #ffffff;">
-                    <h1 style="color: #4f46e5; margin-top: 0;">Daily Inventory Report</h1>
-                    <p style="color: #6b7280; font-size: 14px;">Summary for <strong>${todayStr}</strong></p>
-                    
-                    <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin: 25px 0;">
-                        <ul style="color: #4b5563; margin: 0; padding: 0; list-style: none;">
-                            <li style="margin-bottom: 8px;">📦 <strong>Moves:</strong> ${moveCount}</li>
-                            <li style="margin-bottom: 8px;">⛏️ <strong>Picks:</strong> ${pickCount}</li>
-                            <li style="margin-bottom: 8px;">📥 <strong>Restocks:</strong> ${addCount}</li>
-                        </ul>
-                    </div>
+                <div style="font-family: sans-serif; padding: 20px;">
+                <h1>Daily Inventory Summary - ${todayStr}</h1>
+                <p><strong>Total Actions:</strong> ${todaysLogs.length}</p>
+                <ul>
+                    <li>Moves: ${moveCount}</li>
+                    <li>Picks: ${pickCount}</li>
+                    <li>Restocks: ${addCount}</li>
+                </ul>
+                
+                ${r2Url ? `
+                <div style="margin: 20px 0;">
+                    <p>A full map of the inventory has been archived to Cloudflare R2.</p>
+                    <a href="${r2Url}" style="display: inline-block; padding: 10px 20px; background-color: #4f46e5; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                        SEE FULL INVENTORY MAP
+                    </a>
+                </div>
+                ` : ''}
 
-                    ${r2Url ? `
-                    <div style="text-align: center; margin: 35px 0;">
-                        <p style="font-size: 13px; color: #6b7280; margin-bottom: 15px;">A full map of the inventory has been archived.</p>
-                        <a href="${r2Url}" style="background-color: #4f46e5; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);">
-                            SEE FULL INVENTORY MAP
-                        </a>
-                    </div>
-                    ` : ''}
-                    
-                    <h2 style="font-size: 16px; border-bottom: 2px solid #f3f4f6; padding-bottom: 10px; margin-top: 40px;">Detailed Activity</h2>
-                    <table style="width: 100%; border-collapse: collapse; text-align: left;">
-                        <tbody>
-                            ${todaysLogs.slice(0, 50).map((log) => {
-        const logTimeStr = log.created_at || new Date().toISOString();
-        const time = new Date(logTimeStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const from = log.from_location ? `[${log.from_location}]` : '';
-        const to = log.to_location ? `[${log.to_location}]` : '';
-        let desc = '';
-        if (log.action_type === 'MOVE') desc = `Relocated ${from} &rarr; ${to}`;
-        else if (log.action_type === 'ADD') desc = `Added to ${to || from}`;
-        else if (log.action_type === 'DEDUCT') desc = `Picked from ${from}`;
-        else desc = `${log.action_type}`;
+                <h2>Activity Details</h2>
+                <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                    <thead>
+                        <tr style="background-color: #f3f4f6; color: #374151;">
+                            <th style="padding: 12px; border-bottom: 2px solid #e5e7eb; width: 80px;">Time</th>
+                            <th style="padding: 12px; border-bottom: 2px solid #e5e7eb; width: 120px;">SKU</th>
+                            <th style="padding: 12px; border-bottom: 2px solid #e5e7eb;">Activity</th>
+                            <th style="padding: 12px; border-bottom: 2px solid #e5e7eb; text-align: right; width: 60px;">Qty</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${todaysLogs.slice(0, 100).map((log) => {
+                          const logTimeStr = log.created_at || new Date().toISOString();
+                          const time = new Date(logTimeStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                          const from = log.from_location ? `[${log.from_location}]` : '';
+                          const to = log.to_location ? `[${log.to_location}]` : '';
+                          let desc = '';
+                          if (log.action_type === 'MOVE') desc = `Relocated ${from} to ${to}`;
+                          else if (log.action_type === 'ADD') desc = `Added to ${to || from}`;
+                          else if (log.action_type === 'DEDUCT') desc = `Picked from ${from}`;
+                          else desc = `${log.action_type}`;
 
-        return `
-                                <tr style="border-bottom: 1px solid #f3f4f6;">
-                                    <td style="padding: 12px 0; color: #9ca3af; font-size: 11px; width: 60px;">${time}</td>
-                                    <td style="padding: 12px 0; font-weight: 600; font-size: 13px;">${log.sku}</td>
-                                    <td style="padding: 12px 0; color: #4b5563; font-size: 12px;">${desc}</td>
-                                    <td style="padding: 12px 0; text-align: right; font-weight: bold; color: #111827;">${Math.abs(log.quantity_change || 0)}</td>
-                                </tr>
-                              `;
-      }).join('')}
-                        </tbody>
-                    </table>
-
-                    <p style="margin-top: 40px; font-size: 11px; color: #9ca3af; text-align: center;">
-                        Roman App Automated Audit • ${new Date().toLocaleString()}
-                    </p>
+                          return `
+                            <tr style="border-bottom: 1px solid #f3f4f6;">
+                                <td style="padding: 12px; color: #6b7280; font-size: 12px;">${time}</td>
+                                <td style="padding: 12px; font-weight: bold;">${log.sku}</td>
+                                <td style="padding: 12px; color: #374151; font-size: 13px;">${desc}</td>
+                                <td style="padding: 12px; text-align: right; font-weight: bold;">${Math.abs(log.quantity_change || 0)}</td>
+                            </tr>
+                          `;
+                        }).join('')}
+                    </tbody>
+                </table>
+                
+                <p style="margin-top: 30px; font-size: 11px; color: #9ca3af; text-align: center;">
+                    Report generated by Roman App • ${new Date().toLocaleString()}
+                </p>
                 </div>
             `;
 
@@ -521,7 +526,7 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
       const { data: emailData, error: emailError } = await supabase.functions.invoke('send-daily-report', {
         body: {
           to: 'rafaelukf@gmail.com',
-          subject: `📦 Inventory Report & Map - ${todayStr}`,
+          subject: `Daily Inventory Report and Map - ${todayStr}`,
           html: htmlContent,
         }
       });

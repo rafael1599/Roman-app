@@ -65,8 +65,7 @@ serve(async (req) => {
     const publicDomain = Deno.env.get('R2_PUBLIC_DOMAIN');
     const publicUrl = `${publicDomain}/${fileName}`;
 
-    // 5. Fetch Daily Activity (Logs) for the email summary
-    // Robust date query: From 00:00:00 to 23:59:59 of the target day in NY
+    // 5. Fetch Daily Activity (Logs) for the return summary
     const startOfDay = `${targetDateForDB}T00:00:00.000Z`;
     const endOfDay = `${targetDateForDB}T23:59:59.999Z`;
 
@@ -79,106 +78,12 @@ serve(async (req) => {
 
     if (logsError) console.error('Error fetching logs for summary:', logsError);
 
-    // 6. Aggregate Movements by SKU
-    const skuMovements: Record<string, any[]> = {};
-    (logs || []).forEach((log: any) => {
-      if (!skuMovements[log.sku]) skuMovements[log.sku] = [];
-      skuMovements[log.sku].push(log);
-    });
-
-    const movementSummaryHtml = Object.entries(skuMovements).map(([sku, actions]) => `
-      <div style="margin-bottom: 15px; border-left: 3px solid #4f46e5; padding-left: 10px;">
-        <div style="font-weight: bold; color: #1f2937;">${sku}</div>
-        <ul style="margin: 5px 0; padding-left: 20px; font-size: 13px; color: #4b5563;">
-          ${actions.map(a => `
-            <li>
-              <strong>${a.action_type}</strong>: ${a.quantity_change > 0 ? '+' : ''}${a.quantity_change} units 
-              <span style="color: #9ca3af;">(${a.from_location || 'N/A'} &rarr; ${a.to_location || 'N/A'})</span>
-            </li>
-          `).join('')}
-        </ul>
-      </div>
-    `).join('') || '<p style="color: #9ca3af; font-style: italic;">No movements recorded today.</p>';
-
-    // 7. Send email via Resend (Standardized with send-daily-report pattern)
-    // CRITICAL: For Resend Free Tier, 'from' MUST be 'onboarding@resend.dev'
-    // and 'to' MUST be the registered account email (rafaelukf@gmail.com).
-
-    const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
-
-    // Use the specific email that works in History screen
-    const targetEmail = 'rafaelukf@gmail.com';
-
-    if (!RESEND_API_KEY) {
-      console.error('RESEND_API_KEY is not defined');
-    } else {
-      console.log(`Sending email to ${targetEmail} using Resend...`);
-
-      const emailBody = {
-        from: 'onboarding@resend.dev',
-        to: targetEmail, // Pass as string, not array, to match History
-        subject: body.snapshot_date
-          ? `Historic Snapshot Report - ${targetDateForDB}`
-          : `Daily Inventory Report - ${targetDateForDB}`,
-        html: `
-          <div style="font-family: sans-serif; padding: 20px; color: #111827; max-width: 600px; margin: auto; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px;">
-            <h2 style="margin-top: 0; color: #4f46e5;">Daily Inventory Activity</h2>
-            <p>Summary of SKU movements for <strong>${targetDateForDB}</strong>:</p>
-            
-            <div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 25px;">
-              ${movementSummaryHtml}
-            </div>
-
-            <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #f3f4f6;">
-              <p style="margin-bottom: 20px;">The full inventory snapshot has been saved to Cloudflare R2.</p>
-              <a href="${publicUrl}" style="background-color: #4f46e5; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
-                SEE FULL INVENTORY
-              </a>
-            </div>
-            
-            <p style="color: #6b7280; font-size: 11px; margin-top: 30px; text-align: center;">
-              Automated Report &bull; Roman Inventory System<br>
-              Link: <a href="${publicUrl}" style="color: #4f46e5;">${publicUrl}</a>
-            </p>
-          </div>
-        `,
-      };
-
-      const emailResponse = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${RESEND_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(emailBody),
-      });
-
-      const emailData = await emailResponse.json();
-
-      if (!emailResponse.ok) {
-        console.error('Email failed:', emailData);
-        // Important: Return error in JSON so we can debug from client
-        return new Response(JSON.stringify({
-          success: true, // Snapshot still succeeded
-          url: publicUrl,
-          total_movements: logs?.length || 0,
-          email_error: emailData
-        }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      } else {
-        console.log('Email sent successfully:', emailData);
-      }
-    }
-
+    // 6. Return response (Email sending is now handled by the client)
     return new Response(JSON.stringify({
       success: true,
       url: publicUrl,
       fileName,
       total_movements: logs?.length || 0,
-      email_id: emailData.id,
-      target_email: targetEmail,
-      debug_date: targetDateForDB
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
@@ -186,7 +91,8 @@ serve(async (req) => {
   } catch (error: any) {
     console.error('Snapshot Error:', error);
     return new Response(JSON.stringify({ success: false, error: error.message }), {
-      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 400
     });
   }
 });
@@ -200,66 +106,66 @@ function generatePremiumHTML(stats: any, data: any[]): string {
   });
 
   return `
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <title>Inventory Snapshot - ${stats.date}</title>
-    </head>
-    <body style="font-family: sans-serif; background-color: #f9fafb; color: #111827; margin: 0; padding: 20px;">
-        <div style="max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; border: 1px solid #e5e7eb;">
-            <div style="border-bottom: 2px solid #f3f4f6; padding-bottom: 20px; margin-bottom: 30px;">
-                <h1 style="margin: 0; font-size: 24px;">Inventory Snapshot</h1>
-                <p style="color: #64748b; margin: 5px 0 0 0;">Date: ${stats.date}</p>
-            </div>
-
-            <div style="margin-bottom: 30px;">
-                <table style="width: 100%; border-collapse: collapse;">
-                    <tr>
-                        <td style="background: #f8fafc; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #f1f5f9;">
-                            <div style="font-size: 10px; color: #64748b; text-transform: uppercase;">Active SKUs</div>
-                            <div style="font-size: 20px; font-weight: bold; color: #4f46e5;">${stats.total_skus}</div>
-                        </td>
-                        <td style="width: 20px;"></td>
-                        <td style="background: #f8fafc; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #f1f5f9;">
-                            <div style="font-size: 10px; color: #64748b; text-transform: uppercase;">Total Units</div>
-                            <div style="font-size: 20px; font-weight: bold; color: #4f46e5;">${stats.total_units.toLocaleString()}</div>
-                        </td>
-                    </tr>
-                </table>
-            </div>
-
-            ${Object.keys(grouped).map(wh => `
-                <div style="margin-top: 30px;">
-                    <div style="font-size: 14px; font-weight: bold; text-transform: uppercase; color: #4f46e5; border-left: 4px solid #4f46e5; padding-left: 10px; margin-bottom: 15px;">
-                        ${wh}
-                    </div>
-                    ${Object.keys(grouped[wh]).map(loc => `
-                        <div style="margin-bottom: 20px; padding-left: 15px;">
-                            <div style="font-weight: bold; color: #475569; font-size: 13px; margin-bottom: 8px;">[${loc}]</div>
-                            <table style="width: 100%; border-collapse: collapse;">
-                                ${grouped[wh][loc].map((item: any) => `
-                                    <tr style="border-bottom: 1px solid #f1f5f9;">
-                                        <td style="padding: 8px 0; font-size: 13px;">
-                                            ${item.sku} 
-                                            <span style="color:#94a3b8; font-size:11px; margin-left: 8px;">${item.sku_note || ''}</span>
-                                        </td>
-                                        <td style="padding: 8px 0; text-align: right; font-weight: bold; font-family: monospace; font-size: 14px;">
-                                            ${item.quantity}
-                                        </td>
-                                    </tr>
-                                `).join('')}
-                            </table>
-                        </div>
-                    `).join('')}
-                </div>
-            `).join('')}
-
-            <div style="margin-top: 40px; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #f3f4f6; padding-top: 20px;">
-                Roman Inventory System &bull; Generated Automatically
-            </div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Inventory Snapshot - ${stats.date}</title>
+</head>
+<body style="font-family: sans-serif; background-color: #f9fafb; color: #111827; margin: 0; padding: 20px;">
+    <div style="max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; border: 1px solid #e5e7eb;">
+        <div style="border-bottom: 2px solid #f3f4f6; padding-bottom: 20px; margin-bottom: 30px;">
+            <h1 style="margin: 0; font-size: 24px;">Inventory Snapshot</h1>
+            <p style="color: #64748b; margin: 5px 0 0 0;">Date: ${stats.date}</p>
         </div>
-    </body>
-    </html>
+
+        <div style="margin-bottom: 30px;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                    <td style="background: #f8fafc; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #f1f5f9;">
+                        <div style="font-size: 10px; color: #64748b; text-transform: uppercase;">Active SKUs</div>
+                        <div style="font-size: 20px; font-weight: bold; color: #4f46e5;">${stats.total_skus}</div>
+                    </td>
+                    <td style="width: 20px;"></td>
+                    <td style="background: #f8fafc; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #f1f5f9;">
+                        <div style="font-size: 10px; color: #64748b; text-transform: uppercase;">Total Units</div>
+                        <div style="font-size: 20px; font-weight: bold; color: #4f46e5;">${stats.total_units.toLocaleString()}</div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        ${Object.keys(grouped).map(wh => `
+            <div style="margin-top: 30px;">
+                <div style="font-size: 14px; font-weight: bold; text-transform: uppercase; color: #4f46e5; border-left: 4px solid #4f46e5; padding-left: 10px; margin-bottom: 15px;">
+                    ${wh}
+                </div>
+                ${Object.keys(grouped[wh]).map(loc => `
+                    <div style="margin-bottom: 20px; padding-left: 15px;">
+                        <div style="font-weight: bold; color: #475569; font-size: 13px; margin-bottom: 8px;">[${loc}]</div>
+                        <table style="width: 100%; border-collapse: collapse;">
+                            ${grouped[wh][loc].map((item: any) => `
+                                <tr style="border-bottom: 1px solid #f1f5f9;">
+                                    <td style="padding: 8px 0; font-size: 13px;">
+                                        ${item.sku} 
+                                        <span style="color:#94a3b8; font-size:11px; margin-left: 8px;">${item.sku_note || ''}</span>
+                                    </td>
+                                    <td style="padding: 8px 0; text-align: right; font-weight: bold; font-family: monospace; font-size: 14px;">
+                                        ${item.quantity}
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </table>
+                    </div>
+                `).join('')}
+            </div>
+        `).join('')}
+
+        <div style="margin-top: 40px; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #f3f4f6; padding-top: 20px;">
+            Roman Inventory System &bull; Generated Automatically
+        </div>
+    </div>
+</body>
+</html>
   `;
 }
