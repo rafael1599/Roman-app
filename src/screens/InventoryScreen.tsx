@@ -478,15 +478,14 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
                     <li>Picks: ${pickCount}</li>
                     <li>Restocks: ${addCount}</li>
                 </ul>
-                
-                ${r2Url ? `
-                <div style="margin: 20px 0;">
-                    <p>A full map of the inventory has been archived to Cloudflare R2.</p>
-                    <a href="${r2Url}" style="display: inline-block; padding: 10px 20px; background-color: #4f46e5; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">
-                        SEE FULL INVENTORY MAP
-                    </a>
-                </div>
-                ` : ''}
+                                ${snapshotData?.fileName ? `
+                    <div style="margin: 25px 0; padding: 15px; border: 1px dashed #4f46e5; border-radius: 8px; text-align: center;">
+                        <p style="margin-bottom: 10px; font-size: 14px;">Full inventory details archived here:</p>
+                        <a href="${window.location.origin}/snapshot/${snapshotData.fileName}" style="color: #4f46e5; font-weight: bold; text-decoration: underline;">
+                            SEE FULL INVENTORY MAP (Snapshot)
+                        </a>
+                    </div>
+                    ` : ''}
 
                 <h2>Activity Details</h2>
                 <table style="width: 100%; border-collapse: collapse; text-align: left;">

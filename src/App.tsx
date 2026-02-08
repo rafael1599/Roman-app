@@ -15,6 +15,7 @@ const HistoryScreen = React.lazy(() =>
 const Settings = React.lazy(() => import('./screens/Settings.tsx'));
 const LoginScreen = React.lazy(() => import('./screens/LoginScreen').then(m => ({ default: m.LoginScreen })));
 const OrdersScreen = React.lazy(() => import('./screens/OrdersScreen').then(m => ({ default: m.OrdersScreen })));
+const SnapshotViewer = React.lazy(() => import('./screens/SnapshotViewer').then(m => ({ default: m.SnapshotViewer })));
 
 import { ViewModeProvider } from './context/ViewModeContext';
 import { PickingProvider } from './context/PickingContext';
@@ -46,6 +47,7 @@ const AuthenticatedContent = () => {
               path="/settings"
               element={isAdmin ? <Settings /> : <Navigate to="/" replace />}
             />
+            <Route path="/snapshot/:fileName" element={<SnapshotViewer />} />
             {/* Catch-all for unknown routes */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
