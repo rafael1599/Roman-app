@@ -431,6 +431,12 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
 
       setIsSendingEmail(true);
 
+      // 0. Get current session token for JWT Verification
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers = session?.access_token ? {
+        Authorization: `Bearer ${session.access_token}`
+      } : {};
+
       // 1. Generate R2 Snapshot FIRST to get the URL
       toast.loading('Generating R2 Inventory Map...', { id: 'snapshot-toast' });
       const now = new Date();
@@ -438,7 +444,8 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
       const todayStrComp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
       const { data: snapshotData, error: snapshotError } = await supabase.functions.invoke('daily-snapshot', {
-        body: { snapshot_date: todayStrComp }
+        body: { snapshot_date: todayStrComp },
+        headers
       });
 
       if (snapshotError) throw snapshotError;
@@ -493,17 +500,17 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
                     </thead>
                     <tbody>
                         ${todaysLogs.slice(0, 100).map((log) => {
-                          const logTimeStr = log.created_at || new Date().toISOString();
-                          const time = new Date(logTimeStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                          const from = log.from_location ? `[${log.from_location}]` : '';
-                          const to = log.to_location ? `[${log.to_location}]` : '';
-                          let desc = '';
-                          if (log.action_type === 'MOVE') desc = `Relocated ${from} to ${to}`;
-                          else if (log.action_type === 'ADD') desc = `Added to ${to || from}`;
-                          else if (log.action_type === 'DEDUCT') desc = `Picked from ${from}`;
-                          else desc = `${log.action_type}`;
+        const logTimeStr = log.created_at || new Date().toISOString();
+        const time = new Date(logTimeStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const from = log.from_location ? `[${log.from_location}]` : '';
+        const to = log.to_location ? `[${log.to_location}]` : '';
+        let desc = '';
+        if (log.action_type === 'MOVE') desc = `Relocated ${from} to ${to}`;
+        else if (log.action_type === 'ADD') desc = `Added to ${to || from}`;
+        else if (log.action_type === 'DEDUCT') desc = `Picked from ${from}`;
+        else desc = `${log.action_type}`;
 
-                          return `
+        return `
                             <tr style="border-bottom: 1px solid #f3f4f6;">
                                 <td style="padding: 12px; color: #6b7280; font-size: 12px;">${time}</td>
                                 <td style="padding: 12px; font-weight: bold;">${log.sku}</td>
@@ -511,7 +518,7 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
                                 <td style="padding: 12px; text-align: right; font-weight: bold;">${Math.abs(log.quantity_change || 0)}</td>
                             </tr>
                           `;
-                        }).join('')}
+      }).join('')}
                     </tbody>
                 </table>
                 
@@ -526,9 +533,10 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
       const { data: emailData, error: emailError } = await supabase.functions.invoke('send-daily-report', {
         body: {
           to: 'rafaelukf@gmail.com',
-          subject: `Daily Inventory Report and Map - ${todayStr}`,
+          subject: `Daily Inventory Report - ${todayStr}`,
           html: htmlContent,
-        }
+        },
+        headers
       });
 
       if (emailError) throw emailError;
