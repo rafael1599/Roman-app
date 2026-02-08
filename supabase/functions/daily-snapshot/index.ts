@@ -177,7 +177,7 @@ serve(async (req: Request) => {
             </ul>
             <div style="margin: 25px 0; padding: 15px; border: 1px dashed #4f46e5; border-radius: 8px; text-align: center;">
               <p style="margin-bottom: 10px; font-size: 14px;">Full inventory details archived here:</p>
-              <a href="https://roman-app-nine.vercel.app/snapshot/${fileName}" style="color: #4f46e5; font-weight: bold; text-decoration: underline;">
+              <a href="https://roman-app.vercel.app/snapshot/${fileName}" style="color: #4f46e5; font-weight: bold; text-decoration: underline;">
                 SEE FULL INVENTORY MAP (Snapshot)
               </a>
             </div>
