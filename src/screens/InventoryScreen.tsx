@@ -592,7 +592,7 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
 
 
       {showWelcome && !isSearching ? (
-        <div className="mx-4 mt-4 relative group animate-in fade-in slide-in-from-top-4 duration-1000">
+        <div className="mx-4 mt-4 relative z-10 group animate-in fade-in slide-in-from-top-4 duration-1000">
           <div className="absolute -inset-0.5 bg-gradient-to-r from-accent to-blue-600 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
           <div className="relative bg-surface border border-accent/20 rounded-2xl p-6 overflow-hidden">
             <div className="flex items-start gap-4">

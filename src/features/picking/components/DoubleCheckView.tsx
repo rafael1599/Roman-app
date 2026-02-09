@@ -200,6 +200,18 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
 
             {/* Clean Item List */}
             <div className="flex-1 overflow-y-auto p-3 bg-surface/20">
+                {pallets.length === 0 && cartItems.length > 0 && (
+                    <div className="flex flex-col items-center justify-center py-20 text-center">
+                        <AlertCircle className="text-amber-500 mb-4 opacity-30" size={48} />
+                        <p className="text-sm font-black text-muted uppercase tracking-widest">
+                            No pallets generated
+                        </p>
+                        <p className="text-[10px] text-muted/60 font-bold uppercase mt-2">
+                            Check if items have valid locations assigned
+                        </p>
+                    </div>
+                )}
+
                 {pallets.map((pallet: any) => (
                     <section key={pallet.id} className="mb-6">
                         <div className="flex items-center gap-3 mb-3 px-1">

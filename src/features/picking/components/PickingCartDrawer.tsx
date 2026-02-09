@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import ChevronUp from 'lucide-react/dist/esm/icons/chevron-up';
 import { PickingSessionView } from './PickingSessionView';
 import { DoubleCheckView, PickingItem } from './DoubleCheckView';
@@ -276,17 +277,17 @@ export const PickingCartDrawer: React.FC<PickingCartDrawerProps> = ({
     )
         return null;
 
-    return (
+    return createPortal(
         <>
             {isOpen && (
                 <div
-                    className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity duration-300"
+                    className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] transition-opacity duration-300"
                     onClick={() => setIsOpen(false)}
                     style={{ opacity: 1 - dragY / 600 }} // Fade out backdrop on drag
                 />
             )}
             <div
-                className={`fixed left-0 right-0 z-[60] transition-all duration-300 ease-in-out ${isOpen ? 'bottom-0' : 'bottom-20'}`}
+                className={`fixed left-0 right-0 z-[9999] transition-all duration-300 ease-in-out ${isOpen ? 'bottom-0' : 'bottom-20'}`}
                 style={
                     isOpen
                         ? {
@@ -310,7 +311,7 @@ export const PickingCartDrawer: React.FC<PickingCartDrawerProps> = ({
                         <ChevronUp size={20} />
                         <div className="font-bold uppercase tracking-tight text-sm">
                             {sessionMode === 'double_checking'
-                                ? `Verifying Order #${orderNumber || activeListId?.slice(-6).toUpperCase()}`
+                                ? `Verifying Order #${orderNumber || activeListId?.slice(-6).toUpperCase()} (${cartItems.length} Items)`
                                 : sessionMode === 'building'
                                     ? `Review Order • ${totalItems} SKUs • ${totalQty} Units`
                                     : `${totalQty} Units to Pick`}
@@ -321,7 +322,7 @@ export const PickingCartDrawer: React.FC<PickingCartDrawerProps> = ({
                 {/* Expanded Content */}
                 {isOpen && (
                     <div
-                        className="bg-card border-t border-subtle h-[90vh] flex flex-col shadow-2xl rounded-t-2xl overflow-hidden"
+                        className="bg-surface border-t border-subtle h-[90vh] flex flex-col shadow-2xl rounded-t-2xl overflow-hidden relative"
                         onTouchStart={handleTouchStart}
                         onTouchMove={handleTouchMove}
                         onTouchEnd={handleTouchEnd}
@@ -382,6 +383,7 @@ export const PickingCartDrawer: React.FC<PickingCartDrawerProps> = ({
                     </div>
                 )}
             </div>
-        </>
+        </>,
+        document.body
     );
 };

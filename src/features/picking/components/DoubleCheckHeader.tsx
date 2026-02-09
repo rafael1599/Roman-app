@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useDoubleCheckList, PickingList } from '../../../hooks/useDoubleCheckList';
 import { useViewMode } from '../../../context/ViewModeContext';
 import ClipboardCheck from 'lucide-react/dist/esm/icons/clipboard-check';
@@ -72,8 +73,11 @@ export const DoubleCheckHeader = () => {
                 />
             </button>
 
-            {isOpen && (
-                <div className="absolute right-0 mt-3 w-72 bg-card border border-subtle rounded-2xl shadow-2xl z-[100] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+            {isOpen && createPortal(
+                <div
+                    className="fixed right-4 top-16 w-72 bg-card border border-subtle rounded-2xl shadow-2xl z-[10000] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200"
+                    onClick={(e) => e.stopPropagation()}
+                >
                     <div className="p-4 border-b border-subtle bg-surface/50">
                         <h3 className="text-xs font-black text-content uppercase tracking-widest">
                             Verification Queue
@@ -212,7 +216,8 @@ export const DoubleCheckHeader = () => {
                                 )}
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );
