@@ -660,9 +660,9 @@ export const OrdersScreen = () => {
                                 </form>
                             </div>
 
-                            {/* Preview Section */}
-                            <div className="p-4 md:p-0">
-                                <p className="md:hidden text-[10px] text-muted font-black uppercase tracking-[0.2em] mb-4 pl-1">Live Preview</p>
+                            {/* Preview Section - Full Width on Mobile */}
+                            <div className="md:p-0 bg-surface">
+                                <p className="md:hidden text-[10px] text-muted font-black uppercase tracking-[0.3em] mb-4 px-6 pt-6">Active Layout Preview</p>
                                 <LivePrintPreview data={formData} />
                             </div>
                         </div>

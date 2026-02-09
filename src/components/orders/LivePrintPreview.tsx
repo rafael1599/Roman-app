@@ -144,35 +144,57 @@ export const LivePrintPreview: React.FC<LivePrintPreviewProps> = ({ data }) => {
     }
 
     return (
-        <div className="w-full h-full bg-zinc-200 dark:bg-zinc-900 overflow-y-auto p-8 flex flex-col items-center">
-            <div className="flex items-center justify-between w-full max-w-5xl mb-6">
-                <div className="flex items-center gap-2 text-zinc-500 dark:text-zinc-400">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="w-full flex-1 bg-surface md:bg-zinc-100 dark:md:bg-zinc-900/50 px-0 md:px-12 py-4 md:py-12 flex flex-col items-center min-h-0">
+            <div className="flex items-center justify-between w-full max-w-4xl mb-6 shrink-0">
+                <div className="flex items-center gap-2 text-zinc-500">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                     </svg>
-                    <h3 className="font-bold uppercase tracking-widest text-sm">Live Print Preview</h3>
+                    <h3 className="font-black uppercase tracking-[0.2em] text-[10px]">Labels Preview</h3>
                 </div>
-                <p className="text-xs text-zinc-400">
-                    {pallets} Pallets × 2 = {pallets * 2} Labels
-                </p>
+                <div className="flex items-center gap-3">
+                    <p className="text-[10px] font-bold text-muted uppercase">
+                        {pallets} Pallets = {pallets * 2} Labels
+                    </p>
+                </div>
             </div>
 
-            {/* Scaled Preview Grid */}
-            <div
-                className="preview-viewer grid gap-16 justify-center origin-top"
-                style={{
-                    gridTemplateColumns: 'repeat(2, 297mm)',
-                    transform: 'scale(0.35)',
-                    marginBottom: '-1200px', // Compensate for scale shrink
-                }}
-            >
-                {pages}
+            {/* Responsive Scaled Preview Area */}
+            <div className="w-full flex-1 flex justify-center perspective-1000">
+                <div
+                    className="preview-viewer grid gap-8 md:gap-16 justify-center origin-top h-fit pb-20"
+                    style={{
+                        // 1 column on mobile, 2 on desktop
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(min(297mm, 100%), 297mm))',
+                        // Dynamic scale handled via CSS for better performance
+                        transform: 'scale(var(--preview-scale, 0.35))',
+                    }}
+                >
+                    {/* Add a CSS variable calculation for mobile */}
+                    <style dangerouslySetInnerHTML={{
+                        __html: `
+                        :root { --preview-scale: 0.85; }
+                        @media (min-width: 768px) { :root { --preview-scale: 0.35; } }
+                        @media (min-width: 1024px) { :root { --preview-scale: 0.45; } }
+                        @media (min-width: 1280px) { :root { --preview-scale: 0.55; } }
+                        @media (max-width: 767px) {
+                            .preview-viewer {
+                                transform: scale(calc(100vw / 1122.52)); /* Full bleed width */
+                                transform-origin: top center;
+                                margin-bottom: -180%; /* Increased compensation for vertical stacking */
+                                grid-template-columns: 297mm !important;
+                                gap: 20px !important;
+                            }
+                        }
+                    `}} />
+                    {pages}
+                </div>
             </div>
 
-            <p className="mt-8 text-center text-zinc-500 dark:text-zinc-600 text-sm italic">
-                Final layout may vary slightly depending on paper size settings.
-            </p>
+            <div className="mt-8 text-center text-zinc-500 text-[10px] font-medium uppercase tracking-widest opacity-50 shrink-0">
+                Final layout may vary slightly depending on printer settings
+            </div>
         </div>
     );
 };
