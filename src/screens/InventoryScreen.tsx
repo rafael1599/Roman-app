@@ -35,12 +35,18 @@ const SEARCHING_MESSAGE = (
   </div>
 );
 
-const NO_INVENTORY_MESSAGE = (
+const NoInventoryFound = ({ onClear }: { onClear: () => void }) => (
   <div className="text-center text-muted mt-20 py-20 border-2 border-dashed border-subtle rounded-3xl">
     <Warehouse className="mx-auto mb-4 opacity-20" size={48} />
-    <p className="text-xl font-black uppercase tracking-widest opacity-30">
+    <p className="text-xl font-black uppercase tracking-widest opacity-30 mb-6">
       No inventory found
     </p>
+    <button
+      onClick={onClear}
+      className="px-6 py-2.5 bg-accent text-white font-black uppercase tracking-widest rounded-xl text-xs active:scale-95 transition-all shadow-lg shadow-accent/20"
+    >
+      Clear Search
+    </button>
   </div>
 );
 
@@ -618,6 +624,7 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
         placeholder="Search SKU, Loc, Warehouse..."
         mode={viewMode as any}
         onScanClick={() => setShowScanner(true)}
+        autoFocus
       />
 
       <div className="px-4 pt-2 flex items-center gap-2">
@@ -734,7 +741,7 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
           </div>
         ) : null}
 
-        {allLocationBlocks.length === 0 ? NO_INVENTORY_MESSAGE : null}
+        {allLocationBlocks.length === 0 ? <NoInventoryFound onClear={() => setLocalSearch('')} /> : null}
       </div>
 
       {viewMode === 'stock' ? (

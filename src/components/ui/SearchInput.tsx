@@ -11,6 +11,7 @@ interface SearchInputProps {
     placeholder?: string;
     mode?: 'stock' | 'picking';
     onScanClick?: () => void;
+    autoFocus?: boolean;
 }
 
 export const SearchInput: React.FC<SearchInputProps> = ({
@@ -19,6 +20,7 @@ export const SearchInput: React.FC<SearchInputProps> = ({
     placeholder = 'Search SKU or Location...',
     mode = 'stock',
     onScanClick,
+    autoFocus = false,
 }) => {
     const [keyboardMode, setKeyboardMode] = useState<'text' | 'numeric'>(() => {
         const saved = localStorage.getItem('kb_pref_main_search');
@@ -42,6 +44,7 @@ export const SearchInput: React.FC<SearchInputProps> = ({
                         onChange={(e) => onChange(e.target.value)}
                         placeholder={placeholder}
                         inputMode={keyboardMode}
+                        autoFocus={autoFocus}
                         autoCapitalize="characters"
                         autoCorrect="off"
                         spellCheck="false"

@@ -5,11 +5,11 @@ import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
 import Package from 'lucide-react/dist/esm/icons/package';
 import Printer from 'lucide-react/dist/esm/icons/printer';
 import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right';
-import Search from 'lucide-react/dist/esm/icons/search';
 import MapPin from 'lucide-react/dist/esm/icons/map-pin';
 import Hash from 'lucide-react/dist/esm/icons/hash';
 import Truck from 'lucide-react/dist/esm/icons/truck';
 import toast from 'react-hot-toast';
+import { SearchInput } from '../components/ui/SearchInput';
 import { LivePrintPreview } from '../components/orders/LivePrintPreview';
 
 export const OrdersScreen = () => {
@@ -309,16 +309,12 @@ export const OrdersScreen = () => {
                         <h1 className="font-black text-sm uppercase tracking-tight text-content">PickD Logistics</h1>
                     </div>
                     {/* Search */}
-                    <div className="relative group">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted group-focus-within:text-accent transition-colors" size={16} />
-                        <input
-                            type="text"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="Search orders..."
-                            className="w-full bg-surface border border-subtle rounded-xl py-2.5 pl-10 pr-4 text-xs text-content focus:outline-none focus:border-accent transition-all placeholder:text-muted/50"
-                        />
-                    </div>
+                    <SearchInput
+                        value={searchQuery}
+                        onChange={setSearchQuery}
+                        placeholder="Search orders..."
+                        autoFocus
+                    />
                     {/* Time Filters */}
                     <div className="flex gap-1.5 mt-3 overflow-x-auto scrollbar-none">
                         {['TODAY', 'YESTERDAY', 'WEEK', 'ALL'].map((btn) => (
@@ -339,9 +335,17 @@ export const OrdersScreen = () => {
                 {/* Order List */}
                 <div className="flex-1 overflow-y-auto p-3 space-y-2">
                     {filteredOrders.length === 0 ? (
-                        <div className="p-6 text-center">
-                            <Package className="w-10 h-10 text-muted mx-auto mb-2 opacity-20" />
-                            <p className="text-xs text-muted">No orders found</p>
+                        <div className="p-10 border-2 border-dashed border-subtle rounded-2xl text-center m-3">
+                            <Package className="w-10 h-10 text-muted mx-auto mb-3 opacity-20" />
+                            <p className="text-xs text-muted mb-4 uppercase font-black tracking-widest opacity-40">No orders found</p>
+                            {searchQuery && (
+                                <button
+                                    onClick={() => setSearchQuery('')}
+                                    className="px-4 py-2 bg-subtle text-accent font-black uppercase tracking-widest rounded-lg text-[9px] active:scale-95 transition-all shadow-sm"
+                                >
+                                    Clear Search
+                                </button>
+                            )}
                         </div>
                     ) : (
                         filteredOrders.map((order) => (
@@ -374,7 +378,16 @@ export const OrdersScreen = () => {
 
                 {/* Active Order Form */}
                 {selectedOrder && (
-                    <form onSubmit={(e) => e.preventDefault()} className="p-4 border-t border-subtle bg-card shrink-0 space-y-3">
+                    <form
+                        onSubmit={(e) => e.preventDefault()}
+                        className="p-4 border-t border-subtle bg-card shrink-0 space-y-3"
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !isPrinting) {
+                                e.preventDefault();
+                                handlePrint();
+                            }
+                        }}
+                    >
                         <div className="flex items-center justify-between mb-2">
                             <p className="text-[9px] text-muted font-black uppercase tracking-widest">Active Order</p>
                             <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded-full bg-accent/10 text-accent border border-accent/20">
@@ -438,8 +451,9 @@ export const OrdersScreen = () => {
                                 <input
                                     type="number"
                                     min="1"
+                                    onKeyDown={(e) => ['e', 'E', '-', '+'].includes(e.key) && e.preventDefault()}
                                     value={formData.pallets}
-                                    onChange={(e) => setFormData({ ...formData, pallets: parseInt(e.target.value) || 1 })}
+                                    onChange={(e) => setFormData({ ...formData, pallets: Math.max(1, parseInt(e.target.value) || 1) })}
                                     className="w-full bg-surface border border-subtle rounded-lg px-3 py-2 text-xs text-content focus:outline-none focus:border-accent transition-colors"
                                 />
                             </div>
@@ -448,8 +462,9 @@ export const OrdersScreen = () => {
                                 <input
                                     type="number"
                                     min="0"
+                                    onKeyDown={(e) => ['e', 'E', '-', '+'].includes(e.key) && e.preventDefault()}
                                     value={formData.units}
-                                    onChange={(e) => setFormData({ ...formData, units: parseInt(e.target.value) || 0 })}
+                                    onChange={(e) => setFormData({ ...formData, units: Math.max(0, parseInt(e.target.value) || 0) })}
                                     className="w-full bg-surface border border-subtle rounded-lg px-3 py-2 text-xs text-content focus:outline-none focus:border-accent transition-colors"
                                 />
                             </div>
