@@ -65,10 +65,10 @@ export const DoubleCheckHeader = () => {
                         </span>
                     )}
                 </div>
-                <span className="text-xs font-black uppercase tracking-widest">Verification</span>
+                <span className="text-xs font-black uppercase tracking-widest hidden sm:block">Verification</span>
                 <ChevronDown
                     size={14}
-                    className={`transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}
+                    className={`transition-transform duration-300 hidden sm:block ${isOpen ? 'rotate-180' : ''}`}
                 />
             </button>
 
