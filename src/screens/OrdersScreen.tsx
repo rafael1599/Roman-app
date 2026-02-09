@@ -8,6 +8,7 @@ import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right';
 import MapPin from 'lucide-react/dist/esm/icons/map-pin';
 import Hash from 'lucide-react/dist/esm/icons/hash';
 import Truck from 'lucide-react/dist/esm/icons/truck';
+import ArrowLeft from 'lucide-react/dist/esm/icons/arrow-left';
 import toast from 'react-hot-toast';
 import { SearchInput } from '../components/ui/SearchInput';
 import { LivePrintPreview } from '../components/orders/LivePrintPreview';
@@ -305,9 +306,12 @@ export const OrdersScreen = () => {
     }
 
     return (
-        <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
+        <div className="flex h-[calc(100vh-4rem)] overflow-hidden relative">
             {/* LEFT PANE: Order List + Form */}
-            <aside className="w-[28%] min-w-[320px] max-w-[400px] border-r border-subtle bg-main flex flex-col overflow-hidden">
+            <aside className={`
+                w-full md:w-[28%] md:min-w-[320px] md:max-w-[400px] border-r border-subtle bg-main flex flex-col overflow-hidden transition-all duration-300
+                ${selectedOrder ? 'hidden md:flex' : 'flex'}
+            `}>
                 {/* Header */}
                 <header className="p-5 border-b border-subtle shrink-0">
                     <div className="flex items-center gap-3 mb-4">
@@ -509,9 +513,33 @@ export const OrdersScreen = () => {
             </aside>
 
             {/* RIGHT PANE: Live Print Preview */}
-            <main className="flex-1 bg-surface overflow-hidden">
+            <main className={`
+                flex-1 bg-surface overflow-hidden transition-all duration-300
+                ${selectedOrder ? 'flex flex-col' : 'hidden md:flex md:flex-col'}
+            `}>
                 {selectedOrder ? (
-                    <LivePrintPreview data={formData} />
+                    <>
+                        {/* Mobile Header with Back Button */}
+                        <header className="md:hidden p-4 border-b border-subtle bg-card flex items-center gap-4">
+                            <button
+                                onClick={() => setSelectedOrder(null)}
+                                className="p-2 -ml-2 rounded-full hover:bg-surface active:scale-90 transition-all text-muted"
+                            >
+                                <ArrowLeft size={20} />
+                            </button>
+                            <div className="min-w-0">
+                                <h2 className="text-xs font-black text-content uppercase tracking-tight truncate">
+                                    {selectedOrder.order_number || 'No Order #'}
+                                </h2>
+                                <p className="text-[9px] text-muted font-medium uppercase truncate">
+                                    {selectedOrder.customer_name || 'Generic'}
+                                </p>
+                            </div>
+                        </header>
+                        <div className="flex-1 overflow-hidden">
+                            <LivePrintPreview data={formData} />
+                        </div>
+                    </>
                 ) : (
                     <div className="flex items-center justify-center h-full">
                         <div className="text-center">
