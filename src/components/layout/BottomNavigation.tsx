@@ -18,12 +18,13 @@ const NavItem = ({ icon: Icon, label, isActive, onClick }: NavItemProps) => (
       }`}
   >
     <div
-      className={`p-1.5 rounded-2xl transition-all duration-400 ${isActive ? 'bg-accent/10 shadow-lg shadow-accent/5' : ''}`}
+      className={`p-1.5 rounded-xl transition-all duration-400 ${isActive ? 'bg-accent/10 shadow-lg shadow-accent/5' : ''}`}
     >
       <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
     </div>
     <span
-      className={`text-[9px] font-black uppercase tracking-[0.15em] mt-1 transition-all duration-400 ${isActive ? 'opacity-100 translate-y-0' : 'opacity-60 translate-y-0.5'}`}
+      className={`text-[10px] font-extrabold uppercase tracking-tight mt-1 transition-all duration-400 ${isActive ? 'opacity-100 translate-y-0' : 'opacity-60 translate-y-0.5'}`}
+      style={{ fontFamily: 'var(--font-heading)' }}
     >
       {label}
     </span>

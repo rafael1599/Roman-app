@@ -3,6 +3,7 @@ import Search from 'lucide-react/dist/esm/icons/search';
 import Scan from 'lucide-react/dist/esm/icons/scan';
 import Type from 'lucide-react/dist/esm/icons/type';
 import Hash from 'lucide-react/dist/esm/icons/hash';
+import X from 'lucide-react/dist/esm/icons/x';
 
 interface SearchInputProps {
     value: string;
@@ -44,22 +45,35 @@ export const SearchInput: React.FC<SearchInputProps> = ({
                         autoCapitalize="characters"
                         autoCorrect="off"
                         spellCheck="false"
-                        className="w-full bg-surface border border-subtle text-content rounded-lg pl-10 pr-12 py-3 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors placeholder:text-muted/50 text-lg font-mono"
+                        className={`w-full bg-surface border border-subtle text-content rounded-xl pl-10 py-3.5 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all placeholder:text-muted/40 text-base font-semibold tracking-tight ${mode === 'picking' ? 'pr-24' : 'pr-12'}`}
+                        style={{ fontFamily: 'var(--font-body)' }}
                     />
 
-                    {mode === 'picking' ? (
-                        <button
-                            onClick={onScanClick}
-                            className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 bg-card text-accent rounded-md hover:opacity-80 transition-colors"
-                        >
-                            <Scan size={20} />
-                        </button>
-                    ) : null}
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                        {value && (
+                            <button
+                                onClick={() => onChange('')}
+                                className="p-2 text-muted hover:text-content transition-colors active:scale-90"
+                                aria-label="Clear search"
+                            >
+                                <X size={18} />
+                            </button>
+                        )}
+
+                        {mode === 'picking' && (
+                            <button
+                                onClick={onScanClick}
+                                className="p-2 bg-card text-accent rounded-lg border border-subtle shadow-sm active:scale-95 transition-all"
+                            >
+                                <Scan size={18} />
+                            </button>
+                        )}
+                    </div>
                 </div>
                 <button
                     onClick={toggleMode}
-                    className={`flex items-center justify-center w-12 border rounded-lg active:scale-95 transition-all ${keyboardMode === 'numeric'
-                        ? 'bg-accent/10 border-accent/30 text-accent'
+                    className={`flex items-center justify-center w-12 border rounded-xl active:scale-90 transition-all ${keyboardMode === 'numeric'
+                        ? 'bg-accent/10 border-accent/20 text-accent'
                         : 'bg-surface border-subtle text-muted'
                         }`}
                     title={

@@ -86,65 +86,74 @@ export const InventoryCard = memo(
         return (
             <div
                 onClick={isDisabled ? undefined : onClick}
-                className={`bg-card border rounded-lg p-4 mb-3 flex flex-col shadow-sm transition-premium origin-center ${isDisabled
+                className={`bg-card border rounded-xl p-3 mb-2 flex flex-col shadow-sm transition-premium origin-center ${isDisabled
                     ? 'opacity-50 cursor-not-allowed border-red-500/30'
-                    : `border-subtle active:border-accent/30 cursor-pointer ${isZeroStock ? 'opacity-70 border-dashed bg-main/30' : ''} ${flash ? 'animate-flash-update scale-[1.02] border-accent/50 z-10' : 'hover:scale-[1.01]'}`
+                    : `border-subtle active:scale-[0.98] active:bg-main/50 cursor-pointer ${isZeroStock ? 'opacity-70 border-dashed bg-main/20' : ''} ${flash ? 'animate-flash-update scale-[1.02] border-accent/50 z-10' : ''}`
                     }`}
-
             >
-                <div className="flex justify-between items-start mb-2">
-                    <div className="flex-1">
-                        {location && (
-                            <div className="text-base text-accent font-black uppercase tracking-widest mb-1">
-                                {location}
-                            </div>
-                        )}
-                        <div className="flex items-center gap-2 mb-2">
-                            <div className={`text-2xl font-black text-content font-mono tracking-tighter leading-none ${!is_active ? 'line-through opacity-60' : ''}`}>
-                                {sku}
-                            </div>
-                            {!is_active && (
-                                <span className="text-xs font-bold uppercase tracking-wide px-2 py-0.5 rounded bg-red-500/20 text-red-400 border border-red-500/30">
-                                    Deleted
-                                </span>
+                <div className="flex justify-between items-center mb-1">
+                    <div className="flex items-center gap-3">
+                        <div className="flex flex-col">
+                            {location && (
+                                <div className="text-[10px] text-accent font-extrabold uppercase tracking-tighter" style={{ fontFamily: 'var(--font-heading)' }}>
+                                    {location}
+                                </div>
                             )}
+                            <div className="flex items-center gap-2">
+                                <div className={`text-xl font-extrabold text-content tracking-tighter leading-tight ${!is_active ? 'line-through opacity-60' : ''}`} style={{ fontFamily: 'var(--font-heading)' }}>
+                                    {sku}
+                                </div>
+                                {!is_active && (
+                                    <span className="text-[8px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-red-500/10 text-red-500 border border-red-500/20">
+                                        Del
+                                    </span>
+                                )}
+                            </div>
                         </div>
+                    </div>
+
+                    <div className="flex flex-col items-end">
+                        <span className="text-[9px] text-muted uppercase font-bold tracking-widest leading-none mb-1">Stock</span>
+                        <div className="flex items-baseline gap-1">
+                            <span className="text-2xl font-black text-accent tabular-nums tracking-tighter leading-none">{quantity}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex justify-between items-center mt-1">
+                    <div className="flex items-center gap-2">
                         {warehouse && (
                             <span
-                                className={`px-1.5 py-0.5 rounded text-[10px] font-black uppercase border ${getWarehouseColor(warehouse)}`}
+                                className={`px-1.5 py-0.5 rounded-[4px] text-[9px] font-extrabold uppercase tracking-tighter border ${getWarehouseColor(warehouse)}`}
                             >
                                 {warehouse}
                             </span>
                         )}
+                        {detail && (
+                            <div className="px-1.5 py-0.5 rounded-[4px] bg-main text-muted text-[9px] font-bold uppercase tracking-tight inline-flex items-center border border-subtle">
+                                {detail}
+                            </div>
+                        )}
                     </div>
-                    {detail && (
-                        <div className="px-1.5 py-0.5 rounded bg-surface text-muted text-[9px] font-bold uppercase tracking-tight inline-flex items-center border border-subtle">
-                            {detail}
-                        </div>
-                    )}
-                </div>
-                <div className="text-2xl font-black text-accent flex flex-col items-end">
-                    <span className="text-[10px] text-muted uppercase tracking-widest mb-0.5">Stock</span>
-                    <span className="tabular-nums leading-none">{quantity}</span>
 
                     {/* Picking Mode: Show Available vs Reserved */}
                     {isPicking && available !== null && (
-                        <div className="flex flex-col items-center gap-1 mt-1">
+                        <div className="flex items-center gap-2">
                             {available <= 0 ? (
                                 <span className="text-[9px] font-black uppercase tracking-widest text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded border border-red-500/20">
                                     🚫 Fully Reserved
                                 </span>
                             ) : (
-                                <div className="flex items-center gap-2">
+                                <>
                                     {hasReservations && (
                                         <span className="text-[9px] font-black uppercase tracking-widest text-orange-500 bg-orange-500/10 px-1.5 py-0.5 rounded border border-orange-500/20">
                                             {reservedByOthers} Res
                                         </span>
                                     )}
-                                    <span className="text-[9px] font-black uppercase tracking-widest text-green-500">
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-green-600 bg-green-500/10 px-1.5 py-0.5 rounded border border-green-500/20">
                                         {available} Avail
                                     </span>
-                                </div>
+                                </>
                             )}
                         </div>
                     )}
@@ -164,30 +173,30 @@ export const InventoryCard = memo(
                                 e.stopPropagation();
                                 onDecrement();
                             }}
-                            className="ios-btn-surface flex-1 h-14 text-accent-red active:scale-95"
+                            className="bg-main text-accent-red flex-1 h-12 rounded-lg flex items-center justify-center active:scale-90 transition-transform"
                             aria-label="Decrease quantity"
                         >
-                            <Minus size={20} strokeWidth={3} />
+                            <Minus size={18} strokeWidth={3} />
                         </button>
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
                                 onMove();
                             }}
-                            className="ios-btn-surface flex-1 h-14 text-accent-blue active:scale-95"
+                            className="bg-main text-accent-blue flex-1 h-12 rounded-lg flex items-center justify-center active:scale-90 transition-transform"
                             aria-label="Move item"
                         >
-                            <ArrowRightLeft size={20} strokeWidth={3} />
+                            <ArrowRightLeft size={18} strokeWidth={3} />
                         </button>
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
                                 onIncrement();
                             }}
-                            className="ios-btn-surface flex-1 h-14 text-accent-primary active:scale-95"
+                            className="bg-accent text-white flex-1 h-12 rounded-lg flex items-center justify-center active:scale-90 transition-transform shadow-lg shadow-accent/20"
                             aria-label="Increase quantity"
                         >
-                            <Plus size={20} strokeWidth={3} />
+                            <Plus size={18} strokeWidth={3} />
                         </button>
                     </div>
                 )}

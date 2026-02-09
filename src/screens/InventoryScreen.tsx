@@ -646,9 +646,9 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
                 {isFirstInWarehouse && (
                   <div className="flex items-center gap-4 pt-8 pb-2">
                     <div className="h-px flex-1 bg-subtle" />
-                    <h2 className="text-2xl font-black uppercase tracking-tighter text-content bg-surface px-6 py-2 rounded-full border border-subtle shadow-sm flex items-center gap-3">
+                    <h2 className="text-2xl font-black uppercase tracking-tighter text-content bg-surface px-6 py-2 rounded-full border border-subtle shadow-sm flex items-center gap-3" style={{ fontFamily: 'var(--font-heading)' }}>
                       <Warehouse className="text-accent" size={24} />
-                      {wh === 'DELETED ITEMS' ? 'Warehouse: Deleted Items' : `Warehouse: ${wh}`}
+                      {wh === 'DELETED ITEMS' ? 'Deleted Items' : wh}
                     </h2>
                     <div className="h-px flex-1 bg-subtle" />
                   </div>
@@ -666,6 +666,7 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
                     <div className="flex-1 min-w-0">
                       <h3
                         className={`text-content text-xl font-black uppercase tracking-tighter truncate ${isAdmin && viewMode === 'stock' ? 'cursor-pointer hover:text-accent transition-colors' : ''}`}
+                        style={{ fontFamily: 'var(--font-heading)' }}
                         title={isAdmin && viewMode === 'stock' ? 'Click to edit location' : location}
                         onClick={() => handleOpenLocationEditor(wh, location, locationId)}
                       >
@@ -690,8 +691,9 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
                     return (
                       <div
                         key={`inv-row-${item.id}-${item.sku}`}
-                        className={`animate-slide-in-new ${isInCart && viewMode === 'picking' ? 'ring-1 ring-accent rounded-lg' : ''
+                        className={`animate-staggered-fade-in ${isInCart && viewMode === 'picking' ? 'ring-1 ring-accent rounded-lg' : ''
                           }`}
+                        style={{ animationDelay: `${(index % 10) * 0.05}s` }}
                       >
                         <InventoryCard
                           sku={item.sku}

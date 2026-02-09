@@ -8,6 +8,7 @@ import { useAuth } from '../../context/AuthContext';
 import { UserMenu } from './UserMenu';
 import { DoubleCheckHeader } from '../../features/picking/components/DoubleCheckHeader';
 import { SyncStatusIndicator } from './SyncStatusIndicator';
+import Check from 'lucide-react/dist/esm/icons/check';
 
 interface LayoutMainProps {
   children: ReactNode;
@@ -48,9 +49,19 @@ export const LayoutMain = ({ children, onExport }: LayoutMainProps) => {
                 <Settings className="w-5 h-5" />
               </button>
             )}
-            <h1 className="text-xl font-bold text-content tracking-tight uppercase italic underline decoration-accent decoration-4">
-              ROMAN <span className="text-accent not-italic">INV</span>
-            </h1>
+            <div
+              className="flex items-center gap-1.5 cursor-pointer group"
+              onClick={() => navigate('/')}
+            >
+              <h1 className="text-2xl font-extrabold tracking-tighter flex items-center gap-0.5" style={{ fontFamily: 'var(--font-heading)' }}>
+                <span className="text-accent">P</span>
+                <span className="text-content">ICK</span>
+                <span className="text-accent">D</span>
+              </h1>
+              <div className="w-6 h-6 bg-accent rounded-lg flex items-center justify-center shadow-lg shadow-accent/20 animate-pickd-check">
+                <Check className="text-white w-4 h-4" strokeWidth={4} />
+              </div>
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
