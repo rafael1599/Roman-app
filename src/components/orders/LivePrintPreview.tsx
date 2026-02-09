@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+import jsPDF from 'jspdf';
 
 interface OrderPreviewData {
     customerName: string;
@@ -20,6 +21,62 @@ export const LivePrintPreview: React.FC<LivePrintPreviewProps> = ({ data }) => {
     const hasAddress = Boolean(street && city);
     const cityStateZip = `${city}, ${state} ${zip}`.toUpperCase();
 
+    // Replicate PDF Scaling Logic
+    const fontSizePt = useMemo(() => {
+        const margin = 5;
+        const pageWidth = 297;
+        const pageHeight = 210;
+        const PT_TO_MM = 0.3528;
+        const LINE_HEIGHT = 1.1;
+        const maxWidth = pageWidth - margin * 2;
+        const maxHeight = pageHeight - margin * 2;
+        const thankYouMsg = 'PLEASE COUNT YOUR SHIPMENT CAREFULLY THAT THERE ARE NO DAMAGES DUE TO SHIPPING. JAMIS BICYCLES THANKS YOU FOR YOUR ORDER.';
+
+        const contentLines: string[] = [];
+        contentLines.push(customerName.toUpperCase());
+        if (street) contentLines.push(street.toUpperCase());
+        if (city) contentLines.push(cityStateZip);
+        contentLines.push(''); // spacer
+        contentLines.push(`PALLETS: ${pallets}`);
+        contentLines.push(`UNITS: ${units}`);
+        contentLines.push(`LOAD: ${loadNumber || 'N/A'}`);
+        contentLines.push(''); // spacer
+
+        const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+        doc.setFont('helvetica', 'bold');
+
+        let fontSize = 100;
+        const minFontSize = 12;
+        let fits = false;
+
+        while (fontSize >= minFontSize && !fits) {
+            doc.setFontSize(fontSize);
+            doc.setLineHeightFactor(LINE_HEIGHT);
+            let totalHeight = margin;
+
+            for (const line of contentLines) {
+                if (line === '') {
+                    totalHeight += (fontSize * PT_TO_MM) * 0.3;
+                } else {
+                    const wrapped = doc.splitTextToSize(line, maxWidth);
+                    totalHeight += wrapped.length * (fontSize * PT_TO_MM * LINE_HEIGHT);
+                }
+            }
+
+            const msgFontSize = fontSize * 0.7;
+            doc.setFontSize(msgFontSize);
+            const msgWrapped = doc.splitTextToSize(thankYouMsg, maxWidth);
+            totalHeight += msgWrapped.length * (msgFontSize * PT_TO_MM * LINE_HEIGHT);
+
+            if (totalHeight <= maxHeight) {
+                fits = true;
+            } else {
+                fontSize -= 1;
+            }
+        }
+        return fontSize;
+    }, [customerName, street, city, state, zip, pallets, units, loadNumber, cityStateZip]);
+
     // Generate pages: for each pallet, we have 1 Info page + 1 Number page
     const pages: React.ReactNode[] = [];
 
@@ -28,11 +85,22 @@ export const LivePrintPreview: React.FC<LivePrintPreviewProps> = ({ data }) => {
         pages.push(
             <div
                 key={`info-${i}`}
-                className="preview-page font-sans uppercase bg-white text-black border border-zinc-300 shadow-2xl flex flex-col justify-start overflow-hidden p-2"
-                style={{ width: '297mm', height: '210mm' }}
+                className="preview-page font-sans uppercase bg-white text-black border border-zinc-300 shadow-2xl flex flex-col justify-start overflow-hidden"
+                style={{
+                    width: '297mm',
+                    height: '210mm',
+                    padding: '5mm', // Match PDF margin
+                }}
             >
-                <div className="page-content w-full mx-auto px-2 py-1 flex flex-col h-full">
-                    <div className="text-[6.5rem] leading-[0.85] font-black tracking-tighter">
+                <div
+                    className="page-content w-full flex flex-col"
+                    style={{
+                        fontSize: `${fontSizePt}pt`,
+                        lineHeight: '1.1',
+                        fontWeight: 'bold'
+                    }}
+                >
+                    <div className="font-black tracking-tighter" style={{ fontSize: 'inherit' }}>
                         <p>{customerName.toUpperCase()}</p>
                         {hasAddress && (
                             <>
@@ -42,13 +110,16 @@ export const LivePrintPreview: React.FC<LivePrintPreviewProps> = ({ data }) => {
                         )}
                     </div>
 
-                    <div className="mt-2 text-[5.8rem] leading-[0.85] font-black tracking-tighter">
+                    <div className="mt-[0.3em] font-black tracking-tighter" style={{ fontSize: 'inherit' }}>
                         <p>PALLETS: {pallets}</p>
                         <p>UNITS: {units}</p>
                         <p>LOAD: {loadNumber}</p>
                     </div>
 
-                    <div className="mt-auto mb-2 text-[2.8rem] leading-[1.0] font-bold uppercase">
+                    <div
+                        className="mt-auto font-bold uppercase"
+                        style={{ fontSize: `${fontSizePt * 0.7}pt` }}
+                    >
                         <p>
                             PLEASE COUNT YOUR SHIPMENT CAREFULLY THAT THERE ARE NO DAMAGES DUE TO
                             SHIPPING. JAMIS BICYCLES THANKS YOU FOR YOUR ORDER.
