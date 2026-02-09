@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
@@ -333,7 +333,7 @@ export const OrdersScreen = () => {
                 </header>
 
                 {/* Order List */}
-                <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-3 space-y-2">
                     {filteredOrders.length === 0 ? (
                         <div className="p-10 border-2 border-dashed border-subtle rounded-2xl text-center m-3">
                             <Package className="w-10 h-10 text-muted mx-auto mb-3 opacity-20" />

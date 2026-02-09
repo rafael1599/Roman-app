@@ -67,6 +67,13 @@ export const InventoryScreen = () => {
   } = useInventory();
 
   const [localSearch, setLocalSearch] = useState('');
+
+  // Auto-scroll to top when searching to ensure results are visible
+  useEffect(() => {
+    if (localSearch) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [localSearch]);
   const debouncedSearch = useDebounce(localSearch, 300);
 
   // Sync filters with provider for Context-Aware Realtime updates

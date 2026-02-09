@@ -45,6 +45,13 @@ export const HistoryScreen = () => {
   const [undoingId, setUndoingId] = useState<string | null>(null);
   const debouncedSearch = useDebounce(searchQuery, 300);
 
+  // Auto-scroll to top when searching to ensure results are visible
+  useEffect(() => {
+    if (searchQuery) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [searchQuery]);
+
   const {
     data: logsData,
     isLoading: loading,
