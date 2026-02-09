@@ -58,7 +58,7 @@ export const SearchInput: React.FC<SearchInputProps> = ({
                         inputMode={keyboardMode}
                         autoFocus={autoFocus}
                         onFocus={() => setIsSearching(true)}
-                        onBlur={() => setIsSearching(false)}
+                        onBlur={() => setTimeout(() => setIsSearching(false), 200)}
                         autoCapitalize="characters"
                         autoCorrect="off"
                         spellCheck="false"
