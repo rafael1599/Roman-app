@@ -178,7 +178,6 @@ export const OrdersScreen = () => {
 
             const pageWidth = 297;
             const pageHeight = 210;
-            const margin = 15;
             const customerName = (formData.customerName || 'GENERIC CUSTOMER').toUpperCase();
             const street = formData.street.toUpperCase();
             const cityStateZip = `${formData.city.toUpperCase()}, ${formData.state.toUpperCase()} ${formData.zip}`;
@@ -188,44 +187,78 @@ export const OrdersScreen = () => {
                 // --- PAGE A: COMPANY INFO (matches LivePrintPreview layout) ---
                 if (i > 0) doc.addPage('a4', 'landscape');
 
-                let yPos = 45;
-                const lineHeight = 18;
+                const margin = 15;
+                const maxWidth = pageWidth - margin * 2;
+                const maxHeight = pageHeight - margin * 2;
 
-                // Customer Name (large, bold, monospace like preview)
-                doc.setFont('courier', 'bold');
-                doc.setFontSize(36);
-                const nameLines = doc.splitTextToSize(customerName, pageWidth - margin * 2);
-                doc.text(nameLines, margin, yPos);
-                yPos += nameLines.length * lineHeight;
-
-                // Address (if available)
-                if (street) {
-                    doc.text(street, margin, yPos);
-                    yPos += lineHeight;
-                }
-                if (formData.city) {
-                    doc.text(cityStateZip, margin, yPos);
-                    yPos += lineHeight;
-                }
-
-                // Spacing before counts
-                yPos += 10;
-
-                // PALLETS / UNITS / LOAD (each on its own line)
-                doc.setFontSize(36);
-                doc.text(`PALLETS: ${pallets}`, margin, yPos);
-                yPos += lineHeight;
-                doc.text(`UNITS: ${formData.units}`, margin, yPos);
-                yPos += lineHeight;
-                doc.text(`LOAD: ${formData.loadNumber || 'N/A'}`, margin, yPos);
-                yPos += lineHeight + 10;
-
-                // Thank you message (larger for sticker printing)
-                doc.setFont('courier', 'normal');
-                doc.setFontSize(28);
+                // Build content lines
+                const contentLines: string[] = [];
+                contentLines.push(customerName);
+                if (street) contentLines.push(street);
+                if (formData.city) contentLines.push(cityStateZip);
+                contentLines.push(''); // spacer
+                contentLines.push(`PALLETS: ${pallets}`);
+                contentLines.push(`UNITS: ${formData.units}`);
+                contentLines.push(`LOAD: ${formData.loadNumber || 'N/A'}`);
+                contentLines.push(''); // spacer
                 const thankYouMsg = 'Please count your shipment carefully that there are no damages due to shipping. Jamis Bicycles thanks you for your order.';
-                const msgLines = doc.splitTextToSize(thankYouMsg, pageWidth - margin * 2);
-                doc.text(msgLines, margin, yPos);
+
+                // Dynamic font sizing: find the largest font that fits all content
+                let fontSize = 60; // Start with a large font
+                const minFontSize = 24;
+                let fits = false;
+
+                doc.setFont('courier', 'bold');
+
+                while (fontSize >= minFontSize && !fits) {
+                    doc.setFontSize(fontSize);
+
+                    let totalHeight = margin;
+
+                    // Calculate height for all main content lines
+                    for (const line of contentLines) {
+                        if (line === '') {
+                            totalHeight += fontSize * 0.3; // spacer
+                        } else {
+                            const wrapped = doc.splitTextToSize(line, maxWidth);
+                            totalHeight += wrapped.length * (fontSize * 0.5);
+                        }
+                    }
+
+                    // Add thank you message (slightly smaller)
+                    const msgFontSize = fontSize * 0.7;
+                    doc.setFontSize(msgFontSize);
+                    const msgWrapped = doc.splitTextToSize(thankYouMsg, maxWidth);
+                    totalHeight += msgWrapped.length * (msgFontSize * 0.5);
+
+                    // Check if it fits
+                    if (totalHeight <= maxHeight) {
+                        fits = true;
+                    } else {
+                        fontSize -= 2;
+                    }
+                }
+
+                // Render with the calculated font size
+                let yPos = margin + fontSize * 0.8;
+                doc.setFont('courier', 'bold');
+                doc.setFontSize(fontSize);
+
+                for (const line of contentLines) {
+                    if (line === '') {
+                        yPos += fontSize * 0.3; // spacer
+                    } else {
+                        const wrapped = doc.splitTextToSize(line, maxWidth);
+                        doc.text(wrapped, margin, yPos);
+                        yPos += wrapped.length * (fontSize * 0.5);
+                    }
+                }
+
+                // Thank you message
+                const msgFontSize = fontSize * 0.7;
+                doc.setFontSize(msgFontSize);
+                const msgWrapped = doc.splitTextToSize(thankYouMsg, maxWidth);
+                doc.text(msgWrapped, margin, yPos);
 
                 // --- PAGE B: PALLET NUMBER ONLY (clean, centered) ---
                 doc.addPage('a4', 'landscape');
