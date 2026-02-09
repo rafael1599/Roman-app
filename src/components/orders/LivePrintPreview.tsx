@@ -28,11 +28,11 @@ export const LivePrintPreview: React.FC<LivePrintPreviewProps> = ({ data }) => {
         pages.push(
             <div
                 key={`info-${i}`}
-                className="preview-page font-sans uppercase bg-white text-black border border-zinc-300 shadow-2xl flex flex-col justify-center overflow-hidden"
+                className="preview-page font-sans uppercase bg-white text-black border border-zinc-300 shadow-2xl flex flex-col justify-start overflow-hidden p-2"
                 style={{ width: '297mm', height: '210mm' }}
             >
-                <div className="page-content w-[90%] mx-auto p-4 flex flex-col justify-center h-full">
-                    <div className="text-[3.8rem] leading-[1.1] font-bold">
+                <div className="page-content w-full mx-auto px-2 py-1 flex flex-col h-full">
+                    <div className="text-[5.5rem] leading-[0.9] font-black tracking-tighter">
                         <p>{customerName.toUpperCase()}</p>
                         {hasAddress && (
                             <>
@@ -42,13 +42,13 @@ export const LivePrintPreview: React.FC<LivePrintPreviewProps> = ({ data }) => {
                         )}
                     </div>
 
-                    <div className="mt-8 text-[3.8rem] leading-[1.1] font-bold">
+                    <div className="mt-4 text-[5rem] leading-[0.9] font-black tracking-tighter">
                         <p>PALLETS: {pallets}</p>
                         <p>UNITS: {units}</p>
                         <p>LOAD: {loadNumber}</p>
                     </div>
 
-                    <div className="mt-8 text-[2.2rem] leading-tight font-medium normal-case">
+                    <div className="mt-4 text-[2.8rem] leading-[1.0] font-bold uppercase">
                         <p>
                             Please count your shipment carefully that there are no damages due to
                             shipping. Jamis Bicycles thanks you for your order.

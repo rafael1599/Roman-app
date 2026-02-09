@@ -190,7 +190,7 @@ export const OrdersScreen = () => {
                 // --- PAGE A: COMPANY INFO (matches LivePrintPreview layout) ---
                 if (i > 0) doc.addPage('a4', 'landscape');
 
-                const margin = 15;
+                const margin = 5;
                 const maxWidth = pageWidth - margin * 2;
                 const maxHeight = pageHeight - margin * 2;
 
@@ -207,8 +207,8 @@ export const OrdersScreen = () => {
                 const thankYouMsg = 'Please count your shipment carefully that there are no damages due to shipping. Jamis Bicycles thanks you for your order.';
 
                 // Dynamic font sizing: find the largest font that fits all content
-                let fontSize = 60; // Start with a large font
-                const minFontSize = 24;
+                let fontSize = 100; // Start with a larger font to maximize space
+                const minFontSize = 12;
                 let fits = false;
 
                 doc.setFont('helvetica', 'bold');
@@ -224,15 +224,15 @@ export const OrdersScreen = () => {
                             totalHeight += fontSize * 0.3; // spacer
                         } else {
                             const wrapped = doc.splitTextToSize(line, maxWidth);
-                            totalHeight += wrapped.length * (fontSize * 0.5);
+                            totalHeight += wrapped.length * (fontSize * 0.38);
                         }
                     }
 
                     // Add thank you message (slightly smaller)
                     const msgFontSize = fontSize * 0.7;
                     doc.setFontSize(msgFontSize);
-                    const msgWrapped = doc.splitTextToSize(thankYouMsg, maxWidth);
-                    totalHeight += msgWrapped.length * (msgFontSize * 0.5);
+                    const msgWrapped = doc.splitTextToSize(thankYouMsg.toUpperCase(), maxWidth);
+                    totalHeight += msgWrapped.length * (msgFontSize * 0.38);
 
                     // Check if it fits
                     if (totalHeight <= maxHeight) {
@@ -253,14 +253,14 @@ export const OrdersScreen = () => {
                     } else {
                         const wrapped = doc.splitTextToSize(line, maxWidth);
                         doc.text(wrapped, margin, yPos);
-                        yPos += wrapped.length * (fontSize * 0.5);
+                        yPos += wrapped.length * (fontSize * 0.38);
                     }
                 }
 
                 // Thank you message
                 const msgFontSize = fontSize * 0.7;
                 doc.setFontSize(msgFontSize);
-                const msgWrapped = doc.splitTextToSize(thankYouMsg, maxWidth);
+                const msgWrapped = doc.splitTextToSize(thankYouMsg.toUpperCase(), maxWidth);
                 doc.text(msgWrapped, margin, yPos);
 
                 // --- PAGE B: PALLET NUMBER ONLY (clean, centered) ---
