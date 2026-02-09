@@ -17,8 +17,8 @@ export type PickingListItem = z.infer<typeof PickingListItemSchema>;
 export const PickingListSchema = z.object({
     id: z.string().uuid(),
     user_id: z.string().uuid().nullable(),
+    customer_id: z.string().uuid().nullable(),
     order_number: z.string().nullable(),
-    customer_name: z.string().nullable(),
     pallets_qty: z.number().int().nonnegative().nullable(),
     status: z.enum(['active', 'ready_to_double_check', 'double_checking', 'needs_correction', 'completed']),
     items: z.array(PickingListItemSchema).nullable(),

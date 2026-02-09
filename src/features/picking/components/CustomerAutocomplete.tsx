@@ -78,7 +78,10 @@ export const CustomerAutocomplete = ({
                         handleManualInput(val);
                         setIsOpen(true);
                     }}
-                    onFocus={() => setIsOpen(true)}
+                    onFocus={(e) => {
+                        e.target.select();
+                        setIsOpen(true);
+                    }}
                     placeholder={placeholder}
                     className="w-full bg-main border-2 border-subtle focus:border-accent text-content rounded-xl pl-12 pr-12 py-4 font-medium text-lg outline-none transition-all placeholder:text-muted/50"
                 />

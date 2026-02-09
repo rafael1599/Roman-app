@@ -121,13 +121,18 @@ describe('InventoryService', () => {
             expect(mockSupabase.update).toHaveBeenCalledWith({
                 quantity: 15,
                 location_id: 'loc-2',
-                sku_note: 'NUEVA DESCRIPCIÓN'
+                sku_note: 'Original | NUEVA DESCRIPCIÓN',
+                is_active: true
             });
             // Verify that we targeted the correct ID for update and delete
             expect(mockSupabase.eq).toHaveBeenCalledWith('id', 202);
             expect(mockSupabase.eq).toHaveBeenCalledWith('id', 101);
 
-            expect(mockSupabase.delete).toHaveBeenCalled();
+            // Verify that we updated the source item to 0 quantity instead of deleting
+            expect(mockSupabase.update).toHaveBeenCalledWith({
+                quantity: 0,
+                is_active: true
+            });
         });
 
         it('should protect and preserve existing note if incoming is empty/spaces', async () => {

@@ -177,7 +177,7 @@ class InventoryService extends BaseService<'inventory', InventoryModel, Inventor
             const incomingNote = validatedInput.sku_note?.trim();
             const existingNote = existingItem.sku_note?.trim();
             const updatedNote = (incomingNote && existingNote && incomingNote !== existingNote)
-                ? `\${existingNote} | \${incomingNote}`
+                ? `${existingNote} | ${incomingNote}`
                 : (incomingNote || existingNote);
 
 
@@ -339,7 +339,7 @@ class InventoryService extends BaseService<'inventory', InventoryModel, Inventor
                 const incomingNote = validatedInput.sku_note?.trim();
                 const existingNote = targetItem.sku_note?.trim();
                 const updatedNote = (incomingNote && existingNote && incomingNote !== existingNote)
-                    ? `\${existingNote} | \${incomingNote}`
+                    ? `${existingNote} | ${incomingNote}`
                     : (incomingNote || existingNote);
 
 

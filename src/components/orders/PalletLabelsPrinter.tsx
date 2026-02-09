@@ -30,7 +30,7 @@ export const PalletLabelsPrinter = ({ onClose, order }: PalletLabelsPrinterProps
 
     // Effective Values
     const customer = isHistoryMode
-        ? (order.customer_details || { name: order.customer_name }) // Fallback if customer object missing
+        ? (order.customer_details || order.customer || {}) // Fallback if customer object missing
         : contextCustomer;
 
     const orderNumber = isHistoryMode ? order.order_number : contextOrderNumber;

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
@@ -14,6 +14,7 @@ import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { SearchInput } from '../components/ui/SearchInput';
 import { LivePrintPreview } from '../components/orders/LivePrintPreview';
+import { CustomerAutocomplete } from '../features/picking/components/CustomerAutocomplete';
 
 export const OrdersScreen = () => {
     const { user } = useAuth();
@@ -24,6 +25,12 @@ export const OrdersScreen = () => {
     const [timeFilter, setTimeFilter] = useState('ALL');
     const navigate = useNavigate();
     const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+    // Ref to track selectedOrder without triggering re-renders in callbacks
+    const selectedOrderRef = useRef(selectedOrder);
+    useEffect(() => {
+        selectedOrderRef.current = selectedOrder;
+    }, [selectedOrder]);
 
     // Auto-scroll to top when searching to ensure results are visible
     useEffect(() => {
@@ -40,38 +47,23 @@ export const OrdersScreen = () => {
         city: '',
         state: '',
         zip: '',
-        pallets: 1,
-        units: 0,
+        pallets: '1' as string | number,
+        units: '0' as string | number,
         loadNumber: ''
     });
 
-    useEffect(() => {
-        fetchOrders();
-    }, [user, timeFilter]);
+    // Track the selected customer ID to link/unlink
+    const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
+    // Track original params to detect changes (Name vs Address)
+    const [originalCustomerParams, setOriginalCustomerParams] = useState<any>(null);
 
-    // Sync form data when selectedOrder changes
-    useEffect(() => {
-        if (selectedOrder) {
-            setFormData({
-                customerName: selectedOrder.customer?.name || '',
-                street: selectedOrder.customer?.street || '',
-                city: selectedOrder.customer?.city || '',
-                state: selectedOrder.customer?.state || '',
-                zip: selectedOrder.customer?.zip_code || '',
-                pallets: selectedOrder.pallets_qty || 1,
-                units: selectedOrder.total_units || 0,
-                loadNumber: selectedOrder.load_number || ''
-            });
-        }
-    }, [selectedOrder]);
-
-    const fetchOrders = async () => {
+    const fetchOrders = useCallback(async () => {
         if (!user) return;
         setLoading(true);
         try {
             let query = supabase
                 .from('picking_lists')
-                .select('*, customer:customers(name, street, city, state, zip_code)')
+                .select('*, customer:customers(id, name, street, city, state, zip_code)')
                 .order('created_at', { ascending: false });
 
             const startOfToday = new Date();
@@ -98,14 +90,13 @@ export const OrdersScreen = () => {
 
             const mappedData = (data || []).map((order: any) => ({
                 ...order,
-                customer_name: order.customer?.name || order.customer_name,
                 customer_details: order.customer || {}
             }));
 
             setOrders(mappedData);
 
             // Auto-select first order if none selected
-            if (mappedData.length > 0 && !selectedOrder) {
+            if (mappedData.length > 0 && !selectedOrderRef.current) {
                 setSelectedOrder(mappedData[0]);
             }
         } catch (err: any) {
@@ -114,12 +105,34 @@ export const OrdersScreen = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [user, timeFilter]); // Stable dependency
+
+    useEffect(() => {
+        fetchOrders();
+    }, [fetchOrders]);
+
+    // Sync form data when selectedOrder changes
+    useEffect(() => {
+        if (selectedOrder) {
+            setFormData({
+                customerName: selectedOrder.customer?.name || '',
+                street: selectedOrder.customer?.street || '',
+                city: selectedOrder.customer?.city || '',
+                state: selectedOrder.customer?.state || '',
+                zip: selectedOrder.customer?.zip_code || '',
+                pallets: String(selectedOrder.pallets_qty || 1),
+                units: String(selectedOrder.total_units || 0),
+                loadNumber: selectedOrder.load_number || ''
+            });
+            setSelectedCustomerId(selectedOrder.customer_id || null);
+            setOriginalCustomerParams(selectedOrder.customer || null);
+        }
+    }, [selectedOrder]);
 
     const filteredOrders = useMemo(() => orders.filter(order => {
         const query = searchQuery.toLowerCase();
         const orderNum = String(order.order_number || '').toLowerCase();
-        const customer = String(order.customer_name || '').toLowerCase();
+        const customer = String(order.customer?.name || '').toLowerCase();
 
         return (
             !searchQuery ||
@@ -128,10 +141,54 @@ export const OrdersScreen = () => {
         );
     }), [orders, searchQuery]);
 
+    const handleCustomerSelect = (customer: any | null) => {
+        if (customer && customer.id) {
+            // Existing Customer Selected
+            setFormData(prev => ({
+                ...prev,
+                customerName: customer.name,
+                street: customer.street || '',
+                city: customer.city || '',
+                state: customer.state || '',
+                zip: customer.zip_code || ''
+            }));
+            setSelectedCustomerId(customer.id);
+            setOriginalCustomerParams(customer);
+        } else if (customer && customer.name) {
+            // Manual typing (New Customer)
+            setFormData(prev => ({
+                ...prev,
+                customerName: customer.name
+            }));
+            setSelectedCustomerId(null);
+            setOriginalCustomerParams(null);
+        } else {
+            // Cleared
+            setFormData(prev => ({
+                ...prev,
+                customerName: '',
+                street: '',
+                city: '',
+                state: '',
+                zip: ''
+            }));
+            setSelectedCustomerId(null);
+            setOriginalCustomerParams(null);
+        }
+    };
+
     const handlePrint = async () => {
         if (!selectedOrder) return;
 
         // Build warnings for missing data
+        const palletsNum = parseInt(String(formData.pallets)) || 0;
+        const unitsNum = parseInt(String(formData.units)) || 0;
+
+        if (palletsNum < 1) {
+            toast.error('Must have at least 1 Pallet');
+            return;
+        }
+
         const warnings: string[] = [];
         if (!formData.loadNumber.trim()) warnings.push('Load Number');
         if (!formData.street.trim()) warnings.push('Street Address');
@@ -152,21 +209,45 @@ export const OrdersScreen = () => {
 
         setIsPrinting(true);
         try {
-            // Auto-save order data before printing
-            const { error: orderError } = await supabase
-                .from('picking_lists')
-                .update({
-                    pallets_qty: formData.pallets,
-                    total_units: formData.units,
-                    load_number: formData.loadNumber
-                })
-                .eq('id', selectedOrder.id);
+            let finalCustomerId = selectedCustomerId;
 
-            if (orderError) throw orderError;
+            // Logic to determine if we Update Existing, Create New, or Unlink
+            if (finalCustomerId && originalCustomerParams) {
+                const nameChanged = formData.customerName.trim() !== originalCustomerParams.name.trim();
+                const addressChanged =
+                    formData.street.trim() !== (originalCustomerParams.street || '').trim() ||
+                    formData.city.trim() !== (originalCustomerParams.city || '').trim() ||
+                    formData.state.trim() !== (originalCustomerParams.state || '').trim() ||
+                    formData.zip.trim() !== (originalCustomerParams.zip_code || '').trim();
 
-            // Also update customer address if linked
-            if (selectedOrder.customer_id) {
-                const { error: custError } = await supabase
+                if (nameChanged && addressChanged) {
+                    // Both changed -> Treat as NEW Customer
+                    finalCustomerId = null; // Will trigger create below
+                } else if (nameChanged || addressChanged) {
+                    // Only one changed -> Update Existing Customer
+                    // Standard update logic will handle this below
+                }
+            }
+
+            // Create New Customer if needed
+            if (!finalCustomerId && formData.customerName.trim()) {
+                const { data: newCust, error: createError } = await supabase
+                    .from('customers')
+                    .insert({
+                        name: formData.customerName,
+                        street: formData.street,
+                        city: formData.city,
+                        state: formData.state,
+                        zip_code: formData.zip
+                    })
+                    .select()
+                    .single();
+
+                if (createError) throw createError;
+                finalCustomerId = newCust.id;
+            } else if (finalCustomerId) {
+                // Update existing customer record (Reflecting "Moved" or "Renamed")
+                const { error: updateError } = await supabase
                     .from('customers')
                     .update({
                         name: formData.customerName,
@@ -175,9 +256,30 @@ export const OrdersScreen = () => {
                         state: formData.state,
                         zip_code: formData.zip
                     })
-                    .eq('id', selectedOrder.customer_id);
+                    .eq('id', finalCustomerId);
 
-                if (custError) console.error('Failed to update customer record:', custError);
+                if (updateError) console.error('Failed to update customer record:', updateError);
+            }
+
+            // Update Picking List
+            const { error: orderError } = await supabase
+                .from('picking_lists')
+                .update({
+                    pallets_qty: palletsNum,
+                    total_units: unitsNum,
+                    load_number: formData.loadNumber || null,
+                    customer_id: finalCustomerId // Link to the customer (new or existing)
+                })
+                .eq('id', selectedOrder.id);
+
+            if (orderError) {
+                // Handle Unique Constraint Violation for Load Number
+                if (orderError.code === '23505' && orderError.message.includes('load_number')) {
+                    toast.error(`Load Number "${formData.loadNumber}" matches another order! Must be unique.`, { duration: 5000 });
+                    setIsPrinting(false);
+                    return; // Stop execution
+                }
+                throw orderError;
             }
 
             // Refresh orders list silently
@@ -195,10 +297,10 @@ export const OrdersScreen = () => {
             const pageHeight = 210;
             const PT_TO_MM = 0.3528; // Conversion factor from points to millimeters
             const LINE_HEIGHT = 1.1; // Tighter line height factor
-            const customerName = (formData.customerName || 'GENERIC CUSTOMER').toUpperCase();
+            const customerNameName = (formData.customerName || 'GENERIC CUSTOMER').toUpperCase();
             const street = formData.street.toUpperCase();
             const cityStateZip = `${formData.city.toUpperCase()}, ${formData.state.toUpperCase()} ${formData.zip}`;
-            const pallets = formData.pallets || 1;
+            const pallets = palletsNum;
 
             for (let i = 0; i < pallets; i++) {
                 // --- PAGE A: COMPANY INFO (matches LivePrintPreview layout) ---
@@ -210,12 +312,12 @@ export const OrdersScreen = () => {
 
                 // Build content lines
                 const contentLines: string[] = [];
-                contentLines.push(customerName);
+                contentLines.push(customerNameName);
                 if (street) contentLines.push(street);
                 if (formData.city) contentLines.push(cityStateZip);
                 contentLines.push(''); // spacer
                 contentLines.push(`PALLETS: ${pallets}`);
-                contentLines.push(`UNITS: ${formData.units}`);
+                contentLines.push(`UNITS: ${unitsNum}`);
                 contentLines.push(`LOAD: ${formData.loadNumber || 'N/A'}`);
                 contentLines.push(''); // spacer
                 const thankYouMsg = 'Please count your shipment carefully that there are no damages due to shipping. Jamis Bicycles thanks you for your order.';
@@ -280,21 +382,28 @@ export const OrdersScreen = () => {
                 doc.text(msgWrapped, margin, yPos);
 
                 // --- PAGE B: PALLET NUMBER ONLY (clean, centered) ---
-                doc.addPage('a4', 'landscape');
-                doc.setFont('helvetica', 'bold');
-                doc.setFontSize(200);
-                const textNum = `${i + 1} of ${pallets}`;
-                const textWidth = doc.getTextWidth(textNum);
-                const xCenter = (pageWidth - textWidth) / 2;
-                const yCenter = (pageHeight / 2) + 30; // Adjust for font baseline
-                doc.text(textNum, xCenter, yCenter);
+                // Only show pagination "X of Y" if there is more than one pallet
+                if (pallets > 1) {
+                    doc.addPage('a4', 'landscape');
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(200);
+                    const textNum = `${i + 1} of ${pallets}`;
+                    const textWidth = doc.getTextWidth(textNum);
+                    const xCenter = (pageWidth - textWidth) / 2;
+                    const yCenter = (pageHeight / 2) + 30; // Adjust for font baseline
+                    doc.text(textNum, xCenter, yCenter);
+                }
             }
 
             const blob = doc.output('bloburl');
             window.open(blob, '_blank');
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error generating PDF:', error);
-            toast.error('Failed to generate PDF');
+            if (error.code === '23505') {
+                toast.error(`Load Number "${formData.loadNumber}" already exists!`, { duration: 5000 });
+            } else {
+                toast.error('Failed to update/print order');
+            }
         } finally {
             setIsPrinting(false);
         }
@@ -391,7 +500,7 @@ export const OrdersScreen = () => {
                                             {order.order_number || 'No Order #'}
                                         </p>
                                         <p className="text-[9px] text-muted font-medium truncate">
-                                            {order.customer_name || 'Generic'}
+                                            {order.customer?.name || 'Generic'}
                                         </p>
                                     </div>
                                 </div>
@@ -421,14 +530,14 @@ export const OrdersScreen = () => {
                                 </span>
                             </div>
 
-                            {/* Customer Name */}
+                            {/* Customer Name Autocomplete */}
                             <div>
                                 <label className="text-[9px] text-muted font-black uppercase tracking-widest mb-1 block">Customer</label>
-                                <input
-                                    type="text"
-                                    value={formData.customerName}
-                                    onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
-                                    className="w-full bg-surface border border-subtle rounded-lg px-3 py-2 text-xs text-content focus:outline-none focus:border-accent transition-colors"
+                                <CustomerAutocomplete
+                                    value={{ name: formData.customerName } as any}
+                                    onChange={handleCustomerSelect}
+                                    placeholder="Search Customer..."
+                                    className="text-xs"
                                 />
                             </div>
 
@@ -442,6 +551,7 @@ export const OrdersScreen = () => {
                                     placeholder="Street Address"
                                     value={formData.street}
                                     onChange={(e) => setFormData({ ...formData, street: e.target.value })}
+                                    onFocus={(e) => e.target.select()}
                                     className="w-full bg-surface border border-subtle rounded-lg px-3 py-2 text-xs text-content focus:outline-none focus:border-accent transition-colors"
                                 />
                                 <div className="grid grid-cols-3 gap-2">
@@ -450,6 +560,7 @@ export const OrdersScreen = () => {
                                         placeholder="City"
                                         value={formData.city}
                                         onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                                        onFocus={(e) => e.target.select()}
                                         className="col-span-1 bg-surface border border-subtle rounded-lg px-2 py-2 text-xs text-content focus:outline-none focus:border-accent transition-colors"
                                     />
                                     <input
@@ -458,6 +569,7 @@ export const OrdersScreen = () => {
                                         maxLength={2}
                                         value={formData.state}
                                         onChange={(e) => setFormData({ ...formData, state: e.target.value.toUpperCase() })}
+                                        onFocus={(e) => e.target.select()}
                                         className="bg-surface border border-subtle rounded-lg px-2 py-2 text-xs text-content focus:outline-none focus:border-accent transition-colors text-center"
                                     />
                                     <input
@@ -465,6 +577,7 @@ export const OrdersScreen = () => {
                                         placeholder="Zip"
                                         value={formData.zip}
                                         onChange={(e) => setFormData({ ...formData, zip: e.target.value })}
+                                        onFocus={(e) => e.target.select()}
                                         className="bg-surface border border-subtle rounded-lg px-2 py-2 text-xs text-content focus:outline-none focus:border-accent transition-colors"
                                     />
                                 </div>
@@ -479,7 +592,8 @@ export const OrdersScreen = () => {
                                         min="1"
                                         onKeyDown={(e) => ['e', 'E', '-', '+'].includes(e.key) && e.preventDefault()}
                                         value={formData.pallets}
-                                        onChange={(e) => setFormData({ ...formData, pallets: Math.max(1, parseInt(e.target.value) || 1) })}
+                                        onChange={(e) => setFormData({ ...formData, pallets: e.target.value })}
+                                        onFocus={(e) => e.target.select()}
                                         className="w-full bg-surface border border-subtle rounded-lg px-3 py-2 text-xs text-content focus:outline-none focus:border-accent transition-colors"
                                     />
                                 </div>
@@ -490,7 +604,8 @@ export const OrdersScreen = () => {
                                         min="0"
                                         onKeyDown={(e) => ['e', 'E', '-', '+'].includes(e.key) && e.preventDefault()}
                                         value={formData.units}
-                                        onChange={(e) => setFormData({ ...formData, units: Math.max(0, parseInt(e.target.value) || 0) })}
+                                        onChange={(e) => setFormData({ ...formData, units: e.target.value })}
+                                        onFocus={(e) => e.target.select()}
                                         className="w-full bg-surface border border-subtle rounded-lg px-3 py-2 text-xs text-content focus:outline-none focus:border-accent transition-colors"
                                     />
                                 </div>
@@ -505,6 +620,7 @@ export const OrdersScreen = () => {
                                     type="text"
                                     value={formData.loadNumber}
                                     onChange={(e) => setFormData({ ...formData, loadNumber: e.target.value.toUpperCase() })}
+                                    onFocus={(e) => e.target.select()}
                                     placeholder="E.G. 127035968"
                                     className="w-full bg-surface border border-subtle rounded-lg px-3 py-2 text-xs text-content focus:outline-none focus:border-accent transition-colors font-mono"
                                 />
@@ -548,7 +664,7 @@ export const OrdersScreen = () => {
                                     {selectedOrder.order_number || 'No Order #'}
                                 </h2>
                                 <p className="text-[9px] text-muted font-medium uppercase truncate">
-                                    {selectedOrder.customer_name || 'Generic'}
+                                    {selectedOrder.customer?.name || 'Generic'}
                                 </p>
                             </div>
                         </header>
@@ -572,14 +688,14 @@ export const OrdersScreen = () => {
                                         </span>
                                     </div>
 
-                                    {/* Customer Name */}
+                                    {/* Customer Name Autocomplete - Mobile */}
                                     <div>
                                         <label className="text-[10px] text-muted font-black uppercase tracking-widest mb-1.5 block">Customer</label>
-                                        <input
-                                            type="text"
-                                            value={formData.customerName}
-                                            onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
-                                            className="w-full bg-surface border border-subtle rounded-xl px-4 py-3 text-sm text-content focus:outline-none focus:border-accent transition-colors"
+                                        <CustomerAutocomplete
+                                            value={{ name: formData.customerName } as any}
+                                            onChange={handleCustomerSelect}
+                                            placeholder="Search Customer..."
+                                            className="text-sm"
                                         />
                                     </div>
 
@@ -593,6 +709,7 @@ export const OrdersScreen = () => {
                                             placeholder="Street Address"
                                             value={formData.street}
                                             onChange={(e) => setFormData({ ...formData, street: e.target.value })}
+                                            onFocus={(e) => e.target.select()}
                                             className="w-full bg-surface border border-subtle rounded-xl px-4 py-3 text-sm text-content focus:outline-none focus:border-accent transition-colors"
                                         />
                                         <div className="grid grid-cols-3 gap-2">
@@ -601,6 +718,7 @@ export const OrdersScreen = () => {
                                                 placeholder="City"
                                                 value={formData.city}
                                                 onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                                                onFocus={(e) => e.target.select()}
                                                 className="col-span-1 bg-surface border border-subtle rounded-xl px-3 py-3 text-sm text-content focus:outline-none focus:border-accent transition-colors"
                                             />
                                             <input
@@ -609,6 +727,7 @@ export const OrdersScreen = () => {
                                                 maxLength={2}
                                                 value={formData.state}
                                                 onChange={(e) => setFormData({ ...formData, state: e.target.value.toUpperCase() })}
+                                                onFocus={(e) => e.target.select()}
                                                 className="bg-surface border border-subtle rounded-xl px-3 py-3 text-sm text-content focus:outline-none focus:border-accent transition-colors text-center"
                                             />
                                             <input
@@ -616,6 +735,7 @@ export const OrdersScreen = () => {
                                                 placeholder="Zip"
                                                 value={formData.zip}
                                                 onChange={(e) => setFormData({ ...formData, zip: e.target.value })}
+                                                onFocus={(e) => e.target.select()}
                                                 className="bg-surface border border-subtle rounded-xl px-3 py-3 text-sm text-content focus:outline-none focus:border-accent transition-colors"
                                             />
                                         </div>
@@ -630,18 +750,20 @@ export const OrdersScreen = () => {
                                                 min="1"
                                                 onKeyDown={(e) => ['e', 'E', '-', '+'].includes(e.key) && e.preventDefault()}
                                                 value={formData.pallets}
-                                                onChange={(e) => setFormData({ ...formData, pallets: Math.max(1, parseInt(e.target.value) || 1) })}
+                                                onChange={(e) => setFormData({ ...formData, pallets: e.target.value })}
+                                                onFocus={(e) => e.target.select()}
                                                 className="w-full bg-surface border border-subtle rounded-xl px-4 py-3 text-sm text-content focus:outline-none focus:border-accent transition-colors"
                                             />
                                         </div>
                                         <div>
-                                            <label className="text-[10px] text-muted font-black uppercase tracking-widest mb-1.5 block">Total Units</label>
+                                            <label className="text-[10px] text-muted font-black uppercase tracking-widest mb-1.5 block">Units</label>
                                             <input
                                                 type="number"
                                                 min="0"
                                                 onKeyDown={(e) => ['e', 'E', '-', '+'].includes(e.key) && e.preventDefault()}
                                                 value={formData.units}
-                                                onChange={(e) => setFormData({ ...formData, units: Math.max(0, parseInt(e.target.value) || 0) })}
+                                                onChange={(e) => setFormData({ ...formData, units: e.target.value })}
+                                                onFocus={(e) => e.target.select()}
                                                 className="w-full bg-surface border border-subtle rounded-xl px-4 py-3 text-sm text-content focus:outline-none focus:border-accent transition-colors"
                                             />
                                         </div>
@@ -656,37 +778,37 @@ export const OrdersScreen = () => {
                                             type="text"
                                             value={formData.loadNumber}
                                             onChange={(e) => setFormData({ ...formData, loadNumber: e.target.value.toUpperCase() })}
+                                            onFocus={(e) => e.target.select()}
                                             placeholder="E.G. 127035968"
                                             className="w-full bg-surface border border-subtle rounded-xl px-4 py-3 text-sm text-content focus:outline-none focus:border-accent transition-colors font-mono"
                                         />
                                     </div>
 
-                                    {/* Mobile Print Button */}
-                                    <button
-                                        type="button"
-                                        onClick={handlePrint}
-                                        disabled={isPrinting}
-                                        className="w-full h-14 bg-accent text-white rounded-2xl flex items-center justify-center gap-3 text-sm font-black uppercase tracking-widest shadow-xl shadow-accent/20 active:scale-95 transition-all disabled:opacity-50"
-                                    >
-                                        {isPrinting ? <Loader2 size={18} className="animate-spin" /> : <Printer size={18} />}
-                                        {isPrinting ? 'Processing...' : 'Generate & Print'}
-                                    </button>
+                                    {/* Action Button - Print Labels (also saves) */}
+                                    <div className="pt-4 pb-20 md:pb-0">
+                                        <button
+                                            type="button"
+                                            onClick={handlePrint}
+                                            disabled={isPrinting}
+                                            className="w-full h-14 bg-accent text-white rounded-xl flex items-center justify-center gap-2 text-sm font-black uppercase tracking-widest shadow-lg shadow-accent/20 active:scale-95 transition-all disabled:opacity-50"
+                                        >
+                                            {isPrinting ? <Loader2 size={18} className="animate-spin" /> : <Printer size={18} />}
+                                            {isPrinting ? 'Saving & Generating...' : 'Print Labels'}
+                                        </button>
+                                        <p className="text-[10px] text-muted text-center mt-3">Data is saved automatically</p>
+                                    </div>
                                 </form>
                             </div>
 
-                            {/* Preview Section - Full Width on Mobile */}
-                            <div className="md:p-0 bg-surface">
-                                <p className="md:hidden text-[10px] text-muted font-black uppercase tracking-[0.3em] mb-4 px-6 pt-6">Active Layout Preview</p>
-                                <LivePrintPreview data={formData} />
+                            <div className="p-4 md:p-8 h-full flex flex-col">
+                                <LivePrintPreview {...formData} />
                             </div>
                         </div>
                     </>
                 ) : (
-                    <div className="flex items-center justify-center h-full">
-                        <div className="text-center">
-                            <Package className="w-16 h-16 text-muted mx-auto mb-4 opacity-20" />
-                            <p className="text-sm text-muted">Select an order to see the preview</p>
-                        </div>
+                    <div className="flex-1 flex flex-col items-center justify-center text-muted opacity-30 p-10">
+                        <Printer size={64} className="mb-4" />
+                        <p className="text-sm font-black uppercase tracking-widest">Select an order to print</p>
                     </div>
                 )}
             </main>

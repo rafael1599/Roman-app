@@ -1,25 +1,34 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import jsPDF from 'jspdf';
 
-interface OrderPreviewData {
-    customerName: string;
-    street: string;
-    city: string;
-    state: string;
-    zip: string;
-    pallets: number;
-    units: number;
-    loadNumber: string;
-}
-
 interface LivePrintPreviewProps {
-    data: OrderPreviewData;
+    customerName?: string;
+    street?: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+    pallets?: number | string;
+    units?: number | string;
+    loadNumber?: string;
+    // Support snake_case as fallback if passed from database objects
+    customer_name?: string;
+    load_number?: string;
+    zip_code?: string;
 }
 
-export const LivePrintPreview: React.FC<LivePrintPreviewProps> = ({ data }) => {
-    const { customerName, street, city, state, zip, pallets, units, loadNumber } = data;
+export const LivePrintPreview: React.FC<LivePrintPreviewProps> = (props) => {
+    // Merge camelCase and snake_case props for maximum resilience
+    const customerName = props.customerName || props.customer_name || '';
+    const street = props.street || '';
+    const city = props.city || '';
+    const state = props.state || '';
+    const zip = props.zip || props.zip_code || '';
+    const pallets = parseInt(String(props.pallets)) || 1;
+    const units = parseInt(String(props.units)) || 0;
+    const loadNumber = props.loadNumber || props.load_number || '';
+
     const hasAddress = Boolean(street && city);
-    const cityStateZip = `${city}, ${state} ${zip}`.toUpperCase();
+    const cityStateZip = `${city}, ${state} ${zip}`.trim().toUpperCase();
 
     // Replicate PDF Scaling Logic
     const fontSizePt = useMemo(() => {
@@ -33,7 +42,7 @@ export const LivePrintPreview: React.FC<LivePrintPreviewProps> = ({ data }) => {
         const thankYouMsg = 'PLEASE COUNT YOUR SHIPMENT CAREFULLY THAT THERE ARE NO DAMAGES DUE TO SHIPPING. JAMIS BICYCLES THANKS YOU FOR YOUR ORDER.';
 
         const contentLines: string[] = [];
-        contentLines.push(customerName.toUpperCase());
+        contentLines.push((customerName || 'GENERIC CUSTOMER').toUpperCase());
         if (street) contentLines.push(street.toUpperCase());
         if (city) contentLines.push(cityStateZip);
         contentLines.push(''); // spacer
@@ -85,7 +94,7 @@ export const LivePrintPreview: React.FC<LivePrintPreviewProps> = ({ data }) => {
         pages.push(
             <div
                 key={`info-${i}`}
-                className="preview-page font-sans uppercase bg-white text-black border border-zinc-300 shadow-2xl flex flex-col justify-start overflow-hidden"
+                className="preview-page font-sans uppercase bg-white text-black border border-zinc-300 shadow-2xl flex flex-col justify-start overflow-hidden shrink-0"
                 style={{
                     width: '297mm',
                     height: '210mm',
@@ -93,7 +102,7 @@ export const LivePrintPreview: React.FC<LivePrintPreviewProps> = ({ data }) => {
                 }}
             >
                 <div
-                    className="page-content w-full flex flex-col"
+                    className="page-content w-full flex flex-col h-full"
                     style={{
                         fontSize: `${fontSizePt}pt`,
                         lineHeight: '1.1',
@@ -113,7 +122,7 @@ export const LivePrintPreview: React.FC<LivePrintPreviewProps> = ({ data }) => {
                     <div className="mt-[0.3em] font-black tracking-tighter" style={{ fontSize: 'inherit' }}>
                         <p>PALLETS: {pallets}</p>
                         <p>UNITS: {units}</p>
-                        <p>LOAD: {loadNumber}</p>
+                        <p>LOAD: {loadNumber || 'N/A'}</p>
                     </div>
 
                     <div
@@ -130,17 +139,20 @@ export const LivePrintPreview: React.FC<LivePrintPreviewProps> = ({ data }) => {
         );
 
         // PAGE B: Pallet Number Only
-        pages.push(
-            <div
-                key={`num-${i}`}
-                className="preview-page font-sans bg-white text-black border border-zinc-300 shadow-2xl flex items-center justify-center overflow-hidden"
-                style={{ width: '297mm', height: '210mm' }}
-            >
-                <h2 className="text-[22rem] font-black leading-none tracking-tighter text-slate-900">
-                    {i + 1} of {pallets}
-                </h2>
-            </div>
-        );
+        // Only show pagination "X of Y" if there is more than one pallet
+        if (pallets > 1) {
+            pages.push(
+                <div
+                    key={`num-${i}`}
+                    className="preview-page font-sans bg-white text-black border border-zinc-300 shadow-2xl flex items-center justify-center overflow-hidden shrink-0"
+                    style={{ width: '297mm', height: '210mm' }}
+                >
+                    <h2 className="text-[22rem] font-black leading-none tracking-tighter text-slate-900">
+                        {i + 1} of {pallets}
+                    </h2>
+                </div>
+            );
+        }
     }
 
     // Dynamic Scaling Logic
@@ -158,35 +170,22 @@ export const LivePrintPreview: React.FC<LivePrintPreviewProps> = ({ data }) => {
             const BASE_WIDTH_PX = 1123;
 
             if (isMobile) {
-                // Mobile: Fit full width minus padding
-                // We want a bit of margin, say 24px total (12px each side)
                 const availableWidth = window.innerWidth - 24;
                 const newScale = Math.min(availableWidth / BASE_WIDTH_PX, 0.9);
                 setScale(newScale);
             } else {
-                // Desktop: Fit 2 columns or 1 column based on container
-                // We assume 2 columns for desktop layout if space permits
-                // Available width for ONE sheet in a 2-col grid
-                const availableColWidth = (containerWidth / 2) - 40; // minus gaps
+                const availableColWidth = (containerWidth / 2) - 40;
                 const newScale = Math.min(Math.max(availableColWidth / BASE_WIDTH_PX, 0.25), 0.5);
                 setScale(newScale);
             }
         };
 
-        // Initial calc
         updateScale();
-
-        // Observer for robust resizing
         const observer = new ResizeObserver(() => {
             window.requestAnimationFrame(updateScale);
         });
-
-        if (containerRef.current) {
-            observer.observe(containerRef.current);
-        }
-
+        if (containerRef.current) observer.observe(containerRef.current);
         window.addEventListener('resize', updateScale);
-
         return () => {
             observer.disconnect();
             window.removeEventListener('resize', updateScale);
@@ -210,16 +209,14 @@ export const LivePrintPreview: React.FC<LivePrintPreviewProps> = ({ data }) => {
                 </div>
             </div>
 
-            {/* Responsive Scaled Preview Area */}
             <div className="w-full flex-1 flex justify-center">
                 <div
                     className="preview-viewer grid justify-center origin-top h-fit pb-20 transition-transform duration-200 ease-out"
                     style={{
-                        // Mobile: 1 col, Desktop: 2 cols
                         gridTemplateColumns: window.innerWidth < 768 ? '297mm' : 'repeat(2, 297mm)',
-                        gap: window.innerWidth < 768 ? '60px' : '64px', // Space between sheets
+                        gap: window.innerWidth < 768 ? '60px' : '64px',
                         transform: `scale(${scale})`,
-                        marginBottom: `-${(1 - scale) * 100}%`, // Dynamic compensation
+                        marginBottom: `-${(1 - scale) * 100}%`,
                     }}
                 >
                     {pages}
