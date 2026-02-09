@@ -813,7 +813,6 @@ export const HistoryScreen = () => {
           value={searchQuery}
           onChange={setSearchQuery}
           placeholder="Search SKU or Location..."
-          autoFocus
         />
 
         {!isSearching && (

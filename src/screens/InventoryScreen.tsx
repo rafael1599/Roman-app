@@ -631,7 +631,7 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
         placeholder="Search SKU, Loc, Warehouse..."
         mode={viewMode as any}
         onScanClick={() => setShowScanner(true)}
-        autoFocus
+        autoFocus={viewMode === 'picking'}
       />
 
       {!isSearching && (

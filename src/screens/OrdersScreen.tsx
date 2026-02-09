@@ -321,7 +321,6 @@ export const OrdersScreen = () => {
                         value={searchQuery}
                         onChange={setSearchQuery}
                         placeholder="Search orders..."
-                        autoFocus
                     />
                     {/* Time Filters */}
                     <div className="flex gap-1.5 mt-3 overflow-x-auto scrollbar-none">
