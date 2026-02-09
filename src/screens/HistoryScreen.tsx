@@ -15,6 +15,7 @@ import MoveIcon from 'lucide-react/dist/esm/icons/move';
 import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle';
 import Calendar from 'lucide-react/dist/esm/icons/calendar';
 import User from 'lucide-react/dist/esm/icons/user';
+import Mail from 'lucide-react/dist/esm/icons/mail';
 import Users from 'lucide-react/dist/esm/icons/users';
 import Settings from 'lucide-react/dist/esm/icons/settings';
 import { SearchInput } from '../components/ui/SearchInput';
