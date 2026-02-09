@@ -10,7 +10,6 @@ import CamScanner from '../features/smart-picking/components/CamScanner';
 import { naturalSort } from '../utils/sortUtils';
 import Plus from 'lucide-react/dist/esm/icons/plus';
 import Warehouse from 'lucide-react/dist/esm/icons/warehouse';
-import Sparkles from 'lucide-react/dist/esm/icons/sparkles';
 import X from 'lucide-react/dist/esm/icons/x';
 import Mail from 'lucide-react/dist/esm/icons/mail'; // Added Mail icon
 import { MovementModal } from '../features/inventory/components/MovementModal';
@@ -178,39 +177,6 @@ export const InventoryScreen = () => {
   const [isMovementModalOpen, setIsMovementModalOpen] = useState(false);
   const [locationBeingEdited, setLocationBeingEdited] = useState<Location | any>(null);
 
-  const [showWelcome, setShowWelcome] = useState(false);
-  const welcomeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { isAdmin } = useAuth();
-  const { showError } = useError();
-  const { showConfirmation } = useConfirmation();
-  const {
-    locations: allMappedLocations,
-    createLocation,
-    updateLocation,
-    deactivateLocation,
-  } = useLocationManagement();
-
-  // Welcome Message Logic
-  useEffect(() => {
-    const checkWelcome = () => {
-      const hasBeenShown = localStorage.getItem('pickd_welcome_shown');
-      const releaseTime = new Date('2026-01-19T08:00:00-05:00').getTime();
-      const currentTime = Date.now();
-
-      if (!hasBeenShown && currentTime >= releaseTime) {
-        setShowWelcome(true);
-        if (welcomeTimerRef.current) {
-          setShowWelcome(false);
-          localStorage.setItem('pickd_welcome_shown', 'true');
-        }
-      }
-    };
-
-    checkWelcome();
-    return () => {
-      if (welcomeTimerRef.current) clearTimeout(welcomeTimerRef.current);
-    };
-  }, []);
 
   // Picking Mode State
   const {
@@ -591,39 +557,6 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
       )}
 
 
-      {showWelcome && !isSearching ? (
-        <div className="mx-4 mt-4 relative z-10 group animate-in fade-in slide-in-from-top-4 duration-1000">
-          <div className="absolute -inset-0.5 bg-gradient-to-r from-accent to-blue-600 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
-          <div className="relative bg-surface border border-accent/20 rounded-2xl p-6 overflow-hidden">
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 bg-accent/10 rounded-xl flex items-center justify-center shrink-0 border border-accent/20">
-                <Sparkles className="text-accent" size={24} />
-              </div>
-              <div className="flex-1">
-                <h2 className="text-xl font-black text-content uppercase tracking-tight mb-1">
-                  PickD Precision System is Live
-                </h2>
-                <p className="text-sm text-muted font-medium leading-relaxed max-w-lg">
-                  The warehouse digital era begins now. Every movement is recorded to ensure
-                  precision and speed. Happy picking!
-                </p>
-              </div>
-              <button
-                onClick={() => {
-                  setShowWelcome(false);
-                  localStorage.setItem('pickd_welcome_shown', 'true');
-                }}
-                className="p-2 hover:bg-main rounded-lg text-muted hover:text-content transition-colors shrink-0"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div className="absolute -right-8 -bottom-8 opacity-[0.03] text-accent">
-              <Warehouse size={160} />
-            </div>
-          </div>
-        </div>
-      ) : null}
 
       <SearchInput
         value={localSearch}
