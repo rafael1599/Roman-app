@@ -9,30 +9,33 @@ interface NavItemProps {
   label: string;
   isActive: boolean;
   onClick: () => void;
+  isCompact?: boolean;
 }
 
-const NavItem = ({ icon: Icon, label, isActive, onClick }: NavItemProps) => (
+const NavItem = ({ icon: Icon, label, isActive, onClick, isCompact }: NavItemProps) => (
   <button
     onClick={onClick}
-    className={`flex flex-col items-center justify-center flex-1 h-full transition-all duration-400 active:scale-90 ${isActive ? 'text-accent' : 'text-muted'
-      }`}
+    className={`flex flex-col items-center justify-center flex-1 h-full transition-all duration-300 active:scale-90 ${isActive ? 'text-accent' : 'text-muted'
+      } ${isCompact ? 'px-1' : ''}`}
   >
     <div
-      className={`p-1.5 rounded-xl transition-all duration-400 ${isActive ? 'bg-accent/10 shadow-lg shadow-accent/5' : ''}`}
+      className={`rounded-xl transition-all duration-300 ${isActive ? 'bg-accent/10 shadow-lg shadow-accent/5' : ''} ${isCompact ? 'p-1' : 'p-1.5'}`}
     >
-      <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
+      <Icon size={isCompact ? 18 : 22} strokeWidth={isActive ? 2.5 : 2} />
     </div>
-    <span
-      className={`text-[10px] font-extrabold uppercase tracking-tight mt-1 transition-all duration-400 ${isActive ? 'opacity-100 translate-y-0' : 'opacity-60 translate-y-0.5'}`}
-      style={{ fontFamily: 'var(--font-heading)' }}
-    >
-      {label}
-    </span>
+    {!isCompact && (
+      <span
+        className={`text-[10px] font-extrabold uppercase tracking-tight mt-1 transition-all duration-300 ${isActive ? 'opacity-100 translate-y-0' : 'opacity-60 translate-y-0.5'}`}
+        style={{ fontFamily: 'var(--font-heading)' }}
+      >
+        {label}
+      </span>
+    )}
   </button>
 );
 
 export const BottomNavigation = () => {
-  const { viewMode, setViewMode, isNavHidden } = useViewMode();
+  const { viewMode, setViewMode, isNavHidden, isSearching } = useViewMode();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -49,24 +52,28 @@ export const BottomNavigation = () => {
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 h-20 bg-main/90 backdrop-blur-xl border-t border-subtle flex items-center justify-around z-50 pb-safe px-2">
+    <div className={`fixed bottom-0 left-0 right-0 bg-main/90 backdrop-blur-xl border-t border-subtle flex items-center justify-around z-50 pb-safe transition-all duration-300 ${isSearching ? 'h-12 px-1' : 'h-20 px-2'
+      }`}>
       <NavItem
         icon={Box}
         label="STOCK"
         isActive={location.pathname === '/' && viewMode === 'stock'}
         onClick={handleStockClick}
+        isCompact={isSearching}
       />
       <NavItem
         icon={Scan}
         label="PICKING"
         isActive={location.pathname === '/' && viewMode === 'picking'}
         onClick={handlePickingClick}
+        isCompact={isSearching}
       />
       <NavItem
         icon={History}
         label="HISTORY"
         isActive={location.pathname === '/history'}
         onClick={() => navigate('/history')}
+        isCompact={isSearching}
       />
     </div>
   );

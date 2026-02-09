@@ -169,7 +169,7 @@ export const InventoryScreen = () => {
     setDisplayLocationCount(50); // Reset pagination on search
   }, [debouncedSearch]);
 
-  const { viewMode } = useViewMode(); // 'stock' | 'picking'
+  const { viewMode, isSearching } = useViewMode(); // 'stock' | 'picking'
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItemWithMetadata | null>(null);
@@ -634,18 +634,20 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
         autoFocus
       />
 
-      <div className="px-4 pt-2 flex items-center gap-2">
-        <input
-          type="checkbox"
-          id="show-inactive"
-          checked={showInactive}
-          onChange={(e) => setShowInactive(e.target.checked)}
-          className="rounded border-neutral-600 bg-surface text-accent focus:ring-accent focus:ring-offset-0 h-4 w-4"
-        />
-        <label htmlFor="show-inactive" className="text-sm text-muted font-medium cursor-pointer select-none">
-          Show Deleted Items
-        </label>
-      </div>
+      {!isSearching && (
+        <div className="px-4 pt-2 flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="show-inactive"
+            checked={showInactive}
+            onChange={(e) => setShowInactive(e.target.checked)}
+            className="rounded border-neutral-600 bg-surface text-accent focus:ring-accent focus:ring-offset-0 h-4 w-4"
+          />
+          <label htmlFor="show-inactive" className="text-sm text-muted font-medium cursor-pointer select-none">
+            Show Deleted Items
+          </label>
+        </div>
+      )}
 
 
       <div className="p-4 space-y-12 min-h-[50vh]">

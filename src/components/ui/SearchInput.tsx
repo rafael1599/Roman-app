@@ -4,6 +4,7 @@ import Scan from 'lucide-react/dist/esm/icons/scan';
 import Type from 'lucide-react/dist/esm/icons/type';
 import Hash from 'lucide-react/dist/esm/icons/hash';
 import X from 'lucide-react/dist/esm/icons/x';
+import { useViewMode } from '../../context/ViewModeContext';
 
 interface SearchInputProps {
     value: string;
@@ -22,6 +23,7 @@ export const SearchInput: React.FC<SearchInputProps> = ({
     onScanClick,
     autoFocus = false,
 }) => {
+    const { isSearching, setIsSearching } = useViewMode();
     const inputRef = useRef<HTMLInputElement>(null);
     const [keyboardMode, setKeyboardMode] = useState<'text' | 'numeric'>(() => {
         const saved = localStorage.getItem('kb_pref_main_search');
@@ -39,13 +41,14 @@ export const SearchInput: React.FC<SearchInputProps> = ({
         const newMode = keyboardMode === 'text' ? 'numeric' : 'text';
         setKeyboardMode(newMode);
         localStorage.setItem('kb_pref_main_search', newMode);
+        if (inputRef.current) inputRef.current.focus();
     };
 
     return (
-        <div className="sticky top-0 z-40 bg-main/80 backdrop-blur-md p-4 border-b border-subtle">
-            <div className="flex gap-2">
+        <div className={`sticky top-0 z-40 bg-main/95 backdrop-blur-xl border-b border-subtle transition-all duration-300 ${isSearching ? 'p-2' : 'p-4'}`}>
+            <div className="max-w-4xl mx-auto flex items-center gap-2">
                 <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-500 w-5 h-5" />
+                    <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-500 transition-all ${isSearching ? 'w-4 h-4' : 'w-5 h-5'}`} />
                     <input
                         ref={inputRef}
                         type="text"
@@ -54,10 +57,12 @@ export const SearchInput: React.FC<SearchInputProps> = ({
                         placeholder={placeholder}
                         inputMode={keyboardMode}
                         autoFocus={autoFocus}
+                        onFocus={() => setIsSearching(true)}
+                        onBlur={() => setIsSearching(false)}
                         autoCapitalize="characters"
                         autoCorrect="off"
                         spellCheck="false"
-                        className={`w-full bg-surface border border-subtle text-content rounded-xl pl-10 py-3.5 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all placeholder:text-muted/40 text-base font-semibold tracking-tight ${mode === 'picking' ? 'pr-24' : 'pr-12'}`}
+                        className={`w-full bg-surface border border-subtle text-content rounded-xl pl-10 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all placeholder:text-muted/40 font-semibold tracking-tight ${isSearching ? 'py-2 text-sm' : 'py-3.5 text-base'} ${mode === 'picking' ? 'pr-24' : 'pr-12'}`}
                         style={{ fontFamily: 'var(--font-body)' }}
                     />
 

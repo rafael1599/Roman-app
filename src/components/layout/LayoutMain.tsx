@@ -5,6 +5,7 @@ import Save from 'lucide-react/dist/esm/icons/save';
 import Settings from 'lucide-react/dist/esm/icons/settings';
 import UserIcon from 'lucide-react/dist/esm/icons/user';
 import { useAuth } from '../../context/AuthContext';
+import { useViewMode } from '../../context/ViewModeContext';
 import { UserMenu } from './UserMenu';
 import { DoubleCheckHeader } from '../../features/picking/components/DoubleCheckHeader';
 import { SyncStatusIndicator } from './SyncStatusIndicator';
@@ -17,6 +18,7 @@ interface LayoutMainProps {
 export const LayoutMain = ({ children, onExport }: LayoutMainProps) => {
   const navigate = useNavigate();
   const { isAdmin, profile } = useAuth();
+  const { isSearching } = useViewMode();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
 
@@ -29,12 +31,12 @@ export const LayoutMain = ({ children, onExport }: LayoutMainProps) => {
   }, []);
 
   return (
-    <div className="flex flex-col min-h-screen bg-main pb-20">
+    <div className={`flex flex-col min-h-screen bg-main transition-all duration-300 ${isSearching ? 'pb-12' : 'pb-20'}`}>
       {/* Header / Brand (Scrolls with the page) */}
       <header
         className={`
-                    relative w-full bg-card border-b border-subtle z-50 transition-opacity duration-300
-                    ${isScrolled ? 'opacity-0' : 'opacity-100'}
+                    relative w-full bg-card border-b border-subtle z-50 transition-all duration-300 overflow-hidden
+                    ${isScrolled || isSearching ? 'opacity-0 h-0 border-none' : 'opacity-100 h-auto'}
                 `}
       >
         <div className="flex justify-between items-center px-4 py-3">
