@@ -99,7 +99,7 @@ export const SnapshotViewer: React.FC = () => {
             {/* Secure Footer */}
             <footer className="pb-10 pt-4 text-center">
                 <p className="text-muted text-[10px] uppercase tracking-widest font-black opacity-50">
-                    Authenticated Archives • Roman Inventory System
+                    Authenticated Archives • PickD Inventory System
                 </p>
             </footer>
         </div>

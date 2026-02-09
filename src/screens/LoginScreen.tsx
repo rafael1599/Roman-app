@@ -41,9 +41,11 @@ export const LoginScreen = () => {
       <div className="w-full max-w-sm space-y-8">
         <div className="text-center space-y-2">
           <div className="w-16 h-16 bg-accent rounded-2xl mx-auto flex items-center justify-center shadow-2xl shadow-accent/20 mb-6">
-            <KeyRound className="text-main w-8 h-8" />
+            <h1 className="text-2xl font-black text-white px-2" style={{ fontFamily: 'var(--font-heading)' }}>P</h1>
           </div>
-          <h1 className="text-3xl font-black text-content tracking-tighter">Roman App</h1>
+          <h1 className="text-3xl font-black text-content tracking-tighter" style={{ fontFamily: 'var(--font-heading)' }}>
+            <span className="text-accent">P</span>ICK<span className="text-accent">D</span>
+          </h1>
           <p className="text-muted font-medium">Sign in to access</p>
         </div>
 

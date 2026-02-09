@@ -9,7 +9,7 @@ import {
  * Cache Versioning - increment this to force-invalidate all client caches.
  */
 const CACHE_VERSION = 'v1.2.0';
-const BASE_CACHE_KEY = 'roman-inventory-cache';
+const BASE_CACHE_KEY = 'pickd-inventory-cache';
 const VERSIONED_KEY = `${BASE_CACHE_KEY}-${CACHE_VERSION}`;
 
 /**
