@@ -9,7 +9,9 @@ import MapPin from 'lucide-react/dist/esm/icons/map-pin';
 import Hash from 'lucide-react/dist/esm/icons/hash';
 import Truck from 'lucide-react/dist/esm/icons/truck';
 import ArrowLeft from 'lucide-react/dist/esm/icons/arrow-left';
+import Home from 'lucide-react/dist/esm/icons/home';
 import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 import { SearchInput } from '../components/ui/SearchInput';
 import { LivePrintPreview } from '../components/orders/LivePrintPreview';
 
@@ -20,6 +22,7 @@ export const OrdersScreen = () => {
     const [selectedOrder, setSelectedOrder] = useState<any>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [timeFilter, setTimeFilter] = useState('ALL');
+    const navigate = useNavigate();
     const scrollContainerRef = useRef<HTMLDivElement>(null);
 
     // Auto-scroll to top when searching to ensure results are visible
@@ -306,7 +309,18 @@ export const OrdersScreen = () => {
     }
 
     return (
-        <div className="flex h-[calc(100vh-4rem)] overflow-hidden relative">
+        <div className="flex h-[100vh] w-full overflow-hidden relative bg-main">
+            {/* Global Home Button (Top Right) */}
+            <div className="absolute top-4 right-4 z-[60] md:top-6 md:right-6">
+                <button
+                    onClick={() => navigate('/')}
+                    className="w-10 h-10 md:w-12 md:h-12 bg-white dark:bg-zinc-800 border border-subtle rounded-full shadow-lg flex items-center justify-center text-muted hover:text-accent hover:border-accent transition-all active:scale-90"
+                    title="Go Home"
+                >
+                    <Home size={20} />
+                </button>
+            </div>
+
             {/* LEFT PANE: Order List + Form */}
             <aside className={`
                 w-full md:w-[28%] md:min-w-[320px] md:max-w-[400px] border-r border-subtle bg-main flex flex-col overflow-hidden transition-all duration-300

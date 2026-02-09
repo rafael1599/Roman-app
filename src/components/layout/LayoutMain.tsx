@@ -1,5 +1,5 @@
 import { ReactNode, useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { BottomNavigation } from './BottomNavigation';
 import Save from 'lucide-react/dist/esm/icons/save';
 import Settings from 'lucide-react/dist/esm/icons/settings';
@@ -17,6 +17,8 @@ interface LayoutMainProps {
 
 export const LayoutMain = ({ children, onExport }: LayoutMainProps) => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isOrdersPage = location.pathname === '/orders';
   const { isAdmin, profile } = useAuth();
   const { isSearching } = useViewMode();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -30,72 +32,76 @@ export const LayoutMain = ({ children, onExport }: LayoutMainProps) => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  const pbClass = isOrdersPage ? 'pb-0' : (isSearching ? 'pb-12' : 'pb-20');
+
   return (
-    <div className={`flex flex-col min-h-screen bg-main transition-all duration-300 ${isSearching ? 'pb-12' : 'pb-20'}`}>
+    <div className={`flex flex-col min-h-screen bg-main transition-all duration-300 ${pbClass}`}>
       {/* Header / Brand (Scrolls with the page) */}
-      <header
-        className={`
+      {!isOrdersPage && (
+        <header
+          className={`
                     relative w-full bg-card border-b border-subtle z-50 transition-all duration-300 overflow-hidden
                     ${isScrolled || isSearching ? 'opacity-0 h-0 border-none' : 'opacity-100 h-auto'}
                 `}
-      >
-        <div className="flex justify-between items-center px-4 py-3">
-          <div className="flex items-center gap-3">
-            {isAdmin && (
-              <button
-                onClick={() => navigate('/settings')}
-                className="w-10 h-10 ios-btn-surface text-muted hover:text-accent transition-colors"
-                aria-label="Settings"
+        >
+          <div className="flex justify-between items-center px-4 py-3">
+            <div className="flex items-center gap-3">
+              {isAdmin && (
+                <button
+                  onClick={() => navigate('/settings')}
+                  className="w-10 h-10 ios-btn-surface text-muted hover:text-accent transition-colors"
+                  aria-label="Settings"
+                >
+                  <Settings className="w-5 h-5" />
+                </button>
+              )}
+              <div
+                className="flex items-center gap-1.5 cursor-pointer group"
+                onClick={() => navigate('/')}
               >
-                <Settings className="w-5 h-5" />
-              </button>
-            )}
-            <div
-              className="flex items-center gap-1.5 cursor-pointer group"
-              onClick={() => navigate('/')}
-            >
-              <h1 className="text-2xl font-extrabold tracking-tighter flex items-center gap-0.5" style={{ fontFamily: 'var(--font-heading)' }}>
-                <span className="text-accent">P</span>
-                <span className="text-content">ICK</span>
-                <span className="text-accent">D</span>
-              </h1>
-              <div className="w-8 h-8 relative group">
-                <div className="absolute inset-0 bg-accent/10 blur-lg rounded-full animate-pulse group-hover:bg-accent/20 transition-all opacity-0 group-hover:opacity-100" />
-                <img
-                  src="/PickD.png"
-                  alt="Logo"
-                  className="w-full h-full relative z-10 object-contain animate-pickd-check"
-                />
+                <h1 className="text-2xl font-extrabold tracking-tighter flex items-center gap-0.5" style={{ fontFamily: 'var(--font-heading)' }}>
+                  <span className="text-accent">P</span>
+                  <span className="text-content">ICK</span>
+                  <span className="text-accent">D</span>
+                </h1>
+                <div className="w-8 h-8 relative group">
+                  <div className="absolute inset-0 bg-accent/10 blur-lg rounded-full animate-pulse group-hover:bg-accent/20 transition-all opacity-0 group-hover:opacity-100" />
+                  <img
+                    src="/PickD.png"
+                    alt="Logo"
+                    className="w-full h-full relative z-10 object-contain animate-pickd-check"
+                  />
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="flex items-center gap-2">
-            {onExport && isAdmin && (
+            <div className="flex items-center gap-2">
+              {onExport && isAdmin && (
+                <button
+                  onClick={onExport}
+                  className="p-2 bg-surface border border-subtle rounded-md text-accent active:bg-surface/80 transition-colors"
+                  aria-label="Export Data"
+                >
+                  <Save className="w-5 h-5" />
+                </button>
+              )}
+
+              <DoubleCheckHeader />
+
+              <SyncStatusIndicator />
+
               <button
-                onClick={onExport}
-                className="p-2 bg-surface border border-subtle rounded-md text-accent active:bg-surface/80 transition-colors"
-                aria-label="Export Data"
+                onClick={() => setIsUserMenuOpen(true)}
+                className="flex items-center gap-2 p-1.5 bg-surface border border-subtle rounded-full hover:border-accent transition-all active:scale-95"
               >
-                <Save className="w-5 h-5" />
+                <div className="w-7 h-7 rounded-full bg-accent/10 border border-accent/20 flex items-center justify-center text-accent text-xs font-black uppercase">
+                  {profile?.full_name?.charAt(0) || <UserIcon size={14} />}
+                </div>
               </button>
-            )}
-
-            <DoubleCheckHeader />
-
-            <SyncStatusIndicator />
-
-            <button
-              onClick={() => setIsUserMenuOpen(true)}
-              className="flex items-center gap-2 p-1.5 bg-surface border border-subtle rounded-full hover:border-accent transition-all active:scale-95"
-            >
-              <div className="w-7 h-7 rounded-full bg-accent/10 border border-accent/20 flex items-center justify-center text-accent text-xs font-black uppercase">
-                {profile?.full_name?.charAt(0) || <UserIcon size={14} />}
-              </div>
-            </button>
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
+      )}
 
       <UserMenu
         isOpen={isUserMenuOpen}
@@ -107,7 +113,7 @@ export const LayoutMain = ({ children, onExport }: LayoutMainProps) => {
       {/* Content */}
       <main className="flex-1 w-full relative">{children}</main>
 
-      <BottomNavigation />
+      {!isOrdersPage && <BottomNavigation />}
     </div>
   );
 };

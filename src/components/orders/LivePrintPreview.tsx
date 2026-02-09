@@ -165,8 +165,8 @@ export const LivePrintPreview: React.FC<LivePrintPreviewProps> = ({ data }) => {
                 <div
                     className="preview-viewer grid gap-8 md:gap-16 justify-center origin-top h-fit pb-20"
                     style={{
-                        // 1 column on mobile, 2 on desktop
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(min(297mm, 100%), 297mm))',
+                        // 2 columns on desktop, 1 on mobile (handled by media query)
+                        gridTemplateColumns: 'repeat(2, 297mm)',
                         // Dynamic scale handled via CSS for better performance
                         transform: 'scale(var(--preview-scale, 0.35))',
                     }}
@@ -175,9 +175,12 @@ export const LivePrintPreview: React.FC<LivePrintPreviewProps> = ({ data }) => {
                     <style dangerouslySetInnerHTML={{
                         __html: `
                         :root { --preview-scale: 0.85; }
-                        @media (min-width: 768px) { :root { --preview-scale: 0.35; } }
-                        @media (min-width: 1024px) { :root { --preview-scale: 0.45; } }
-                        @media (min-width: 1280px) { :root { --preview-scale: 0.55; } }
+                        /* Desktop Scales: Account for ~30% sidebar width */
+                        @media (min-width: 768px) { :root { --preview-scale: 0.25; } }
+                        @media (min-width: 1024px) { :root { --preview-scale: 0.32; } }
+                        @media (min-width: 1280px) { :root { --preview-scale: 0.38; } }
+                        @media (min-width: 1536px) { :root { --preview-scale: 0.45; } }
+                        
                         @media (max-width: 767px) {
                             .preview-viewer {
                                 transform: scale(calc(100vw / 1122.52)); /* Full bleed width */
