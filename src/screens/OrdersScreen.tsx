@@ -169,67 +169,73 @@ export const OrdersScreen = () => {
         try {
             const { default: jsPDF } = await import('jspdf');
 
+            // Use A4 landscape format (same as preview: 297mm x 210mm)
             const doc = new jsPDF({
                 orientation: 'landscape',
-                unit: 'in',
-                format: [6, 4]
+                unit: 'mm',
+                format: 'a4'
             });
 
+            const pageWidth = 297;
+            const pageHeight = 210;
+            const margin = 15;
             const customerName = (formData.customerName || 'GENERIC CUSTOMER').toUpperCase();
-            const hasAddress = formData.street && formData.city;
+            const street = formData.street.toUpperCase();
+            const cityStateZip = `${formData.city.toUpperCase()}, ${formData.state.toUpperCase()} ${formData.zip}`;
             const pallets = formData.pallets || 1;
 
             for (let i = 0; i < pallets; i++) {
-                // --- PAGE A: COMPANY INFO ---
-                if (i > 0) doc.addPage([6, 4], 'landscape');
+                // --- PAGE A: COMPANY INFO (matches LivePrintPreview layout) ---
+                if (i > 0) doc.addPage('a4', 'landscape');
 
-                if (hasAddress) {
-                    doc.setFont('helvetica', 'bold');
-                    doc.setFontSize(28);
-                    const nameLines = doc.splitTextToSize(customerName, 5.5);
-                    doc.text(nameLines, 0.5, 0.8);
+                let yPos = 45;
+                const lineHeight = 18;
 
-                    doc.setFont('helvetica', 'normal');
-                    doc.setFontSize(18);
-                    doc.text(`${formData.street.toUpperCase()}`, 0.5, 1.4);
-                    doc.text(`${formData.city.toUpperCase()}, ${formData.state.toUpperCase()} ${formData.zip}`, 0.5, 1.7);
+                // Customer Name (large, bold)
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(36);
+                const nameLines = doc.splitTextToSize(customerName, pageWidth - margin * 2);
+                doc.text(nameLines, margin, yPos);
+                yPos += nameLines.length * lineHeight;
 
-                    doc.setLineWidth(0.05);
-                    doc.line(0.5, 2.1, 5.5, 2.1);
-
-                    doc.setFontSize(14);
-                    doc.text(`PALLETS: ${pallets}  |  UNITS: ${formData.units}`, 0.5, 2.5);
-                    doc.setFont('helvetica', 'bold');
-                    doc.setFontSize(32);
-                    doc.text(`LOAD: ${formData.loadNumber || 'N/A'}`, 0.5, 3.2);
-
-                    doc.setFontSize(12);
-                    doc.text(`DATE: ${new Date().toLocaleDateString()}`, 0.5, 3.7);
-                } else {
-                    let fontSize = 70;
-                    if (customerName.length > 20) fontSize = 50;
-                    if (customerName.length > 35) fontSize = 35;
-
-                    doc.setFont('helvetica', 'bold');
-                    doc.setFontSize(fontSize);
-                    const customerLines = doc.splitTextToSize(customerName, 5.5);
-                    const textHeight = (customerLines.length * fontSize) / 72;
-                    doc.text(customerLines, 3, (2.0 - textHeight / 2), { align: 'center' });
-
-                    doc.setFontSize(24);
-                    doc.text(`LOAD: ${formData.loadNumber || 'N/A'}`, 3, 3.5, { align: 'center' });
+                // Address (if available)
+                if (street) {
+                    doc.text(street, margin, yPos);
+                    yPos += lineHeight;
+                }
+                if (formData.city) {
+                    doc.text(cityStateZip, margin, yPos);
+                    yPos += lineHeight;
                 }
 
-                // --- PAGE B: NUMBERING ONLY ---
-                doc.addPage([6, 4], 'landscape');
-                doc.setFont('helvetica', 'bold');
-                doc.setFontSize(110);
-                const textNum = `${i + 1} OF ${pallets}`;
-                const numWidth = doc.getTextWidth(textNum);
-                doc.text(textNum, (6 - numWidth) / 2, 2.3);
+                // Spacing before counts
+                yPos += 10;
 
-                doc.setFontSize(12);
-                doc.text(`LOAD: ${formData.loadNumber || 'N/A'}`, 3, 3.8, { align: 'center' });
+                // PALLETS / UNITS / LOAD (each on its own line)
+                doc.setFontSize(36);
+                doc.text(`PALLETS: ${pallets}`, margin, yPos);
+                yPos += lineHeight;
+                doc.text(`UNITS: ${formData.units}`, margin, yPos);
+                yPos += lineHeight;
+                doc.text(`LOAD: ${formData.loadNumber || 'N/A'}`, margin, yPos);
+                yPos += lineHeight + 10;
+
+                // Thank you message (smaller, wrapping)
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(20);
+                const thankYouMsg = 'Please count your shipment carefully that there are no damages due to shipping. Jamis Bicycles thanks you for your order.';
+                const msgLines = doc.splitTextToSize(thankYouMsg, pageWidth - margin * 2);
+                doc.text(msgLines, margin, yPos);
+
+                // --- PAGE B: PALLET NUMBER ONLY (clean, centered) ---
+                doc.addPage('a4', 'landscape');
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(200);
+                const textNum = `${i + 1} of ${pallets}`;
+                const textWidth = doc.getTextWidth(textNum);
+                const xCenter = (pageWidth - textWidth) / 2;
+                const yCenter = (pageHeight / 2) + 30; // Adjust for font baseline
+                doc.text(textNum, xCenter, yCenter);
             }
 
             const blob = doc.output('bloburl');
