@@ -591,7 +591,7 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
       )}
 
 
-      {showWelcome ? (
+      {showWelcome && !isSearching ? (
         <div className="mx-4 mt-4 relative group animate-in fade-in slide-in-from-top-4 duration-1000">
           <div className="absolute -inset-0.5 bg-gradient-to-r from-accent to-blue-600 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
           <div className="relative bg-surface border border-accent/20 rounded-2xl p-6 overflow-hidden">
@@ -659,7 +659,7 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
 
             return (
               <div key={`${wh}-${location}`} className="space-y-4">
-                {isFirstInWarehouse && (
+                {isFirstInWarehouse && !isSearching && (
                   <div className="flex items-center gap-4 pt-8 pb-2">
                     <div className="h-px flex-1 bg-subtle" />
                     <h2 className="text-2xl font-black uppercase tracking-tighter text-content bg-surface px-6 py-2 rounded-full border border-subtle shadow-sm flex items-center gap-3" style={{ fontFamily: 'var(--font-heading)' }}>

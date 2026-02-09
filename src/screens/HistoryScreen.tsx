@@ -24,6 +24,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
 import { useConfirmation } from '../context/ConfirmationContext';
+import { useViewMode } from '../context/ViewModeContext';
 
 import type { InventoryLog, LogActionTypeValue } from '../schemas/log.schema';
 
@@ -43,6 +44,7 @@ export const HistoryScreen = () => {
   const [timeFilter, setTimeFilter] = useState('TODAY');
   const [searchQuery, setSearchQuery] = useState('');
   const [undoingId, setUndoingId] = useState<string | null>(null);
+  const { isSearching } = useViewMode();
   const debouncedSearch = useDebounce(searchQuery, 300);
 
   // Auto-scroll to top when searching to ensure results are visible
@@ -785,23 +787,25 @@ export const HistoryScreen = () => {
 
   return (
     <div className="flex flex-col h-full bg-main text-content p-4 max-w-2xl mx-auto w-full">
-      <header className="flex justify-between items-end mb-8 pt-6">
-        <div>
-          <h1 className="text-5xl font-black uppercase tracking-tighter leading-none">History</h1>
-          <p className="text-muted text-[10px] font-black uppercase tracking-[0.3em] mt-2 flex items-center gap-2">
-            <Clock size={10} /> Live Activity Log
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={fetchLogs}
-            className="p-3 bg-surface border border-subtle rounded-2xl hover:opacity-80 transition-all text-content"
-            title="Refresh Logs"
-          >
-            <RotateCcw className={loading || manualLoading ? 'animate-spin' : ''} size={20} />
-          </button>
-        </div>
-      </header>
+      {!isSearching && (
+        <header className="flex justify-between items-end mb-8 pt-6">
+          <div>
+            <h1 className="text-5xl font-black uppercase tracking-tighter leading-none">History</h1>
+            <p className="text-muted text-[10px] font-black uppercase tracking-[0.3em] mt-2 flex items-center gap-2">
+              <Clock size={10} /> Live Activity Log
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={fetchLogs}
+              className="p-3 bg-surface border border-subtle rounded-2xl hover:opacity-80 transition-all text-content"
+              title="Refresh Logs"
+            >
+              <RotateCcw className={loading || manualLoading ? 'animate-spin' : ''} size={20} />
+            </button>
+          </div>
+        </header>
+      )}
 
       {/* Search and Filters */}
       <div className="space-y-4 mb-8">
@@ -812,70 +816,74 @@ export const HistoryScreen = () => {
           autoFocus
         />
 
-        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-          {['ALL', 'MOVE', 'ADD', 'DEDUCT', 'DELETE'].map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f as any)}
-              className={`px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border shrink-0 ${filter === f
-                ? 'bg-accent border-accent/20 text-main shadow-lg shadow-accent/20'
-                : 'bg-surface text-muted border-subtle hover:border-muted/30'
-                }`}
-            >
-              {f === 'DEDUCT' ? 'Picking' : f}
-            </button>
-          ))}
-        </div>
+        {!isSearching && (
+          <>
+            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+              {['ALL', 'MOVE', 'ADD', 'DEDUCT', 'DELETE'].map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setFilter(f as any)}
+                  className={`px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border shrink-0 ${filter === f
+                    ? 'bg-accent border-accent/20 text-main shadow-lg shadow-accent/20'
+                    : 'bg-surface text-muted border-subtle hover:border-muted/30'
+                    }`}
+                >
+                  {f === 'DEDUCT' ? 'Picking' : f}
+                </button>
+              ))}
+            </div>
 
-        {/* User Filters */}
-        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide items-center">
-          <div className="shrink-0 p-2 bg-surface/50 rounded-full border border-subtle">
-            <Users size={14} className="text-muted" />
-          </div>
-          <button
-            onClick={() => setUserFilter('ALL')}
-            className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border shrink-0 ${userFilter === 'ALL'
-              ? 'bg-content text-main border-content shadow-lg'
-              : 'bg-surface text-muted border-subtle hover:border-muted/30'
-              }`}
-          >
-            All Users
-          </button>
-          {uniqueUsers.map((user) => (
-            <button
-              key={user}
-              onClick={() => setUserFilter(user)}
-              style={{
-                borderColor: userFilter === user ? getUserColor(user) : undefined,
-                color: userFilter === user ? 'white' : getUserColor(user),
-                backgroundColor: userFilter === user ? getUserColor(user) : getUserBgColor(user),
-              }}
-              className={`px-4 py-2 rounded-full text-[10px] font-bold transition-all border shrink-0 flex items-center gap-2 ${userFilter === user ? 'shadow-lg' : 'hover:border-muted/30'}`}
-            >
-              <User size={10} />
-              {user}
-            </button>
-          ))}
-        </div>
+            {/* User Filters */}
+            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide items-center">
+              <div className="shrink-0 p-2 bg-surface/50 rounded-full border border-subtle">
+                <Users size={14} className="text-muted" />
+              </div>
+              <button
+                onClick={() => setUserFilter('ALL')}
+                className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border shrink-0 ${userFilter === 'ALL'
+                  ? 'bg-content text-main border-content shadow-lg'
+                  : 'bg-surface text-muted border-subtle hover:border-muted/30'
+                  }`}
+              >
+                All Users
+              </button>
+              {uniqueUsers.map((user) => (
+                <button
+                  key={user}
+                  onClick={() => setUserFilter(user)}
+                  style={{
+                    borderColor: userFilter === user ? getUserColor(user) : undefined,
+                    color: userFilter === user ? 'white' : getUserColor(user),
+                    backgroundColor: userFilter === user ? getUserColor(user) : getUserBgColor(user),
+                  }}
+                  className={`px-4 py-2 rounded-full text-[10px] font-bold transition-all border shrink-0 flex items-center gap-2 ${userFilter === user ? 'shadow-lg' : 'hover:border-muted/30'}`}
+                >
+                  <User size={10} />
+                  {user}
+                </button>
+              ))}
+            </div>
 
-        {/* Time Filters */}
-        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide items-center">
-          <div className="shrink-0 p-2 bg-surface/50 rounded-full border border-subtle">
-            <Clock size={14} className="text-muted" />
-          </div>
-          {['TODAY', 'YESTERDAY', 'WEEK', 'MONTH', 'ALL'].map((tf) => (
-            <button
-              key={tf}
-              onClick={() => setTimeFilter(tf)}
-              className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border shrink-0 ${timeFilter === tf
-                ? 'bg-accent border-accent/20 text-main shadow-lg shadow-accent/20'
-                : 'bg-surface text-muted border-subtle hover:border-muted/30'
-                }`}
-            >
-              {tf.toLowerCase()}
-            </button>
-          ))}
-        </div>
+            {/* Time Filters */}
+            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide items-center">
+              <div className="shrink-0 p-2 bg-surface/50 rounded-full border border-subtle">
+                <Clock size={14} className="text-muted" />
+              </div>
+              {['TODAY', 'YESTERDAY', 'WEEK', 'MONTH', 'ALL'].map((tf) => (
+                <button
+                  key={tf}
+                  onClick={() => setTimeFilter(tf)}
+                  className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border shrink-0 ${timeFilter === tf
+                    ? 'bg-accent border-accent/20 text-main shadow-lg shadow-accent/20'
+                    : 'bg-surface text-muted border-subtle hover:border-muted/30'
+                    }`}
+                >
+                  {tf.toLowerCase()}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Logs List */}
