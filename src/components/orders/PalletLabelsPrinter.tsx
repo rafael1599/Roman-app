@@ -143,7 +143,7 @@ export const PalletLabelsPrinter = ({ onClose, order }: PalletLabelsPrinterProps
 
                 // Small Load # at bottom of numbering page for reference
                 doc.setFontSize(12);
-                doc.text(`LOAD: ${loadNumber} | ${customerName}`, 3, 3.8, { align: 'center' });
+                doc.text(`LOAD: ${loadNumber}`, 3, 3.8, { align: 'center' });
             }
 
             const blob = doc.output('bloburl');
