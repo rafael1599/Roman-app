@@ -191,8 +191,8 @@ export const OrdersScreen = () => {
                 let yPos = 45;
                 const lineHeight = 18;
 
-                // Customer Name (large, bold)
-                doc.setFont('helvetica', 'bold');
+                // Customer Name (large, bold, monospace like preview)
+                doc.setFont('courier', 'bold');
                 doc.setFontSize(36);
                 const nameLines = doc.splitTextToSize(customerName, pageWidth - margin * 2);
                 doc.text(nameLines, margin, yPos);
@@ -220,9 +220,9 @@ export const OrdersScreen = () => {
                 doc.text(`LOAD: ${formData.loadNumber || 'N/A'}`, margin, yPos);
                 yPos += lineHeight + 10;
 
-                // Thank you message (smaller, wrapping)
-                doc.setFont('helvetica', 'normal');
-                doc.setFontSize(20);
+                // Thank you message (larger for sticker printing)
+                doc.setFont('courier', 'normal');
+                doc.setFontSize(28);
                 const thankYouMsg = 'Please count your shipment carefully that there are no damages due to shipping. Jamis Bicycles thanks you for your order.';
                 const msgLines = doc.splitTextToSize(thankYouMsg, pageWidth - margin * 2);
                 doc.text(msgLines, margin, yPos);
