@@ -211,7 +211,7 @@ export const OrdersScreen = () => {
                 const minFontSize = 24;
                 let fits = false;
 
-                doc.setFont('courier', 'bold');
+                doc.setFont('helvetica', 'bold');
 
                 while (fontSize >= minFontSize && !fits) {
                     doc.setFontSize(fontSize);
@@ -244,7 +244,7 @@ export const OrdersScreen = () => {
 
                 // Render with the calculated font size
                 let yPos = margin + fontSize * 0.8;
-                doc.setFont('courier', 'bold');
+                doc.setFont('helvetica', 'bold');
                 doc.setFontSize(fontSize);
 
                 for (const line of contentLines) {

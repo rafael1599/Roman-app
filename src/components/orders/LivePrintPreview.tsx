@@ -28,7 +28,7 @@ export const LivePrintPreview: React.FC<LivePrintPreviewProps> = ({ data }) => {
         pages.push(
             <div
                 key={`info-${i}`}
-                className="preview-page font-mono uppercase bg-white text-black border border-zinc-300 shadow-2xl flex flex-col justify-center overflow-hidden"
+                className="preview-page font-sans uppercase bg-white text-black border border-zinc-300 shadow-2xl flex flex-col justify-center overflow-hidden"
                 style={{ width: '297mm', height: '210mm' }}
             >
                 <div className="page-content w-[90%] mx-auto p-4 flex flex-col justify-center h-full">
