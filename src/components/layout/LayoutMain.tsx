@@ -8,7 +8,6 @@ import { useAuth } from '../../context/AuthContext';
 import { UserMenu } from './UserMenu';
 import { DoubleCheckHeader } from '../../features/picking/components/DoubleCheckHeader';
 import { SyncStatusIndicator } from './SyncStatusIndicator';
-import Check from 'lucide-react/dist/esm/icons/check';
 
 interface LayoutMainProps {
   children: ReactNode;
@@ -58,8 +57,13 @@ export const LayoutMain = ({ children, onExport }: LayoutMainProps) => {
                 <span className="text-content">ICK</span>
                 <span className="text-accent">D</span>
               </h1>
-              <div className="w-6 h-6 bg-accent rounded-lg flex items-center justify-center shadow-lg shadow-accent/20 animate-pickd-check">
-                <Check className="text-white w-4 h-4" strokeWidth={4} />
+              <div className="w-8 h-8 relative group">
+                <div className="absolute inset-0 bg-accent/10 blur-lg rounded-full animate-pulse group-hover:bg-accent/20 transition-all opacity-0 group-hover:opacity-100" />
+                <img
+                  src="/PickD.png"
+                  alt="Logo"
+                  className="w-full h-full relative z-10 object-contain animate-pickd-check"
+                />
               </div>
             </div>
           </div>

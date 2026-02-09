@@ -271,6 +271,7 @@ export const UserMenu = ({ isOpen, onClose, onExport, navigate }: UserMenuProps)
               {profile?.role?.toUpperCase()} ACCOUNT
             </p>
           </div>
+          <img src="/PickD.png" alt="PickD" className="w-6 h-6 grayscale opacity-30 hover:grayscale-0 hover:opacity-100 transition-all" />
         </div>
       </div>
 

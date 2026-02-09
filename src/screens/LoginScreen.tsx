@@ -40,12 +40,19 @@ export const LoginScreen = () => {
     <div className="min-h-screen bg-main flex items-center justify-center p-4">
       <div className="w-full max-w-sm space-y-8">
         <div className="text-center space-y-2">
-          <div className="w-16 h-16 bg-accent rounded-2xl mx-auto flex items-center justify-center shadow-2xl shadow-accent/20 mb-6">
-            <h1 className="text-2xl font-black text-white px-2" style={{ fontFamily: 'var(--font-heading)' }}>P</h1>
+          <div className="mx-auto mb-8 flex flex-col items-center">
+            <div className="w-24 h-24 mb-6 relative group transform transition-all duration-700 hover:scale-110 active:scale-95">
+              <div className="absolute inset-0 bg-accent/20 blur-2xl rounded-full scale-150 animate-pulse opacity-50" />
+              <img
+                src="/PickD.png"
+                alt="PickD Logo"
+                className="w-full h-full relative z-10 drop-shadow-2xl animate-pickd-check"
+              />
+            </div>
+            <h1 className="text-4xl font-black text-content tracking-tighter" style={{ fontFamily: 'var(--font-heading)' }}>
+              <span className="text-accent underline decoration-4 decoration-accent/30 underline-offset-4">P</span>ICK<span className="text-accent">D</span>
+            </h1>
           </div>
-          <h1 className="text-3xl font-black text-content tracking-tighter" style={{ fontFamily: 'var(--font-heading)' }}>
-            <span className="text-accent">P</span>ICK<span className="text-accent">D</span>
-          </h1>
           <p className="text-muted font-medium">Sign in to access</p>
         </div>
 
