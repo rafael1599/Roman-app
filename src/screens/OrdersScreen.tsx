@@ -41,7 +41,7 @@ export const OrdersScreen = () => {
     useEffect(() => {
         if (selectedOrder) {
             setFormData({
-                customerName: selectedOrder.customer_name || selectedOrder.customer?.name || '',
+                customerName: selectedOrder.customer?.name || '',
                 street: selectedOrder.customer?.street || '',
                 city: selectedOrder.customer?.city || '',
                 state: selectedOrder.customer?.state || '',
@@ -144,7 +144,6 @@ export const OrdersScreen = () => {
             const { error: orderError } = await supabase
                 .from('picking_lists')
                 .update({
-                    customer_name: formData.customerName,
                     pallets_qty: formData.pallets,
                     total_units: formData.units,
                     load_number: formData.loadNumber
