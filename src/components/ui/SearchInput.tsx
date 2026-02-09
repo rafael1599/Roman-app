@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Search from 'lucide-react/dist/esm/icons/search';
 import Scan from 'lucide-react/dist/esm/icons/scan';
 import Type from 'lucide-react/dist/esm/icons/type';
@@ -22,10 +22,18 @@ export const SearchInput: React.FC<SearchInputProps> = ({
     onScanClick,
     autoFocus = false,
 }) => {
+    const inputRef = useRef<HTMLInputElement>(null);
     const [keyboardMode, setKeyboardMode] = useState<'text' | 'numeric'>(() => {
         const saved = localStorage.getItem('kb_pref_main_search');
         return (saved as 'text' | 'numeric') || 'numeric';
     });
+
+    // Manually trigger focus when mode changes or on initial mount if autoFocus is true
+    useEffect(() => {
+        if (autoFocus && inputRef.current) {
+            inputRef.current.focus();
+        }
+    }, [mode, autoFocus]);
 
     const toggleMode = () => {
         const newMode = keyboardMode === 'text' ? 'numeric' : 'text';
@@ -39,6 +47,7 @@ export const SearchInput: React.FC<SearchInputProps> = ({
                 <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-500 w-5 h-5" />
                     <input
+                        ref={inputRef}
                         type="text"
                         value={value}
                         onChange={(e) => onChange(e.target.value)}

@@ -14,11 +14,10 @@ import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
 import MoveIcon from 'lucide-react/dist/esm/icons/move';
 import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle';
 import Calendar from 'lucide-react/dist/esm/icons/calendar';
-import Search from 'lucide-react/dist/esm/icons/search';
-import Mail from 'lucide-react/dist/esm/icons/mail';
 import User from 'lucide-react/dist/esm/icons/user';
 import Users from 'lucide-react/dist/esm/icons/users';
 import Settings from 'lucide-react/dist/esm/icons/settings';
+import { SearchInput } from '../components/ui/SearchInput';
 import { getUserColor, getUserBgColor } from '../utils/userUtils';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
@@ -798,20 +797,12 @@ export const HistoryScreen = () => {
 
       {/* Search and Filters */}
       <div className="space-y-4 mb-8">
-        <div className="relative group">
-          <Search
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-muted group-focus-within:text-accent transition-colors"
-            size={18}
-          />
-          <input
-            type="text"
-            placeholder="Search SKU or Location..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            inputMode="numeric"
-            className="w-full bg-surface/50 border border-subtle rounded-2xl py-4 pl-12 pr-4 text-sm font-medium focus:outline-none focus:border-accent/50 focus:ring-4 focus:ring-accent/10 transition-all placeholder:text-muted/50 text-content"
-          />
-        </div>
+        <SearchInput
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder="Search SKU or Location..."
+          autoFocus
+        />
 
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
           {['ALL', 'MOVE', 'ADD', 'DEDUCT', 'DELETE'].map((f) => (
