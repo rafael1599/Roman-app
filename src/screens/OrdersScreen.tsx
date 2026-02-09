@@ -11,7 +11,6 @@ import MapPin from 'lucide-react/dist/esm/icons/map-pin';
 import Hash from 'lucide-react/dist/esm/icons/hash';
 import Truck from 'lucide-react/dist/esm/icons/truck';
 import toast from 'react-hot-toast';
-import { PalletLabelsPrinter } from '../components/orders/PalletLabelsPrinter';
 import { LivePrintPreview } from '../components/orders/LivePrintPreview';
 
 export const OrdersScreen = () => {
@@ -22,7 +21,7 @@ export const OrdersScreen = () => {
     const [isSaving, setIsSaving] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [timeFilter, setTimeFilter] = useState('ALL');
-    const [showPrintPreview, setShowPrintPreview] = useState(false);
+    const [isPrinting, setIsPrinting] = useState(false);
 
     // Form state for live editing
     const [formData, setFormData] = useState({
@@ -144,9 +143,103 @@ export const OrdersScreen = () => {
         }
     };
 
-    const handlePrint = () => {
+    const handlePrint = async () => {
         if (!selectedOrder) return;
-        setShowPrintPreview(true);
+
+        // Build warnings for missing data
+        const warnings: string[] = [];
+        if (!formData.loadNumber.trim()) warnings.push('Load Number');
+        if (!formData.street.trim()) warnings.push('Street Address');
+        if (!formData.city.trim()) warnings.push('City');
+
+        if (warnings.length > 0) {
+            toast(`Missing: ${warnings.join(', ')}`, {
+                icon: '⚠️',
+                style: {
+                    background: '#fef3c7',
+                    color: '#92400e',
+                    border: '1px solid #f59e0b',
+                    fontWeight: 600,
+                },
+                duration: 4000,
+            });
+        }
+
+        setIsPrinting(true);
+        try {
+            const { default: jsPDF } = await import('jspdf');
+
+            const doc = new jsPDF({
+                orientation: 'landscape',
+                unit: 'in',
+                format: [6, 4]
+            });
+
+            const customerName = (formData.customerName || 'GENERIC CUSTOMER').toUpperCase();
+            const hasAddress = formData.street && formData.city;
+            const pallets = formData.pallets || 1;
+
+            for (let i = 0; i < pallets; i++) {
+                // --- PAGE A: COMPANY INFO ---
+                if (i > 0) doc.addPage([6, 4], 'landscape');
+
+                if (hasAddress) {
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(28);
+                    const nameLines = doc.splitTextToSize(customerName, 5.5);
+                    doc.text(nameLines, 0.5, 0.8);
+
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(18);
+                    doc.text(`${formData.street.toUpperCase()}`, 0.5, 1.4);
+                    doc.text(`${formData.city.toUpperCase()}, ${formData.state.toUpperCase()} ${formData.zip}`, 0.5, 1.7);
+
+                    doc.setLineWidth(0.05);
+                    doc.line(0.5, 2.1, 5.5, 2.1);
+
+                    doc.setFontSize(14);
+                    doc.text(`PALLETS: ${pallets}  |  UNITS: ${formData.units}`, 0.5, 2.5);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(32);
+                    doc.text(`LOAD: ${formData.loadNumber || 'N/A'}`, 0.5, 3.2);
+
+                    doc.setFontSize(12);
+                    doc.text(`DATE: ${new Date().toLocaleDateString()}`, 0.5, 3.7);
+                } else {
+                    let fontSize = 70;
+                    if (customerName.length > 20) fontSize = 50;
+                    if (customerName.length > 35) fontSize = 35;
+
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(fontSize);
+                    const customerLines = doc.splitTextToSize(customerName, 5.5);
+                    const textHeight = (customerLines.length * fontSize) / 72;
+                    doc.text(customerLines, 3, (2.0 - textHeight / 2), { align: 'center' });
+
+                    doc.setFontSize(24);
+                    doc.text(`LOAD: ${formData.loadNumber || 'N/A'}`, 3, 3.5, { align: 'center' });
+                }
+
+                // --- PAGE B: NUMBERING ONLY ---
+                doc.addPage([6, 4], 'landscape');
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(110);
+                const textNum = `${i + 1} OF ${pallets}`;
+                const numWidth = doc.getTextWidth(textNum);
+                doc.text(textNum, (6 - numWidth) / 2, 2.3);
+
+                doc.setFontSize(12);
+                doc.text(`LOAD: ${formData.loadNumber || 'N/A'}`, 3, 3.8, { align: 'center' });
+            }
+
+            const blob = doc.output('bloburl');
+            window.open(blob, '_blank');
+        } catch (error) {
+            console.error('Error generating PDF:', error);
+            toast.error('Failed to generate PDF');
+        } finally {
+            setIsPrinting(false);
+        }
     };
 
     if (loading) {
@@ -343,10 +436,11 @@ export const OrdersScreen = () => {
                             <button
                                 type="button"
                                 onClick={handlePrint}
-                                className="flex-[1.5] h-11 bg-accent text-white rounded-xl flex items-center justify-center gap-2 text-[9px] font-black uppercase tracking-widest shadow-lg shadow-accent/20 active:scale-95 transition-all"
+                                disabled={isPrinting}
+                                className="flex-[1.5] h-11 bg-accent text-white rounded-xl flex items-center justify-center gap-2 text-[9px] font-black uppercase tracking-widest shadow-lg shadow-accent/20 active:scale-95 transition-all disabled:opacity-50"
                             >
-                                <Printer size={16} />
-                                Print Labels
+                                {isPrinting ? <Loader2 size={16} className="animate-spin" /> : <Printer size={16} />}
+                                {isPrinting ? 'Loading...' : 'Print Labels'}
                             </button>
                         </div>
                     </form>
@@ -366,27 +460,6 @@ export const OrdersScreen = () => {
                     </div>
                 )}
             </main>
-
-            {/* Print Modal (jsPDF) */}
-            {showPrintPreview && selectedOrder && (
-                <PalletLabelsPrinter
-                    order={{
-                        ...selectedOrder,
-                        customer_name: formData.customerName,
-                        pallets_qty: formData.pallets,
-                        total_units: formData.units,
-                        load_number: formData.loadNumber,
-                        customer_details: {
-                            name: formData.customerName,
-                            street: formData.street,
-                            city: formData.city,
-                            state: formData.state,
-                            zip_code: formData.zip
-                        }
-                    }}
-                    onClose={() => setShowPrintPreview(false)}
-                />
-            )}
         </div>
     );
 };
