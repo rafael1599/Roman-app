@@ -19,6 +19,14 @@ export const OrdersScreen = () => {
     const [selectedOrder, setSelectedOrder] = useState<any>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [timeFilter, setTimeFilter] = useState('ALL');
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+    // Auto-scroll to top when searching to ensure results are visible
+    useEffect(() => {
+        if (searchQuery && scrollContainerRef.current) {
+            scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    }, [searchQuery]);
     const [isPrinting, setIsPrinting] = useState(false);
 
     // Form state for live editing
