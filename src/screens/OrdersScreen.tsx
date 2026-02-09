@@ -387,128 +387,130 @@ export const OrdersScreen = () => {
                     )}
                 </div>
 
-                {/* Active Order Form */}
+                {/* Active Order Form - Only visible on desktop here, moved inside main for mobile */}
                 {selectedOrder && (
-                    <form
-                        onSubmit={(e) => e.preventDefault()}
-                        className="p-4 border-t border-subtle bg-card shrink-0 space-y-3"
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter' && !isPrinting) {
-                                e.preventDefault();
-                                handlePrint();
-                            }
-                        }}
-                    >
-                        <div className="flex items-center justify-between mb-2">
-                            <p className="text-[9px] text-muted font-black uppercase tracking-widest">Active Order</p>
-                            <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded-full bg-accent/10 text-accent border border-accent/20">
-                                {selectedOrder.status || 'pending'}
-                            </span>
-                        </div>
-
-                        {/* Customer Name */}
-                        <div>
-                            <label className="text-[9px] text-muted font-black uppercase tracking-widest mb-1 block">Customer</label>
-                            <input
-                                type="text"
-                                value={formData.customerName}
-                                onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
-                                className="w-full bg-surface border border-subtle rounded-lg px-3 py-2 text-xs text-content focus:outline-none focus:border-accent transition-colors"
-                            />
-                        </div>
-
-                        {/* Address Fields */}
-                        <div className="space-y-2">
-                            <label className="text-[9px] text-muted font-black uppercase tracking-widest flex items-center gap-1">
-                                <MapPin size={10} /> Destination
-                            </label>
-                            <input
-                                type="text"
-                                placeholder="Street Address"
-                                value={formData.street}
-                                onChange={(e) => setFormData({ ...formData, street: e.target.value })}
-                                className="w-full bg-surface border border-subtle rounded-lg px-3 py-2 text-xs text-content focus:outline-none focus:border-accent transition-colors"
-                            />
-                            <div className="grid grid-cols-3 gap-2">
-                                <input
-                                    type="text"
-                                    placeholder="City"
-                                    value={formData.city}
-                                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                                    className="col-span-1 bg-surface border border-subtle rounded-lg px-2 py-2 text-xs text-content focus:outline-none focus:border-accent transition-colors"
-                                />
-                                <input
-                                    type="text"
-                                    placeholder="ST"
-                                    maxLength={2}
-                                    value={formData.state}
-                                    onChange={(e) => setFormData({ ...formData, state: e.target.value.toUpperCase() })}
-                                    className="bg-surface border border-subtle rounded-lg px-2 py-2 text-xs text-content focus:outline-none focus:border-accent transition-colors text-center"
-                                />
-                                <input
-                                    type="text"
-                                    placeholder="Zip"
-                                    value={formData.zip}
-                                    onChange={(e) => setFormData({ ...formData, zip: e.target.value })}
-                                    className="bg-surface border border-subtle rounded-lg px-2 py-2 text-xs text-content focus:outline-none focus:border-accent transition-colors"
-                                />
+                    <div className="hidden md:block">
+                        <form
+                            onSubmit={(e) => e.preventDefault()}
+                            className="p-4 border-t border-subtle bg-card shrink-0 space-y-3"
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !isPrinting) {
+                                    e.preventDefault();
+                                    handlePrint();
+                                }
+                            }}
+                        >
+                            <div className="flex items-center justify-between mb-2">
+                                <p className="text-[9px] text-muted font-black uppercase tracking-widest">Active Order</p>
+                                <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded-full bg-accent/10 text-accent border border-accent/20">
+                                    {selectedOrder.status || 'pending'}
+                                </span>
                             </div>
-                        </div>
 
-                        {/* Pallets & Units */}
-                        <div className="grid grid-cols-2 gap-2">
+                            {/* Customer Name */}
                             <div>
-                                <label className="text-[9px] text-muted font-black uppercase tracking-widest mb-1 block">Pallets</label>
+                                <label className="text-[9px] text-muted font-black uppercase tracking-widest mb-1 block">Customer</label>
                                 <input
-                                    type="number"
-                                    min="1"
-                                    onKeyDown={(e) => ['e', 'E', '-', '+'].includes(e.key) && e.preventDefault()}
-                                    value={formData.pallets}
-                                    onChange={(e) => setFormData({ ...formData, pallets: Math.max(1, parseInt(e.target.value) || 1) })}
+                                    type="text"
+                                    value={formData.customerName}
+                                    onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
                                     className="w-full bg-surface border border-subtle rounded-lg px-3 py-2 text-xs text-content focus:outline-none focus:border-accent transition-colors"
                                 />
                             </div>
-                            <div>
-                                <label className="text-[9px] text-muted font-black uppercase tracking-widest mb-1 block">Units</label>
+
+                            {/* Address Fields */}
+                            <div className="space-y-2">
+                                <label className="text-[9px] text-muted font-black uppercase tracking-widest flex items-center gap-1">
+                                    <MapPin size={10} /> Destination
+                                </label>
                                 <input
-                                    type="number"
-                                    min="0"
-                                    onKeyDown={(e) => ['e', 'E', '-', '+'].includes(e.key) && e.preventDefault()}
-                                    value={formData.units}
-                                    onChange={(e) => setFormData({ ...formData, units: Math.max(0, parseInt(e.target.value) || 0) })}
+                                    type="text"
+                                    placeholder="Street Address"
+                                    value={formData.street}
+                                    onChange={(e) => setFormData({ ...formData, street: e.target.value })}
                                     className="w-full bg-surface border border-subtle rounded-lg px-3 py-2 text-xs text-content focus:outline-none focus:border-accent transition-colors"
                                 />
+                                <div className="grid grid-cols-3 gap-2">
+                                    <input
+                                        type="text"
+                                        placeholder="City"
+                                        value={formData.city}
+                                        onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                                        className="col-span-1 bg-surface border border-subtle rounded-lg px-2 py-2 text-xs text-content focus:outline-none focus:border-accent transition-colors"
+                                    />
+                                    <input
+                                        type="text"
+                                        placeholder="ST"
+                                        maxLength={2}
+                                        value={formData.state}
+                                        onChange={(e) => setFormData({ ...formData, state: e.target.value.toUpperCase() })}
+                                        className="bg-surface border border-subtle rounded-lg px-2 py-2 text-xs text-content focus:outline-none focus:border-accent transition-colors text-center"
+                                    />
+                                    <input
+                                        type="text"
+                                        placeholder="Zip"
+                                        value={formData.zip}
+                                        onChange={(e) => setFormData({ ...formData, zip: e.target.value })}
+                                        className="bg-surface border border-subtle rounded-lg px-2 py-2 text-xs text-content focus:outline-none focus:border-accent transition-colors"
+                                    />
+                                </div>
                             </div>
-                        </div>
 
-                        {/* Load Number */}
-                        <div>
-                            <label className="text-[9px] text-muted font-black uppercase tracking-widest mb-1 flex items-center gap-1">
-                                <Hash size={10} /> Load Number
-                            </label>
-                            <input
-                                type="text"
-                                value={formData.loadNumber}
-                                onChange={(e) => setFormData({ ...formData, loadNumber: e.target.value.toUpperCase() })}
-                                placeholder="E.G. 127035968"
-                                className="w-full bg-surface border border-subtle rounded-lg px-3 py-2 text-xs text-content focus:outline-none focus:border-accent transition-colors font-mono"
-                            />
-                        </div>
+                            {/* Pallets & Units */}
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label className="text-[9px] text-muted font-black uppercase tracking-widest mb-1 block">Pallets</label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        onKeyDown={(e) => ['e', 'E', '-', '+'].includes(e.key) && e.preventDefault()}
+                                        value={formData.pallets}
+                                        onChange={(e) => setFormData({ ...formData, pallets: Math.max(1, parseInt(e.target.value) || 1) })}
+                                        className="w-full bg-surface border border-subtle rounded-lg px-3 py-2 text-xs text-content focus:outline-none focus:border-accent transition-colors"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-[9px] text-muted font-black uppercase tracking-widest mb-1 block">Units</label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        onKeyDown={(e) => ['e', 'E', '-', '+'].includes(e.key) && e.preventDefault()}
+                                        value={formData.units}
+                                        onChange={(e) => setFormData({ ...formData, units: Math.max(0, parseInt(e.target.value) || 0) })}
+                                        className="w-full bg-surface border border-subtle rounded-lg px-3 py-2 text-xs text-content focus:outline-none focus:border-accent transition-colors"
+                                    />
+                                </div>
+                            </div>
 
-                        {/* Action Button - Print Labels (also saves) */}
-                        <div className="pt-2">
-                            <button
-                                type="button"
-                                onClick={handlePrint}
-                                disabled={isPrinting}
-                                className="w-full h-12 bg-accent text-white rounded-xl flex items-center justify-center gap-2 text-xs font-black uppercase tracking-widest shadow-lg shadow-accent/20 active:scale-95 transition-all disabled:opacity-50"
-                            >
-                                {isPrinting ? <Loader2 size={16} className="animate-spin" /> : <Printer size={16} />}
-                                {isPrinting ? 'Saving & Generating...' : 'Print Labels'}
-                            </button>
-                            <p className="text-[9px] text-muted text-center mt-2">Data is saved automatically</p>
-                        </div>
-                    </form>
+                            {/* Load Number */}
+                            <div>
+                                <label className="text-[9px] text-muted font-black uppercase tracking-widest mb-1 flex items-center gap-1">
+                                    <Hash size={10} /> Load Number
+                                </label>
+                                <input
+                                    type="text"
+                                    value={formData.loadNumber}
+                                    onChange={(e) => setFormData({ ...formData, loadNumber: e.target.value.toUpperCase() })}
+                                    placeholder="E.G. 127035968"
+                                    className="w-full bg-surface border border-subtle rounded-lg px-3 py-2 text-xs text-content focus:outline-none focus:border-accent transition-colors font-mono"
+                                />
+                            </div>
+
+                            {/* Action Button - Print Labels (also saves) */}
+                            <div className="pt-2">
+                                <button
+                                    type="button"
+                                    onClick={handlePrint}
+                                    disabled={isPrinting}
+                                    className="w-full h-12 bg-accent text-white rounded-xl flex items-center justify-center gap-2 text-xs font-black uppercase tracking-widest shadow-lg shadow-accent/20 active:scale-95 transition-all disabled:opacity-50"
+                                >
+                                    {isPrinting ? <Loader2 size={16} className="animate-spin" /> : <Printer size={16} />}
+                                    {isPrinting ? 'Saving & Generating...' : 'Print Labels'}
+                                </button>
+                                <p className="text-[9px] text-muted text-center mt-2">Data is saved automatically</p>
+                            </div>
+                        </form>
+                    </div>
                 )}
             </aside>
 
@@ -536,8 +538,133 @@ export const OrdersScreen = () => {
                                 </p>
                             </div>
                         </header>
-                        <div className="flex-1 overflow-hidden">
-                            <LivePrintPreview data={formData} />
+                        <div className="flex-1 overflow-y-auto bg-surface">
+                            {/* Mobile-only form stack */}
+                            <div className="md:hidden">
+                                <form
+                                    onSubmit={(e) => e.preventDefault()}
+                                    className="p-4 border-b border-subtle bg-card space-y-4"
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && !isPrinting) {
+                                            e.preventDefault();
+                                            handlePrint();
+                                        }
+                                    }}
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-[10px] text-muted font-black uppercase tracking-widest">Edit Order Details</p>
+                                        <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded-full bg-accent/10 text-accent border border-accent/20">
+                                            {selectedOrder.status || 'pending'}
+                                        </span>
+                                    </div>
+
+                                    {/* Customer Name */}
+                                    <div>
+                                        <label className="text-[10px] text-muted font-black uppercase tracking-widest mb-1.5 block">Customer</label>
+                                        <input
+                                            type="text"
+                                            value={formData.customerName}
+                                            onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
+                                            className="w-full bg-surface border border-subtle rounded-xl px-4 py-3 text-sm text-content focus:outline-none focus:border-accent transition-colors"
+                                        />
+                                    </div>
+
+                                    {/* Address Fields */}
+                                    <div className="space-y-3">
+                                        <label className="text-[10px] text-muted font-black uppercase tracking-widest flex items-center gap-1">
+                                            <MapPin size={12} /> Destination Address
+                                        </label>
+                                        <input
+                                            type="text"
+                                            placeholder="Street Address"
+                                            value={formData.street}
+                                            onChange={(e) => setFormData({ ...formData, street: e.target.value })}
+                                            className="w-full bg-surface border border-subtle rounded-xl px-4 py-3 text-sm text-content focus:outline-none focus:border-accent transition-colors"
+                                        />
+                                        <div className="grid grid-cols-3 gap-2">
+                                            <input
+                                                type="text"
+                                                placeholder="City"
+                                                value={formData.city}
+                                                onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                                                className="col-span-1 bg-surface border border-subtle rounded-xl px-3 py-3 text-sm text-content focus:outline-none focus:border-accent transition-colors"
+                                            />
+                                            <input
+                                                type="text"
+                                                placeholder="ST"
+                                                maxLength={2}
+                                                value={formData.state}
+                                                onChange={(e) => setFormData({ ...formData, state: e.target.value.toUpperCase() })}
+                                                className="bg-surface border border-subtle rounded-xl px-3 py-3 text-sm text-content focus:outline-none focus:border-accent transition-colors text-center"
+                                            />
+                                            <input
+                                                type="text"
+                                                placeholder="Zip"
+                                                value={formData.zip}
+                                                onChange={(e) => setFormData({ ...formData, zip: e.target.value })}
+                                                className="bg-surface border border-subtle rounded-xl px-3 py-3 text-sm text-content focus:outline-none focus:border-accent transition-colors"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Pallets & Units */}
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="text-[10px] text-muted font-black uppercase tracking-widest mb-1.5 block">Pallets</label>
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                onKeyDown={(e) => ['e', 'E', '-', '+'].includes(e.key) && e.preventDefault()}
+                                                value={formData.pallets}
+                                                onChange={(e) => setFormData({ ...formData, pallets: Math.max(1, parseInt(e.target.value) || 1) })}
+                                                className="w-full bg-surface border border-subtle rounded-xl px-4 py-3 text-sm text-content focus:outline-none focus:border-accent transition-colors"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] text-muted font-black uppercase tracking-widest mb-1.5 block">Total Units</label>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                onKeyDown={(e) => ['e', 'E', '-', '+'].includes(e.key) && e.preventDefault()}
+                                                value={formData.units}
+                                                onChange={(e) => setFormData({ ...formData, units: Math.max(0, parseInt(e.target.value) || 0) })}
+                                                className="w-full bg-surface border border-subtle rounded-xl px-4 py-3 text-sm text-content focus:outline-none focus:border-accent transition-colors"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Load Number */}
+                                    <div>
+                                        <label className="text-[10px] text-muted font-black uppercase tracking-widest mb-1.5 flex items-center gap-1">
+                                            <Hash size={12} /> Load Number
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={formData.loadNumber}
+                                            onChange={(e) => setFormData({ ...formData, loadNumber: e.target.value.toUpperCase() })}
+                                            placeholder="E.G. 127035968"
+                                            className="w-full bg-surface border border-subtle rounded-xl px-4 py-3 text-sm text-content focus:outline-none focus:border-accent transition-colors font-mono"
+                                        />
+                                    </div>
+
+                                    {/* Mobile Print Button */}
+                                    <button
+                                        type="button"
+                                        onClick={handlePrint}
+                                        disabled={isPrinting}
+                                        className="w-full h-14 bg-accent text-white rounded-2xl flex items-center justify-center gap-3 text-sm font-black uppercase tracking-widest shadow-xl shadow-accent/20 active:scale-95 transition-all disabled:opacity-50"
+                                    >
+                                        {isPrinting ? <Loader2 size={18} className="animate-spin" /> : <Printer size={18} />}
+                                        {isPrinting ? 'Processing...' : 'Generate & Print'}
+                                    </button>
+                                </form>
+                            </div>
+
+                            {/* Preview Section */}
+                            <div className="p-4 md:p-0">
+                                <p className="md:hidden text-[10px] text-muted font-black uppercase tracking-[0.2em] mb-4 pl-1">Live Preview</p>
+                                <LivePrintPreview data={formData} />
+                            </div>
                         </div>
                     </>
                 ) : (
