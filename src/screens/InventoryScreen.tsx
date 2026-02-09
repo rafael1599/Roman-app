@@ -634,16 +634,25 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
         autoFocus={viewMode === 'picking'}
       />
 
-      {!isSearching && (
-        <div className="px-4 pt-2 flex items-center gap-2">
+      {(!isSearching || (allLocationBlocks.length === 0 && localSearch.trim() !== '')) && (
+        <div className={`px-4 pt-2 flex items-center gap-2 transition-all duration-300 ${allLocationBlocks.length === 0 && localSearch.trim() !== '' ? 'bg-blue-500/10 p-3 rounded-xl border border-blue-500/20 animate-in fade-in zoom-in-95 duration-500' : ''}`}>
           <input
             type="checkbox"
             id="show-inactive"
             checked={showInactive}
             onChange={(e) => setShowInactive(e.target.checked)}
-            className="rounded border-neutral-600 bg-surface text-accent focus:ring-accent focus:ring-offset-0 h-4 w-4"
+            className={`rounded transition-colors h-4 w-4 ${allLocationBlocks.length === 0 && localSearch.trim() !== ''
+              ? 'border-blue-500 text-blue-500 focus:ring-blue-500'
+              : 'border-neutral-600 bg-surface text-accent focus:ring-accent focus:ring-offset-0'
+              }`}
           />
-          <label htmlFor="show-inactive" className="text-sm text-muted font-medium cursor-pointer select-none">
+          <label
+            htmlFor="show-inactive"
+            className={`text-sm font-medium cursor-pointer select-none transition-colors ${allLocationBlocks.length === 0 && localSearch.trim() !== ''
+              ? 'text-blue-500 font-black uppercase tracking-wider'
+              : 'text-muted'
+              }`}
+          >
             Show Deleted Items
           </label>
         </div>
