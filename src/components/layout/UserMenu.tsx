@@ -197,7 +197,7 @@ export const UserMenu = ({ isOpen, onClose, onExport, navigate }: UserMenuProps)
                   </div>
                   <div>
                     <p className="text-xs font-bold text-content uppercase tracking-tight">
-                      My Orders
+                      Orders
                     </p>
                     <p className="text-[9px] text-muted font-bold uppercase">
                       View and Print labels
