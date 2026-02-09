@@ -32,7 +32,7 @@ export const LivePrintPreview: React.FC<LivePrintPreviewProps> = ({ data }) => {
                 style={{ width: '297mm', height: '210mm' }}
             >
                 <div className="page-content w-full mx-auto px-2 py-1 flex flex-col h-full">
-                    <div className="text-[5.5rem] leading-[0.9] font-black tracking-tighter">
+                    <div className="text-[6.5rem] leading-[0.85] font-black tracking-tighter">
                         <p>{customerName.toUpperCase()}</p>
                         {hasAddress && (
                             <>
@@ -42,16 +42,16 @@ export const LivePrintPreview: React.FC<LivePrintPreviewProps> = ({ data }) => {
                         )}
                     </div>
 
-                    <div className="mt-4 text-[5rem] leading-[0.9] font-black tracking-tighter">
+                    <div className="mt-2 text-[5.8rem] leading-[0.85] font-black tracking-tighter">
                         <p>PALLETS: {pallets}</p>
                         <p>UNITS: {units}</p>
                         <p>LOAD: {loadNumber}</p>
                     </div>
 
-                    <div className="mt-4 text-[2.8rem] leading-[1.0] font-bold uppercase">
+                    <div className="mt-auto mb-2 text-[2.8rem] leading-[1.0] font-bold uppercase">
                         <p>
-                            Please count your shipment carefully that there are no damages due to
-                            shipping. Jamis Bicycles thanks you for your order.
+                            PLEASE COUNT YOUR SHIPMENT CAREFULLY THAT THERE ARE NO DAMAGES DUE TO
+                            SHIPPING. JAMIS BICYCLES THANKS YOU FOR YOUR ORDER.
                         </p>
                     </div>
                 </div>

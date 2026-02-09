@@ -181,6 +181,8 @@ export const OrdersScreen = () => {
 
             const pageWidth = 297;
             const pageHeight = 210;
+            const PT_TO_MM = 0.3528; // Conversion factor from points to millimeters
+            const LINE_HEIGHT = 1.1; // Tighter line height factor
             const customerName = (formData.customerName || 'GENERIC CUSTOMER').toUpperCase();
             const street = formData.street.toUpperCase();
             const cityStateZip = `${formData.city.toUpperCase()}, ${formData.state.toUpperCase()} ${formData.zip}`;
@@ -215,16 +217,17 @@ export const OrdersScreen = () => {
 
                 while (fontSize >= minFontSize && !fits) {
                     doc.setFontSize(fontSize);
+                    doc.setLineHeightFactor(LINE_HEIGHT);
 
                     let totalHeight = margin;
 
                     // Calculate height for all main content lines
                     for (const line of contentLines) {
                         if (line === '') {
-                            totalHeight += fontSize * 0.3; // spacer
+                            totalHeight += (fontSize * PT_TO_MM) * 0.3; // spacer
                         } else {
                             const wrapped = doc.splitTextToSize(line, maxWidth);
-                            totalHeight += wrapped.length * (fontSize * 0.38);
+                            totalHeight += wrapped.length * (fontSize * PT_TO_MM * LINE_HEIGHT);
                         }
                     }
 
@@ -232,28 +235,29 @@ export const OrdersScreen = () => {
                     const msgFontSize = fontSize * 0.7;
                     doc.setFontSize(msgFontSize);
                     const msgWrapped = doc.splitTextToSize(thankYouMsg.toUpperCase(), maxWidth);
-                    totalHeight += msgWrapped.length * (msgFontSize * 0.38);
+                    totalHeight += msgWrapped.length * (msgFontSize * PT_TO_MM * LINE_HEIGHT);
 
                     // Check if it fits
                     if (totalHeight <= maxHeight) {
                         fits = true;
                     } else {
-                        fontSize -= 2;
+                        fontSize -= 1; // Finer precision
                     }
                 }
 
                 // Render with the calculated font size
-                let yPos = margin + fontSize * 0.8;
+                let yPos = margin + (fontSize * PT_TO_MM); // Start exactly at margin + CapHeight
                 doc.setFont('helvetica', 'bold');
                 doc.setFontSize(fontSize);
+                doc.setLineHeightFactor(LINE_HEIGHT);
 
                 for (const line of contentLines) {
                     if (line === '') {
-                        yPos += fontSize * 0.3; // spacer
+                        yPos += (fontSize * PT_TO_MM) * 0.3; // spacer
                     } else {
                         const wrapped = doc.splitTextToSize(line, maxWidth);
                         doc.text(wrapped, margin, yPos);
-                        yPos += wrapped.length * (fontSize * 0.38);
+                        yPos += wrapped.length * (fontSize * PT_TO_MM * LINE_HEIGHT);
                     }
                 }
 
