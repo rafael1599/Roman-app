@@ -177,6 +177,16 @@ export const InventoryScreen = () => {
   const [isMovementModalOpen, setIsMovementModalOpen] = useState(false);
   const [locationBeingEdited, setLocationBeingEdited] = useState<Location | any>(null);
 
+  const { isAdmin } = useAuth();
+  const { showError } = useError();
+  const { showConfirmation } = useConfirmation();
+  const {
+    locations: allMappedLocations,
+    createLocation,
+    updateLocation,
+    deactivateLocation,
+  } = useLocationManagement();
+
 
   // Picking Mode State
   const {
