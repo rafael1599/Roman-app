@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import jsPDF from 'jspdf';
 
 interface OrderPreviewData {
@@ -143,9 +143,59 @@ export const LivePrintPreview: React.FC<LivePrintPreviewProps> = ({ data }) => {
         );
     }
 
+    // Dynamic Scaling Logic
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [scale, setScale] = useState(0.35);
+
+    useEffect(() => {
+        const updateScale = () => {
+            if (!containerRef.current) return;
+            const containerWidth = containerRef.current.offsetWidth;
+            const isMobile = window.innerWidth < 768;
+
+            // Standard A4 landscape width in mm -> px (approx)
+            // 297mm = 1122.5px @ 96dpi
+            const BASE_WIDTH_PX = 1123;
+
+            if (isMobile) {
+                // Mobile: Fit full width minus padding
+                // We want a bit of margin, say 24px total (12px each side)
+                const availableWidth = window.innerWidth - 24;
+                const newScale = Math.min(availableWidth / BASE_WIDTH_PX, 0.9);
+                setScale(newScale);
+            } else {
+                // Desktop: Fit 2 columns or 1 column based on container
+                // We assume 2 columns for desktop layout if space permits
+                // Available width for ONE sheet in a 2-col grid
+                const availableColWidth = (containerWidth / 2) - 40; // minus gaps
+                const newScale = Math.min(Math.max(availableColWidth / BASE_WIDTH_PX, 0.25), 0.5);
+                setScale(newScale);
+            }
+        };
+
+        // Initial calc
+        updateScale();
+
+        // Observer for robust resizing
+        const observer = new ResizeObserver(() => {
+            window.requestAnimationFrame(updateScale);
+        });
+
+        if (containerRef.current) {
+            observer.observe(containerRef.current);
+        }
+
+        window.addEventListener('resize', updateScale);
+
+        return () => {
+            observer.disconnect();
+            window.removeEventListener('resize', updateScale);
+        };
+    }, []);
+
     return (
-        <div className="w-full flex-1 bg-surface md:bg-zinc-100 dark:md:bg-zinc-900/50 px-0 md:px-12 py-4 md:py-12 flex flex-col items-center min-h-0">
-            <div className="flex items-center justify-between w-full max-w-4xl mb-6 shrink-0">
+        <div ref={containerRef} className="w-full flex-1 bg-surface md:bg-zinc-100 dark:md:bg-zinc-900/50 px-0 md:px-12 py-4 md:py-12 flex flex-col items-center min-h-0 overflow-x-hidden">
+            <div className="flex items-center justify-between w-full max-w-4xl mb-6 shrink-0 px-4 md:px-0">
                 <div className="flex items-center gap-2 text-zinc-500">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -161,36 +211,17 @@ export const LivePrintPreview: React.FC<LivePrintPreviewProps> = ({ data }) => {
             </div>
 
             {/* Responsive Scaled Preview Area */}
-            <div className="w-full flex-1 flex justify-center perspective-1000">
+            <div className="w-full flex-1 flex justify-center">
                 <div
-                    className="preview-viewer grid gap-8 md:gap-16 justify-center origin-top h-fit pb-20"
+                    className="preview-viewer grid justify-center origin-top h-fit pb-20 transition-transform duration-200 ease-out"
                     style={{
-                        // 2 columns on desktop, 1 on mobile (handled by media query)
-                        gridTemplateColumns: 'repeat(2, 297mm)',
-                        // Dynamic scale handled via CSS for better performance
-                        transform: 'scale(var(--preview-scale, 0.35))',
+                        // Mobile: 1 col, Desktop: 2 cols
+                        gridTemplateColumns: window.innerWidth < 768 ? '297mm' : 'repeat(2, 297mm)',
+                        gap: window.innerWidth < 768 ? '60px' : '64px', // Space between sheets
+                        transform: `scale(${scale})`,
+                        marginBottom: `-${(1 - scale) * 100}%`, // Dynamic compensation
                     }}
                 >
-                    {/* Add a CSS variable calculation for mobile */}
-                    <style dangerouslySetInnerHTML={{
-                        __html: `
-                        :root { --preview-scale: 0.85; }
-                        /* Desktop Scales: Account for ~30% sidebar width */
-                        @media (min-width: 768px) { :root { --preview-scale: 0.25; } }
-                        @media (min-width: 1024px) { :root { --preview-scale: 0.32; } }
-                        @media (min-width: 1280px) { :root { --preview-scale: 0.38; } }
-                        @media (min-width: 1536px) { :root { --preview-scale: 0.45; } }
-                        
-                        @media (max-width: 767px) {
-                            .preview-viewer {
-                                transform: scale(calc(100vw / 1122.52)); /* Full bleed width */
-                                transform-origin: top center;
-                                margin-bottom: -180%; /* Increased compensation for vertical stacking */
-                                grid-template-columns: 297mm !important;
-                                gap: 20px !important;
-                            }
-                        }
-                    `}} />
                     {pages}
                 </div>
             </div>
