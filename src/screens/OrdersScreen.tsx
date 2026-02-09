@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
 import Package from 'lucide-react/dist/esm/icons/package';
 import Printer from 'lucide-react/dist/esm/icons/printer';
 import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right';
-import Save from 'lucide-react/dist/esm/icons/save';
 import Search from 'lucide-react/dist/esm/icons/search';
 import MapPin from 'lucide-react/dist/esm/icons/map-pin';
 import Hash from 'lucide-react/dist/esm/icons/hash';
@@ -18,7 +17,6 @@ export const OrdersScreen = () => {
     const [orders, setOrders] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedOrder, setSelectedOrder] = useState<any>(null);
-    const [isSaving, setIsSaving] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [timeFilter, setTimeFilter] = useState('ALL');
     const [isPrinting, setIsPrinting] = useState(false);
@@ -43,11 +41,11 @@ export const OrdersScreen = () => {
     useEffect(() => {
         if (selectedOrder) {
             setFormData({
-                customerName: selectedOrder.customer_name || '',
-                street: selectedOrder.customer_details?.street || '',
-                city: selectedOrder.customer_details?.city || '',
-                state: selectedOrder.customer_details?.state || '',
-                zip: selectedOrder.customer_details?.zip_code || '',
+                customerName: selectedOrder.customer_name || selectedOrder.customer?.name || '',
+                street: selectedOrder.customer?.street || '',
+                city: selectedOrder.customer?.city || '',
+                state: selectedOrder.customer?.state || '',
+                zip: selectedOrder.customer?.zip_code || '',
                 pallets: selectedOrder.pallets_qty || 1,
                 units: selectedOrder.total_units || 0,
                 loadNumber: selectedOrder.load_number || ''
@@ -118,31 +116,6 @@ export const OrdersScreen = () => {
         );
     }), [orders, searchQuery]);
 
-    const handleUpdateOrder = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!selectedOrder) return;
-        setIsSaving(true);
-        try {
-            const { error } = await supabase
-                .from('picking_lists')
-                .update({
-                    customer_name: formData.customerName,
-                    pallets_qty: formData.pallets,
-                    total_units: formData.units,
-                    load_number: formData.loadNumber
-                })
-                .eq('id', selectedOrder.id);
-
-            if (error) throw error;
-            toast.success('Order updated');
-            fetchOrders();
-        } catch (err) {
-            toast.error('Failed to update order');
-        } finally {
-            setIsSaving(false);
-        }
-    };
-
     const handlePrint = async () => {
         if (!selectedOrder) return;
 
@@ -167,6 +140,37 @@ export const OrdersScreen = () => {
 
         setIsPrinting(true);
         try {
+            // Auto-save order data before printing
+            const { error: orderError } = await supabase
+                .from('picking_lists')
+                .update({
+                    customer_name: formData.customerName,
+                    pallets_qty: formData.pallets,
+                    total_units: formData.units,
+                    load_number: formData.loadNumber
+                })
+                .eq('id', selectedOrder.id);
+
+            if (orderError) throw orderError;
+
+            // Also update customer address if linked
+            if (selectedOrder.customer_id) {
+                const { error: custError } = await supabase
+                    .from('customers')
+                    .update({
+                        name: formData.customerName,
+                        street: formData.street,
+                        city: formData.city,
+                        state: formData.state,
+                        zip_code: formData.zip
+                    })
+                    .eq('id', selectedOrder.customer_id);
+
+                if (custError) console.error('Failed to update customer record:', custError);
+            }
+
+            // Refresh orders list silently
+            fetchOrders();
             const { default: jsPDF } = await import('jspdf');
 
             // Use A4 landscape format (same as preview: 297mm x 210mm)
@@ -367,7 +371,7 @@ export const OrdersScreen = () => {
 
                 {/* Active Order Form */}
                 {selectedOrder && (
-                    <form onSubmit={handleUpdateOrder} className="p-4 border-t border-subtle bg-card shrink-0 space-y-3">
+                    <form onSubmit={(e) => e.preventDefault()} className="p-4 border-t border-subtle bg-card shrink-0 space-y-3">
                         <div className="flex items-center justify-between mb-2">
                             <p className="text-[9px] text-muted font-black uppercase tracking-widest">Active Order</p>
                             <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded-full bg-accent/10 text-accent border border-accent/20">
@@ -462,25 +466,18 @@ export const OrdersScreen = () => {
                             />
                         </div>
 
-                        {/* Action Buttons */}
-                        <div className="flex gap-2 pt-2">
-                            <button
-                                type="submit"
-                                disabled={isSaving}
-                                className="flex-1 h-11 bg-surface border border-subtle hover:border-accent/40 rounded-xl flex items-center justify-center gap-2 text-[9px] font-black uppercase tracking-widest text-content transition-all active:scale-95 disabled:opacity-50"
-                            >
-                                {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                                Save
-                            </button>
+                        {/* Action Button - Print Labels (also saves) */}
+                        <div className="pt-2">
                             <button
                                 type="button"
                                 onClick={handlePrint}
                                 disabled={isPrinting}
-                                className="flex-[1.5] h-11 bg-accent text-white rounded-xl flex items-center justify-center gap-2 text-[9px] font-black uppercase tracking-widest shadow-lg shadow-accent/20 active:scale-95 transition-all disabled:opacity-50"
+                                className="w-full h-12 bg-accent text-white rounded-xl flex items-center justify-center gap-2 text-xs font-black uppercase tracking-widest shadow-lg shadow-accent/20 active:scale-95 transition-all disabled:opacity-50"
                             >
                                 {isPrinting ? <Loader2 size={16} className="animate-spin" /> : <Printer size={16} />}
-                                {isPrinting ? 'Loading...' : 'Print Labels'}
+                                {isPrinting ? 'Saving & Generating...' : 'Print Labels'}
                             </button>
+                            <p className="text-[9px] text-muted text-center mt-2">Data is saved automatically</p>
                         </div>
                     </form>
                 )}
