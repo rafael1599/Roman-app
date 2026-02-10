@@ -272,7 +272,7 @@ export const InventoryProvider = ({
         (i) =>
           i.sku === vars.sku &&
           i.warehouse === vars.resolvedWarehouse &&
-          (!vars.location || i.location === vars.location)
+          (!vars.location || (i.location || '').trim().toUpperCase() === vars.location.trim().toUpperCase())
       );
 
       if (item) {
@@ -741,7 +741,7 @@ export const InventoryProvider = ({
         (i) =>
           i.sku === sku &&
           i.warehouse === resolvedWarehouse &&
-          (!normalizedLocation || i.location === normalizedLocation)
+          (!normalizedLocation || (i.location || '').trim().toUpperCase() === normalizedLocation)
       );
 
       // Early return if item not found

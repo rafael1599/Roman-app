@@ -307,7 +307,7 @@ class InventoryService extends BaseService<'inventory', InventoryModel, Inventor
         const hasSkuChanged = newSku !== originalItem.sku;
         const hasTargetChanged =
             targetWarehouse !== originalItem.warehouse ||
-            targetLocation !== originalItem.location;
+            targetLocation.trim().toUpperCase() !== (originalItem.location || '').trim().toUpperCase();
 
         if (hasSkuChanged || hasTargetChanged) {
             // Check for collision at destination
@@ -448,6 +448,8 @@ class InventoryService extends BaseService<'inventory', InventoryModel, Inventor
         // IN-PLACE EDIT SCENARIO (Only Quantity or Note)
         await this.update(originalItem.id, {
             quantity: newQty,
+            location: targetLocation, // Normalized (UPPERCASE)
+            location_id: targetLocationId,
             sku_note: validatedInput.sku_note,
             status: validatedInput.status || originalItem.status,
             is_active: newQty > 0 ? true : originalItem.is_active,
