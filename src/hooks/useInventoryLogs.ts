@@ -37,8 +37,8 @@ export const useInventoryLogs = () => {
       const code = error?.code || error?.originalError?.code;
       const message = error?.message || '';
 
-      // Don't retry logical errors (auth, validation, etc)
-      if (code === 'PGRST301' || code === '42501' || code === '23505') return false;
+      // Don't retry logical errors (auth, validation, ambiguity, etc)
+      if (code === 'PGRST301' || code === '42501' || code === '23505' || code === '42725') return false;
 
       // Infinite retry for network errors
       if (message.includes('fetch') || message.includes('network') || !navigator.onLine) {

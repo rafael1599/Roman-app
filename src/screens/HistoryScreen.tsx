@@ -1058,18 +1058,20 @@ export const HistoryScreen = () => {
 
                         <div className="text-right px-4">
                           <p className="text-[7px] text-muted font-black uppercase tracking-widest mb-1">
-                            Qty
+                            {log.action_type === 'EDIT' ? 'Total Qty' : 'Change'}
                           </p>
-                          <p className="text-2xl font-black leading-none text-content" data-testid="quantity-change">
-                            {typeof log.quantity_change === 'number' ? Math.abs(log.quantity_change) : '??'}
+                          <p className={`text-2xl font-black leading-none ${log.action_type === 'EDIT' ? 'text-accent' : 'text-content'}`} data-testid="quantity-change">
+                            {log.action_type === 'EDIT'
+                              ? (log.new_quantity ?? log.quantity_change)
+                              : (typeof log.quantity_change === 'number' ? Math.abs(log.quantity_change) : '??')}
                           </p>
                         </div>
                       </div>
 
-                      {log.prev_quantity !== null && log.new_quantity !== null && isAdmin && (
-                        <div className="mt-4 flex gap-4 text-[8px] font-black uppercase tracking-widest opacity-20 border-t border-subtle pt-2 text-muted">
+                      {log.prev_quantity !== null && log.new_quantity !== null && (
+                        <div className={`mt-4 flex gap-4 text-[8px] font-black uppercase tracking-widest border-t border-subtle pt-2 ${log.action_type === 'EDIT' ? 'text-accent opacity-60' : 'text-muted opacity-20'}`}>
                           <span>
-                            Stock: {log.prev_quantity} → {log.new_quantity}
+                            Stock Level: {log.prev_quantity} → {log.new_quantity}
                           </span>
                         </div>
                       )}

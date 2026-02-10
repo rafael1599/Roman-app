@@ -225,7 +225,13 @@ export const InventoryProvider = ({
 
   const mutationOptions = {
     networkMode: 'offlineFirst' as const,
-    retry: process.env.NODE_ENV === 'test' ? 0 : 3,
+    retry: (failureCount: number, error: any) => {
+      if (process.env.NODE_ENV === 'test') return false;
+      const code = error?.code || error?.originalError?.code;
+      // Don't retry logical/structural errors (ambiguity, auth, etc)
+      if (code === '42725' || code === 'PGRST301' || code === '42501') return false;
+      return failureCount < 3;
+    },
     retryDelay: (attempt: number) => Math.min(1000 * 2 ** attempt, 30000),
   };
 
