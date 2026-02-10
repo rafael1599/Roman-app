@@ -7,7 +7,7 @@ import type { Customer } from '../../types/schema';
 
 interface UsePickingSyncProps {
   user: any;
-  sessionMode: 'building' | 'picking' | 'double_checking';
+  sessionMode: 'building' | 'picking' | 'double_checking' | 'idle';
   cartItems: CartItem[];
   orderNumber: string | null;
   activeListId: string | null;

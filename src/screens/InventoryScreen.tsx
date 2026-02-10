@@ -191,38 +191,14 @@ export const InventoryScreen = () => {
   // Picking Mode State
   const {
     cartItems,
-    activeListId,
-    orderNumber,
-    setOrderNumber,
-    customer,
-    updateCustomerDetails,
     setCartItems,
     addToCart,
-    updateCartQty,
-    setCartQty,
-    removeFromCart,
-    markAsReady,
-    lockForCheck,
-    releaseCheck,
-    returnToPicker,
-    loadExternalList,
-    sessionMode,
-    checkedBy,
-    ownerId,
-    revertToPicking,
-    notes,
-    isNotesLoading,
-    addNote,
-    resetSession,
     getAvailableStock,
-    deleteList,
-    returnToBuilding,
+    onStartSession,
+    sessionMode,
   } = usePickingSession();
 
-  const { externalDoubleCheckId, setExternalDoubleCheckId } = useViewMode();
-
   const [showScanner, setShowScanner] = useState(false);
-  const [isProcessingDeduction, setIsProcessingDeduction] = useState(false);
 
   // --- Stock Mode Handlers ---
   const handleAddItem = useCallback((warehouse = 'LUDLOW') => {
@@ -379,6 +355,7 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
       if (viewMode === 'stock') {
         handleEditItem(item);
       } else {
+        onStartSession();
         addToCart(item);
       }
     },
@@ -387,6 +364,7 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
 
   const handleScanComplete = (scannedLines: any[]) => {
     const newItems: any[] = scannedLines.map((line) => {
+      onStartSession();
       const match = inventoryData.find((i) => i.sku === line.sku);
       if (match) {
         return { ...match, pickingQty: line.qty || 1 };

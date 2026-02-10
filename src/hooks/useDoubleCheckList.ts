@@ -51,6 +51,7 @@ export const useDoubleCheckList = () => {
           `
                 )
                 .in('status', ['ready_to_double_check', 'double_checking', 'needs_correction'])
+                .gt('updated_at', new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString())
                 .order('updated_at', { ascending: false });
 
             if (error) throw error;

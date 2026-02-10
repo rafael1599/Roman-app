@@ -11,7 +11,7 @@ interface UsePickingActionsProps {
   cartItems: CartItem[];
   orderNumber: string | null;
   customer: Customer | null;
-  sessionMode: 'building' | 'picking' | 'double_checking';
+  sessionMode: 'building' | 'picking' | 'double_checking' | 'idle';
   setCartItems: (items: any[]) => void;
   setActiveListId: (id: string | null) => void;
   setOrderNumber: (num: string | null) => void;

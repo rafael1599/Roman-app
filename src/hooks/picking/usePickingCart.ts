@@ -13,7 +13,7 @@ const LOCAL_STORAGE_CUSTOMER_KEY = 'picking_customer_obj';
 const LOCAL_STORAGE_LOAD_KEY = 'picking_load_number';
 
 interface UsePickingCartProps {
-  sessionMode: 'building' | 'picking' | 'double_checking';
+  sessionMode: 'idle' | 'building' | 'picking' | 'double_checking';
   reservedQuantities: Record<string, number>;
 }
 
@@ -27,6 +27,8 @@ export const usePickingCart = ({ sessionMode, reservedQuantities }: UsePickingCa
   // The main sync hook will handle loading from DB
   const loadFromLocalStorage = useCallback(() => {
     try {
+      const savedMode = localStorage.getItem('picking_session_mode') as any;
+
       const localData = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (localData) {
         const parsed = JSON.parse(localData);
@@ -82,7 +84,7 @@ export const usePickingCart = ({ sessionMode, reservedQuantities }: UsePickingCa
   const addToCart = useCallback(
     (item: InventoryItem) => {
       // Allow in both 'picking' and 'building' modes
-      if (sessionMode !== 'picking' && sessionMode !== 'building') return;
+      if (sessionMode !== 'picking' && sessionMode !== 'building' && sessionMode !== 'idle') return;
 
       const key = `${item.sku}|${item.warehouse}|${item.location}`;
       const totalReserved = reservedQuantities[key] || 0;
@@ -245,10 +247,9 @@ export const usePickingCart = ({ sessionMode, reservedQuantities }: UsePickingCa
     setOrderNumber(null);
     setCustomer(null);
     setLoadNumber(null);
-    localStorage.removeItem(LOCAL_STORAGE_KEY);
-    localStorage.removeItem(LOCAL_STORAGE_ORDER_KEY);
-    localStorage.removeItem(LOCAL_STORAGE_CUSTOMER_KEY);
     localStorage.removeItem(LOCAL_STORAGE_LOAD_KEY);
+    localStorage.removeItem('picking_session_mode');
+    localStorage.setItem('picking_session_mode', 'idle');
   }, []);
 
   return {

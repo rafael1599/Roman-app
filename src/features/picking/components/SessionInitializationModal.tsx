@@ -8,27 +8,22 @@ import { useAuth } from '../../../context/AuthContext';
 import { supabase } from '../../../lib/supabase';
 import toast from 'react-hot-toast';
 
+// SessionInitializationModal - handles manual session start
 export const SessionInitializationModal = () => {
     const { isInitializing, startNewSession, cancelInitialization, pendingItem } =
         usePickingSession();
     const { user } = useAuth();
-    // Unused state removed: mode
 
     const [manualOrder, setManualOrder] = useState('');
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
     const [isChecking, setIsChecking] = useState(false);
 
-    // Check for resumable sessions (optional enhancement: could check DB too)
+    // Reset state when modal opens
     useEffect(() => {
         if (!isInitializing) return;
 
         setManualOrder('');
         setSelectedCustomer(null);
-
-        return () => {
-            setManualOrder('');
-            setSelectedCustomer(null);
-        };
     }, [isInitializing]);
 
     if (!isInitializing) return null;
@@ -63,17 +58,17 @@ export const SessionInitializationModal = () => {
                 if (confirmed) {
                     await supabase.from('picking_lists').update({ user_id: user.id }).eq('id', data.id);
 
-                    startNewSession('manual', orderNum, undefined, customerData);
+                    await startNewSession('manual', orderNum, undefined, customerData);
                     toast.success('You took over the order!');
                 }
             } else {
                 // Brand new order
-                startNewSession('manual', orderNum, undefined, customerData);
+                await startNewSession('manual', orderNum, undefined, customerData);
             }
         } catch (err) {
             console.error('Check failed', err);
             // Fallback: just allow it
-            startNewSession('manual', orderNum, undefined, customerData);
+            await startNewSession('manual', orderNum, undefined, customerData);
         } finally {
             setIsChecking(false);
         }
@@ -86,7 +81,7 @@ export const SessionInitializationModal = () => {
                 <div className="px-6 py-4 border-b border-subtle bg-main/50 flex items-center justify-between">
                     <div>
                         <h3 className="text-lg font-black text-content uppercase tracking-tight">
-                            Start New Picking Order
+                            Start New Order
                         </h3>
                         {pendingItem && (
                             <p className="text-xs text-muted font-medium mt-1">

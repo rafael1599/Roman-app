@@ -227,7 +227,7 @@ export const PickingCartDrawer: React.FC = () => {
 
     // Visibility logic:
     // 1. If we have an external trigger (Verification Queue order selected)
-    // 2. If we are in an active session (picking, building, or double_checking)
+    // 2. If we are in an active session (picking/building or double_checking) - NOT 'idle'
     // 3. If the cart has items
     const isVisible = !!externalDoubleCheckId || (sessionMode && sessionMode !== 'idle') || totalItems > 0;
 

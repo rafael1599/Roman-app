@@ -27,8 +27,10 @@ interface PickingContextType {
   notes: PickingNote[];
   isNotesLoading: boolean;
   addNote: (message: string) => Promise<void>;
-  sessionMode: 'building' | 'picking' | 'double_checking';
-  setSessionMode: (mode: 'building' | 'picking' | 'double_checking') => void;
+  sessionMode: 'idle' | 'building' | 'picking' | 'double_checking';
+  setSessionMode: (mode: 'idle' | 'building' | 'picking' | 'double_checking') => void;
+
+  onStartSession: () => void;
 
   addToCart: (item: any) => void;
   updateCartQty: (item: any, change: number) => void;
@@ -63,14 +65,15 @@ interface PickingContextType {
 
   isInitializing: boolean;
   setIsInitializing: (val: boolean) => void;
+  pendingItem: any;
+  startManualSession: () => void;
+  cancelInitialization: () => void;
   startNewSession: (
     strategy: 'auto' | 'manual' | 'resume',
     manualOrderNumber?: string,
     resumeId?: string,
     customerData?: Customer | string
   ) => Promise<void>;
-  pendingItem: any;
-  cancelInitialization: () => void;
   updateCustomerDetails: (customerId: string, details: Partial<Customer>) => Promise<void>;
 }
 
@@ -88,13 +91,14 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
   const [checkedBy, setCheckedBy] = useState<string | null>(null);
   const [ownerId, setOwnerId] = useState<string | null>(null);
   const [correctionNotes, setCorrectionNotes] = useState<string | null>(null);
-  const [sessionMode, setSessionMode] = useState<'building' | 'picking' | 'double_checking'>(
-    'building'
+  const [sessionMode, setSessionMode] = useState<'idle' | 'building' | 'picking' | 'double_checking'>(
+    'idle'
   );
 
-  // New Session Initialization State
+  // Initialization State
   const [isInitializing, setIsInitializing] = useState(false);
   const [pendingItem, setPendingItem] = useState<any>(null);
+
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -130,7 +134,7 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
       setCheckedBy(null);
       setOwnerId(null);
       setCorrectionNotes(null);
-      setSessionMode('building');
+      setSessionMode('idle');
       setOrderNumber(null);
       setCustomer(null);
       setLoadNumber(null);
@@ -267,8 +271,7 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [activeListId, deleteList, setSessionMode, setActiveListId]);
 
-  // Intercept Add to Cart to ensure session is initialized
-  const addToCart = useCallback(async (item: any) => {
+  const addToCart = useCallback((item: any) => {
     // Block adding items in picking mode
     if (sessionMode === 'picking') {
       toast.error('Cannot add items in picking mode. Use "Return to Building" to make changes.', {
@@ -277,16 +280,20 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    // Allow adding if we have an active list OR if we're building and have an order number
-    if (activeListId || orderNumber) {
-      addToCartInternal(item);
+    // If idle and no order number, store item and show modal
+    if (sessionMode === 'idle' && !orderNumber) {
+      setPendingItem(item);
+      setIsInitializing(true);
       return;
     }
 
-    // Otherwise, need to initialize session first
-    setPendingItem(item);
-    setIsInitializing(true);
-  }, [sessionMode, activeListId, orderNumber, addToCartInternal, setPendingItem, setIsInitializing]);
+    // Transition to building mode if idle (with order number)
+    if (sessionMode === 'idle') {
+      setSessionMode('building');
+    }
+
+    addToCartInternal(item);
+  }, [sessionMode, orderNumber, setSessionMode, addToCartInternal]);
 
   const startNewSession = useCallback(async (
     strategy: 'auto' | 'manual' | 'resume',
@@ -294,17 +301,12 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
     resumeId?: string,
     customerData?: Customer | string
   ) => {
-    setIsInitializing(false);
+    // Capture pending item before reset
     const itemToAdd = pendingItem;
-    setPendingItem(null);
 
-    if (strategy === 'resume' && resumeId) {
-      await loadExternalList(resumeId);
-      if (itemToAdd) {
-        addToCartInternal(itemToAdd);
-      }
-      return;
-    }
+    // Clear initialization state
+    setIsInitializing(false);
+    setPendingItem(null);
 
     // Clean slate for new session
     resetSession(true);
@@ -340,15 +342,20 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
     setSessionMode('building');
     localStorage.setItem('picking_session_mode', 'building');
 
+    // Now add the pending item to cart
     if (itemToAdd) {
       addToCartInternal(itemToAdd);
     }
-  }, [pendingItem, setPendingItem, loadExternalList, addToCartInternal, resetSession, setOrderNumber, setCustomer, setSessionMode]);
+  }, [pendingItem, loadExternalList, addToCartInternal, resetSession, setOrderNumber, setCustomer, setSessionMode]);
+
+  const startManualSession = useCallback(() => {
+    setIsInitializing(true);
+  }, []);
 
   const cancelInitialization = useCallback(() => {
     setIsInitializing(false);
     setPendingItem(null);
-  }, [setIsInitializing, setPendingItem]);
+  }, []);
 
   const value: PickingContextType = useMemo(() => ({
     cartItems,
@@ -390,13 +397,17 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
     isSaving,
     lastSaved,
     resetSession,
-
+    onStartSession: () => {
+      if (sessionMode === 'idle') startManualSession();
+    },
+    updateCustomerDetails,
+    // removed duplicate updateCustomerDetails
+    startNewSession,
     isInitializing,
     setIsInitializing,
-    startNewSession,
     pendingItem,
+    startManualSession,
     cancelInitialization,
-    updateCustomerDetails,
   }), [
     cartItems,
     setCartItems,
@@ -437,12 +448,13 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
     isSaving,
     lastSaved,
     resetSession,
+    updateCustomerDetails,
+    startNewSession,
     isInitializing,
     setIsInitializing,
-    startNewSession,
     pendingItem,
+    startManualSession,
     cancelInitialization,
-    updateCustomerDetails,
   ]);
 
   return <PickingContext.Provider value={value}>{children}</PickingContext.Provider>;
