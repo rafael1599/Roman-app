@@ -9,6 +9,7 @@ import { useViewMode } from '../../context/ViewModeContext';
 import { UserMenu } from './UserMenu';
 import { DoubleCheckHeader } from '../../features/picking/components/DoubleCheckHeader';
 import { SyncStatusIndicator } from './SyncStatusIndicator';
+import { PickingCartDrawer } from '../../features/picking/components/PickingCartDrawer';
 
 interface LayoutMainProps {
   children: ReactNode;
@@ -114,6 +115,7 @@ export const LayoutMain = ({ children, onExport }: LayoutMainProps) => {
       <main className="flex-1 w-full relative">{children}</main>
 
       {!isOrdersPage && <BottomNavigation />}
+      <PickingCartDrawer />
     </div>
   );
 };

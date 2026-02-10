@@ -276,7 +276,21 @@ export const InventoryProvider = ({
       );
 
       if (item) {
-        // Optimistically update the logs cache by injecting a temporary log
+        // 1. Optimistic Inventory Update
+        setInventoryData((current) => {
+          return current.map(i => {
+            if (String(i.id) === String(item.id)) {
+              return {
+                ...i,
+                quantity: (i.quantity || 0) + vars.finalDelta,
+                _lastUpdateSource: 'local' as const
+              };
+            }
+            return i;
+          });
+        });
+
+        // 2. Optimistic Log Injection
         queryClient.setQueryData(['inventory_logs', 'TODAY'], (old: any) => {
           const optimisticLog = {
             id: vars.optimistic_id || `temp-${Date.now()}-${vars.sku}`,
@@ -385,12 +399,108 @@ export const InventoryProvider = ({
         getServiceContext()
       );
     },
-    onMutate: (vars) => {
+    onMutate: async (vars) => {
       console.log(`[FORENSIC][MUTATION][MOVE_START] ${new Date().toISOString()} - SKU: ${vars.sourceItem.sku}, Qty: ${vars.qty}, Optimistic ID: ${vars.optimistic_id}`);
+
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['inventory_logs'] });
+      const previousLogs = queryClient.getQueryData(['inventory_logs', 'TODAY']);
+      const previousInventory = inventoryDataRef.current;
+
+      const optId = vars.optimistic_id || `move-${Date.now()}-${vars.sourceItem.sku}`;
+
+      // 1. Optimistic Inventory Update
+      setInventoryData((current) => {
+        // Deduct from source
+        let next = current.map(item => {
+          if (String(item.id) === String(vars.sourceItem.id)) {
+            return {
+              ...item,
+              quantity: (item.quantity || 0) - vars.qty,
+              _lastUpdateSource: 'local' as const
+            };
+          }
+          return item;
+        });
+
+        // Add to target (UPSERT logic in state)
+        const targetNormalized = vars.targetLocation.trim().toUpperCase();
+        const existingTargetIndex = next.findIndex(i =>
+          i.sku === vars.sourceItem.sku &&
+          i.warehouse === vars.targetWarehouse &&
+          (i.location || '').toUpperCase() === targetNormalized
+        );
+
+        if (existingTargetIndex !== -1) {
+          next = next.map((item, idx) => {
+            if (idx === existingTargetIndex) {
+              return {
+                ...item,
+                quantity: (item.quantity || 0) + vars.qty,
+                sku_note: (item.sku_note && vars.sourceItem.sku_note && item.sku_note !== vars.sourceItem.sku_note)
+                  ? `${item.sku_note} | ${vars.sourceItem.sku_note}`
+                  : (vars.sourceItem.sku_note || item.sku_note),
+                _lastUpdateSource: 'local' as const
+              };
+            }
+            return item;
+          });
+        } else {
+          // New location entry in state
+          const newItem: InventoryItemWithMetadata = {
+            id: -Math.floor(Math.random() * 1000000), // Temporary ID
+            sku: vars.sourceItem.sku,
+            warehouse: vars.targetWarehouse as any,
+            location: targetNormalized,
+            quantity: vars.qty,
+            sku_note: vars.sourceItem.sku_note,
+            is_active: true,
+            created_at: new Date(),
+            sku_metadata: skuMetadataMapRef.current[vars.sourceItem.sku],
+            _lastUpdateSource: 'local' as const
+          };
+          next = [newItem, ...next];
+        }
+        return next;
+      });
+
+      // 2. Optimistic Log Injection
+      queryClient.setQueryData(['inventory_logs', 'TODAY'], (old: any) => {
+        const optimisticLog = {
+          id: optId,
+          sku: vars.sourceItem.sku,
+          action_type: 'MOVE',
+          quantity_change: -vars.qty, // Using negative for the move out of source
+          from_warehouse: vars.sourceItem.warehouse,
+          from_location: vars.sourceItem.location || undefined,
+          to_warehouse: vars.targetWarehouse,
+          to_location: vars.targetLocation,
+          prev_quantity: vars.sourceItem.quantity,
+          new_quantity: (vars.sourceItem.quantity || 0) - vars.qty,
+          created_at: new Date().toISOString(),
+          performed_by: userName,
+          is_reversed: vars.isReversal || false,
+          isOptimistic: true,
+        };
+        return Array.isArray(old) ? [optimisticLog, ...old] : [optimisticLog];
+      });
+
+      return { previousInventory, previousLogs };
+    },
+    onError: (err, vars, context) => {
+      console.error(`[FORENSIC][MUTATION][MOVE_ERROR] ${new Date().toISOString()} - SKU: ${vars.sourceItem.sku}`, err);
+      if (context?.previousInventory) {
+        setInventoryData(context.previousInventory);
+      }
+      if (context?.previousLogs) {
+        queryClient.setQueryData(['inventory_logs', 'TODAY'], context.previousLogs);
+      }
+      toast.error(`Move failed: ${err.message}`);
     },
     onSuccess: () => {
       console.log(`[FORENSIC][MUTATION][MOVE_SUCCESS] ${new Date().toISOString()}`);
       queryClient.invalidateQueries({ queryKey: inventoryKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: ['inventory_logs'] });
     }
   });
 
@@ -579,12 +689,12 @@ export const InventoryProvider = ({
   }, [isAdmin, userName, user?.id, trackLog, queryClient]);
 
   const ludlowInventory = useMemo(
-    () => inventoryData.filter((i) => i.warehouse === 'LUDLOW' && i.quantity > 0),
+    () => inventoryData.filter((i) => i.warehouse === 'LUDLOW'),
     [inventoryData]
   );
 
   const atsInventory = useMemo(
-    () => inventoryData.filter((i) => i.warehouse === 'ATS' && i.quantity > 0),
+    () => inventoryData.filter((i) => i.warehouse === 'ATS'),
     [inventoryData]
   );
 

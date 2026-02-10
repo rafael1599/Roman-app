@@ -15,6 +15,7 @@ interface NavItemProps {
 const NavItem = ({ icon: Icon, label, isActive, onClick, isCompact }: NavItemProps) => (
   <button
     onClick={onClick}
+    aria-label={label}
     className={`flex flex-col items-center justify-center flex-1 h-full transition-all duration-300 active:scale-90 ${isActive ? 'text-accent' : 'text-muted'
       } ${isCompact ? 'px-1' : ''}`}
   >

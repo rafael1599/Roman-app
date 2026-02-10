@@ -364,7 +364,7 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
             </div>
 
             {/* Final Action Footer */}
-            <div className="px-8 py-4 pb-20 border-t border-subtle bg-surface/80 backdrop-blur-xl shrink-0">
+            <div className="px-8 py-4 pb-8 border-t border-subtle bg-surface/80 backdrop-blur-xl shrink-0">
                 {checkedCount < totalCheckboxes && (
                     <div className="mb-3 px-4 py-2 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2">
                         <AlertCircle size={14} className="text-amber-500" />

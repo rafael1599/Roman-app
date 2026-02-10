@@ -114,19 +114,28 @@ export class InventoryPage extends BasePage {
      * 2. If no location, find any card with the SKU.
      */
     getCard(sku: string, location?: string): Locator {
+        const base = this.page.locator('.bg-card');
+
         if (location) {
-            // Find the location header, then find the card within the same container
-            // The header is inside a div, which is inside the space-y-4 container.
-            // We find the header, go up to the container, then find the card.
-            return this.page.locator('h3', { hasText: location })
+            // HYBRID STRATEGY:
+            // 1. Grouped View: Location is in h3 header, cards are siblings/descendants.
+            const groupedCard = this.page.locator('h3', { hasText: location })
                 .locator('xpath=ancestor::div[contains(@class, "space-y-4")]')
                 .locator('.bg-card')
                 .filter({ hasText: sku })
                 .last();
+
+            // 2. Search View: Card contains location text itself.
+            const searchCard = base.filter({ hasText: sku }).filter({ hasText: location }).last();
+
+            // Use OR condition or just return according to which is visible/present
+            // In Playwright we can use `or` but it might be ambiguous if both exist.
+            // Usually only one view is active.
+            return groupedCard.or(searchCard);
         }
 
-        // Fallback: Find any card with SKU (might be ambiguous if same SKU in multiple locs)
-        return this.page.locator('.bg-card').filter({ hasText: sku }).last();
+        // Fallback: Find any card with SKU
+        return base.filter({ hasText: sku }).last();
     }
 
     /**

@@ -5,80 +5,54 @@ import { PickingSessionView } from './PickingSessionView';
 import { DoubleCheckView, PickingItem } from './DoubleCheckView';
 import { useAuth } from '../../../context/AuthContext';
 import { useConfirmation } from '../../../context/ConfirmationContext';
+import { usePickingSession } from '../../../context/PickingContext';
+import { useViewMode } from '../../../context/ViewModeContext';
+import { useInventory } from '../../../hooks/InventoryProvider';
+import { getOptimizedPickingPath, calculatePallets } from '../../../utils/pickingLogic';
+import toast from 'react-hot-toast';
 
-interface Note {
-    id: string | number;
-    user_display_name?: string;
-    created_at: string;
-    message: string;
-}
 
-// Define the full set of props expected by PickingCartDrawer
-interface PickingCartDrawerProps {
-    cartItems: PickingItem[];
-    activeListId?: string | null;
-    customer?: import('../../../types/schema').Customer | null;
-    sessionMode?: string; // e.g. 'picking', 'building', 'double_checking'
-    checkedBy?: string | null;
-    correctionNotes?: string | null;
-    externalDoubleCheckId?: string | number | null;
-    onClearExternalTrigger: () => void;
-    onLoadExternalList: (listId: string) => Promise<any>; // list object
-    onLockForCheck: (listId: string) => Promise<void>;
-    onReleaseCheck: (listId: string) => void;
-    onReturnToPicker: (listId: string, notes: string) => void;
-    onRevertToPicking?: () => void;
-    onMarkAsReady: (items: PickingItem[], orderNo?: string) => Promise<string | null>;
-    ownerId?: string | null;
-    onUpdateOrderNumber: (newOrder: string | null) => void;
-    onUpdateCustomer?: (details: Partial<import('../../../types/schema').Customer>) => void;
-    onUpdateQty: (item: PickingItem, delta: number) => void;
-    onRemoveItem: (item: PickingItem) => void;
-    onSetQty?: (item: PickingItem, qty: number) => void;
-    onDeduct: (items: PickingItem[], verified: boolean) => Promise<boolean>;
-    notes?: Note[];
-    isNotesLoading?: boolean;
-    onAddNote: (note: string) => Promise<void> | void;
-    onResetSession?: () => void;
-    onReturnToBuilding: (listId?: string | null) => Promise<void>;
-    onDelete?: (id: string | null, keepLocalState?: boolean) => void;
-    [key: string]: any;
-}
-
-export const PickingCartDrawer: React.FC<PickingCartDrawerProps> = ({
-    cartItems,
-    activeListId,
-    orderNumber,
-    customer,
-    sessionMode,
-    correctionNotes,
-    externalDoubleCheckId,
-    onClearExternalTrigger,
-    onLoadExternalList,
-    onLockForCheck,
-    onReleaseCheck,
-    onReturnToPicker,
-    onMarkAsReady,
-    ownerId,
-    onUpdateOrderNumber,
-    onUpdateCustomer,
-    onUpdateQty,
-    onRemoveItem,
-    onDeduct,
-    notes,
-    isNotesLoading,
-    onAddNote,
-    onReturnToBuilding,
-    onDelete,
-    ...restProps
-}) => {
+export const PickingCartDrawer: React.FC = () => {
     const { user } = useAuth();
     const { showConfirmation } = useConfirmation();
+    const {
+        externalDoubleCheckId,
+        setExternalDoubleCheckId,
+    } = useViewMode();
+
+    const {
+        cartItems,
+        activeListId,
+        orderNumber,
+        customer,
+        sessionMode,
+        checkedBy: _checkedBy,
+        correctionNotes,
+        loadExternalList,
+        lockForCheck,
+        releaseCheck,
+        returnToPicker,
+        markAsReady,
+        ownerId,
+        setOrderNumber,
+        updateCustomerDetails,
+        updateCartQty,
+        removeFromCart,
+        notes,
+        isNotesLoading,
+        addNote,
+        returnToBuilding,
+        deleteList,
+    } = usePickingSession();
+
+    const { inventoryData, processPickingList } = useInventory();
+
     const [isOpen, setIsOpen] = useState(false);
     const [currentView, setCurrentView] = useState('double-check');
     const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
     const isOwner = user?.id === ownerId;
     const isConfirmingRef = React.useRef(false);
+    const [isProcessingDeduction, setIsProcessingDeduction] = useState(false);
 
     const totalItems = cartItems.length;
     const totalQty = cartItems.reduce((acc, item) => acc + (item.pickingQty || 0), 0);
@@ -94,18 +68,9 @@ export const PickingCartDrawer: React.FC<PickingCartDrawerProps> = ({
                 } catch (e) { }
             }
         } else if (sessionMode === 'building') {
-            setCurrentView('double-check'); // Was 'picking'
-            // However, OrderBuilder is handled inside PickingSessionView structure if currentView was 'picking'. 
-            // BUT wait, PickingSessionView handled 'building' internally. 
-            // If we bypass PickingSessionView, we lose the OrderBuilder view!
-
-            // Correction: We must KEEP PickingSessionView active IF sessionMode is 'building'.
-            // ONLY if sessionMode is 'picking', we want to show DoubleCheckView.
-            setCurrentView('picking'); // Keep as picking to allow OrderBuilder to render if needed, OR adjust logic below.
+            setCurrentView('picking');
             setCheckedItems(new Set());
         } else if (sessionMode === 'picking') {
-            // THIS IS THE KEY CHANGE: 
-            // If we are in 'picking' mode (which is active picking), show DoubleCheckView instead of PickingSessionView.
             setCurrentView('double-check');
         }
     }, [sessionMode, activeListId]);
@@ -113,76 +78,71 @@ export const PickingCartDrawer: React.FC<PickingCartDrawerProps> = ({
     // 1. Handle External Trigger (from Header)
     useEffect(() => {
         if (externalDoubleCheckId) {
+            console.log('🔄 [PickingCartDrawer] External trigger detected:', externalDoubleCheckId);
             const startDoubleCheck = async () => {
-                const list = await onLoadExternalList(String(externalDoubleCheckId));
-                if (list && user) {
-                    // Check for takeover
-                    if (list.checked_by && list.checked_by !== user.id) {
-                        // Prevent double confirmation
-                        if (isConfirmingRef.current) return;
-                        isConfirmingRef.current = true;
+                try {
+                    console.log('📦 [PickingCartDrawer] Loading external list...');
+                    const list = await loadExternalList(String(externalDoubleCheckId));
+                    console.log('📋 [PickingCartDrawer] List loaded:', list?.id, 'User:', user?.id);
 
-                        showConfirmation(
-                            'Takeover Order',
-                            `This order is currently being checked by another user. Do you want to take over?`,
-                            async () => {
-                                // Lock it for us
-                                await onLockForCheck(String(externalDoubleCheckId));
+                    if (list && user) {
+                        // Check for takeover
+                        if (list.checked_by && list.checked_by !== user.id) {
+                            console.log('⚠️ [PickingCartDrawer] Takeover required for list:', list.id);
+                            isConfirmingRef.current = true;
+                            showConfirmation(
+                                'Takeover Order',
+                                `This order is currently being checked by another user. Do you want to take over?`,
+                                async () => {
+                                    console.log('⚔️ [PickingCartDrawer] confirmed takeover');
+                                    await lockForCheck(String(externalDoubleCheckId));
+                                    const savedProgress = localStorage.getItem(`double_check_progress_${externalDoubleCheckId}`);
+                                    if (savedProgress) setCheckedItems(new Set(JSON.parse(savedProgress)));
+                                    else setCheckedItems(new Set());
+                                    setCurrentView('double-check');
+                                    setIsOpen(true);
+                                    setExternalDoubleCheckId(null);
+                                    isConfirmingRef.current = false;
+                                },
+                                () => {
+                                    console.log('🛑 [PickingCartDrawer] takeover cancelled');
+                                    setExternalDoubleCheckId(null);
+                                    isConfirmingRef.current = false;
+                                },
+                                'Takeover',
+                                'Cancel'
+                            );
+                            return;
+                        }
 
-                                // Load local progress for this specific list
-                                const savedProgress = localStorage.getItem(
-                                    `double_check_progress_${externalDoubleCheckId}`
-                                );
-                                if (savedProgress) {
-                                    try {
-                                        setCheckedItems(new Set(JSON.parse(savedProgress)));
-                                    } catch (e) {
-                                        setCheckedItems(new Set());
-                                    }
-                                } else {
-                                    setCheckedItems(new Set());
-                                }
+                        console.log('🔒 [PickingCartDrawer] Locking list for user...');
+                        await lockForCheck(String(externalDoubleCheckId));
 
-                                setCurrentView('double-check');
-                                setIsOpen(true);
-                                onClearExternalTrigger();
-                                isConfirmingRef.current = false;
-                            },
-                            () => {
-                                onClearExternalTrigger();
-                                isConfirmingRef.current = false;
-                            },
-                            'Takeover',
-                            'Cancel'
-                        );
-                        return; // Wait for confirmation
-                    }
-
-                    // Lock it for us
-                    await onLockForCheck(String(externalDoubleCheckId));
-
-                    // Load local progress for this specific list
-                    const savedProgress = localStorage.getItem(
-                        `double_check_progress_${externalDoubleCheckId}`
-                    );
-                    if (savedProgress) {
-                        try {
-                            setCheckedItems(new Set(JSON.parse(savedProgress)));
-                        } catch (e) {
+                        const savedProgress = localStorage.getItem(`double_check_progress_${externalDoubleCheckId}`);
+                        if (savedProgress) {
+                            try {
+                                setCheckedItems(new Set(JSON.parse(savedProgress)));
+                            } catch (e) {
+                                setCheckedItems(new Set());
+                            }
+                        } else {
                             setCheckedItems(new Set());
                         }
-                    } else {
-                        setCheckedItems(new Set());
-                    }
 
-                    setCurrentView('double-check');
-                    setIsOpen(true);
-                    onClearExternalTrigger();
+                        console.log('🔓 [PickingCartDrawer] Opening drawer for double check');
+                        setCurrentView('double-check');
+                        setIsOpen(true);
+                        setExternalDoubleCheckId(null);
+                    } else {
+                        console.error('❌ [PickingCartDrawer] List or User missing. List:', !!list, 'User:', !!user);
+                    }
+                } catch (err) {
+                    console.error('💥 [PickingCartDrawer] Error in startDoubleCheck:', err);
                 }
             };
             startDoubleCheck();
         }
-    }, [externalDoubleCheckId, user, onLoadExternalList, onLockForCheck, onClearExternalTrigger, showConfirmation]);
+    }, [externalDoubleCheckId, user, loadExternalList, lockForCheck, setExternalDoubleCheckId, showConfirmation]);
 
     // 3. Persist local progress for double check
     useEffect(() => {
@@ -194,21 +154,8 @@ export const PickingCartDrawer: React.FC<PickingCartDrawerProps> = ({
         }
     }, [checkedItems, activeListId, sessionMode]);
 
-    // Reset when cart becomes empty (for picker)
-    useEffect(() => {
-        if (totalItems === 0 && sessionMode === 'building') {
-            setIsOpen(false);
-            setCurrentView('picking'); // Go to PickingSessionView which handles Building Mode
-            setCheckedItems(new Set());
-        } else if (totalItems === 0 && sessionMode === 'picking') {
-            setIsOpen(false);
-            setCurrentView('double-check');
-            setCheckedItems(new Set());
-        }
-    }, [totalItems, sessionMode]);
-
     const handleMarkAsReady = async (finalOrderNumber: string) => {
-        const listId = await onMarkAsReady(cartItems, finalOrderNumber);
+        const listId = await markAsReady(cartItems as any, finalOrderNumber);
         if (listId) {
             setCheckedItems(new Set()); // Reset progress for new verification
             setCurrentView('double-check');
@@ -228,121 +175,98 @@ export const PickingCartDrawer: React.FC<PickingCartDrawerProps> = ({
         });
     };
 
-    // Drag Logic
-    const [dragY, setDragY] = useState(0);
-    const [isDragging, setIsDragging] = useState(false);
-    const startYRef = React.useRef(0);
+    const handleDeduct = async (items: PickingItem[], isVerified: boolean) => {
+        if (isProcessingDeduction) return false;
+        setIsProcessingDeduction(true);
 
-    const handleTouchStart = (e: React.TouchEvent) => {
-        // Only allow dragging from header handle
-        const target = e.target as HTMLElement;
-        if (!target.closest('[data-drag-handle="true"]')) return;
+        try {
+            if (!isVerified) {
+                // Rule: All-or-nothing verification. 
+                await releaseCheck(activeListId!);
+                toast('Order released to queue (No deduction made)', {
+                    icon: '📋',
+                    duration: 4000,
+                });
+                return true;
+            }
 
-        startYRef.current = e.touches[0].clientY;
-        // currentYRef.current = e.touches[0].clientY;
-        setIsDragging(true);
-    };
+            // Calculate final metrics before completing
+            const totalUnits = items.reduce((acc: number, item: any) => acc + (item.pickingQty || 0), 0);
 
-    const handleTouchMove = (e: React.TouchEvent) => {
-        if (!isDragging) return;
-        const y = e.touches[0].clientY;
-        const delta = y - startYRef.current;
+            // Re-map locations for path optimization
+            const allLocations = inventoryData.map(i => ({
+                id: (i as any).location_id || '',
+                location: i.location || '',
+                warehouse: i.warehouse as any,
+                picking_order: (i as any).picking_order || 0
+            })) as any;
 
-        // Only allow dragging down
-        if (delta > 0) {
-            setDragY(delta);
-            // Prevent scrolling background if needed
-            if (e.cancelable) e.preventDefault();
+            const optimizedPath = getOptimizedPickingPath(items as any, allLocations);
+            const calculatedPallets = calculatePallets(optimizedPath);
+            const pallets_qty = calculatedPallets.length;
+
+            await processPickingList(
+                activeListId!,
+                pallets_qty,
+                totalUnits
+            );
+
+            if (activeListId) {
+                localStorage.removeItem(`double_check_progress_${activeListId}`);
+                setIsOpen(false);
+            }
+            return true;
+        } catch (error: any) {
+            console.error('Operation failed:', error);
+            toast.error(error.message || 'Deduction failed');
+            throw error;
+        } finally {
+            setIsProcessingDeduction(false);
         }
     };
 
-    const handleTouchEnd = () => {
-        if (!isDragging) return;
-        setIsDragging(false);
+    // Visibility logic:
+    // 1. If we have an external trigger (Verification Queue order selected)
+    // 2. If we are in an active session (picking, building, or double_checking)
+    // 3. If the cart has items
+    const isVisible = !!externalDoubleCheckId || (sessionMode && sessionMode !== 'idle') || totalItems > 0;
 
-        if (dragY > 150) {
-            // Threshold to close
-            setIsOpen(false);
-        }
-        setDragY(0);
-    };
-
-    // If we have items OR we have an active session (even if empty), showing the bar is important
-    // so the user knows they are 'in' an order.
-    // However, if there are 0 items and NO active session, hide it.
-    if (
-        totalItems === 0 &&
-        !activeListId &&
-        (sessionMode === 'picking' || sessionMode === 'building')
-    )
-        return null;
+    if (!isVisible) return null;
 
     return createPortal(
         <>
             {isOpen && (
                 <div
-                    className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] transition-opacity duration-300"
-                    onClick={() => setIsOpen(false)}
-                    style={{ opacity: 1 - dragY / 600 }} // Fade out backdrop on drag
-                />
-            )}
-            <div
-                className={`fixed left-0 right-0 z-[9999] transition-all duration-300 ease-in-out ${isOpen ? 'bottom-0' : 'bottom-20'}`}
-                style={
-                    isOpen
-                        ? {
-                            transform: `translateY(${dragY}px)`,
-                            transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)',
+                    className="fixed inset-0 z-[100010] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200"
+                    onClick={() => {
+                        if (sessionMode === 'double_checking' && activeListId) {
+                            releaseCheck(activeListId);
                         }
-                        : undefined
-                }
-            >
-                {/* Collapsed State - Mini Bar */}
-                {!isOpen && (
+                        setIsOpen(false);
+                    }}
+                >
                     <div
-                        onClick={() => setIsOpen(true)}
-                        className={`mx-4 p-3 rounded-t-2xl shadow-2xl flex items-center justify-center gap-2 cursor-pointer active:opacity-90 transition-colors ${sessionMode === 'double_checking'
-                            ? 'bg-orange-500 text-white'
-                            : sessionMode === 'building'
-                                ? 'bg-slate-800 text-white'
-                                : 'bg-accent text-main'
-                            }`}
-                    >
-                        <ChevronUp size={20} />
-                        <div className="font-bold uppercase tracking-tight text-sm">
-                            {sessionMode === 'double_checking'
-                                ? `Verifying Order #${orderNumber || activeListId?.slice(-6).toUpperCase()} (${cartItems.length} Items)`
-                                : sessionMode === 'building'
-                                    ? `Review Order • ${totalItems} SKUs • ${totalQty} Units`
-                                    : `${totalQty} Units to Pick`}
-                        </div>
-                    </div>
-                )}
-
-                {/* Expanded Content */}
-                {isOpen && (
-                    <div
-                        className="bg-surface border-t border-subtle h-[90vh] flex flex-col shadow-2xl rounded-t-2xl overflow-hidden relative"
-                        onTouchStart={handleTouchStart}
-                        onTouchMove={handleTouchMove}
-                        onTouchEnd={handleTouchEnd}
+                        className="bg-surface border border-subtle rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden scale-100 animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]"
+                        onClick={(e) => e.stopPropagation()}
                     >
                         {currentView === 'picking' ? (
                             <PickingSessionView
                                 activeListId={activeListId ?? null}
                                 orderNumber={orderNumber ?? null}
                                 customer={customer ?? null}
-                                onUpdateOrderNumber={onUpdateOrderNumber}
-                                onUpdateCustomer={onUpdateCustomer}
+                                onUpdateOrderNumber={setOrderNumber}
+                                onUpdateCustomer={(details) => {
+                                    if (customer?.id) updateCustomerDetails(customer.id, details);
+                                }}
                                 cartItems={cartItems as any}
                                 correctionNotes={correctionNotes}
                                 notes={notes as any}
                                 isNotesLoading={isNotesLoading}
                                 onGoToDoubleCheck={handleMarkAsReady as any}
-                                onUpdateQty={onUpdateQty}
-                                onRemoveItem={onRemoveItem}
+                                onUpdateQty={updateCartQty}
+                                onRemoveItem={removeFromCart}
                                 onClose={() => setIsOpen(false)}
-                                onDelete={onDelete || restProps.onDelete}
+                                onDelete={deleteList}
                             />
                         ) : (
                             <DoubleCheckView
@@ -352,37 +276,64 @@ export const PickingCartDrawer: React.FC<PickingCartDrawerProps> = ({
                                 activeListId={activeListId ?? null}
                                 checkedItems={checkedItems}
                                 onToggleCheck={toggleCheck}
-                                onDeduct={async (items, isVerified) => {
-                                    const success = await onDeduct(items, isVerified);
-                                    if (success && activeListId) {
-                                        localStorage.removeItem(`double_check_progress_${activeListId}`);
-                                        setIsOpen(false);
-                                    }
-                                    return success;
-                                }}
-                                onReturnToPicker={(notes) => activeListId && onReturnToPicker(activeListId, notes)}
+                                onDeduct={handleDeduct}
+                                onReturnToPicker={(notes) => activeListId && returnToPicker(activeListId, notes)}
                                 isOwner={isOwner}
                                 notes={notes}
                                 isNotesLoading={isNotesLoading}
-                                onAddNote={onAddNote}
+                                onAddNote={addNote}
                                 onBack={async () => {
-                                    await onReturnToBuilding(activeListId ?? null);
+                                    await returnToBuilding(activeListId ?? null);
                                 }}
                                 onRelease={() => {
                                     if (activeListId) {
-                                        onReleaseCheck(activeListId);
+                                        releaseCheck(activeListId);
                                         setIsOpen(false);
                                     }
                                 }}
                                 onClose={() => {
-                                    if (sessionMode === 'double_checking' && activeListId) onReleaseCheck(activeListId);
+                                    if (sessionMode === 'double_checking' && activeListId) releaseCheck(activeListId);
                                     setIsOpen(false);
                                 }}
                             />
                         )}
                     </div>
-                )}
-            </div>
+                </div>
+            )}
+
+            {/* Collapsed State - Floating Trigger instead of Mini Bar */}
+            {!isOpen && (
+                <button
+                    onClick={() => setIsOpen(true)}
+                    className={`fixed bottom-24 left-4 right-4 p-4 rounded-2xl shadow-2xl flex items-center justify-between gap-2 cursor-pointer active:scale-95 transition-all z-[9999] border border-white/10 ${sessionMode === 'double_checking'
+                        ? 'bg-orange-500 text-white'
+                        : sessionMode === 'building'
+                            ? 'bg-slate-800 text-white border-slate-700'
+                            : 'bg-accent text-main'
+                        }`}
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-white/10 rounded-xl">
+                            <ChevronUp size={20} className="animate-bounce" />
+                        </div>
+                        <div className="font-extrabold uppercase tracking-widest text-[10px] text-left">
+                            <span className="opacity-70 block mb-0.5">Active Session</span>
+                            <span className="text-xs">
+                                {sessionMode === 'double_checking'
+                                    ? `Verifying #${orderNumber || activeListId?.slice(-6).toUpperCase()}`
+                                    : sessionMode === 'building'
+                                        ? `Reviewing ${totalItems} SKUs`
+                                        : `${totalQty} Units to Pick`}
+                            </span>
+                        </div>
+                    </div>
+                    {totalItems > 0 && (
+                        <div className="px-3 py-1 bg-black/20 rounded-full text-[10px] font-black">
+                            {totalItems} ITEMS
+                        </div>
+                    )}
+                </button>
+            )}
         </>,
         document.body
     );

@@ -1,13 +1,14 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useDoubleCheckList, PickingList } from '../../../hooks/useDoubleCheckList';
 import { useViewMode } from '../../../context/ViewModeContext';
 import ClipboardCheck from 'lucide-react/dist/esm/icons/clipboard-check';
 import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down';
-import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle';
-import Clock from 'lucide-react/dist/esm/icons/clock';
 import CheckCircle2 from 'lucide-react/dist/esm/icons/check-circle-2';
 import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
+import X from 'lucide-react/dist/esm/icons/x';
+import Clock from 'lucide-react/dist/esm/icons/clock';
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle';
 import { usePickingSession } from '../../../context/PickingContext';
 import { useConfirmation } from '../../../context/ConfirmationContext';
 import toast from 'react-hot-toast';
@@ -18,17 +19,6 @@ export const DoubleCheckHeader = () => {
     const { cartItems, sessionMode, deleteList } = usePickingSession();
     const { showConfirmation } = useConfirmation();
     const [isOpen, setIsOpen] = useState(false);
-    const dropdownRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-                setIsOpen(false);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
 
     const totalActions = readyCount + correctionCount;
 
@@ -46,7 +36,7 @@ export const DoubleCheckHeader = () => {
     };
 
     return (
-        <div className="relative" ref={dropdownRef}>
+        <div className="relative">
             <button
                 onClick={() => {
                     const nextState = !isOpen;
@@ -75,145 +65,160 @@ export const DoubleCheckHeader = () => {
 
             {isOpen && createPortal(
                 <div
-                    className="fixed right-4 top-16 w-72 bg-card border border-subtle rounded-2xl shadow-2xl z-[10000] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200"
-                    onClick={(e) => e.stopPropagation()}
+                    className="fixed inset-0 z-[100010] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200"
+                    onClick={() => setIsOpen(false)}
                 >
-                    <div className="p-4 border-b border-subtle bg-surface/50">
-                        <h3 className="text-xs font-black text-content uppercase tracking-widest">
-                            Verification Queue
-                        </h3>
-                    </div>
+                    <div
+                        className="bg-surface border border-subtle rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden scale-100 animate-in zoom-in-95 duration-200 flex flex-col max-h-[80vh]"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="px-6 py-4 border-b border-subtle bg-main/50 flex items-center justify-between">
+                            <h3 className="text-xl font-black text-content uppercase tracking-tight">
+                                Verification Queue
+                            </h3>
+                            <button onClick={() => setIsOpen(false)} className="p-2 -mr-2 text-muted hover:text-content transition-colors">
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
 
-                    <div className="max-h-96 overflow-y-auto">
-                        {/* Needs Correction Section */}
-                        {correctionCount > 0 && (
-                            <div className="p-2">
-                                <p className="px-2 py-1 text-[9px] font-black text-amber-500/70 uppercase tracking-widest">
-                                    Clarification
-                                </p>
-                                {orders
-                                    .filter((o) => o.status === 'needs_correction')
-                                    .map((order) => (
-                                        <div
-                                            key={order.id}
-                                            className="flex items-center gap-1 pr-2 rounded-xl hover:bg-amber-500/5 transition-colors group"
-                                        >
-                                            <button
-                                                onClick={() => handleOrderSelect(order)}
-                                                className="flex-1 flex items-center justify-between p-3 text-left"
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500 border border-amber-500/20">
-                                                        <AlertCircle size={16} />
-                                                    </div>
-                                                    <div>
-                                                        <div className="text-xs font-black text-content uppercase">
-                                                            #{order.order_number || order.id.toString().slice(-6).toUpperCase()}
-                                                        </div>
-                                                        <div className="text-[9px] text-muted font-bold uppercase">
-                                                            {order.profiles?.full_name}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <ChevronDown
-                                                    size={14}
-                                                    className="-rotate-90 text-subtle group-hover:text-amber-500 transition-colors"
-                                                />
-                                            </button>
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    showConfirmation(
-                                                        'Delete Order',
-                                                        'Are you sure you want to delete this order permanently? This action cannot be undone.',
-                                                        () => deleteList(order.id.toString()),
-                                                        () => { },
-                                                        'Delete',
-                                                        'Cancel'
-                                                    );
-                                                }}
-                                                className="p-2 text-muted hover:text-red-500 transition-colors"
-                                                title="Delete Order"
-                                            >
-                                                <Trash2 size={16} />
-                                            </button>
-                                        </div>
-                                    ))}
-                            </div>
-                        )}
-
-                        {/* Ready for Double Check Section */}
-                        <div className="p-2 border-t border-subtle">
-                            <p className="px-2 py-1 text-[9px] font-black text-accent uppercase tracking-widest">
-                                Ready to Verify
-                            </p>
-                            {orders
-                                .filter(
-                                    (o) => o.status === 'ready_to_double_check' || o.status === 'double_checking'
-                                )
-                                .map((order) => (
-                                    <div
-                                        key={order.id}
-                                        className="flex items-center gap-1 pr-2 rounded-xl hover:bg-accent/5 transition-colors group"
-                                    >
-                                        <button
-                                            onClick={() => handleOrderSelect(order)}
-                                            className={`flex-1 flex items-center justify-between p-3 text-left ${order.status === 'double_checking' ? 'opacity-60' : ''}`}
-                                        >
-                                            <div className="flex items-center gap-3">
+                        <div className="overflow-y-auto flex-1 pb-6">
+                            {/* Needs Correction Section */}
+                            {correctionCount > 0 && (
+                                <div className="p-4">
+                                    <p className="px-2 py-1 text-[10px] font-black text-amber-500 uppercase tracking-widest mb-2">
+                                        Action Required
+                                    </p>
+                                    <div className="space-y-1">
+                                        {orders
+                                            .filter((o) => o.status === 'needs_correction')
+                                            .map((order) => (
                                                 <div
-                                                    className={`w-8 h-8 rounded-lg flex items-center justify-center border transition-colors ${order.status === 'double_checking'
-                                                        ? 'bg-orange-500/10 text-orange-500 border-orange-500/20'
-                                                        : 'bg-accent/10 text-accent border-accent/20'
-                                                        }`}
+                                                    key={order.id}
+                                                    className="flex items-center gap-1 pr-2 rounded-2xl hover:bg-amber-500/5 transition-colors group border border-amber-500/10"
                                                 >
-                                                    {order.status === 'double_checking' ? (
-                                                        <Clock size={16} />
-                                                    ) : (
-                                                        <CheckCircle2 size={16} />
-                                                    )}
+                                                    <button
+                                                        onClick={() => handleOrderSelect(order)}
+                                                        className="flex-1 flex items-center justify-between p-4 text-left"
+                                                    >
+                                                        <div className="flex items-center gap-4">
+                                                            <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500 border border-amber-500/20">
+                                                                <AlertCircle size={20} />
+                                                            </div>
+                                                            <div>
+                                                                <div className="text-sm font-black text-content uppercase tracking-tight">
+                                                                    #{order.order_number || order.id.toString().slice(-6).toUpperCase()}
+                                                                </div>
+                                                                <div className="text-[10px] text-muted font-bold uppercase tracking-wider">
+                                                                    {order.profiles?.full_name}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <ChevronDown
+                                                            size={18}
+                                                            className="-rotate-90 text-subtle group-hover:text-amber-500 transition-colors"
+                                                        />
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            showConfirmation(
+                                                                'Delete Order',
+                                                                'Are you sure you want to delete this order permanently? This action cannot be undone.',
+                                                                () => deleteList(order.id.toString()),
+                                                                () => { },
+                                                                'Delete',
+                                                                'Cancel'
+                                                            );
+                                                        }}
+                                                        className="p-3 text-muted hover:text-red-500 transition-colors"
+                                                        title="Delete Order"
+                                                    >
+                                                        <Trash2 size={18} />
+                                                    </button>
                                                 </div>
-                                                <div>
-                                                    <div className="text-xs font-black text-content uppercase">
-                                                        #{order.order_number || order.id.toString().slice(-6).toUpperCase()}
+                                            ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Ready for Double Check Section */}
+                            <div className="p-4">
+                                <p className="px-2 py-1 text-[10px] font-black text-accent uppercase tracking-widest mb-2">
+                                    Ready to Verify
+                                </p>
+                                <div className="space-y-1">
+                                    {orders
+                                        .filter(
+                                            (o) => o.status === 'ready_to_double_check' || o.status === 'double_checking'
+                                        )
+                                        .map((order) => (
+                                            <div
+                                                key={order.id}
+                                                className={`flex items-center gap-1 pr-2 rounded-2xl hover:bg-accent/5 transition-colors group border ${order.status === 'double_checking' ? 'border-orange-500/10' : 'border-accent/10'}`}
+                                            >
+                                                <button
+                                                    onClick={() => handleOrderSelect(order)}
+                                                    className={`flex-1 flex items-center justify-between p-4 text-left ${order.status === 'double_checking' ? 'opacity-60' : ''}`}
+                                                >
+                                                    <div className="flex items-center gap-4">
+                                                        <div
+                                                            className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-colors ${order.status === 'double_checking'
+                                                                ? 'bg-orange-500/10 text-orange-500 border-orange-500/20'
+                                                                : 'bg-accent/10 text-accent border-accent/20'
+                                                                }`}
+                                                        >
+                                                            {order.status === 'double_checking' ? (
+                                                                <Clock size={20} />
+                                                            ) : (
+                                                                <CheckCircle2 size={20} />
+                                                            )}
+                                                        </div>
+                                                        <div>
+                                                            <div className="text-sm font-black text-content uppercase tracking-tight">
+                                                                #{order.order_number || order.id.toString().slice(-6).toUpperCase()}
+                                                            </div>
+                                                            <div className="text-[10px] text-muted font-bold uppercase tracking-wider">
+                                                                {order.status === 'double_checking'
+                                                                    ? `Being checked by ${order.checker_profile?.full_name?.split(' ')[0]}`
+                                                                    : order.profiles?.full_name}
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                    <div className="text-[9px] text-muted font-bold uppercase">
-                                                        {order.status === 'double_checking'
-                                                            ? `Being checked by ${order.checker_profile?.full_name?.split(' ')[0]}`
-                                                            : order.profiles?.full_name}
-                                                    </div>
-                                                </div>
+                                                    <ChevronDown
+                                                        size={18}
+                                                        className="-rotate-90 text-subtle group-hover:text-accent transition-colors"
+                                                    />
+                                                </button>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        showConfirmation(
+                                                            'Delete Order',
+                                                            'Are you sure you want to delete this order permanently? This action cannot be undone.',
+                                                            () => deleteList(order.id.toString()),
+                                                            () => { },
+                                                            'Delete',
+                                                            'Cancel'
+                                                        );
+                                                    }}
+                                                    className="p-3 text-muted hover:text-red-500 transition-colors"
+                                                    title="Delete Order"
+                                                >
+                                                    <Trash2 size={18} />
+                                                </button>
                                             </div>
-                                            <ChevronDown
-                                                size={14}
-                                                className="-rotate-90 text-subtle group-hover:text-accent transition-colors"
-                                            />
-                                        </button>
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                showConfirmation(
-                                                    'Delete Order',
-                                                    'Are you sure you want to delete this order permanently? This action cannot be undone.',
-                                                    () => deleteList(order.id.toString()),
-                                                    () => { },
-                                                    'Delete',
-                                                    'Cancel'
-                                                );
-                                            }}
-                                            className="p-2 text-muted hover:text-red-500 transition-colors"
-                                            title="Delete Order"
-                                        >
-                                            <Trash2 size={16} />
-                                        </button>
-                                    </div>
-                                ))}
-                            {readyCount === 0 &&
-                                orders.filter((o) => o.status === 'double_checking').length === 0 && (
-                                    <div className="p-4 text-center text-[10px] text-muted font-bold uppercase italic">
-                                        No orders waiting
-                                    </div>
-                                )}
+                                        ))}
+                                    {readyCount === 0 &&
+                                        orders.filter((o) => o.status === 'double_checking').length === 0 && (
+                                            <div className="p-12 text-center">
+                                                <CheckCircle2 size={40} className="mx-auto mb-4 text-muted opacity-20" />
+                                                <p className="text-xs text-muted font-bold uppercase tracking-widest italic">
+                                                    No orders waiting
+                                                </p>
+                                            </div>
+                                        )}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>,
