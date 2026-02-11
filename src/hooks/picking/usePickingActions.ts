@@ -560,6 +560,32 @@ export const usePickingActions = ({
     [customer, setCustomer]
   );
 
+  const takeOverOrder = useCallback(
+    async (listId: string) => {
+      if (!user) return;
+      setIsSaving(true);
+      try {
+        const { error } = await supabase
+          .from('picking_lists')
+          .update({
+            user_id: user.id,
+            last_activity_at: new Date().toISOString(),
+          } as any)
+          .eq('id', listId);
+
+        if (error) throw error;
+
+        toast.success('You have taken over this order.');
+      } catch (err) {
+        console.error('Failed to take over order:', err);
+        toast.error('Failed to take over order');
+      } finally {
+        setIsSaving(false);
+      }
+    },
+    [user, setIsSaving]
+  );
+
   return {
     completeList,
     markAsReady,
@@ -570,5 +596,6 @@ export const usePickingActions = ({
     deleteList,
     generatePickingPath,
     updateCustomerDetails,
+    takeOverOrder,
   };
 };

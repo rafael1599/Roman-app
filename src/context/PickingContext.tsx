@@ -51,6 +51,7 @@ interface PickingContextType {
   returnToPicker: (id: string, notes: string) => Promise<void>;
   revertToPicking: () => Promise<void>;
   deleteList: (id: string | null, keepLocalState?: boolean) => Promise<void>;
+  takeOverOrder: (id: string) => Promise<void>;
 
   loadExternalList: (id: string) => Promise<any>;
 
@@ -71,7 +72,6 @@ interface PickingContextType {
   startNewSession: (
     strategy: 'auto' | 'manual' | 'resume',
     manualOrderNumber?: string,
-    resumeId?: string,
     customerData?: Customer | string
   ) => Promise<void>;
   updateCustomerDetails: (customerId: string, details: Partial<Customer>) => Promise<void>;
@@ -206,6 +206,7 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
     deleteList,
     generatePickingPath,
     updateCustomerDetails,
+    takeOverOrder,
   } = usePickingActions({
     user,
     activeListId,
@@ -298,7 +299,6 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
   const startNewSession = useCallback(async (
     strategy: 'auto' | 'manual' | 'resume',
     manualOrderNumber?: string,
-    resumeId?: string,
     customerData?: Customer | string
   ) => {
     // Capture pending item before reset
@@ -392,6 +392,7 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
     deleteList,
     loadExternalList,
     generatePickingPath,
+    takeOverOrder,
     returnToBuilding,
     isLoaded,
     isSaving,
@@ -440,6 +441,7 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
     releaseCheck,
     returnToPicker,
     revertToPicking,
+    takeOverOrder,
     deleteList,
     loadExternalList,
     generatePickingPath,

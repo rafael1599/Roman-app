@@ -246,7 +246,7 @@ export const PickingCartDrawer: React.FC = () => {
                     }}
                 >
                     <div
-                        className="bg-surface border border-subtle rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden scale-100 animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]"
+                        className="bg-surface border border-subtle rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden scale-100 animate-in zoom-in-95 duration-200 flex flex-col h-[90dvh]"
                         onClick={(e) => e.stopPropagation()}
                     >
                         {currentView === 'picking' ? (
@@ -298,42 +298,45 @@ export const PickingCartDrawer: React.FC = () => {
                             />
                         )}
                     </div>
-                </div>
-            )}
+                </div >
+            )
+            }
 
             {/* Collapsed State - Floating Trigger instead of Mini Bar */}
-            {!isOpen && (
-                <button
-                    onClick={() => setIsOpen(true)}
-                    className={`fixed bottom-24 left-4 right-4 p-4 rounded-2xl shadow-2xl flex items-center justify-between gap-2 cursor-pointer active:scale-95 transition-all z-[9999] border border-white/10 ${sessionMode === 'double_checking'
-                        ? 'bg-orange-500 text-white'
-                        : sessionMode === 'building'
-                            ? 'bg-slate-800 text-white border-slate-700'
-                            : 'bg-accent text-main'
-                        }`}
-                >
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-white/10 rounded-xl">
-                            <ChevronUp size={20} className="animate-bounce" />
+            {
+                !isOpen && (
+                    <button
+                        onClick={() => setIsOpen(true)}
+                        className={`fixed bottom-24 left-4 right-4 p-4 rounded-2xl shadow-2xl flex items-center justify-between gap-2 cursor-pointer active:scale-95 transition-all z-[9999] border border-white/10 ${sessionMode === 'double_checking'
+                            ? 'bg-orange-500 text-white'
+                            : sessionMode === 'building'
+                                ? 'bg-slate-800 text-white border-slate-700'
+                                : 'bg-accent text-main'
+                            }`}
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-white/10 rounded-xl">
+                                <ChevronUp size={20} className="animate-bounce" />
+                            </div>
+                            <div className="font-extrabold uppercase tracking-widest text-[10px] text-left">
+                                <span className="opacity-70 block mb-0.5">Active Session</span>
+                                <span className="text-xs">
+                                    {sessionMode === 'double_checking'
+                                        ? `Verifying #${orderNumber || activeListId?.slice(-6).toUpperCase()}`
+                                        : sessionMode === 'building'
+                                            ? `Reviewing ${totalItems} SKUs`
+                                            : `${totalQty} Units to Pick`}
+                                </span>
+                            </div>
                         </div>
-                        <div className="font-extrabold uppercase tracking-widest text-[10px] text-left">
-                            <span className="opacity-70 block mb-0.5">Active Session</span>
-                            <span className="text-xs">
-                                {sessionMode === 'double_checking'
-                                    ? `Verifying #${orderNumber || activeListId?.slice(-6).toUpperCase()}`
-                                    : sessionMode === 'building'
-                                        ? `Reviewing ${totalItems} SKUs`
-                                        : `${totalQty} Units to Pick`}
-                            </span>
-                        </div>
-                    </div>
-                    {totalItems > 0 && (
-                        <div className="px-3 py-1 bg-black/20 rounded-full text-[10px] font-black">
-                            {totalItems} ITEMS
-                        </div>
-                    )}
-                </button>
-            )}
+                        {totalQty > 0 && (
+                            <div className="px-3 py-1 bg-black/20 rounded-full text-[10px] font-black">
+                                {totalQty} UNITS
+                            </div>
+                        )}
+                    </button>
+                )
+            }
         </>,
         document.body
     );

@@ -199,7 +199,7 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
             </div>
 
             {/* Clean Item List */}
-            <div className="flex-1 overflow-y-auto p-3 bg-surface/20">
+            <div className="flex-1 overflow-y-auto p-3 bg-surface/20 min-h-0">
                 {pallets.length === 0 && cartItems.length > 0 && (
                     <div className="flex flex-col items-center justify-center py-20 text-center">
                         <AlertCircle className="text-amber-500 mb-4 opacity-30" size={48} />

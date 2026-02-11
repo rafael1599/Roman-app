@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
 import { useDoubleCheckList, PickingList } from '../../../hooks/useDoubleCheckList';
 import { useViewMode } from '../../../context/ViewModeContext';
 import ClipboardCheck from 'lucide-react/dist/esm/icons/clipboard-check';
@@ -14,8 +15,9 @@ import { useConfirmation } from '../../../context/ConfirmationContext';
 import toast from 'react-hot-toast';
 
 export const DoubleCheckHeader = () => {
-    const { orders, readyCount, correctionCount, refresh } = useDoubleCheckList();
-    const { setExternalDoubleCheckId, setViewMode } = useViewMode();
+    const { orders, completedOrders, readyCount, correctionCount, refresh } = useDoubleCheckList();
+    const navigate = useNavigate();
+    const { setExternalDoubleCheckId, setExternalOrderId, setViewMode } = useViewMode();
     const { cartItems, sessionMode, deleteList } = usePickingSession();
     const { showConfirmation } = useConfirmation();
     const [isOpen, setIsOpen] = useState(false);
@@ -219,6 +221,40 @@ export const DoubleCheckHeader = () => {
                                         )}
                                 </div>
                             </div>
+
+                            {/* Recently Completed Section */}
+                            {completedOrders.length > 0 && (
+                                <div className="p-4 border-t border-subtle/50 bg-subtle/5">
+                                    <p className="px-2 py-1 text-[10px] font-black text-muted uppercase tracking-widest mb-2">
+                                        Recently Completed
+                                    </p>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {completedOrders.map((order) => (
+                                            <button
+                                                key={order.id}
+                                                onClick={() => {
+                                                    setExternalOrderId(order.id);
+                                                    navigate('/orders');
+                                                    setIsOpen(false);
+                                                }}
+                                                className="flex items-center gap-2 p-2 rounded-xl bg-card border border-subtle hover:border-accent/20 transition-all text-left"
+                                            >
+                                                <div className="w-8 h-8 rounded-lg bg-main flex items-center justify-center text-muted shrink-0">
+                                                    <CheckCircle2 size={14} />
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <div className="text-[10px] font-black text-content uppercase tracking-tight truncate">
+                                                        #{order.order_number || order.id.toString().slice(-6).toUpperCase()}
+                                                    </div>
+                                                    <div className="text-[8px] text-muted font-bold uppercase tracking-tighter truncate">
+                                                        {order.customer?.name || 'Customer'}
+                                                    </div>
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>,

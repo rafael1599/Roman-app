@@ -302,11 +302,11 @@ export const PickingSessionView: React.FC<PickingSessionViewProps> = ({
     // Early return for Building Mode
     if (sessionMode === 'building') {
         return (
-            <React.Fragment>
+            <div className="flex flex-col h-full bg-card overflow-hidden">
                 {/* Header for Order Builder */}
                 <div
                     data-drag-handle="true"
-                    className="bg-surface px-4 py-3 border-b border-subtle flex items-center justify-between sticky top-0 z-50 touch-none"
+                    className="bg-surface px-4 py-3 border-b border-subtle flex items-center justify-between sticky top-0 z-50 touch-none shrink-0"
                 >
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-accent rounded-xl flex items-center justify-center shadow-lg shadow-accent/20">
@@ -340,10 +340,10 @@ export const PickingSessionView: React.FC<PickingSessionViewProps> = ({
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-hidden relative">
+                <div className="flex-1 min-h-0 relative">
                     <OrderBuilderMode cartItems={cartItems} onGeneratePath={generatePickingPath} />
                 </div>
-            </React.Fragment>
+            </div>
         );
     }
 
@@ -457,7 +457,7 @@ export const PickingSessionView: React.FC<PickingSessionViewProps> = ({
             </div>
 
             {/* Scrollable Content */}
-            <div className="flex-1 overflow-y-auto p-3">
+            <div className="flex-1 overflow-y-auto p-3 min-h-0">
                 {/* Correction Notes Banner */}
                 {(correctionNotes || notes.length > 0) && (
                     <div className="mb-6 space-y-4 animate-in fade-in slide-in-from-top-2 duration-500">

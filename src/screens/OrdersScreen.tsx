@@ -15,9 +15,14 @@ import { useNavigate } from 'react-router-dom';
 import { SearchInput } from '../components/ui/SearchInput';
 import { LivePrintPreview } from '../components/orders/LivePrintPreview';
 import { CustomerAutocomplete } from '../features/picking/components/CustomerAutocomplete';
+import { usePickingSession } from '../context/PickingContext';
+import { useViewMode } from '../context/ViewModeContext';
+import HandMetal from 'lucide-react/dist/esm/icons/hand-metal';
 
 export const OrdersScreen = () => {
     const { user } = useAuth();
+    const { takeOverOrder } = usePickingSession();
+    const { externalOrderId, setExternalOrderId } = useViewMode();
     const [orders, setOrders] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedOrder, setSelectedOrder] = useState<any>(null);
@@ -63,7 +68,12 @@ export const OrdersScreen = () => {
         try {
             let query = supabase
                 .from('picking_lists')
-                .select('*, customer:customers(id, name, street, city, state, zip_code)')
+                .select(`
+                    *, 
+                    customer:customers(id, name, street, city, state, zip_code),
+                    user:profiles!user_id(full_name),
+                    presence:user_presence!user_id(last_seen_at)
+                `)
                 .order('created_at', { ascending: false });
 
             const startOfToday = new Date();
@@ -95,8 +105,8 @@ export const OrdersScreen = () => {
 
             setOrders(mappedData);
 
-            // Auto-select first order if none selected
-            if (mappedData.length > 0 && !selectedOrderRef.current) {
+            // Auto-select first order if none selected AND no external jump pending
+            if (mappedData.length > 0 && !selectedOrderRef.current && !externalOrderId) {
                 setSelectedOrder(mappedData[0]);
             }
         } catch (err: any) {
@@ -105,11 +115,24 @@ export const OrdersScreen = () => {
         } finally {
             setLoading(false);
         }
-    }, [user, timeFilter]); // Stable dependency
+    }, [user, timeFilter, externalOrderId]); // Include externalOrderId here to ensure consistency
 
     useEffect(() => {
         fetchOrders();
     }, [fetchOrders]);
+
+    // Handle external selections (e.g. from DoubleCheckHeader)
+    useEffect(() => {
+        if (externalOrderId && orders.length > 0) {
+            const order = orders.find(o => o.id === externalOrderId);
+            if (order) {
+                console.log('🎯 [OrdersScreen] Setting selected order from external ID:', externalOrderId);
+                setSelectedOrder(order);
+                // Clear the external ID so we don't keep resetting on every render
+                setExternalOrderId(null);
+            }
+        }
+    }, [externalOrderId, orders, setExternalOrderId]);
 
     // Sync form data when selectedOrder changes
     useEffect(() => {
@@ -482,32 +505,78 @@ export const OrdersScreen = () => {
                             )}
                         </div>
                     ) : (
-                        filteredOrders.map((order) => (
-                            <div
-                                key={order.id}
-                                onClick={() => setSelectedOrder(order)}
-                                className={`p-3 rounded-xl flex items-center justify-between cursor-pointer transition-all border ${selectedOrder?.id === order.id
-                                    ? 'bg-accent/10 border-accent/30'
-                                    : 'bg-card border-subtle hover:border-accent/20'
-                                    }`}
-                            >
-                                <div className="flex items-center gap-3 min-w-0">
-                                    <div className={`p-2 rounded-lg ${selectedOrder?.id === order.id ? 'bg-accent/20 text-accent' : 'bg-surface text-muted'}`}>
-                                        <Package size={16} />
+                        filteredOrders.map((order) => {
+                            const userOnline = order.presence?.last_seen_at
+                                ? new Date(order.presence.last_seen_at) > new Date(Date.now() - 2 * 60 * 1000)
+                                : false;
+
+                            const inactiveMinutes = order.last_activity_at
+                                ? (Date.now() - new Date(order.last_activity_at).getTime()) / 60000
+                                : 0;
+
+                            const isNonBlocking = ['building', 'needs_correction'].includes(order.status);
+                            const isCompleted = order.status === 'completed';
+
+                            let statusColor = 'border-subtle';
+                            if (!isCompleted) {
+                                if (userOnline) {
+                                    statusColor = 'border-green-500/40';
+                                } else {
+                                    if (isNonBlocking && inactiveMinutes > 10) {
+                                        statusColor = 'border-red-500/40';
+                                    } else {
+                                        statusColor = 'border-yellow-500/40';
+                                    }
+                                }
+                            }
+
+                            return (
+                                <div
+                                    key={order.id}
+                                    onClick={() => setSelectedOrder(order)}
+                                    className={`p-3 rounded-xl flex items-center justify-between cursor-pointer transition-all border-2 ${selectedOrder?.id === order.id
+                                        ? 'bg-accent/10 border-accent/50 shadow-sm'
+                                        : `bg-card ${statusColor} hover:border-accent/20`
+                                        }`}
+                                >
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <div className="relative">
+                                            <div className={`p-2 rounded-lg ${selectedOrder?.id === order.id ? 'bg-accent/20 text-accent' : 'bg-surface text-muted'}`}>
+                                                <Package size={16} />
+                                            </div>
+                                            {!isCompleted && (
+                                                <div className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border-2 border-main ${userOnline ? 'bg-green-500' : 'bg-zinc-400'
+                                                    }`} title={userOnline ? 'User Online' : 'User Offline'} />
+                                            )}
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="text-xs font-black text-content uppercase tracking-tight truncate flex items-center gap-1.5">
+                                                {order.order_number || 'No Order #'}
+                                                {!isCompleted && !userOnline && (
+                                                    <span className="text-[8px] font-bold text-muted/60 lowercase italic">
+                                                        ({Math.round(inactiveMinutes)}m ago)
+                                                    </span>
+                                                )}
+                                            </p>
+                                            <p className="text-[9px] text-muted font-black truncate uppercase tracking-tighter opacity-70">
+                                                {order.customer?.name || 'Generic'} {order.user?.full_name ? `• ${order.user.full_name}` : ''}
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div className="min-w-0">
-                                        <p className="text-xs font-black text-content uppercase tracking-tight truncate">
-                                            {order.order_number || 'No Order #'}
-                                        </p>
-                                        <p className="text-[9px] text-muted font-medium truncate">
-                                            {order.customer?.name || 'Generic'}
-                                        </p>
+                                    <div className="flex flex-col items-end gap-1">
+                                        <span className={`text-[7px] font-black uppercase px-1.5 py-0.5 rounded-md border ${isCompleted ? 'bg-green-500/10 text-green-600 border-green-500/20' :
+                                            order.status === 'cancelled' ? 'bg-red-500/10 text-red-600 border-red-500/20' :
+                                                'bg-accent/5 text-accent border-accent/10'
+                                            }`}>
+                                            {order.status}
+                                        </span>
+                                        <ChevronRight size={12} className="text-muted/30 shrink-0" />
                                     </div>
                                 </div>
-                                <ChevronRight size={14} className="text-muted/30 shrink-0" />
-                            </div>
-                        ))
-                    )}
+                            );
+                        })
+                    )
+                    }
                 </div>
 
                 {/* Active Order Form - Only visible on desktop here, moved inside main for mobile */}
@@ -529,6 +598,25 @@ export const OrdersScreen = () => {
                                     {selectedOrder.status || 'pending'}
                                 </span>
                             </div>
+
+                            {selectedOrder.user_id !== user?.id && ['active', 'ready_to_double_check', 'double_checking'].includes(selectedOrder.status) && (
+                                <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl space-y-2">
+                                    <div className="flex items-center gap-2 text-amber-600">
+                                        <HandMetal size={14} />
+                                        <p className="text-[10px] font-black uppercase tracking-tight">Owned by {selectedOrder.user?.full_name || 'Another User'}</p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={async () => {
+                                            await takeOverOrder(selectedOrder.id);
+                                            fetchOrders(); // Refresh list to see new owner
+                                        }}
+                                        className="w-full py-2 bg-amber-500 text-white text-[9px] font-black uppercase tracking-widest rounded-lg shadow-sm active:scale-95 transition-all"
+                                    >
+                                        Take Over Order
+                                    </button>
+                                </div>
+                            )}
 
                             {/* Customer Name Autocomplete */}
                             <div>
@@ -687,6 +775,25 @@ export const OrdersScreen = () => {
                                             {selectedOrder.status || 'pending'}
                                         </span>
                                     </div>
+
+                                    {selectedOrder.user_id !== user?.id && ['active', 'ready_to_double_check', 'double_checking'].includes(selectedOrder.status) && (
+                                        <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl space-y-3">
+                                            <div className="flex items-center gap-2 text-amber-600">
+                                                <HandMetal size={16} />
+                                                <p className="text-xs font-black uppercase tracking-tight">Owned by {selectedOrder.user?.full_name || 'Another User'}</p>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={async () => {
+                                                    await takeOverOrder(selectedOrder.id);
+                                                    fetchOrders();
+                                                }}
+                                                className="w-full py-3 bg-amber-500 text-white text-xs font-black uppercase tracking-widest rounded-xl shadow-md active:scale-95 transition-all"
+                                            >
+                                                Take Over Order
+                                            </button>
+                                        </div>
+                                    )}
 
                                     {/* Customer Name Autocomplete - Mobile */}
                                     <div>

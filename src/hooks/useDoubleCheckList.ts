@@ -15,7 +15,7 @@ export interface Profile {
 }
 
 export interface PickingList {
-    id: number;
+    id: string;
     order_number: string;
     status: 'ready_to_double_check' | 'double_checking' | 'needs_correction' | 'completed' | 'cancelled';
     items: PickingItem[];
@@ -29,6 +29,7 @@ export interface PickingList {
 
 export const useDoubleCheckList = () => {
     const [orders, setOrders] = useState<PickingList[]>([]);
+    const [completedOrders, setCompletedOrders] = useState<PickingList[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
 
     const fetchOrders = async () => {
@@ -64,6 +65,30 @@ export const useDoubleCheckList = () => {
             ) as PickingList[];
 
             setOrders(validOrders);
+
+            // Fetch last 6 completed orders
+            const { data: completedData, error: completedError } = await supabase
+                .from('picking_lists')
+                .select(
+                    `
+            id, 
+            order_number, 
+            status, 
+            items, 
+            updated_at, 
+            user_id,
+            checked_by,
+            profiles!user_id (full_name),
+            checker_profile:profiles!checked_by (full_name),
+            customer:customers(name)
+          `
+                )
+                .eq('status', 'completed')
+                .order('updated_at', { ascending: false })
+                .limit(6);
+
+            if (completedError) throw completedError;
+            setCompletedOrders(completedData as PickingList[] || []);
         } catch (err) {
             console.error('Error fetching double check orders:', err);
         } finally {
@@ -101,6 +126,7 @@ export const useDoubleCheckList = () => {
 
     return {
         orders,
+        completedOrders,
         readyCount,
         correctionCount,
         checkingCount,

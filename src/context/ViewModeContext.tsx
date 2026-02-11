@@ -7,6 +7,8 @@ interface ViewModeContextType {
   setViewMode: (mode: ViewMode) => void;
   externalDoubleCheckId: string | number | null;
   setExternalDoubleCheckId: (id: string | number | null) => void;
+  externalOrderId: string | number | null;
+  setExternalOrderId: (id: string | number | null) => void;
   isNavHidden: boolean;
   setIsNavHidden: (hidden: boolean) => void;
   isSearching: boolean;
@@ -18,6 +20,7 @@ const ViewModeContext = createContext<ViewModeContextType | undefined>(undefined
 export const ViewModeProvider = ({ children }: { children: ReactNode }) => {
   const [viewMode, setViewMode] = useState<ViewMode>('stock');
   const [externalDoubleCheckId, setExternalDoubleCheckId] = useState<string | number | null>(null);
+  const [externalOrderId, setExternalOrderId] = useState<string | number | null>(null);
   const [isNavHidden, setIsNavHidden] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
 
@@ -28,6 +31,8 @@ export const ViewModeProvider = ({ children }: { children: ReactNode }) => {
         setViewMode,
         externalDoubleCheckId,
         setExternalDoubleCheckId,
+        externalOrderId,
+        setExternalOrderId,
         isNavHidden,
         setIsNavHidden,
         isSearching,

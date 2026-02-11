@@ -113,7 +113,7 @@ export const OrderBuilderMode: React.FC<OrderBuilderModeProps> = ({ cartItems, o
             </div>
 
             {/* Simple List of Items */}
-            <div className="flex-1 overflow-y-auto p-3 space-y-2">
+            <div className="flex-1 overflow-y-auto p-3 space-y-2 min-h-0">
                 {cartItems.map((item, index) => (
                     <div
                         key={`${item.sku}-${index}`}
@@ -188,7 +188,7 @@ export const OrderBuilderMode: React.FC<OrderBuilderModeProps> = ({ cartItems, o
             </div>
 
             {/* Actions Footer */}
-            <div className="p-4 bg-surface border-t border-subtle shadow-lg z-20">
+            <div className="p-4 bg-surface border-t border-subtle shadow-lg z-20 shrink-0">
                 <div className="flex items-center justify-between mb-3 text-xs text-muted font-medium">
                     <span>{cartItems.length} SKUs selected</span>
                     <span>Total Units: {cartItems.reduce((acc, i) => acc + (i.pickingQty || 0), 0)}</span>

@@ -108,6 +108,7 @@ export type Database = {
           location_id: string | null
           quantity: number
           sku: string
+          sku_note: string | null
           snapshot_date: string
           warehouse: string
         }
@@ -118,6 +119,7 @@ export type Database = {
           location_id?: string | null
           quantity: number
           sku: string
+          sku_note?: string | null
           snapshot_date: string
           warehouse: string
         }
@@ -128,6 +130,7 @@ export type Database = {
           location_id?: string | null
           quantity?: number
           sku?: string
+          sku_note?: string | null
           snapshot_date?: string
           warehouse?: string
         }
@@ -188,6 +191,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "locations"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_sku_fkey"
+            columns: ["sku"]
+            isOneToOne: false
+            referencedRelation: "sku_metadata"
+            referencedColumns: ["sku"]
           },
         ]
       }
@@ -416,6 +426,7 @@ export type Database = {
           customer_id: string | null
           id: string
           items: Json | null
+          last_activity_at: string | null
           load_number: string | null
           notes: string | null
           order_number: string | null
@@ -433,6 +444,7 @@ export type Database = {
           customer_id?: string | null
           id?: string
           items?: Json | null
+          last_activity_at?: string | null
           load_number?: string | null
           notes?: string | null
           order_number?: string | null
@@ -450,6 +462,7 @@ export type Database = {
           customer_id?: string | null
           id?: string
           items?: Json | null
+          last_activity_at?: string | null
           load_number?: string | null
           notes?: string | null
           order_number?: string | null
@@ -549,6 +562,24 @@ export type Database = {
         }
         Relationships: []
       }
+      user_presence: {
+        Row: {
+          created_at: string
+          last_seen_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          last_seen_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          last_seen_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -559,8 +590,10 @@ export type Database = {
           p_delta: number
           p_list_id?: string
           p_location: string
+          p_merge_note?: string
           p_order_number?: string
           p_performed_by: string
+          p_skip_log?: boolean
           p_sku: string
           p_user_id: string
           p_user_role?: string
@@ -584,6 +617,7 @@ export type Database = {
           location_id: string
           quantity: number
           sku: string
+          sku_note: string
           warehouse: string
         }[]
       }
@@ -599,6 +633,7 @@ export type Database = {
       }
       is_admin: { Args: never; Returns: boolean }
       is_manager: { Args: never; Returns: boolean }
+      is_user_online: { Args: { p_user_id: string }; Returns: boolean }
       move_inventory_stock: {
         Args: {
           p_from_location: string
@@ -633,6 +668,7 @@ export type Database = {
         Returns: string
       }
       undo_inventory_action: { Args: { target_log_id: string }; Returns: Json }
+      update_user_presence: { Args: { p_user_id: string }; Returns: undefined }
       upsert_inventory_log: {
         Args: {
           p_action_type: string

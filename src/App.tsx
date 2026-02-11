@@ -57,10 +57,15 @@ const AuthenticatedContent = () => {
 };
 
 // Handles session state and loader
+import { usePresence } from './hooks/usePresence';
+
 const AuthGuard = () => {
   const { user, loading } = useAuth();
   const { error, clearError } = useError(); // Use the error context
   const { confirmationState } = useConfirmation(); // Use the confirmation context state
+
+  // Initialize presence tracking
+  usePresence();
 
   if (loading) {
     return (
