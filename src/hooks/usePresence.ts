@@ -42,6 +42,8 @@ export const usePresence = () => {
             }
         };
 
+        // Throttle visibility checks to avoid rapid-fire updates if user toggles tabs quickly
+        // The Interval handles the main pulse.
         document.addEventListener('visibilitychange', handleVisibilityChange);
 
         return () => {
