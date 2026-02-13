@@ -246,7 +246,10 @@ export const PickingCartDrawer: React.FC = () => {
                     }}
                 >
                     <div
-                        className="bg-surface border border-subtle rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden scale-100 animate-in zoom-in-95 duration-200 flex flex-col h-[90dvh]"
+                        className={`bg-surface border-subtle shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col ${currentView === 'double-check'
+                            ? 'fixed inset-0 w-full h-full rounded-none border-0' // Full screen for Double Check
+                            : 'w-full max-w-2xl h-[90dvh] rounded-3xl border'     // Card/Modal for Picking
+                            }`}
                         onClick={(e) => e.stopPropagation()}
                     >
                         {currentView === 'picking' ? (

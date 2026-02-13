@@ -1,21 +1,18 @@
-import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useInventory } from '../hooks/InventoryProvider';
 import { useViewMode } from '../context/ViewModeContext';
 import { SearchInput } from '../components/ui/SearchInput.tsx';
 import { useDebounce } from '../hooks/useDebounce';
 import { InventoryCard } from '../features/inventory/components/InventoryCard';
 import { InventoryModal } from '../features/inventory/components/InventoryModal';
-import { PickingCartDrawer } from '../features/picking/components/PickingCartDrawer';
 import CamScanner from '../features/smart-picking/components/CamScanner';
 import { naturalSort } from '../utils/sortUtils';
 import Plus from 'lucide-react/dist/esm/icons/plus';
 import Warehouse from 'lucide-react/dist/esm/icons/warehouse';
-import X from 'lucide-react/dist/esm/icons/x';
 import Mail from 'lucide-react/dist/esm/icons/mail'; // Added Mail icon
 import { MovementModal } from '../features/inventory/components/MovementModal';
 import { CapacityBar } from '../components/ui/CapacityBar.tsx';
 import toast from 'react-hot-toast';
-import { getOptimizedPickingPath, calculatePallets } from '../utils/pickingLogic';
 
 import { usePickingSession } from '../context/PickingContext';
 import { useAuth } from '../context/AuthContext';
@@ -58,7 +55,6 @@ export const InventoryScreen = () => {
     updateItem,
     moveItem,
     deleteItem,
-    processPickingList,
     loading,
     syncFilters,
     showInactive,

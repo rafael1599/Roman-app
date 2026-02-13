@@ -27,8 +27,6 @@ export const usePickingCart = ({ sessionMode, reservedQuantities }: UsePickingCa
   // The main sync hook will handle loading from DB
   const loadFromLocalStorage = useCallback(() => {
     try {
-      const savedMode = localStorage.getItem('picking_session_mode') as any;
-
       const localData = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (localData) {
         const parsed = JSON.parse(localData);

@@ -58,17 +58,17 @@ export const SessionInitializationModal = () => {
                 if (confirmed) {
                     await supabase.from('picking_lists').update({ user_id: user.id }).eq('id', data.id);
 
-                    await startNewSession('manual', orderNum, undefined, customerData);
+                    await startNewSession('manual', orderNum, customerData);
                     toast.success('You took over the order!');
                 }
             } else {
                 // Brand new order
-                await startNewSession('manual', orderNum, undefined, customerData);
+                await startNewSession('manual', orderNum, customerData);
             }
         } catch (err) {
             console.error('Check failed', err);
             // Fallback: just allow it
-            await startNewSession('manual', orderNum, undefined, customerData);
+            await startNewSession('manual', orderNum, customerData);
         } finally {
             setIsChecking(false);
         }
