@@ -289,7 +289,8 @@ export const InventoryProvider = ({
               return {
                 ...i,
                 quantity: (i.quantity || 0) + vars.finalDelta,
-                _lastUpdateSource: 'local' as const
+                _lastUpdateSource: 'local' as const,
+                _lastLocalUpdateAt: Date.now()
               };
             }
             return i;
@@ -423,7 +424,8 @@ export const InventoryProvider = ({
             return {
               ...item,
               quantity: (item.quantity || 0) - vars.qty,
-              _lastUpdateSource: 'local' as const
+              _lastUpdateSource: 'local' as const,
+              _lastLocalUpdateAt: Date.now()
             };
           }
           return item;
@@ -446,7 +448,8 @@ export const InventoryProvider = ({
                 sku_note: (item.sku_note && vars.sourceItem.sku_note && item.sku_note !== vars.sourceItem.sku_note)
                   ? `${item.sku_note} | ${vars.sourceItem.sku_note}`
                   : (vars.sourceItem.sku_note || item.sku_note),
-                _lastUpdateSource: 'local' as const
+                _lastUpdateSource: 'local' as const,
+                _lastLocalUpdateAt: Date.now()
               };
             }
             return item;
@@ -463,7 +466,8 @@ export const InventoryProvider = ({
             is_active: true,
             created_at: new Date(),
             sku_metadata: skuMetadataMapRef.current[vars.sourceItem.sku],
-            _lastUpdateSource: 'local' as const
+            _lastUpdateSource: 'local' as const,
+            _lastLocalUpdateAt: Date.now()
           };
           next = [newItem, ...next];
         }
@@ -768,6 +772,7 @@ export const InventoryProvider = ({
           location: normalizedLocation || currentItem.location,
           is_active: newQuantity > 0 ? true : currentItem.is_active,
           _lastUpdateSource: 'local',
+          _lastLocalUpdateAt: Date.now(),
         } as any,
         old: currentItem as any,
       };

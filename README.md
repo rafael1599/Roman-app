@@ -83,6 +83,15 @@ The app is accessible at http://localhost:5173/ and automatically broadcasts to 
 - **Vite** - Build & Dev ecosystem
 - **Tailwind CSS** - Design system
 - **Google Gemini 2.5 Flash** - Vision & Extraction AI
+- **AI Agent Skills** - Specialized workflows for frontend design, database performance, and artifact building.
+
+## Development Tools (AI Skills)
+
+This project includes specialized instructions and scripts to assist AI agents in maintaining high code quality and architectural consistency:
+- **frontend-design**: UX/UI standards and modern component patterns.
+- **supabase-postgres-best-practices**: Hardened database schema and RPC patterns.
+- **vercel-react-best-practices**: Optimization for performance and React 19 standards.
+- **web-artifacts-builder**: Automated tools for documentation and proof-of-work generation.
 
 ## Troubleshooting
 

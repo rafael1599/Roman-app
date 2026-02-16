@@ -31,3 +31,9 @@ disenios/
 
 # Backups
 backups/
+
+# Test & Dev Artifacts
+playwright-report/
+playwright/.auth/
+supabase/.temp/
+tsc_output_expert.txt

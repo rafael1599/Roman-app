@@ -104,11 +104,30 @@ export function updateInventoryCache(
                 } else {
                     nextItems = nextItems.map((item, idx) => {
                         if (idx === existingIndex) {
+                            const isIncomingRemote = !(newItem as any)._lastUpdateSource || (newItem as any)._lastUpdateSource === 'remote';
+                            const isExistingLocal = item._lastUpdateSource === 'local';
+                            const localUpdateAge = item._lastLocalUpdateAt ? Date.now() - item._lastLocalUpdateAt : Infinity;
+
+                            // 🛡️ GHOST UPDATE PROTECTION
+                            // If we have a very recent local update (< 4s), and the server is sending 
+                            // a different quantity, it's likely a stale intermediate state of our own.
+                            // We ignore it to prevent the UI jumping back and forth.
+                            if (isExistingLocal && isIncomingRemote && localUpdateAge < 4000) {
+                                if (newItem.quantity !== item.quantity) {
+                                    console.log(`[SYNC] Ignoring stale remote update for ${item.sku}: Local=${item.quantity}, Remote=${newItem.quantity}`);
+                                    return item;
+                                }
+                            }
+
                             return {
                                 ...item,
                                 ...newItem,
                                 sku_metadata: item.sku_metadata || metadataMap?.[newItem.sku],
-                                _lastUpdateSource: (newItem as any)._lastUpdateSource || 'remote'
+                                // If the remote update matches our local quantity, we "SILENTLY" accept it
+                                // by marking it as local to avoid triggering "Others updated this" flashes.
+                                _lastUpdateSource: (isExistingLocal && isIncomingRemote && newItem.quantity === item.quantity)
+                                    ? 'local'
+                                    : ((newItem as any)._lastUpdateSource || 'remote')
                             };
                         }
                         return item;
