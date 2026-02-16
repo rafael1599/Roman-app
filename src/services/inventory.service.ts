@@ -227,8 +227,7 @@ class InventoryService extends BaseService<'inventory', InventoryModel, Inventor
             return { action: 'updated', id: existingItem.id };
         }
 
-        // 4. Insert New Item
-        // Remove non-DB fields that might be present in the schema for input validation but not persistence
+        // 4. Prepare Cleanup
         const { isReversal, force_id, ...cleanInput } = validatedInput;
 
         const itemToInsert: any = {
@@ -236,13 +235,37 @@ class InventoryService extends BaseService<'inventory', InventoryModel, Inventor
             warehouse: warehouse,
             location: destination.name,
             location_id: destination.id,
-            is_active: true, // New items are always active
+            is_active: true,
         };
 
         if (newItem.force_id) {
             itemToInsert.id = newItem.force_id;
         }
 
+        // 5. PRE-FLIGHT: Ensure SKU Metadata exists (Foreign Key Defense)
+        // This is critical for non-admin users adding new SKUs, as they might skip UI metadata creation.
+        try {
+            const { data: meta } = await this.supabase
+                .from('sku_metadata')
+                .select('sku')
+                .eq('sku', itemToInsert.sku)
+                .maybeSingle();
+
+            if (!meta) {
+                console.log(`[InventoryService] SKU ${itemToInsert.sku} not found in metadata. Creating shell entry...`);
+                await this.supabase
+                    .from('sku_metadata')
+                    .upsert([{
+                        sku: itemToInsert.sku,
+                        length_ft: 5, // Default values
+                        width_in: 6
+                    }], { onConflict: 'sku' });
+            }
+        } catch (metaErr) {
+            console.warn('[InventoryService] Metadata pre-flight check failed, attempting insert anyway...', metaErr);
+        }
+
+        // 6. Insert New Item
         const inserted = await this.create(itemToInsert);
 
         console.log(`[InventoryService] Item ${newItem.force_id ? 'RESTORED' : 'CREATED'}:`, {

@@ -364,12 +364,91 @@ export const InventoryProvider = ({
     mutationKey: ['inventory', 'addItem'],
     mutationFn: (vars: { warehouse: string, newItem: InventoryItemInput & { isReversal?: boolean; optimistic_id?: string } }) =>
       inventoryService.addItem(vars.warehouse, vars.newItem, locations, getServiceContext()),
-    onMutate: (vars) => {
+    onMutate: async (vars) => {
       console.log(`[FORENSIC][MUTATION][ADD_START] ${new Date().toISOString()} - SKU: ${vars.newItem.sku}, Optimistic ID: ${vars.newItem.optimistic_id}`);
+
+      const optimistic_id = vars.newItem.optimistic_id || `add-${Date.now()}-${vars.newItem.sku}`;
+
+      // 1. Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: inventoryKeys.lists() });
+      await queryClient.cancelQueries({ queryKey: ['inventory_logs', 'TODAY'] });
+
+      // 2. Snapshot current state
+      const previousInventory = inventoryDataRef.current;
+      const previousLogs = queryClient.getQueryData(['inventory_logs', 'TODAY']);
+
+      // 3. Optimistic Inventory Update
+      setInventoryData((current) => {
+        const existingIndex = current.findIndex(i =>
+          i.sku === vars.newItem.sku &&
+          i.warehouse === vars.warehouse &&
+          (i.location || '').trim().toUpperCase() === (vars.newItem.location || '').trim().toUpperCase()
+        );
+
+        if (existingIndex !== -1) {
+          // CONSOLDIDATE / MERGE
+          return current.map((item, idx) => {
+            if (idx === existingIndex) {
+              return {
+                ...item,
+                quantity: (item.quantity || 0) + vars.newItem.quantity,
+                _lastUpdateSource: 'local' as const,
+                _lastLocalUpdateAt: Date.now()
+              };
+            }
+            return item;
+          });
+        } else {
+          // NEW ENTRY
+          const newItem: InventoryItemWithMetadata = {
+            id: optimistic_id as any,
+            sku: vars.newItem.sku,
+            location: vars.newItem.location,
+            warehouse: vars.warehouse as any,
+            quantity: vars.newItem.quantity,
+            sku_note: vars.newItem.sku_note,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            sku_metadata: skuMetadataMapRef.current[vars.newItem.sku],
+            _lastUpdateSource: 'local',
+            _lastLocalUpdateAt: Date.now()
+          };
+          return [newItem, ...current];
+        }
+      });
+
+      // 4. Optimistic Log Injection
+      queryClient.setQueryData(['inventory_logs', 'TODAY'], (old: any) => {
+        const optimisticLog = {
+          id: optimistic_id,
+          sku: vars.newItem.sku,
+          action_type: 'ADD',
+          quantity_delta: vars.newItem.quantity,
+          warehouse: vars.warehouse,
+          location: vars.newItem.location,
+          user_name: userName,
+          created_at: new Date().toISOString(),
+          isOptimistic: true // Custom flag for UI rendering
+        };
+        return Array.isArray(old) ? [optimisticLog, ...old] : [optimisticLog];
+      });
+
+      return { previousInventory, previousLogs };
     },
-    onSuccess: () => {
-      console.log(`[FORENSIC][MUTATION][ADD_SUCCESS] ${new Date().toISOString()}`);
+    onError: (err, vars, context: any) => {
+      console.error(`[FORENSIC][MUTATION][ADD_ERROR] ${err.message}`);
+      if (context?.previousInventory) {
+        setInventoryData(context.previousInventory);
+      }
+      if (context?.previousLogs) {
+        queryClient.setQueryData(['inventory_logs', 'TODAY'], context.previousLogs);
+      }
+      toast.error(`Error adding item: ${err.message}`);
+    },
+    onSettled: () => {
+      // Invalidate both lists and logs to sync with server truth
       queryClient.invalidateQueries({ queryKey: inventoryKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: ['inventory_logs', 'TODAY'] });
     }
   });
 

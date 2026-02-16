@@ -8,11 +8,15 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const authFile = path.join(__dirname, '../../playwright/.auth/admin.json');
+const authDir = path.join(__dirname, '../../playwright/.auth');
 
-setup('authenticate', async ({ request, baseURL }) => {
-    const username = process.env.VITE_TEST_ADMIN_EMAIL || 'admin@example.com';
-    const password = process.env.VITE_TEST_ADMIN_PASSWORD || 'password123';
+async function authenticate(
+    email: string,
+    password: string,
+    role: 'admin' | 'staff',
+    authFile: string,
+    baseURL: string | undefined
+) {
     const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
     const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || '';
 
@@ -20,19 +24,16 @@ setup('authenticate', async ({ request, baseURL }) => {
         throw new Error('Supabase Configuration Missing in .env');
     }
 
-    // Use Supabase SDK to get valid session token
     const supabase = createClient(supabaseUrl, supabaseKey);
     const { data: { session }, error } = await supabase.auth.signInWithPassword({
-        email: username,
-        password: password,
+        email,
+        password,
     });
 
     if (error || !session) {
-        throw new Error(`Authentication failed: ${error?.message}`);
+        throw new Error(`Authentication failed for ${role} (${email}): ${error?.message}`);
     }
 
-    // Manually construct storage state with session
-    // This mimics what Supabase JS Client does in localStorage
     const authKey = `sb-${new URL(supabaseUrl).hostname.split('.')[0]}-auth-token`;
     const storageStateJson = {
         cookies: [],
@@ -49,21 +50,30 @@ setup('authenticate', async ({ request, baseURL }) => {
                         value: 'false'
                     },
                     {
-                        // Force role explicitly if needed
                         name: `role_${session.user.id}`,
-                        value: 'admin'
+                        value: role
                     }
                 ],
             },
         ],
     };
 
-    // Ensure dir exists
-    const authDir = path.dirname(authFile);
     if (!fs.existsSync(authDir)) {
         fs.mkdirSync(authDir, { recursive: true });
     }
 
     fs.writeFileSync(authFile, JSON.stringify(storageStateJson));
-    console.log(`\n✅ Auth Setup: Logged in as ${username} and saved state to ${authFile}`);
+    console.log(`✅ Auth Setup: Logged in as ${email} (${role}) and saved state to ${authFile}`);
+}
+
+setup('authenticate admin', async ({ baseURL }) => {
+    const email = process.env.VITE_TEST_ADMIN_EMAIL || 'admin@example.com';
+    const password = process.env.VITE_TEST_ADMIN_PASSWORD || 'password123';
+    await authenticate(email, password, 'admin', path.join(authDir, 'admin.json'), baseURL);
+});
+
+setup('authenticate staff', async ({ baseURL }) => {
+    const email = process.env.VITE_TEST_STAFF_EMAIL || 'staff@example.com';
+    const password = process.env.VITE_TEST_STAFF_PASSWORD || 'password123';
+    await authenticate(email, password, 'staff', path.join(authDir, 'staff.json'), baseURL);
 });

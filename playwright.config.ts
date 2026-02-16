@@ -41,10 +41,18 @@ export default defineConfig({
             testMatch: /global\.setup\.ts/,
         },
         {
-            name: 'chromium',
+            name: 'admin',
             use: {
                 ...devices['Desktop Chrome'],
                 storageState: 'playwright/.auth/admin.json',
+            },
+            dependencies: ['setup'],
+        },
+        {
+            name: 'staff',
+            use: {
+                ...devices['Desktop Chrome'],
+                storageState: 'playwright/.auth/staff.json',
             },
             dependencies: ['setup'],
         },
