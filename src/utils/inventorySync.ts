@@ -9,6 +9,7 @@ export interface InventoryFilters {
     search?: string;
     warehouse?: string;
     minQuantity?: number; // e.g., 1 to show only items in stock
+    showInactive?: boolean;
 }
 
 /**
@@ -24,6 +25,11 @@ export type RealtimeInventoryEvent = {
  * Pure helper to determine if an item matches the current UI filter context.
  */
 const matchesContext = (item: InventoryItem, filters: InventoryFilters): boolean => {
+    // 0. Inactive filter
+    if (!filters.showInactive && item.is_active === false) {
+        return false;
+    }
+
     // 1. Warehouse filter
     if (filters.warehouse && item.warehouse !== filters.warehouse) {
         return false;
@@ -40,7 +46,8 @@ const matchesContext = (item: InventoryItem, filters: InventoryFilters): boolean
         const query = filters.search.toLowerCase().trim();
         const skuMatch = item.sku.toLowerCase().includes(query);
         const locMatch = (item.location || '').toLowerCase().includes(query);
-        if (!skuMatch && !locMatch) return false;
+        const noteMatch = (item.sku_note || '').toLowerCase().includes(query);
+        if (!skuMatch && !locMatch && !noteMatch) return false;
     }
 
     return true;
@@ -77,24 +84,51 @@ export function updateInventoryCache(
         return oldData;
     }
 
-    const { eventType, new: newItem, old: oldItem } = event;
-    const isMatch = matchesContext(newItem, filters);
+    const { eventType, new: rawNewItem, old: oldItem } = event;
+
+    // Universal Normalization for the UI state
+    const newItem = rawNewItem ? {
+        ...rawNewItem,
+        location: (rawNewItem.location || '').trim().toUpperCase()
+    } : null;
+
+    const isMatch = newItem && matchesContext(newItem, filters);
     let nextItems = [...items];
 
     switch (eventType) {
         case 'INSERT': {
-            if (isMatch) {
+            if (isMatch && newItem) {
+                // 🛡️ ENHANCED DUPLICATION PROTECTION:
+                // Check if we have a match (SKU+Wh+Loc) that is currently in a 'local' state.
+                // This handles both new optimistic items (negative IDs) AND existing items 
+                // that were optimistically updated/merged.
+                const localMatchIndex = nextItems.findIndex((i: any) => {
+                    const isTempId = (typeof i.id === 'string' && (i.id.startsWith('add-') || i.id.startsWith('move-'))) ||
+                        (typeof i.id === 'number' && i.id < 0);
+                    return isTempId &&
+                        i.sku === newItem.sku &&
+                        i.warehouse === newItem.warehouse &&
+                        (i.location || '').toUpperCase() === (newItem.location || '').toUpperCase();
+                });
+
                 const enriched: InventoryItemWithMetadata = {
                     ...newItem,
                     sku_metadata: metadataMap?.[newItem.sku] || (newItem as any).sku_metadata,
                     _lastUpdateSource: (newItem as any)._lastUpdateSource || 'remote'
                 };
-                nextItems = [enriched, ...nextItems];
+
+                if (localMatchIndex !== -1) {
+                    console.log(`[SYNC] De-duplicating: Replacing local/optimistic item ${nextItems[localMatchIndex].id} with real DB record ${newItem.id}`);
+                    nextItems = nextItems.map((item, idx) => idx === localMatchIndex ? enriched : item);
+                } else {
+                    nextItems = [enriched, ...nextItems];
+                }
             }
             break;
         }
 
         case 'UPDATE': {
+            if (!newItem) break;
             const existingIndex = nextItems.findIndex((i: any) => String(i.id) === String(newItem.id));
             const alreadyInView = existingIndex !== -1;
 
@@ -109,9 +143,6 @@ export function updateInventoryCache(
                             const localUpdateAge = item._lastLocalUpdateAt ? Date.now() - item._lastLocalUpdateAt : Infinity;
 
                             // 🛡️ GHOST UPDATE PROTECTION
-                            // If we have a very recent local update (< 4s), and the server is sending 
-                            // a different quantity, it's likely a stale intermediate state of our own.
-                            // We ignore it to prevent the UI jumping back and forth.
                             if (isExistingLocal && isIncomingRemote && localUpdateAge < 4000) {
                                 if (newItem.quantity !== item.quantity) {
                                     console.log(`[SYNC] Ignoring stale remote update for ${item.sku}: Local=${item.quantity}, Remote=${newItem.quantity}`);
@@ -123,8 +154,6 @@ export function updateInventoryCache(
                                 ...item,
                                 ...newItem,
                                 sku_metadata: item.sku_metadata || metadataMap?.[newItem.sku],
-                                // If the remote update matches our local quantity, we "SILENTLY" accept it
-                                // by marking it as local to avoid triggering "Others updated this" flashes.
                                 _lastUpdateSource: (isExistingLocal && isIncomingRemote && newItem.quantity === item.quantity)
                                     ? 'local'
                                     : ((newItem as any)._lastUpdateSource || 'remote')
@@ -134,12 +163,30 @@ export function updateInventoryCache(
                     });
                 }
             } else if (isMatch) {
+                // 🛡️ DUPLICATION PROTECTION FOR UPDATES:
+                // If this is a move to an existing location, it might be an UPDATE event
+                // instead of INSERT. Check for optimistic duplicates.
+                const localMatchIndex = nextItems.findIndex((i: any) => {
+                    const isTempId = (typeof i.id === 'string' && (i.id.startsWith('add-') || i.id.startsWith('move-'))) ||
+                        (typeof i.id === 'number' && i.id < 0);
+                    return isTempId &&
+                        i.sku === newItem.sku &&
+                        i.warehouse === newItem.warehouse &&
+                        (i.location || '').toUpperCase() === (newItem.location || '').toUpperCase();
+                });
+
                 const enriched: InventoryItemWithMetadata = {
                     ...newItem,
                     sku_metadata: metadataMap?.[newItem.sku] || (newItem as any).sku_metadata,
                     _lastUpdateSource: (newItem as any)._lastUpdateSource || 'remote'
                 };
-                nextItems = [enriched, ...nextItems];
+
+                if (localMatchIndex !== -1) {
+                    console.log(`[SYNC] De-duplicating UPDATE: Replacing local/optimistic item ${nextItems[localMatchIndex].id} with real DB record ${newItem.id}`);
+                    nextItems = nextItems.map((item, idx) => idx === localMatchIndex ? enriched : item);
+                } else {
+                    nextItems = [enriched, ...nextItems];
+                }
             }
             break;
         }

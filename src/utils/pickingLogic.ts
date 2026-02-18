@@ -15,13 +15,13 @@ export const getOptimizedPickingPath = (items: any[], locations: Location[]) => 
   // Create a map for quick lookup of picking order
   const orderMap = new Map<string, number>();
   locations.forEach((loc) => {
-    const key = `${loc.warehouse}-${loc.location}`;
+    const key = `${loc.warehouse}-${(loc.location || '').trim().toUpperCase()}`;
     orderMap.set(key, loc.picking_order ?? 9999);
   });
 
   return [...items].sort((a, b) => {
-    const keyA = `${a.warehouse}-${a.location}`;
-    const keyB = `${b.warehouse}-${b.location}`;
+    const keyA = `${a.warehouse}-${(a.location || '').trim().toUpperCase()}`;
+    const keyB = `${b.warehouse}-${(b.location || '').trim().toUpperCase()}`;
 
     const orderA = orderMap.get(keyA) ?? 9999;
     const orderB = orderMap.get(keyB) ?? 9999;
@@ -77,7 +77,7 @@ export const calculatePallets = (items: any[]): Pallet[] => {
       if (take > 0) {
         // Check if SKU already in current pallet (merge split batches)
         const existingItem = currentPallet.items.find(
-          (i) => i.sku === item.sku && i.location === item.location
+          (i) => i.sku === item.sku && (i.location || '').trim().toUpperCase() === (item.location || '').trim().toUpperCase()
         );
         if (existingItem) {
           existingItem.pickingQty += take;

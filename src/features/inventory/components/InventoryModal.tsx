@@ -321,11 +321,13 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
     };
 
     const onFormSubmit = (data: any) => {
-        // if (isNewLocation && !confirmCreateNew) {
-        //     toast.error('Please confirm creating the new location.');
-        //     return;
-        // }
-
+        // 🛡️ SUBMIT-TIME PREDICTION FIX:
+        // Ensure location is normalized if user clicked save too fast for blur handler
+        if (prediction.bestGuess && prediction.bestGuess !== data.location) {
+            console.log(`[SUBMIT] Auto-corrected location from "${data.location}" to "${prediction.bestGuess}"`);
+            data.location = prediction.bestGuess;
+            setValue('location', prediction.bestGuess); // Sync back to form state
+        }
 
         // Rename Confirmation
         if (mode === 'edit' && initialData && data.sku !== initialData.sku) {
@@ -344,9 +346,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
     };
 
     const executeSave = async (data: any) => {
-        // 1. UPDATE METADATA FIRST (Critical for Foreign Key constraints)
-        // We ALWAYS attempt this now, because even non-admins need a shell metadata entry 
-        // to avoid Foreign Key violations (inventory_sku_fkey).
+        // ... (metadata update)
         try {
             await updateSKUMetadata({
                 sku: data.sku,
@@ -355,11 +355,10 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
             });
         } catch (e) {
             console.error('Metadata update failed:', e);
-            // We proceed anyway, as the service layer now has a second layer of defense.
         }
 
         // 2. CREATE/UPDATE ITEM
-        onSave(data);
+        await onSave(data);
         onClose();
     };
 

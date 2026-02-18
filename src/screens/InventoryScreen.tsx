@@ -73,8 +73,8 @@ export const InventoryScreen = () => {
 
   // Sync filters with provider for Context-Aware Realtime updates
   useEffect(() => {
-    syncFilters({ search: debouncedSearch });
-  }, [debouncedSearch, syncFilters]);
+    syncFilters({ search: debouncedSearch, showInactive });
+  }, [debouncedSearch, showInactive, syncFilters]);
 
   // Client-side filtering and pagination logic (by location)
   const [displayLocationCount, setDisplayLocationCount] = useState(50);
@@ -82,9 +82,8 @@ export const InventoryScreen = () => {
   const filteredInventory = useMemo(() => {
     const s = debouncedSearch.toLowerCase().trim();
     return inventoryData.filter((item) => {
-      // Show all active items (even with quantity 0)
-      // We no longer filter out quantity <= 0 here because the user wants them visible
-      // unless specifically deactivated (is_active = FALSE), which is handled by the initial query.
+      // Show only active items unless showInactive is true
+      if (!showInactive && item.is_active === false) return false;
 
       if (!s) return true;
 
@@ -105,6 +104,8 @@ export const InventoryScreen = () => {
       string,
       Record<string, { items: typeof filteredInventory; locationId?: string | null }>
     > = {};
+
+    // First pass: Group by Warehouse + Location
     filteredInventory.forEach((item) => {
       const wh = item.warehouse || 'UNKNOWN';
       const locName = item.location || 'Unknown Location';
@@ -122,8 +123,66 @@ export const InventoryScreen = () => {
         groups[wh][locName].locationId = item.location_id;
       }
     });
+
+    // Second pass: Consolidate items within each location by SKU
+    Object.keys(groups).forEach(wh => {
+      Object.keys(groups[wh]).forEach(loc => {
+        const consolidated: Record<string, InventoryItemWithMetadata> = {};
+
+        groups[wh][loc].items.forEach(item => {
+          const skuKey = item.sku.toUpperCase().trim();
+
+          if (!consolidated[skuKey]) {
+            consolidated[skuKey] = { ...item };
+          } else {
+            // MERGE Logic
+            const existing = consolidated[skuKey];
+
+            // Prefer a 'real' ID over an optimistic one if both exist,
+            // but keep the local flag if either is local.
+            const isExistingTemp = (typeof existing.id === 'string' && (existing.id.startsWith('add-') || existing.id.startsWith('move-'))) ||
+              (typeof existing.id === 'number' && existing.id < 0);
+            const isItemReal = typeof item.id === 'number' && item.id > 0;
+
+            if (isExistingTemp && isItemReal) {
+              existing.id = item.id;
+            }
+
+            existing.quantity = (existing.quantity || 0) + (item.quantity || 0);
+
+            // Merge notes if they differ
+            if (item.sku_note && item.sku_note !== existing.sku_note) {
+              existing.sku_note = existing.sku_note
+                ? `${existing.sku_note} | ${item.sku_note}`
+                : item.sku_note;
+            }
+
+            // Sync metadata if missing
+            if (!existing.sku_metadata && item.sku_metadata) {
+              existing.sku_metadata = item.sku_metadata;
+            }
+
+            // Preservation of flags
+            if (item._lastUpdateSource === 'local') {
+              existing._lastUpdateSource = 'local';
+              existing._lastLocalUpdateAt = Math.max(existing._lastLocalUpdateAt || 0, item._lastLocalUpdateAt || 0);
+            }
+          }
+        });
+
+        let consolidatedItems = Object.values(consolidated);
+
+        // Filter out zero-quantity items unless showing inactive
+        if (!showInactive) {
+          consolidatedItems = consolidatedItems.filter(item => item.quantity > 0);
+        }
+
+        groups[wh][loc].items = consolidatedItems;
+      });
+    });
+
     return groups;
-  }, [filteredInventory]);
+  }, [filteredInventory, showInactive]);
 
   const allSortedWarehouses = useMemo(() => {
     const warehouses = Object.keys(allGroupedData);
@@ -144,6 +203,7 @@ export const InventoryScreen = () => {
           items: allGroupedData[wh][location].items,
           locationId: allGroupedData[wh][location].locationId,
         }))
+        .filter(block => block.items.length > 0) // Remove empty locations from view
     );
   }, [allSortedWarehouses, allGroupedData]);
 
@@ -217,12 +277,12 @@ export const InventoryScreen = () => {
   }, [editingItem, deleteItem]);
 
   const saveItem = useCallback(
-    (formData: any) => {
+    async (formData: any) => {
       const targetWarehouse = formData.warehouse;
       if (modalMode === 'add') {
-        addItem(targetWarehouse, formData);
+        return await addItem(targetWarehouse, formData);
       } else if (editingItem) {
-        updateItem(editingItem, formData);
+        return await updateItem(editingItem, formData);
       }
     },
     [modalMode, addItem, updateItem, editingItem]
@@ -570,7 +630,7 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
               : 'text-muted'
               }`}
           >
-            Show Deleted Items
+            Show Deleted Items & Qty 0 SKUs
           </label>
         </div>
       )}
@@ -600,8 +660,8 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
                   <div className="flex items-center gap-4 px-1">
                     <div className="flex-[3]">
                       <CapacityBar
-                        current={locationCapacities[`${wh}-${location}`]?.current || 0}
-                        max={locationCapacities[`${wh}-${location}`]?.max || 550}
+                        current={locationCapacities[`${wh}-${(location || '').trim().toUpperCase()}`]?.current || 0}
+                        max={locationCapacities[`${wh}-${(location || '').trim().toUpperCase()}`]?.max || 550}
                       />
                     </div>
 

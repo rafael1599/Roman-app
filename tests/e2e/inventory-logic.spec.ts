@@ -82,7 +82,8 @@ test.describe('Inventory Logic & Smart Operations', () => {
         // Verify A has concatenated note
         await inventoryPage.reloadAndSearch(sku);
 
-        const cardA = inventoryPage.getCard(sku, locA);
-        await expect(cardA).toContainText('Original Note | New Incoming Note');
+        const note = inventoryPage.getNote(sku, locA);
+        await expect(note).toContainText('Original Note');
+        await expect(note).toContainText('New Incoming Note');
     });
 });

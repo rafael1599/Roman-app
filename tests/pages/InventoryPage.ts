@@ -1,193 +1,105 @@
-import { Page, Locator, expect } from '@playwright/test';
+import { expect, Locator, Page } from '@playwright/test';
 import { BasePage } from './BasePage';
 
-export interface AddItemData {
-    sku: string;
-    quantity: number;
-    location: string;
-    warehouse?: string;
-    note?: string;
-}
-
-export interface MoveItemData {
-    targetLocation: string;
-    quantity?: number;
-}
-
-/**
- * InventoryPage encapsulates all inventory-related interactions.
- * Provides resilient methods with proper waits.
- */
 export class InventoryPage extends BasePage {
-    // Locators
-    private get addButton(): Locator {
-        return this.page.getByTitle('Add New SKU');
+    constructor(page: Page) {
+        super(page);
     }
 
-    private get searchInput(): Locator {
-        return this.page.getByPlaceholder('Search SKU, Loc, Warehouse...');
+    async search(query: string) {
+        await this.page.waitForLoadState('networkidle');
+        const searchInput = this.page.getByPlaceholder(/search/i);
+        await searchInput.clear();
+        await searchInput.fill(query);
+        // UI filtering delay
+        await this.page.waitForTimeout(1200);
     }
 
-    private get skuInput(): Locator {
-        return this.page.getByLabel('SKU', { exact: true });
-    }
+    async addItem(data: { sku: string; quantity: number; location: string; warehouse?: string; note?: string }) {
+        const addBtn = this.page.locator('button[title="Add New SKU"]');
+        await expect(addBtn).toBeVisible({ timeout: 15000 });
+        await addBtn.click();
 
-    private get quantityInput(): Locator {
-        return this.page.locator('#inventory_quantity');
-    }
+        const modal = this.page.locator('.fixed.inset-0');
+        await expect(modal).toBeVisible({ timeout: 5000 });
 
-    private get locationInput(): Locator {
-        return this.page.getByLabel('Location');
-    }
-
-    private get noteInput(): Locator {
-        return this.page.getByLabel('Internal Note');
-    }
-
-    private get saveButton(): Locator {
-        return this.page.getByRole('button', { name: 'Save' });
-    }
-
-    private get modalTitle(): Locator {
-        return this.page.getByText(/Add New Item|Edit Item/i);
-    }
-
-    // --- Core Actions ---
-
-    /**
-     * Open the Add Item modal.
-     */
-    async openAddModal(): Promise<void> {
-        await this.addButton.click();
-        await this.waitForVisible(this.modalTitle);
-    }
-
-    /**
-     * Add a new inventory item with proper waits.
-     */
-    async addItem(data: AddItemData): Promise<void> {
-        await this.openAddModal();
-
-        await this.skuInput.fill(data.sku);
-        await this.quantityInput.fill(String(data.quantity));
-        await this.locationInput.fill(data.location);
+        await this.page.locator('#inventory_sku').fill(data.sku);
+        await this.page.locator('#inventory_location').fill(data.location);
+        await this.page.locator('#inventory_location').press('Escape');
 
         if (data.note) {
-            await this.noteInput.fill(data.note);
+            await this.page.locator('#sku_note').fill(data.note);
+            await this.page.locator('#sku_note').press('Escape');
         }
 
-        await expect(this.saveButton).toBeEnabled();
-        await this.saveButton.click();
+        const qtyInput = this.page.locator('#inventory_quantity');
+        await qtyInput.click();
+        await qtyInput.fill(String(data.quantity));
 
-        // Wait for modal to close
-        await this.waitForHidden(this.modalTitle);
-        // Force wait for DB propagation
-        await this.page.waitForTimeout(2000);
-        await this.waitForNetworkIdle();
+        if (data.warehouse && data.warehouse !== 'LUDLOW') {
+            await this.page.getByRole('button', { name: data.warehouse, exact: true }).click();
+        }
+
+        const saveBtn = this.page.getByRole('button', { name: /save/i });
+        await expect(saveBtn).toBeEnabled({ timeout: 5000 });
+        await saveBtn.click();
+
+        await expect(modal).toBeHidden({ timeout: 10000 });
+        // Database sync + local state update buffer
+        await this.page.waitForTimeout(1500);
     }
 
-    /**
-     * Search for items and wait for results to stabilize.
-     */
-    async search(query: string): Promise<void> {
-        await this.fillWithDebounce(this.searchInput, query, 500);
-        await this.waitForNetworkIdle();
+    async clickMoveOnCard(sku: string, location?: string) {
+        const card = this.getCard(sku, location);
+        await expect(card).toBeVisible({ timeout: 15000 });
+        const moveButton = card.getByLabel('Move item');
+        await moveButton.click();
     }
 
-    /**
-     * Reload page and search for item with proper wait for data loading.
-     */
-    async reloadAndSearch(query: string): Promise<void> {
-        await this.reload();
-        // Extra wait for React Query to fetch fresh data
-        await this.page.waitForTimeout(1000);
-        await this.search(query);
-    }
-
-    /**
-     * Get inventory card by SKU and location.
-     */
-    /**
-     * Get inventory card by SKU and location.
-     * Strategies:
-     * 1. If location is provided, find the Location Group Header first, then find the card within that group.
-     * 2. If no location, find any card with the SKU.
-     */
     getCard(sku: string, location?: string): Locator {
-        const base = this.page.locator('.bg-card');
+        const cards = this.page.locator('.bg-card');
+        const skuCards = cards.filter({ hasText: sku });
 
         if (location) {
-            // HYBRID STRATEGY:
-            // 1. Grouped View: Location is in h3 header, cards are siblings/descendants.
-            const groupedCard = this.page.locator('h3', { hasText: location })
-                .locator('xpath=ancestor::div[contains(@class, "space-y-4")]')
-                .locator('.bg-card')
-                .filter({ hasText: sku })
-                .last();
-
-            // 2. Search View: Card contains location text itself.
-            const searchCard = base.filter({ hasText: sku }).filter({ hasText: location }).last();
-
-            // Use OR condition or just return according to which is visible/present
-            // In Playwright we can use `or` but it might be ambiguous if both exist.
-            // Usually only one view is active.
-            return groupedCard.or(searchCard);
+            const normalizedLoc = location.toUpperCase().trim();
+            // Strategy: Look for the location text in the accent-colored div 
+            // or any specific badge within a card that identifies as containing the SKU.
+            // Using a case-insensitive regex for robustness.
+            return skuCards.filter({
+                hasText: new RegExp(`^${normalizedLoc}$|\\s${normalizedLoc}\\s|\\b${normalizedLoc}$`, 'i')
+            }).first();
         }
 
-        // Fallback: Find any card with SKU
-        return base.filter({ hasText: sku }).last();
+        return skuCards.first();
     }
 
-    /**
-     * Verify item exists in the list with retry mechanism for async data loading.
-     */
-    async verifyItemExists(sku: string, location?: string): Promise<void> {
+    async verifyItemExists(sku: string, location?: string) {
         const card = this.getCard(sku, location);
-        await this.retryUntilVisible(card, { timeout: 20000, reloadBetweenRetries: true });
+        await expect(card).toBeVisible({ timeout: 15000 });
     }
 
-    /**
-     * Verify item does NOT exist in the list.
-     */
-    async verifyItemNotExists(sku: string, location?: string): Promise<void> {
+    async verifyItemNotExists(sku: string, location?: string) {
         const card = this.getCard(sku, location);
-        await this.waitForHidden(card);
+        await expect(card).toBeHidden({ timeout: 10000 });
     }
 
-    /**
-     * Verify item quantity.
-     */
-    async verifyQuantity(sku: string, expectedQty: number, location?: string): Promise<void> {
+    async verifyQuantity(sku: string, expectedQty: number, location?: string) {
         const card = this.getCard(sku, location);
-        await expect(card).toContainText(String(expectedQty));
+        await expect(card).toBeVisible({ timeout: 15000 });
+        // Target the specific big quantity span
+        const qtySpan = card.locator('span.text-2xl.font-black');
+        await expect(qtySpan).toHaveText(String(expectedQty), { timeout: 20000 });
     }
 
-    /**
-     * Click move button on a specific card with retry for async loading.
-     */
-    async clickMoveOnCard(sku: string, location: string): Promise<void> {
+    getNote(sku: string, location?: string): Locator {
         const card = this.getCard(sku, location);
-        await this.retryUntilVisible(card, { timeout: 20000, reloadBetweenRetries: false });
-        await card.getByLabel('Move item').click();
+        // Note is the last tiny font element in the card
+        return card.locator('.text-\\[9px\\]').last();
     }
 
-    /**
-     * Click on a card to open edit modal.
-     */
-    async clickCard(sku: string, location?: string): Promise<void> {
-        const card = this.getCard(sku, location);
-        await this.waitForVisible(card);
-        await card.click();
-    }
-
-    /**
-     * Fill negative quantity and verify validation.
-     */
-    async verifyNegativeQuantityBlocked(): Promise<boolean> {
-        await this.quantityInput.fill('-5');
-
-        // Check if save is disabled or error message shown
-        const isDisabled = await this.saveButton.isDisabled();
-        return isDisabled;
+    async reloadAndSearch(sku: string) {
+        await this.page.reload({ waitUntil: 'networkidle' });
+        await this.page.waitForTimeout(2500); // Wait for potential animations/load
+        await this.search(sku);
     }
 }

@@ -8,6 +8,8 @@ import {
 /**
  * Cache Versioning - increment this to force-invalidate all client caches.
  */
+import { registerMutationDefaults } from './mutationRegistry';
+
 const CACHE_VERSION = 'v1.2.0';
 const BASE_CACHE_KEY = 'pickd-inventory-cache';
 const VERSIONED_KEY = `${BASE_CACHE_KEY}-${CACHE_VERSION}`;
@@ -121,6 +123,15 @@ export const queryClient = new QueryClient({
     }),
 });
 
+// ── Register mutation defaults immediately on client creation ────────
+// This ensures that hydrated mutations can always find their mutationFn.
+registerMutationDefaults(queryClient);
+
+// Expose to window for debugging and E2E testing
+if (typeof window !== 'undefined') {
+    (window as any).queryClient = queryClient;
+}
+
 export const persister = createIDBPersister();
 
 /**
@@ -163,7 +174,32 @@ export async function cleanupCorruptedMutations() {
                 }
             }
 
-            // 3. Generic error cleanup for any inventory mutation that is stuck in error
+            // 3. Zombie detection: Aged paused mutations or orphaned mutations
+            const isPending = mutation.state.status === 'pending';
+            const isPaused = mutation.state.isPaused === true;
+            const submittedAt = mutation.state.submittedAt || 0;
+            const age = submittedAt > 0 ? Date.now() - submittedAt : 0;
+
+            if (isPending && isPaused) {
+                // If the mutation is pending and paused for more than 5 minutes, it's likely a zombie
+                // that survived a reload but failed to resume or lost its context.
+                if (age > 5 * 60 * 1000) {
+                    shouldRemove = true;
+                    reason = `Zombie: Pending + Paused for over 5m (${Math.round(age / 1000 / 60)}m)`;
+                }
+
+                // If it has no mutationFn and no matching default, it's an orphan and can't execute.
+                // Note: defaultOptions can be checked via queryClient.getMutationDefaults(key)
+                const hasFn = !!mutation.options.mutationFn;
+                const hasDefault = !!queryClient.getMutationDefaults(mutation.options.mutationKey);
+
+                if (!hasFn && !hasDefault) {
+                    shouldRemove = true;
+                    reason = 'Orphan: No mutationFn and no default registered';
+                }
+            }
+
+            // 4. Generic error cleanup for any inventory mutation that is stuck in error
             if (!shouldRemove && mutation.state.status === 'error') {
                 const error = mutation.state.error as any;
                 const errorMessage = error?.message || '';

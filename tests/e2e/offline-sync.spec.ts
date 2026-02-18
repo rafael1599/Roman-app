@@ -1,8 +1,8 @@
 import { test, expect } from '../fixtures/test-base';
 import { BasePage } from '../pages';
 
-const SKU = BasePage.generateSKU('GHOST-SYNC');
-const LOCATION = 'Row 1';
+const SKU = BasePage.generateSKU('TEST-SYNC');
+const LOCATION = 'ROW-1-TEST';
 
 test.describe('Offline Sync (Happy Path)', () => {
 

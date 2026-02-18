@@ -86,20 +86,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
             fetchProfileWithTimeout(session.user.id, true);
 
-            // Kickstart: Resume and Invalidate to prevent 'Zombie Orders'
-            queryClient.resumePausedMutations().then(() => {
-              console.log('[AuthContext] Resumed mutations post-login');
-              // If no mutations are running, force absolute truth from server now
-              if (queryClient.isMutating() === 0) {
-                queryClient.invalidateQueries();
-              }
+            // Kickstart: Clean and Resume to prevent 'Zombie Orders'
+            import('../lib/query-client').then(({ cleanupCorruptedMutations }) => {
+              cleanupCorruptedMutations().then(() => {
+                queryClient.resumePausedMutations().then(() => {
+                  console.log('[AuthContext] Resumed mutations post-login');
+                  // If no mutations are running, force absolute truth from server now
+                  if (queryClient.isMutating() === 0) {
+                    queryClient.invalidateQueries();
+                  }
+                });
+              });
             });
           } else {
             await fetchProfileWithTimeout(session.user.id, false);
-            queryClient.resumePausedMutations().then(() => {
-              if (queryClient.isMutating() === 0) {
-                queryClient.invalidateQueries();
-              }
+
+            import('../lib/query-client').then(({ cleanupCorruptedMutations }) => {
+              cleanupCorruptedMutations().then(() => {
+                queryClient.resumePausedMutations().then(() => {
+                  if (queryClient.isMutating() === 0) {
+                    queryClient.invalidateQueries();
+                  }
+                });
+              });
             });
           }
         }

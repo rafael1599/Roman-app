@@ -11,14 +11,14 @@ export abstract class BasePage {
      * Navigate to a URL with proper wait for network idle.
      */
     async goto(path: string = '/'): Promise<void> {
-        await this.page.goto(path, { waitUntil: 'networkidle' });
+        await this.page.goto(path, { waitUntil: 'load' });
     }
 
     /**
      * Reload with network idle wait to prevent race conditions.
      */
     async reload(): Promise<void> {
-        await this.page.reload({ waitUntil: 'networkidle' });
+        await this.page.reload({ waitUntil: 'load' });
     }
 
     /**

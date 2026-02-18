@@ -34,7 +34,7 @@ export const HistoryScreen = () => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const { showError } = useError();
   const { showConfirmation } = useConfirmation();
-  const { undoAction } = useInventory();
+  const { undoAction, inventoryData } = useInventory();
   const [manualLoading, setManualLoading] = useState(false);
 
   const queryClient = useQueryClient();
@@ -121,12 +121,18 @@ export const HistoryScreen = () => {
       status: mutation.state.status,
       // @ts-ignore
       isPaused: mutation.state.isPaused,
-      mutationKey: mutation.options.mutationKey
+      mutationKey: mutation.options.mutationKey,
+      submittedAt: mutation.state.submittedAt
     })
   });
 
   const optimisticLogs = useMemo(() => {
     return (pendingMutations || [])
+      .filter(m => {
+        // Safety net: only show mutations submitted within the last 2 minutes
+        const age = Date.now() - (m.submittedAt || 0);
+        return age < 120_000;
+      })
       .map(m => {
         const vars = m.variables;
         const mutationKey = m.mutationKey;
@@ -412,9 +418,68 @@ export const HistoryScreen = () => {
     return groups;
   }, [filteredLogs]);
 
+  const latestLogIdsPerItem = useMemo(() => {
+    const latestIds = new Set<string>();
+    const seenItems = new Set<string>();
+
+    // logs is already sorted DESC (newest first)
+    logs.forEach(log => {
+      // We only care about non-reversed logs for LIFO candidates
+      // and we only consider "Actionable" logs (not systems/recon)
+      if (log.is_reversed || log.action_type === 'SYSTEM_RECONCILIATION') return;
+
+      const itemKey = log.item_id
+        ? `ID-${log.item_id}`
+        : `SKU-${log.sku}-${log.from_warehouse}-${log.from_location || log.to_location}`;
+
+      if (!seenItems.has(itemKey)) {
+        latestIds.add(log.id);
+        seenItems.add(itemKey);
+      }
+    });
+
+    return latestIds;
+  }, [logs]);
+
+  const checkIsStaleRevival = useCallback((log: InventoryLog) => {
+    if (!log.created_at) return false;
+
+    // 1. Check age (> 48h)
+    const logDate = new Date(log.created_at).getTime();
+    const now = new Date().getTime();
+    const ageInHours = (now - logDate) / (1000 * 60 * 60);
+    const isOld = ageInHours > 48;
+
+    if (!isOld) return false;
+
+    // 2. Check if item exists in inventoryData
+    // We look for the item at the location it was supposed to be in
+    const targetWarehouse = log.to_warehouse || log.from_warehouse;
+    const targetLocation = log.to_location || log.from_location;
+
+    const exists = (inventoryData || []).some(item =>
+      item.sku === log.sku &&
+      item.warehouse === targetWarehouse &&
+      (item.location || '').toUpperCase() === (targetLocation || '').toUpperCase()
+    );
+
+    // If it's old AND the record is missing from inventory, it's a "Revival"
+    // Note: If it's old but the record IS there, it's just a quantity change (allowed)
+    return !exists;
+  }, [inventoryData]);
+
   const handleUndo = useCallback(
     async (id: string) => {
       if (undoingId) return;
+
+      const log = logs.find(l => l.id === id);
+      if (log && checkIsStaleRevival(log)) {
+        toast.error("Records over 48h old cannot be revived. Please restock this SKU manually.", {
+          duration: 5000,
+          icon: '⚠️'
+        });
+        return;
+      }
 
       showConfirmation(
         'Undo Action',
@@ -985,21 +1050,41 @@ export const HistoryScreen = () => {
                         </div>
 
                         {!log.is_reversed && !log.order_number && !log.list_id && (
-                          <button
-                            onClick={() => handleUndo(log.id)}
-                            disabled={(log as any).isOptimistic || undoingId === log.id}
-                            className={`p-3 bg-surface border border-subtle rounded-2xl transition-all shadow-xl text-content ${(log as any).isOptimistic || undoingId === log.id
-                              ? 'opacity-20 cursor-not-allowed scale-90'
-                              : 'hover:bg-content hover:text-main'
-                              }`}
-                            title={(log as any).isOptimistic ? "Syncing..." : undoingId === log.id ? "Undoing..." : "Undo Action"}
-                          >
-                            {undoingId === log.id ? (
-                              <div className="animate-spin rounded-full h-4 w-4 border-2 border-content border-t-transparent" />
-                            ) : (
-                              <Undo2 size={16} />
-                            )}
-                          </button>
+                          (() => {
+                            const isStale = checkIsStaleRevival(log);
+                            const isLatest = latestLogIdsPerItem.has(log.id);
+                            const canUndo = isLatest && !isStale && !undoingId && !(log as any).isOptimistic;
+
+                            return (
+                              <button
+                                onClick={() => handleUndo(log.id)}
+                                disabled={!canUndo}
+                                className={`p-3 border rounded-2xl transition-all shadow-xl ${!canUndo
+                                  ? 'opacity-20 cursor-not-allowed scale-90 bg-surface border-subtle text-muted'
+                                  : 'bg-surface border-subtle text-content hover:bg-content hover:text-main'
+                                  }`}
+                                title={
+                                  !isLatest
+                                    ? "Solo puedes deshacer la acción más reciente de este SKU (LIFO)."
+                                    : isStale
+                                      ? "This record is over 48h old and requires manual restock."
+                                      : (log as any).isOptimistic
+                                        ? "Syncing..."
+                                        : undoingId === log.id
+                                          ? "Undoing..."
+                                          : "Undo Action"
+                                }
+                              >
+                                {undoingId === log.id ? (
+                                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-content border-t-transparent" />
+                                ) : isStale ? (
+                                  <AlertCircle size={16} className="text-red-500" />
+                                ) : (
+                                  <Undo2 size={16} />
+                                )}
+                              </button>
+                            );
+                          })()
                         )}
 
                         {log.is_reversed && (
@@ -1073,6 +1158,19 @@ export const HistoryScreen = () => {
                           <span>
                             Stock Level: {log.prev_quantity} → {log.new_quantity}
                           </span>
+                        </div>
+                      )}
+
+                      {checkIsStaleRevival(log) && (
+                        <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-start gap-3">
+                          <AlertCircle size={14} className="text-red-500 mt-0.5 shrink-0" />
+                          <div>
+                            <p className="text-[10px] font-bold text-red-500 uppercase tracking-tight">Manual Restock Required</p>
+                            <p className="text-[9px] text-muted font-medium mt-1 leading-tight">
+                              This activity occurred over 48 hours ago and the item has since been removed.
+                              To restore this stock, please use the <strong>Add Item</strong> feature in the Inventory screen.
+                            </p>
+                          </div>
                         </div>
                       )}
                     </div>

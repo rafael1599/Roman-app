@@ -91,6 +91,10 @@ export const predictLocation = (
         if (rowMatches.length === 1) {
             bestGuess = rowMatches[0];
         }
+    } else if (isNumeric && potentialMatches.length === 0) {
+        // 🧪 FALLBACK: If numeric input doesn't match anything, assume "Row X"
+        // This prevents creating "4" instead of "Row 4" for new items.
+        bestGuess = `Row ${cleanInput}`;
     }
 
     return {

@@ -17,6 +17,7 @@ import { useInventoryLogs } from './useInventoryLogs';
 import { useLocationManagement } from './useLocationManagement';
 import { usePickingListsSubscription } from './usePickingListsSubscription';
 import { inventoryService, type InventoryServiceContext } from '../services/inventory.service';
+import { type MutationUserContext } from '../lib/mutationRegistry';
 import { type InventoryItem, type InventoryItemWithMetadata, type InventoryItemInput } from '../schemas/inventory.schema';
 import { inventoryApi } from '../services/inventoryApi';
 import { type SKUMetadata, type SKUMetadataInput } from '../schemas/skuMetadata.schema';
@@ -121,7 +122,7 @@ export const InventoryProvider = ({
 
   const inventoryDataRef = useRef(inventoryData);
   const skuMetadataMapRef = useRef(skuMetadataMap);
-  const filtersRef = useRef<InventoryFilters>({ search: '', warehouse: undefined });
+  const filtersRef = useRef<InventoryFilters>({ search: '', warehouse: undefined, showInactive: false });
   const isInitialConnection = useRef(true);
 
   useEffect(() => {
@@ -139,6 +140,7 @@ export const InventoryProvider = ({
   // Initial Load - Parallel queries + Cleanup
   useEffect(() => {
     const loadAllData = async () => {
+      console.log(`[InventoryProvider] 🚀 loadAllData START (showInactive=${showInactive}, user=${user?.id || 'null'})`);
       try {
         setLoading(true);
 
@@ -162,20 +164,25 @@ export const InventoryProvider = ({
           }
         }
 
-        const data = await inventoryApi.fetchInventoryWithMetadata(showInactive);
-        console.log('📦 Inventory loaded with metadata:', data.length);
+        console.log(`[InventoryProvider] Fetching inventory from API...`);
+        // Add a timeout to the API call to prevent infinite hang
+        const fetchPromise = inventoryApi.fetchInventoryWithMetadata(showInactive);
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Fetch inventory timed out after 15s')), 15000)
+        );
+
+        const data = await Promise.race([fetchPromise, timeoutPromise]) as any[];
+        console.log(`[InventoryProvider] 📦 Inventory loaded: ${data.length} items`);
 
         const metaMap: Record<string, SKUMetadata> = {};
         const enriched: InventoryItemWithMetadata[] = (data || []).map((item: any) => {
-          // If this item has joined metadata, store it in our lookup map for quick access elsewhere
           if (item.sku_metadata && !metaMap[item.sku]) {
             metaMap[item.sku] = item.sku_metadata;
           }
 
           return {
             ...item,
-            // Ensure the item carries its metadata or falls back to what's in the map 
-            // (though in this JOIN they are the same)
+            location: (item.location || '').trim().toUpperCase(),
             sku_metadata: item.sku_metadata || (item as any).sku_metadata,
           } as InventoryItemWithMetadata;
         });
@@ -184,12 +191,13 @@ export const InventoryProvider = ({
         setInventoryData(enriched);
       } catch (err: unknown) {
         const errorMsg = err instanceof Error ? err.message : 'Failed to load inventory data';
-        console.error('Error loading inventory data:', err);
+        console.error('[InventoryProvider] ❌ Error loading inventory data:', err);
         setError(errorMsg);
       } finally {
         setLoading(false);
+        console.log(`[InventoryProvider] ✅ loadAllData FINISHED`);
 
-        // Background prefetch of History logs for offline availability
+        // Background prefetch
         queryClient.prefetchQuery({
           queryKey: ['inventory_logs', 'TODAY'],
           queryFn: async () => {
@@ -207,7 +215,6 @@ export const InventoryProvider = ({
             }
 
             const { data, error } = await query.limit(50);
-
             if (error) throw error;
             return (data || []).map((log: any) => ({
               ...log,
@@ -219,9 +226,16 @@ export const InventoryProvider = ({
       }
     };
     loadAllData();
-  }, [showInactive]);
+  }, [showInactive, user?.id]);
 
   // --- MUTATIONS (Persistence Layer) ---
+
+  /** Build user context that travels with mutation variables for hydration safety. */
+  const getMutationCtx = useCallback((): MutationUserContext => ({
+    performed_by: userName,
+    user_id: user?.id,
+    user_role: profile?.role || 'staff',
+  }), [userName, user?.id, profile?.role]);
 
   const mutationOptions = {
     networkMode: 'offlineFirst' as const,
@@ -248,20 +262,30 @@ export const InventoryProvider = ({
       orderNumber?: string;
       optimistic_id?: string;
       preservedItem?: InventoryItemWithMetadata;
+      _ctx?: MutationUserContext;
     }) => {
+      console.log(`[FORENSIC][MUTATION][QUANTITY_FN_START] SKU: ${vars.sku}, Delta: ${vars.finalDelta}`, vars);
+      // Inject _ctx for hydration safety (closures don't survive serialization)
+      const ctx = vars._ctx || getMutationCtx();
+      vars._ctx = ctx;
+
       const { data, error } = await supabase.rpc('adjust_inventory_quantity', {
         p_sku: vars.sku,
         p_warehouse: vars.resolvedWarehouse,
         p_location: vars.location || '',
         p_delta: vars.finalDelta,
-        p_performed_by: userName,
-        p_user_id: (user?.id || undefined) as any,
-        p_user_role: profile?.role || 'staff',
+        p_performed_by: ctx.performed_by,
+        p_user_id: (ctx.user_id || undefined) as any,
+        p_user_role: ctx.user_role,
         p_list_id: vars.listId,
         p_order_number: vars.orderNumber
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error(`[FORENSIC][MUTATION][QUANTITY_FN_ERROR] SKU: ${vars.sku}`, error);
+        throw error;
+      }
+      console.log(`[FORENSIC][MUTATION][QUANTITY_FN_SUCCESS] SKU: ${vars.sku}`, data);
       return data;
     },
     onMutate: async (vars) => {
@@ -281,47 +305,9 @@ export const InventoryProvider = ({
           (!vars.location || (i.location || '').trim().toUpperCase() === vars.location.trim().toUpperCase())
       );
 
-      if (item) {
-        // 1. Optimistic Inventory Update
-        setInventoryData((current) => {
-          return current.map(i => {
-            if (String(i.id) === String(item.id)) {
-              return {
-                ...i,
-                quantity: (i.quantity || 0) + vars.finalDelta,
-                _lastUpdateSource: 'local' as const,
-                _lastLocalUpdateAt: Date.now()
-              };
-            }
-            return i;
-          });
-        });
-
-        // 2. Optimistic Log Injection
-        queryClient.setQueryData(['inventory_logs', 'TODAY'], (old: any) => {
-          const optimisticLog = {
-            id: vars.optimistic_id || `temp-${Date.now()}-${vars.sku}`,
-            sku: vars.sku,
-            action_type: vars.finalDelta > 0 ? 'ADD' : 'DEDUCT',
-            quantity_change: vars.finalDelta,
-            from_warehouse: vars.resolvedWarehouse,
-            from_location: item.location || undefined,
-            to_warehouse: vars.resolvedWarehouse,
-            to_location: item.location || undefined,
-            prev_quantity: item.quantity,
-            new_quantity: (item.quantity || 0) + vars.finalDelta,
-            created_at: new Date().toISOString(),
-            performed_by: userName,
-            is_reversed: false,
-            order_number: vars.orderNumber,
-            list_id: vars.listId,
-            isOptimistic: true, // Mark as temporary
-          };
-
-          // Insert at beginning of array
-          return Array.isArray(old) ? [optimisticLog, ...old] : [optimisticLog];
-        });
-      }
+      // NOTE: We REMOVED the optimistic updates (setInventoryData and queryClient.setQueryData) here
+      // because they are already applied in the `updateQuantity` wrapper. 
+      // This prevents the "double update" bug where quantity adds up twice in the UI.
 
       // Return context for rollback
       return { previousLogs, previousItem: item };
@@ -379,16 +365,25 @@ export const InventoryProvider = ({
 
       // 3. Optimistic Inventory Update
       setInventoryData((current) => {
-        const existingIndex = current.findIndex(i =>
-          i.sku === vars.newItem.sku &&
-          i.warehouse === vars.warehouse &&
-          (i.location || '').trim().toUpperCase() === (vars.newItem.location || '').trim().toUpperCase()
+        const newItemSku = vars.newItem.sku.trim().toUpperCase();
+        const newItemLocation = (vars.newItem.location || '').trim().toUpperCase();
+
+        // 🛡️ STRATEGY UPDATE: Always create a new entry for optimistic adds
+        // instead of merging into existing REAL items. This prevents math corruption
+        // when the DB sends an INSERT event later. The UI consolidation layer
+        // will take care of showing them as a single card.
+        // We only "merge" if we find another OPTIMISTIC item for the same SKU+Loc.
+        const optimisticIndex = current.findIndex(m =>
+          Number(m.id) < 0 &&
+          m.sku.toUpperCase() === newItemSku &&
+          m.warehouse === vars.warehouse &&
+          (m.location || '').toUpperCase() === newItemLocation
         );
 
-        if (existingIndex !== -1) {
-          // CONSOLDIDATE / MERGE
+        if (optimisticIndex !== -1) {
+          // Merge into existing OPTIMISTIC item
           return current.map((item, idx) => {
-            if (idx === existingIndex) {
+            if (idx === optimisticIndex) {
               return {
                 ...item,
                 quantity: (item.quantity || 0) + vars.newItem.quantity,
@@ -399,11 +394,11 @@ export const InventoryProvider = ({
             return item;
           });
         } else {
-          // NEW ENTRY
+          // NEW OPTIMISTIC ENTRY
           const newItem: InventoryItemWithMetadata = {
             id: optimistic_id as any,
             sku: vars.newItem.sku,
-            location: vars.newItem.location,
+            location: (vars.newItem.location || '').trim().toUpperCase(),
             warehouse: vars.warehouse as any,
             quantity: vars.newItem.quantity,
             sku_note: vars.newItem.sku_note,
@@ -601,18 +596,30 @@ export const InventoryProvider = ({
       sku: string;
       location?: string | null;
       optimistic_id?: string;
+      _itemId?: number;
+      _ctx?: MutationUserContext;
     }) => {
-      const item = inventoryDataRef.current.find(i =>
-        i.sku === vars.sku &&
-        i.warehouse === vars.warehouse &&
-        (!vars.location || i.location === vars.location)
-      );
-      if (!item) throw new Error('Item not found');
+      // Inject _ctx for hydration safety
+      const ctx = vars._ctx || getMutationCtx();
+      vars._ctx = ctx;
+
+      // Resolve item ID (closures won't survive serialization)
+      let itemId = vars._itemId;
+      if (!itemId) {
+        const item = inventoryDataRef.current.find(i =>
+          i.sku === vars.sku &&
+          i.warehouse === vars.warehouse &&
+          (!vars.location || i.location === vars.location)
+        );
+        if (!item) throw new Error('Item not found');
+        itemId = Number(item.id);
+        vars._itemId = itemId; // Save for potential re-serialization
+      }
 
       const { error } = await supabase.rpc('delete_inventory_item', {
-        p_item_id: Number(item.id),
-        p_performed_by: userName,
-        p_user_id: user?.id
+        p_item_id: itemId,
+        p_performed_by: ctx.performed_by,
+        p_user_id: ctx.user_id
       });
 
       if (error) throw error;
@@ -634,16 +641,21 @@ export const InventoryProvider = ({
       listId: string;
       palletsQty?: number;
       totalUnits?: number;
+      _ctx?: MutationUserContext;
     }) => {
+      // Inject _ctx for hydration safety
+      const ctx = vars._ctx || getMutationCtx();
+      vars._ctx = ctx;
+
       console.log(`[FORENSIC][MUTATION][PICKING_RPC_START] ${new Date().toISOString()} - ListID: ${vars.listId}`);
 
       const { data, error } = await supabase.rpc('process_picking_list', {
         p_list_id: vars.listId,
-        p_performed_by: userName,
-        p_user_id: user?.id,
+        p_performed_by: ctx.performed_by,
+        p_user_id: ctx.user_id,
         p_pallets_qty: vars.palletsQty,
         p_total_units: vars.totalUnits,
-        p_user_role: profile?.role || 'staff'
+        p_user_role: ctx.user_role,
       });
 
       if (error) {
@@ -792,11 +804,12 @@ export const InventoryProvider = ({
 
     inventoryData.forEach((item) => {
       if (!item.location) return;
-      const key = `${item.warehouse}-${item.location}`;
+      const normalizedLoc = item.location.trim().toUpperCase();
+      const key = `${item.warehouse}-${normalizedLoc}`;
 
       if (!capacities[key]) {
         const locConfig = locations.find(
-          (l) => l.warehouse === item.warehouse && l.location === item.location
+          (l) => l.warehouse === item.warehouse && (l.location || '').trim().toUpperCase() === normalizedLoc
         );
         capacities[key] = {
           current: 0,
@@ -899,7 +912,6 @@ export const InventoryProvider = ({
         const savedItem = currentPending.item; // Use preserved item
         delete pendingUpdatesRef.current[key];
 
-        // Use Mutation with preserved item reference
         updateQuantityMutation.mutate({
           sku,
           resolvedWarehouse,
@@ -910,6 +922,7 @@ export const InventoryProvider = ({
           orderNumber,
           optimistic_id: optimisticId, // Sync IDs
           preservedItem: savedItem, // Pass the original item with valid ID
+          _ctx: getMutationCtx(), // Capture context for hydration
         });
       }, debounceDelay);
     },
@@ -940,6 +953,7 @@ export const InventoryProvider = ({
       } catch (err: any) {
         console.error('Error adding item:', err);
         toast.error(err.message || 'Error adding item');
+        throw err; // Re-throw to inform caller (e.g., E2E test or Modal)
       }
     },
     [addItemMutation]
@@ -953,6 +967,7 @@ export const InventoryProvider = ({
       } catch (err: any) {
         console.error('Error updating item:', err);
         toast.error(err.message || 'Error updating item');
+        throw err; // Re-throw to inform caller
       }
     },
     [updateItemMutation]
@@ -1003,7 +1018,7 @@ export const InventoryProvider = ({
           const targetIndex = newData.findIndex(
             i => i.sku === log.sku &&
               i.warehouse === log.to_warehouse &&
-              (log.to_location_id ? i.location_id === log.to_location_id : i.location === log.to_location)
+              (log.to_location_id ? i.location_id === log.to_location_id : (i.location || '').trim().toUpperCase() === (log.to_location || '').trim().toUpperCase())
           );
 
           if (targetIndex > -1) {
@@ -1019,7 +1034,7 @@ export const InventoryProvider = ({
           const sourceIndex = newData.findIndex(
             i => i.sku === log.sku &&
               i.warehouse === log.from_warehouse &&
-              (log.location_id ? i.location_id === log.location_id : i.location === log.from_location)
+              (log.location_id ? i.location_id === log.location_id : (i.location || '').trim().toUpperCase() === (log.from_location || '').trim().toUpperCase())
           );
 
           if (sourceIndex > -1) {

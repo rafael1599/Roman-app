@@ -147,10 +147,19 @@ export const MovementModal: React.FC<MovementModalProps> = ({ isOpen, onClose, o
     const handleSubmit = () => {
         if (!isValid) return;
 
+        // 🛡️ SUBMIT-TIME PREDICTION FIX:
+        // If the user clicked "Confirm" quickly, handleBlur might not have updated the state yet.
+        // We force the prediction check here too.
+        let finalLocation = formData.targetLocation;
+        if (prediction.bestGuess && prediction.bestGuess !== finalLocation) {
+            finalLocation = prediction.bestGuess;
+            console.log(`[SUBMIT] Auto-corrected location from "${formData.targetLocation}" to "${finalLocation}"`);
+        }
+
         onMove({
             sourceItem: initialSourceItem!,
             targetWarehouse: formData.targetWarehouse,
-            targetLocation: formData.targetLocation,
+            targetLocation: finalLocation,
             quantity: parseInt(formData.quantity.toString()),
         });
         onClose();

@@ -112,8 +112,28 @@ serve(async (req: Request) => {
         body.snapshot_date : fileDate;
 
     // 2. Obtener Datos
+    // 2.1 Primero aseguramos que el snapshot exista (Self-Healing)
+    const { error: createError } = await supabase.rpc('create_daily_snapshot', { p_snapshot_date: targetDateForDB });
+    if (createError) {
+      console.error('Error constructing snapshot:', createError);
+      // Continuamos igual para intentar leer lo que haya, pero loggeamos el error
+    }
+
+    // 2.2 Leemos el snapshot (ahora debería existir con data fresca)
+    console.log(`[Diagnostic] Fetching snapshot for date: ${targetDateForDB}`);
     const { data: snapshot, error: dbError } = await supabase.rpc('get_snapshot', { p_target_date: targetDateForDB });
-    if (dbError || !snapshot) throw new Error('Database error or no data found');
+
+    if (dbError) {
+      console.error('[Diagnostic] RPC Error:', dbError);
+      throw new Error(`Database error: ${dbError.message}`);
+    }
+
+    if (!snapshot) {
+      console.warn('[Diagnostic] Snapshot is null');
+      throw new Error('No data found');
+    }
+
+    console.log(`[Diagnostic] Found ${snapshot.length} items in snapshot.`);
 
     const stats = {
       date: targetDateForDB,
