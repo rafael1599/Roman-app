@@ -103,6 +103,8 @@ export const usePickingActions = ({
             checked_by: null,
           } as any)
           .eq('checked_by', user.id)
+          .neq('status', 'completed')
+          .neq('status', 'cancelled')
           .neq('id', activeListId); // Don't release the one we are about to lock
 
         if (releaseError) console.error('Error releasing previous locks:', releaseError);
@@ -142,7 +144,7 @@ export const usePickingActions = ({
 
         // Fill stock
         currentStock?.forEach((row: any) => {
-          const key = `${row.sku}-${row.warehouse}-${row.location}`;
+          const key = `${row.sku}-${row.warehouse}-${(row.location || '').toUpperCase()}`;
           stockMap.set(key, { stock: Number(row.quantity || 0), reserved: 0, reservingOrders: new Set() } as any);
         });
 
@@ -151,7 +153,7 @@ export const usePickingActions = ({
           const listItems = list.items || [];
           if (Array.isArray(listItems)) {
             listItems.forEach((li: any) => {
-              const key = `${li.sku}-${li.warehouse}-${li.location}`;
+              const key = `${li.sku}-${li.warehouse}-${(li.location || '').toUpperCase()}`;
               if (stockMap.has(key)) {
                 const entry = stockMap.get(key) as any;
                 entry.reserved += li.pickingQty || 0;
@@ -163,7 +165,7 @@ export const usePickingActions = ({
 
         // D. Validate my cart
         for (const myItem of finalItems) {
-          const key = `${myItem.sku}-${myItem.warehouse}-${myItem.location}`;
+          const key = `${myItem.sku}-${myItem.warehouse}-${(myItem.location || '').toUpperCase()}`;
           const entry = stockMap.get(key);
 
           // If item not found in stock (deleted?), fail
@@ -241,6 +243,8 @@ export const usePickingActions = ({
           checked_by: null,
         } as any)
         .eq('checked_by', user.id)
+        .neq('status', 'completed')
+        .neq('status', 'cancelled')
         .neq('id', listId);
 
       if (releaseError) console.error('Error releasing previous locks:', releaseError);

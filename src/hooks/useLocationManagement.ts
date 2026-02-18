@@ -27,7 +27,10 @@ export const useLocationManagement = () => {
 
       if (error) throw error;
 
-      setLocations((data as any) || []);
+      setLocations((data as any[] || []).map(loc => ({
+        ...loc,
+        location: (loc.location || '').toUpperCase()
+      })));
       setError(null);
     } catch (err: any) {
       console.error('Error fetching locations:', err);
@@ -44,7 +47,10 @@ export const useLocationManagement = () => {
   // Get specific location helper
   const getLocation = useCallback(
     (warehouse: string, locationName: string) => {
-      return locations.find((loc) => loc.warehouse === warehouse && loc.location === locationName);
+      return locations.find((loc) =>
+        loc.warehouse === warehouse &&
+        (loc.location || '').trim().toUpperCase() === (locationName || '').trim().toUpperCase()
+      );
     },
     [locations]
   );
