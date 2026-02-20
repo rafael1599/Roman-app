@@ -1,0 +1,95 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - banner:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - button "Settings" [ref=e6] [cursor=pointer]:
+            - img [ref=e7]
+          - generic [ref=e10] [cursor=pointer]:
+            - heading "P ICK D" [level=1] [ref=e11]:
+              - generic [ref=e12]: P
+              - generic [ref=e13]: ICK
+              - generic [ref=e14]: D
+            - img "Logo" [ref=e17]
+        - generic [ref=e18]:
+          - button "Export Data" [ref=e19] [cursor=pointer]:
+            - img [ref=e20]
+          - button "Verification" [ref=e25] [cursor=pointer]:
+            - img [ref=e27]
+            - generic [ref=e31]: Verification
+            - img [ref=e32]
+          - generic "All changes saved and synchronized" [ref=e34]:
+            - img [ref=e35]
+            - generic [ref=e38]: Ready
+          - button "R" [ref=e39] [cursor=pointer]:
+            - generic [ref=e40]: R
+    - main [ref=e41]:
+      - generic [ref=e42]:
+        - button "Trigger Daily Snapshot Email" [ref=e44] [cursor=pointer]:
+          - img [ref=e45]
+        - generic [ref=e49]:
+          - generic [ref=e50]:
+            - img [ref=e51]
+            - textbox "Search SKU, Loc, Warehouse..." [active] [ref=e54]: TEST-NOTE-1771422214348
+            - button "Clear search" [ref=e56] [cursor=pointer]:
+              - img [ref=e57]
+          - button "Switch to Text Keyboard" [ref=e60] [cursor=pointer]:
+            - img [ref=e61]
+        - generic [ref=e63]:
+          - generic [ref=e64]:
+            - generic [ref=e66]:
+              - generic [ref=e70]: 10 / 550
+              - heading "LOC-NOTE-A" [level=3] [ref=e74] [cursor=pointer]
+            - generic [ref=e77] [cursor=pointer]:
+              - generic [ref=e78]:
+                - generic [ref=e82]: TEST-NOTE-1771422214348
+                - generic [ref=e83]:
+                  - generic [ref=e84]: Stock
+                  - generic [ref=e86]: "10"
+              - generic [ref=e88]:
+                - generic [ref=e89]: LUDLOW
+                - generic [ref=e90]: Original Note
+              - generic [ref=e91]:
+                - button "Decrease quantity" [ref=e92]:
+                  - img [ref=e93]
+                - button "Move item" [ref=e94]:
+                  - img [ref=e95]
+                - button "Increase quantity" [ref=e98]:
+                  - img [ref=e99]
+          - generic [ref=e100]:
+            - generic [ref=e102]:
+              - generic [ref=e106]: 5 / 550
+              - heading "LOC-NOTE-B" [level=3] [ref=e110] [cursor=pointer]
+            - generic [ref=e113] [cursor=pointer]:
+              - generic [ref=e114]:
+                - generic [ref=e118]: TEST-NOTE-1771422214348
+                - generic [ref=e119]:
+                  - generic [ref=e120]: Stock
+                  - generic [ref=e122]: "5"
+              - generic [ref=e124]:
+                - generic [ref=e125]: LUDLOW
+                - generic [ref=e126]: New Incoming Note
+              - generic [ref=e127]:
+                - button "Decrease quantity" [ref=e128]:
+                  - img [ref=e129]
+                - button "Move item" [ref=e130]:
+                  - img [ref=e131]
+                - button "Increase quantity" [ref=e134]:
+                  - img [ref=e135]
+        - button "Add New SKU" [ref=e137] [cursor=pointer]:
+          - img [ref=e138]
+    - generic [ref=e139]:
+      - button "STOCK" [ref=e140] [cursor=pointer]:
+        - img [ref=e142]
+      - button "PICKING" [ref=e145] [cursor=pointer]:
+        - img [ref=e147]
+      - button "HISTORY" [ref=e152] [cursor=pointer]:
+        - img [ref=e154]
+  - generic [ref=e158]:
+    - img [ref=e160]
+    - button "Open Tanstack query devtools" [ref=e208] [cursor=pointer]:
+      - img [ref=e209]
+```

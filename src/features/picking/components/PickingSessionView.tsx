@@ -503,11 +503,11 @@ export const PickingSessionView: React.FC<PickingSessionViewProps> = ({
                                     <div className="w-24 h-1.5 bg-surface rounded-full overflow-hidden border border-subtle">
                                         <div
                                             className="h-full bg-accent transition-all duration-500"
-                                            style={{ width: `${(pallet.totalUnits / 12) * 100}% ` }}
+                                            style={{ width: `${(pallet.totalUnits / pallet.limitPerPallet) * 100}%` }}
                                         />
                                     </div>
                                     <span className="font-mono font-bold text-xs text-accent">
-                                        {pallet.totalUnits}/12
+                                        {pallet.totalUnits}/{pallet.limitPerPallet}
                                     </span>
                                 </div>
                             </div>
@@ -542,7 +542,14 @@ export const PickingSessionView: React.FC<PickingSessionViewProps> = ({
                                                     <Package className="w-4 h-4 text-muted" />
                                                 </div>
                                                 <div className="min-w-0">
-                                                    <div className="font-bold text-content text-sm truncate">{item.sku}</div>
+                                                    <div className="font-bold text-content text-sm truncate flex items-center gap-2">
+                                                        {item.sku}
+                                                        {item.insufficient_stock && (
+                                                            <span className="text-[8px] bg-amber-500/20 text-amber-500 px-1 py-0.5 rounded font-black uppercase tracking-tighter">
+                                                                Low Stock ({item.available_qty || 0})
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                     <div className="text-[9px] text-muted font-bold uppercase tracking-tighter">
                                                         Stock: {maxStock}
                                                     </div>

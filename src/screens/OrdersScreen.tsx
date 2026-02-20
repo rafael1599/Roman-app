@@ -550,8 +550,10 @@ export const OrdersScreen = () => {
                                             )}
                                         </div>
                                         <div className="min-w-0">
-                                            <p className="text-xs font-black text-content uppercase tracking-tight truncate flex items-center gap-1.5">
+                                            <p className={`text-xs font-black uppercase tracking-tight truncate flex items-center gap-1.5 ${order.order_number?.startsWith('-') ? 'text-red-500' : 'text-content'}`}>
+                                                {order.source === 'pdf_import' && <span title="PDF Import">📥</span>}
                                                 {order.order_number || 'No Order #'}
+                                                {order.is_addon && <span className="text-[8px] bg-amber-500 text-white px-1 rounded scale-90">ADD-ON</span>}
                                                 {!isCompleted && !userOnline && (
                                                     <span className="text-[8px] font-bold text-muted/60 lowercase italic">
                                                         ({Math.round(inactiveMinutes)}m ago)

@@ -1,0 +1,72 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - banner:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - button "Settings" [ref=e6] [cursor=pointer]:
+            - img [ref=e7]
+          - generic [ref=e10] [cursor=pointer]:
+            - heading "P ICK D" [level=1] [ref=e11]:
+              - generic [ref=e12]: P
+              - generic [ref=e13]: ICK
+              - generic [ref=e14]: D
+            - img "Logo" [ref=e17]
+        - generic [ref=e18]:
+          - button "Export Data" [ref=e19] [cursor=pointer]:
+            - img [ref=e20]
+          - button "Verification" [ref=e25] [cursor=pointer]:
+            - img [ref=e27]
+            - generic [ref=e31]: Verification
+            - img [ref=e32]
+          - generic "All changes saved and synchronized" [ref=e34]:
+            - img [ref=e35]
+            - generic [ref=e38]: Ready
+          - button "R" [ref=e39] [cursor=pointer]:
+            - generic [ref=e40]: R
+    - main [ref=e41]:
+      - generic [ref=e42]:
+        - button "Trigger Daily Snapshot Email" [ref=e44] [cursor=pointer]:
+          - img [ref=e45]
+        - generic [ref=e49]:
+          - generic [ref=e50]:
+            - img [ref=e51]
+            - textbox "Search SKU, Loc, Warehouse..." [active] [ref=e54]: TEST-GHOST-1771422155034
+            - button "Clear search" [ref=e56] [cursor=pointer]:
+              - img [ref=e57]
+          - button "Switch to Text Keyboard" [ref=e60] [cursor=pointer]:
+            - img [ref=e61]
+        - generic [ref=e64]:
+          - generic [ref=e66]:
+            - generic [ref=e70]: 10 / 550
+            - heading "GHOST-1771422155034" [level=3] [ref=e74] [cursor=pointer]
+          - generic [ref=e77] [cursor=pointer]:
+            - generic [ref=e78]:
+              - generic [ref=e82]: TEST-GHOST-1771422155034
+              - generic [ref=e83]:
+                - generic [ref=e84]: Stock
+                - generic [ref=e86]: "10"
+            - generic [ref=e89]: LUDLOW
+            - generic [ref=e90]:
+              - button "Decrease quantity" [ref=e91]:
+                - img [ref=e92]
+              - button "Move item" [ref=e93]:
+                - img [ref=e94]
+              - button "Increase quantity" [ref=e97]:
+                - img [ref=e98]
+        - button "Add New SKU" [ref=e100] [cursor=pointer]:
+          - img [ref=e101]
+    - generic [ref=e102]:
+      - button "STOCK" [ref=e103] [cursor=pointer]:
+        - img [ref=e105]
+      - button "PICKING" [ref=e108] [cursor=pointer]:
+        - img [ref=e110]
+      - button "HISTORY" [ref=e115] [cursor=pointer]:
+        - img [ref=e117]
+  - generic [ref=e121]:
+    - img [ref=e123]
+    - button "Open Tanstack query devtools" [ref=e171] [cursor=pointer]:
+      - img [ref=e172]
+```

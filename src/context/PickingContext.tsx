@@ -8,6 +8,8 @@ import { usePickingSync } from '../hooks/picking/usePickingSync';
 import { usePickingActions } from '../hooks/picking/usePickingActions';
 import { usePickingNotes, PickingNote } from '../hooks/picking/usePickingNotes';
 import type { Customer } from '../types/schema';
+import { useLocationManagement } from '../hooks/useLocationManagement';
+import { getOptimizedPickingPath, calculatePallets, type Pallet } from '../utils/pickingLogic';
 
 interface PickingContextType {
   cartItems: CartItem[];
@@ -29,6 +31,7 @@ interface PickingContextType {
   addNote: (message: string) => Promise<void>;
   sessionMode: 'idle' | 'building' | 'picking' | 'double_checking';
   setSessionMode: (mode: 'idle' | 'building' | 'picking' | 'double_checking') => void;
+  pallets: Pallet[];
 
   onStartSession: () => void;
 
@@ -84,6 +87,7 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
   const { reservedQuantities } = useInventory();
   const { showError } = useError();
+  const { locations } = useLocationManagement();
 
   // 2. Shared/Lifted State
   const [activeListId, setActiveListId] = useState<string | null>(null);
@@ -124,6 +128,15 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
     sessionMode,
     reservedQuantities,
   });
+
+  // 4. Automated Pallet Calculation
+  // This calculates pallets once the session moves into picking/double_checking mode
+  // fulfilling the requirement of grouping "when receiving from DB"
+  const pallets = useMemo(() => {
+    if (sessionMode === 'idle' || cartItems.length === 0) return [];
+    const optimizedItems = getOptimizedPickingPath(cartItems, locations);
+    return calculatePallets(optimizedItems);
+  }, [cartItems, locations, sessionMode]);
 
   const resetSession = useCallback((skipState = false) => {
     // Atomic Reset
@@ -377,6 +390,7 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
     addNote,
     sessionMode,
     setSessionMode,
+    pallets,
     addToCart,
     updateCartQty,
     setCartQty,
@@ -429,6 +443,7 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
     addNote,
     sessionMode,
     setSessionMode,
+    pallets,
     addToCart,
     updateCartQty,
     setCartQty,

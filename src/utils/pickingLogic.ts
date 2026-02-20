@@ -5,6 +5,7 @@ export interface Pallet {
   items: any[];
   totalUnits: number;
   footprint_in2: number;
+  limitPerPallet: number; // Added for UI display
 }
 
 /**
@@ -28,78 +29,90 @@ export const getOptimizedPickingPath = (items: any[], locations: Location[]) => 
 
     if (orderA !== orderB) return orderA - orderB;
 
-    // Fallback to alphanumeric
-    return a.location.localeCompare(b.location, undefined, { numeric: true, sensitivity: 'base' });
+    // Fallback to alphanumeric - ensure null safety
+    return (a.location || '').localeCompare(b.location || '', undefined, { numeric: true, sensitivity: 'base' });
   });
 };
 
 /**
- * Groups items into pallets using the 3-layer stacking logic:
- * - Pallet of 10: 4 base + 4 middle + 2 top
- * - Pallet of 12: 5 base + 5 middle + 2 top
- * - Max units per pallet: 12
+ * Groups items into pallets using flexible capacities:
+ * - Pallet of 8
+ * - Pallet of 10
+ * - Pallet of 12
+ * 
+ * Logic:
+ * 1. Calculate total units.
+ * 2. Evaluate all 3 capacities (8, 10, 12).
+ * 3. Choose the capacity that minimizes the total pallet count.
+ * 4. If counts are tied, prefer the smallest/standard capacity (8 or 10) to avoid overloading.
  */
 export const calculatePallets = (items: any[]): Pallet[] => {
-  // 1. Calculate Total UNITS (Physical boxes/items)
   const totalUnits = items.reduce((sum, item) => sum + (item.pickingQty || 0), 0);
+  if (totalUnits === 0) return [];
 
-  // 2. Logic: Determine Capacity Per Pallet
-  let limitPerPallet = 10; // Standard Default
+  // 1. Find the minimum number of pallets needed using max capacity (12)
+  const numPallets = Math.ceil(totalUnits / 12);
 
-  if (totalUnits < 13) {
-    // If less than 13 units total, we fit EVERYTHING in one pallet path
-    // effectively infinite capacity for the first pallet
-    limitPerPallet = 10000;
-  } else {
-    // Optimization Logic: 10 vs 12
-    const palletsneededStd = Math.ceil(totalUnits / 10);
-    const palletsneededDens = Math.ceil(totalUnits / 12);
+  // 2. Choose the smallest capacity that maintains this minimum count
+  // This naturally spreads items more evenly across the pallets.
+  const candidates = [8, 10, 12];
+  let bestLimit = 12;
 
-    // Only switch to 12 (dense) if it ACTUALLY saves a pallet
-    // Example: 20 units -> 10/p = 2 pallets vs 12/p = 2 pallets. (TIE -> Keep 10)
-    // Example: 24 units -> 10/p = 3 pallets vs 12/p = 2 pallets. (WINNER -> Use 12)
-    if (palletsneededDens < palletsneededStd) {
-      limitPerPallet = 12;
+  for (const limit of candidates) {
+    if (Math.ceil(totalUnits / limit) === numPallets) {
+      bestLimit = limit;
+      break;
     }
   }
 
-  // 3. Distribute Units into Pallets (Physical Splitting)
+  const limitPerPallet = bestLimit;
+
+  // 3. Stable Greedy Filling
   const pallets: Pallet[] = [];
-  let currentPallet: Pallet = { id: 1, items: [], totalUnits: 0, footprint_in2: 0 };
+  let currentPallet: Pallet = {
+    id: 1,
+    items: [],
+    totalUnits: 0,
+    footprint_in2: 0,
+    limitPerPallet
+  };
 
   items.forEach((item) => {
-    let remainingToProcess = item.pickingQty || 0;
+    let remaining = item.pickingQty || 0;
 
-    while (remainingToProcess > 0) {
-      const spaceInPallet = limitPerPallet - currentPallet.totalUnits;
-      const take = Math.min(remainingToProcess, spaceInPallet);
+    while (remaining > 0) {
+      const space = limitPerPallet - currentPallet.totalUnits;
+      const take = Math.min(remaining, space);
 
       if (take > 0) {
-        // Check if SKU already in current pallet (merge split batches)
-        const existingItem = currentPallet.items.find(
+        // Merge if same SKU/Location in current pallet
+        const existing = currentPallet.items.find(
           (i) => i.sku === item.sku && (i.location || '').trim().toUpperCase() === (item.location || '').trim().toUpperCase()
         );
-        if (existingItem) {
-          existingItem.pickingQty += take;
+        if (existing) {
+          existing.pickingQty += take;
         } else {
-          // Clone item to avoid mutating original reference
           currentPallet.items.push({ ...item, pickingQty: take });
         }
 
         currentPallet.totalUnits += take;
-        remainingToProcess -= take;
+        remaining -= take;
       }
 
-      // If pallet is full, seal it and start new one
-      if (currentPallet.totalUnits >= limitPerPallet) {
+      if (currentPallet.totalUnits >= limitPerPallet && remaining > 0) {
         pallets.push(currentPallet);
-        currentPallet = { id: pallets.length + 1, items: [], totalUnits: 0, footprint_in2: 0 };
+        currentPallet = {
+          id: pallets.length + 1,
+          items: [],
+          totalUnits: 0,
+          footprint_in2: 0,
+          limitPerPallet
+        };
       }
     }
   });
 
-  // Push the last partially filled pallet
-  if (currentPallet.totalUnits > 0) {
+  if (currentPallet.items.length > 0) {
     pallets.push(currentPallet);
   }
 

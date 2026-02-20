@@ -107,8 +107,10 @@ export const DoubleCheckHeader = () => {
                                                                 <AlertCircle size={20} />
                                                             </div>
                                                             <div>
-                                                                <div className="text-sm font-black text-content uppercase tracking-tight">
+                                                                <div className={`text-sm font-black uppercase tracking-tight ${order.order_number?.startsWith('-') ? 'text-red-500' : 'text-content'}`}>
+                                                                    {order.source === 'pdf_import' && <span title="PDF Import" className="mr-1">📥</span>}
                                                                     #{order.order_number || order.id.toString().slice(-6).toUpperCase()}
+                                                                    {order.is_addon && <span className="ml-2 text-[8px] bg-amber-500 text-white px-1 rounded">ADD-ON</span>}
                                                                 </div>
                                                                 <div className="text-[10px] text-muted font-bold uppercase tracking-wider">
                                                                     {order.profiles?.full_name}
@@ -176,8 +178,14 @@ export const DoubleCheckHeader = () => {
                                                             )}
                                                         </div>
                                                         <div>
-                                                            <div className="text-sm font-black text-content uppercase tracking-tight">
+                                                            <div className={`text-sm font-black uppercase tracking-tight ${order.order_number?.startsWith('-') ? 'text-red-500' : 'text-content'}`}>
+                                                                {order.source === 'pdf_import' && <span title="PDF Import" className="mr-1">📥</span>}
                                                                 #{order.order_number || order.id.toString().slice(-6).toUpperCase()}
+                                                                {order.is_addon && (
+                                                                    <span className="ml-2 text-[8px] bg-amber-500 text-white px-1.5 py-0.5 rounded-md border border-amber-600/20 shadow-sm animate-pulse">
+                                                                        ADD-ON
+                                                                    </span>
+                                                                )}
                                                             </div>
                                                             <div className="text-[10px] text-muted font-bold uppercase tracking-wider">
                                                                 {order.status === 'double_checking'

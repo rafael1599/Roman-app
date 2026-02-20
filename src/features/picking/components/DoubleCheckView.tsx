@@ -6,11 +6,10 @@ import X from 'lucide-react/dist/esm/icons/x';
 import Send from 'lucide-react/dist/esm/icons/send';
 import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down';
 import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle';
-import { getOptimizedPickingPath, calculatePallets } from '../../../utils/pickingLogic';
 import { CorrectionNotesTimeline, Note } from './CorrectionNotesTimeline';
 import { SlideToConfirm } from '../../../components/ui/SlideToConfirm.tsx';
-import { useLocationManagement } from '../../../hooks/useLocationManagement';
 import { useConfirmation } from '../../../context/ConfirmationContext';
+import { usePickingSession } from '../../../context/PickingContext';
 import toast from 'react-hot-toast';
 
 // Define PickingItem Interface (Redefined or imported from shared location if preferred)
@@ -39,6 +38,7 @@ interface DoubleCheckViewProps {
     isNotesLoading?: boolean;
     onAddNote: (note: string) => Promise<void> | void;
     customer?: { name: string } | null;
+    onSelectAll?: (keys: string[]) => void;
 }
 
 export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
@@ -55,29 +55,32 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
     notes = [],
     isNotesLoading = false,
     onAddNote,
+    onSelectAll,
     // customer, // Unused in minimalist view
 }) => {
-    const { locations } = useLocationManagement();
     const { showConfirmation } = useConfirmation();
+    const { pallets } = usePickingSession();
     const [isDeducting, setIsDeducting] = useState(false);
     const [correctionNotes, setCorrectionNotes] = useState('');
     const [isNotesExpanded, setIsNotesExpanded] = useState(false);
 
-    // Calculate Pallets based on optimized items
-    const pallets = useMemo(() => {
-        // Need to cast cartItems to compatible type for getOptimizedPickingPath if needed, 
-        // assuming utility handles the interface roughly correctly
-        const optimizedItems = getOptimizedPickingPath(cartItems, locations);
-        return calculatePallets(optimizedItems);
-    }, [cartItems, locations]);
-
-    const checkedCount = checkedItems.size;
     const totalCheckboxes = useMemo(() => {
         return pallets.reduce((sum: number, p: any) => sum + p.items.length, 0);
     }, [pallets]);
 
+    const verifiedCount = useMemo(() => {
+        let count = 0;
+        pallets.forEach(p => {
+            p.items.forEach(item => {
+                const itemKey = `${p.id}-${item.sku}-${item.location}`;
+                if (checkedItems.has(itemKey)) count++;
+            });
+        });
+        return count;
+    }, [pallets, checkedItems]);
+
     const handleConfirm = async () => {
-        const isFullyVerified = checkedCount === totalCheckboxes;
+        const isFullyVerified = verifiedCount === totalCheckboxes;
 
         setIsDeducting(true);
         try {
@@ -137,9 +140,25 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
                         </span>
                     </div>
                     {/* Progress Text */}
-                    <span className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] mt-1">
-                        {checkedCount} / {totalCheckboxes} Verified
-                    </span>
+                    <div className="flex items-center gap-3 mt-1">
+                        <span className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em]">
+                            {verifiedCount} / {totalCheckboxes} Verified
+                        </span>
+                        {onSelectAll && totalCheckboxes > 0 && verifiedCount < totalCheckboxes && (
+                            <button
+                                onClick={() => {
+                                    const allKeys = pallets.flatMap(p =>
+                                        p.items.map(item => `${p.id}-${item.sku}-${item.location}`)
+                                    );
+                                    onSelectAll(allKeys);
+                                }}
+                                className="text-[10px] text-accent font-black uppercase tracking-widest hover:opacity-70 transition-opacity flex items-center gap-1.5 bg-accent/5 px-2 py-0.5 rounded-full border border-accent/10"
+                            >
+                                <Check size={10} strokeWidth={4} />
+                                Select All
+                            </button>
+                        )}
+                    </div>
                 </div>
 
                 <div className="flex items-center gap-1">
@@ -190,16 +209,26 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
                                             onToggleCheck(item, pallet.id)
                                         }}
                                         className={`transition-all duration-200 rounded-2xl p-4 flex items-center justify-between gap-4 active:scale-[0.98] cursor-pointer border ${isChecked
-                                            ? 'bg-green-500/10 border-green-500/30'
-                                            : 'bg-white/5 border-white/5 hover:border-white/10'
+                                            ? item.sku_not_found ? 'bg-red-500/20 border-red-500/50' : 'bg-green-500/10 border-green-500/30'
+                                            : item.sku_not_found ? 'bg-red-500/5 border-red-500/20 shadow-[0_0_10px_rgba(239,68,68,0.1)]' : 'bg-white/5 border-white/5 hover:border-white/10'
                                             }`}
                                     >
                                         {/* LEFT: SKU & Quantity */}
                                         <div className="flex flex-col min-w-0 flex-1 gap-1.5">
                                             <div className="flex items-baseline gap-2">
-                                                <span className={`font-black text-2xl tracking-tight leading-none ${isChecked ? 'text-green-400' : 'text-white'}`}>
+                                                <span className={`font-black text-2xl tracking-tight leading-none ${isChecked ? (item.sku_not_found || item.insufficient_stock ? 'text-red-400' : 'text-green-400') : (item.sku_not_found || item.insufficient_stock ? 'text-red-500' : 'text-white')}`}>
                                                     {item.sku}
                                                 </span>
+                                                {item.sku_not_found && (
+                                                    <span className="text-[9px] bg-red-500 text-white px-1.5 py-0.5 rounded font-black uppercase tracking-tighter shadow-sm animate-pulse">
+                                                        Unregistered
+                                                    </span>
+                                                )}
+                                                {item.insufficient_stock && (
+                                                    <span className="text-[9px] bg-amber-500 text-black px-1.5 py-0.5 rounded font-black uppercase tracking-tighter shadow-sm">
+                                                        Low Stock ({item.available_qty || 0})
+                                                    </span>
+                                                )}
                                             </div>
                                             {/* Quantity moved below SKU */}
                                             <div className="flex items-center gap-2">
@@ -225,7 +254,7 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
                                             {/* Simplified Checkbox */}
                                             <div
                                                 className={`w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all ${isChecked
-                                                    ? 'bg-green-500 border-green-500 text-white shadow-[0_0_15px_rgba(34,197,94,0.3)]'
+                                                    ? item.sku_not_found ? 'bg-red-500 border-red-500 text-white' : 'bg-green-500 border-green-500 text-white shadow-[0_0_15px_rgba(34,197,94,0.3)]'
                                                     : 'border-white/20 text-transparent'
                                                     }`}
                                             >
@@ -306,21 +335,20 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
                 </section>
             </div>
 
-            {/* Final Action Footer */}
             <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black via-black/90 to-transparent shrink-0 z-20">
-                {checkedCount < totalCheckboxes && (
+                {verifiedCount < totalCheckboxes && (
                     <div className="mb-4 flex items-center justify-center gap-2 animate-pulse">
                         <span className="text-[10px] font-bold text-amber-500 uppercase tracking-widest">
-                            {totalCheckboxes - checkedCount} items remaining
+                            {totalCheckboxes - verifiedCount} items remaining
                         </span>
                     </div>
                 )}
                 <SlideToConfirm
                     onConfirm={handleConfirm}
                     isLoading={isDeducting}
-                    text={checkedCount === totalCheckboxes ? "SLIDE TO COMPLETE" : "SEND TO VERIFY"}
-                    confirmedText={checkedCount === totalCheckboxes ? "COMPLETING..." : "SENDING..."}
-                    variant={checkedCount === totalCheckboxes ? "default" : "info"}
+                    text={verifiedCount === totalCheckboxes ? "SLIDE TO COMPLETE" : "SEND TO VERIFY"}
+                    confirmedText={verifiedCount === totalCheckboxes ? "COMPLETING..." : "SENDING..."}
+                    variant={verifiedCount === totalCheckboxes ? "default" : "info"}
                     disabled={false}
                 />
             </div>

@@ -175,6 +175,34 @@ export const PickingCartDrawer: React.FC = () => {
         });
     };
 
+    const handleSelectAll = (keys?: string[]) => {
+        if (keys) {
+            setCheckedItems(new Set(keys));
+            return;
+        }
+
+        // Fallback: We need the same logic used to calculate pallets in DoubleCheckView
+        const allLocations = inventoryData.map(i => ({
+            id: (i as any).location_id || '',
+            location: i.location || '',
+            warehouse: i.warehouse as any,
+            picking_order: (i as any).picking_order || 0
+        })) as any;
+
+        const path = getOptimizedPickingPath(cartItems as any, allLocations);
+        const pallets = calculatePallets(path);
+
+        const newChecked = new Set<string>();
+        pallets.forEach(p => {
+            p.items.forEach(item => {
+                const key = `${p.id}-${item.sku}-${item.location}`;
+                newChecked.add(key);
+            });
+        });
+
+        setCheckedItems(newChecked);
+    };
+
     const handleDeduct = async (items: PickingItem[], isVerified: boolean) => {
         if (isProcessingDeduction) return false;
         setIsProcessingDeduction(true);
@@ -285,6 +313,7 @@ export const PickingCartDrawer: React.FC = () => {
                                 notes={notes}
                                 isNotesLoading={isNotesLoading}
                                 onAddNote={addNote}
+                                onSelectAll={handleSelectAll}
                                 onBack={async () => {
                                     await returnToBuilding(activeListId ?? null);
                                 }}
