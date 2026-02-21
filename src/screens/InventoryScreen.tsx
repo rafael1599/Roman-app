@@ -312,7 +312,7 @@ export const InventoryScreen = () => {
 
         doc.setFont('times', 'bold');
         doc.setFontSize(30);
-        doc.text('SKU | Loc | Qty | Note', 0.5, currentY);
+        doc.text('SKU | Loc | Qty | Detail', 0.5, currentY);
         currentY += 0.2;
 
         const tableData = blocks.flatMap(block =>
