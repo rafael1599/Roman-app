@@ -298,6 +298,10 @@ export const InventoryScreen = () => {
 
       doc.text(metadataLine, 0.5, 1.4);
 
+      doc.setFont('times', 'bold');
+      doc.setFontSize(32);
+      doc.text('SKU | WH | Loc | Qty | Note', 0.5, 2.0);
+
       const tableData = allLocationBlocks.flatMap(block =>
         block.items.map(item => [
           item.sku,
@@ -309,8 +313,7 @@ export const InventoryScreen = () => {
       );
 
       autoTable(doc, {
-        startY: 1.8,
-        head: [['SKU', 'WH', 'Loc', 'Qty', 'Note']],
+        startY: 2.2,
         body: tableData,
         theme: 'plain',
         styles: {
@@ -319,13 +322,6 @@ export const InventoryScreen = () => {
           textColor: [0, 0, 0],
           lineColor: [0, 0, 0],
           lineWidth: 0.02
-        },
-        headStyles: {
-          fillColor: false,
-          textColor: [0, 0, 0],
-          fontStyle: 'bold',
-          fontSize: 32,
-          lineWidth: 0.03
         },
         columnStyles: {
           0: { cellWidth: 3.5, fontStyle: 'bold' },
