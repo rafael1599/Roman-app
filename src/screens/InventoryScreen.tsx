@@ -13,7 +13,7 @@ import { MovementModal } from '../features/inventory/components/MovementModal';
 import { CapacityBar } from '../components/ui/CapacityBar.tsx';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import FileDown from 'lucide-react/dist/esm/icons/file-down';
 
 import { usePickingSession } from '../context/PickingContext';
@@ -307,7 +307,7 @@ export const InventoryScreen = () => {
         ])
       );
 
-      (doc as any).autoTable({
+      autoTable(doc, {
         startY: filterDesc ? 1.3 : 1.1,
         head: [['SKU', 'Warehouse', 'Location', 'Qty', 'Note']],
         body: tableData,
