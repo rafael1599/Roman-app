@@ -133,7 +133,7 @@ export const InventorySnapshotModal = ({ isOpen, onClose }: { isOpen: boolean; o
     const handleCopyMarkdown = () => {
         navigator.clipboard.writeText(markdownContent);
         setCopiedMarkdown(true);
-        toast.success('Inventory Map copied to clipboard (Markdown)');
+        toast.success('Inventory state copied to clipboard (Markdown)');
         setTimeout(() => setCopiedMarkdown(false), 2000);
     };
 
@@ -146,8 +146,11 @@ export const InventorySnapshotModal = ({ isOpen, onClose }: { isOpen: boolean; o
                 <div className="px-8 py-6 border-b border-subtle flex justify-between items-center bg-card">
                     <div>
                         <h2 className="text-2xl font-black uppercase tracking-tighter flex items-center gap-2">
-                            <MapIcon className="text-accent" /> Inventory Map
+                            <Layers className="text-accent" /> Daily Snapshots
                         </h2>
+                        <p className="text-[10px] text-muted font-bold uppercase tracking-widest mt-1">
+                            Select a date to see the inventory status for that specific day
+                        </p>
                     </div>
                     <button onClick={onClose} className="p-2 hover:bg-main rounded-full transition-colors"><X size={24} /></button>
                 </div>
@@ -220,27 +223,26 @@ export const InventorySnapshotModal = ({ isOpen, onClose }: { isOpen: boolean; o
                         {copiedMarkdown ? 'Markdown Copied!' : 'Copy Markdown'}
                     </button>
 
-                    <button
-                        onClick={handleCopyLink}
-                        disabled={loading || verifyingLink || !linkExists}
-                        className={`flex-1 flex items-center justify-center gap-3 transition-all py-5 rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl ${!linkExists
-                            ? 'bg-subtle text-muted opacity-50 cursor-not-allowed'
-                            : copiedLink
+                    {linkExists && (
+                        <button
+                            onClick={handleCopyLink}
+                            disabled={loading || verifyingLink}
+                            className={`flex-1 flex items-center justify-center gap-3 transition-all py-5 rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl ${copiedLink
                                 ? 'bg-green-500 text-white shadow-green-500/20'
                                 : 'bg-content text-main active:scale-95 shadow-accent/20'
-                            }`}
-                    >
-                        {verifyingLink ? <Loader2 className="animate-spin" size={18} /> :
-                            !linkExists ? <AlertCircle size={18} /> :
+                                }`}
+                        >
+                            {verifyingLink ? <Loader2 className="animate-spin" size={18} /> :
                                 copiedLink ? <Check size={18} /> : <LinkIcon size={18} />}
 
-                        {verifyingLink ? 'Verifying...' : !linkExists ? `No Snapshot` : copiedLink ? 'Link Copied!' : `Shareable Link`}
-                    </button>
+                            {verifyingLink ? 'Verifying...' : copiedLink ? 'Link Copied!' : `Shareable Link`}
+                        </button>
+                    )}
                 </div>
                 {!linkExists && !verifyingLink && !loading && (
                     <div className="pb-6 px-8 bg-card text-center">
                         <p className="text-[9px] text-accent font-black uppercase tracking-widest animate-pulse">
-                            Wait for daily sync at 6:00 PM (NY Time)
+                            Wait for daily sync at 11:00 PM (NY Time)
                         </p>
                     </div>
                 )}
