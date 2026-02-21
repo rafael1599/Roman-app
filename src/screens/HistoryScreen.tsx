@@ -1148,12 +1148,15 @@ export const HistoryScreen = () => {
                           <p className={`text-2xl font-black leading-none ${log.action_type === 'EDIT' ? 'text-accent' : 'text-content'}`} data-testid="quantity-change">
                             {log.action_type === 'EDIT'
                               ? (log.new_quantity ?? log.quantity_change)
-                              : (typeof log.quantity_change === 'number' ? Math.abs(log.quantity_change) : '??')}
+                              : (typeof log.quantity_change === 'number'
+                                // For old MOVE logs where quantity_change is 0 but it was actually a location rename, show the total quantity moved
+                                ? (log.action_type === 'MOVE' && log.quantity_change === 0 && log.new_quantity && log.new_quantity > 0 ? log.new_quantity : Math.abs(log.quantity_change))
+                                : '??')}
                           </p>
                         </div>
                       </div>
 
-                      {log.prev_quantity !== null && log.new_quantity !== null && (
+                      {log.prev_quantity !== null && log.new_quantity !== null && log.prev_quantity !== log.new_quantity && (
                         <div className={`mt-4 flex gap-4 text-[8px] font-black uppercase tracking-widest border-t border-subtle pt-2 ${log.action_type === 'EDIT' ? 'text-accent opacity-60' : 'text-muted opacity-20'}`}>
                           <span>
                             Stock Level: {log.prev_quantity} → {log.new_quantity}

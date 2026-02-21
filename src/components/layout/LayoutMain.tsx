@@ -1,7 +1,6 @@
 import { ReactNode, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { BottomNavigation } from './BottomNavigation';
-import Save from 'lucide-react/dist/esm/icons/save';
 import Settings from 'lucide-react/dist/esm/icons/settings';
 import UserIcon from 'lucide-react/dist/esm/icons/user';
 import { useAuth } from '../../context/AuthContext';
@@ -77,16 +76,6 @@ export const LayoutMain = ({ children, onExport }: LayoutMainProps) => {
             </div>
 
             <div className="flex items-center gap-2">
-              {onExport && isAdmin && (
-                <button
-                  onClick={onExport}
-                  className="p-2 bg-surface border border-subtle rounded-md text-accent active:bg-surface/80 transition-colors"
-                  aria-label="Export Data"
-                >
-                  <Save className="w-5 h-5" />
-                </button>
-              )}
-
               <DoubleCheckHeader />
 
               <SyncStatusIndicator />
