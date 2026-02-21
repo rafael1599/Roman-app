@@ -1,4 +1,5 @@
 # Project Instructions
 - Always use Context7 MCP when I need library/API documentation, code generation, setup or configuration steps.
 - Refer to `.agent/knowledge/CONTEXT7_MCP.md` for detailed usage of the Context7 tools.
+- **Project Management**: Always check `.agent/management/BACKLOG.md` before starting new tasks. Follow workflows in `.agent/workflows/` for capturing notes, bugs, and ideas to ensure nothing is lost.
 
