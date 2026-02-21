@@ -280,23 +280,8 @@ export const InventoryScreen = () => {
       doc.setFontSize(48);
       doc.text('Stock View Report', 0.5, 0.9);
 
-      doc.setFont('times', 'normal');
-      doc.setFontSize(18);
-
-      const filterDesc = [
-        localSearch ? `Search: "${localSearch}"` : '',
-        showInactive ? 'Including Inactive/Deleted' : ''
-      ].filter(Boolean).join(' | ');
-
-      const metadataLine = [
-        `By: ${generatorName}`,
-        `Date: ${todayStr}`,
-        `SKUs: ${filteredStats.totalSkus}`,
-        `Qty: ${filteredStats.totalQuantity}`,
-        filterDesc ? `Filters: ${filterDesc}` : ''
-      ].filter(Boolean).join(' | ');
-
-      doc.text(metadataLine, 0.5, 1.4);
+      const firstName = generatorName.split(' ')[0];
+      const today = new Date().toLocaleDateString('es-ES'); // Example: 21/2/2026
 
       // Group location blocks by warehouse
       const warehouseGroups: Record<string, typeof allLocationBlocks> = {};
@@ -305,20 +290,25 @@ export const InventoryScreen = () => {
         warehouseGroups[block.wh].push(block);
       });
 
-      let currentY = 1.8;
+      let currentY = 1.3;
 
       Object.entries(warehouseGroups).forEach(([wh, blocks], index) => {
-        // Add a new page if the warehouse doesn't fit (optional, but good for clean breaks)
-        // For simplicity, we'll just check if we need more space or let autoTable handle the bulk
         if (index > 0 && currentY > 6) {
           doc.addPage();
           currentY = 1.0;
         }
 
-        doc.setFont('times', 'bold');
-        doc.setFontSize(36);
-        doc.text(`ALMACÉN: ${wh}`, 0.5, currentY);
-        currentY += 0.5;
+        const whStats = blocks.reduce((acc, b) => {
+          acc.skus += new Set(b.items.map(i => i.sku)).size;
+          acc.qty += b.items.reduce((sum, i) => sum + i.quantity, 0);
+          return acc;
+        }, { skus: 0, qty: 0 });
+
+        doc.setFont('times', 'normal');
+        doc.setFontSize(18);
+        const metadataLine = `By: ${firstName} | Date: ${today} | SKUs: ${whStats.skus} | Qty: ${whStats.qty} | WH: ${wh}`;
+        doc.text(metadataLine, 0.5, currentY);
+        currentY += 0.4;
 
         doc.setFont('times', 'bold');
         doc.setFontSize(30);
@@ -347,7 +337,7 @@ export const InventoryScreen = () => {
           },
           columnStyles: {
             0: { cellWidth: 4.0, fontStyle: 'bold' },
-            1: { cellWidth: 1.5 },
+            1: { cellWidth: 1.5, fontSize: 18 },
             2: { cellWidth: 1.5, halign: 'right' },
             3: { cellWidth: 'auto' },
           },
