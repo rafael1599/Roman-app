@@ -26,7 +26,6 @@ Centralized management for features, bugs, and ideas.
 - [ ] **Order Merging**: Ability to combine 2 separate orders into one picking session. <!-- id: idea-010 -->
 - [ ] **iOS Pull-to-Refresh**: Implement a native-feel refresh behavior for iOS (similar to Android's default) to allow updating the app state via top-scroll. <!-- id: idea-011 -->
 - [ ] **Multi-Address Customers**: Update database schema and UI to handle multiple shipping/billing addresses for a single client. <!-- id: idea-012 -->
-- [ ] **Clean Up Double Check**: Remove the "Save Note Only" button next to the checklist in the Double Check view. <!-- id: idea-013 -->
 - [x] **Stock View Enhancements & History Fix**: Implement SKU count summary, PDF export, and consolidated history logs. <!-- id: idea-014 -->
 - [ ] **Automatic Watchdog Startup**: Ensure the python watchdog script executes automatically whenever the PC starts. <!-- id: idea-008 -->
 - [ ] **Inventory Heatmaps**: Visualize picking frequency. <!-- id: idea-002 -->
