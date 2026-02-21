@@ -9,12 +9,11 @@ import CamScanner from '../features/smart-picking/components/CamScanner';
 import { naturalSort } from '../utils/sortUtils';
 import Plus from 'lucide-react/dist/esm/icons/plus';
 import Warehouse from 'lucide-react/dist/esm/icons/warehouse';
-import Mail from 'lucide-react/dist/esm/icons/mail'; // Added Mail icon
 import { MovementModal } from '../features/inventory/components/MovementModal';
 import { CapacityBar } from '../components/ui/CapacityBar.tsx';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import 'jspdf-autotable';
 import FileDown from 'lucide-react/dist/esm/icons/file-down';
 
 import { usePickingSession } from '../context/PickingContext';
@@ -26,7 +25,6 @@ import { useConfirmation } from '../context/ConfirmationContext';
 import { SessionInitializationModal } from '../features/picking/components/SessionInitializationModal';
 import { InventoryItemWithMetadata } from '../schemas/inventory.schema';
 import { Location } from '../schemas/location.schema';
-import { supabase } from '../lib/supabase';
 
 const SEARCHING_MESSAGE = (
   <div className="py-20 text-center text-muted font-bold uppercase tracking-widest animate-pulse">
@@ -143,9 +141,11 @@ export const InventoryScreen = () => {
 
             // Prefer a 'real' ID over an optimistic one if both exist,
             // but keep the local flag if either is local.
-            const isExistingTemp = (typeof existing.id === 'string' && (existing.id.startsWith('add-') || existing.id.startsWith('move-'))) ||
-              (typeof existing.id === 'number' && existing.id < 0);
-            const isItemReal = typeof item.id === 'number' && item.id > 0;
+            const existingId = existing.id as any;
+            const itemId = item.id as any;
+            const isExistingTemp = (typeof existingId === 'string' && (existingId.startsWith('add-') || existingId.startsWith('move-'))) ||
+              (typeof existingId === 'number' && existingId < 0);
+            const isItemReal = typeof itemId === 'number' && itemId > 0;
 
             if (isExistingTemp && isItemReal) {
               existing.id = item.id;
@@ -161,14 +161,14 @@ export const InventoryScreen = () => {
             }
 
             // Sync metadata if missing
-            if (!existing.sku_metadata && item.sku_metadata) {
-              existing.sku_metadata = item.sku_metadata;
+            if (!(existing as any).sku_metadata && (item as any).sku_metadata) {
+              (existing as any).sku_metadata = (item as any).sku_metadata;
             }
 
             // Preservation of flags
-            if (item._lastUpdateSource === 'local') {
-              existing._lastUpdateSource = 'local';
-              existing._lastLocalUpdateAt = Math.max(existing._lastLocalUpdateAt || 0, item._lastLocalUpdateAt || 0);
+            if ((item as any)._lastUpdateSource === 'local') {
+              (existing as any)._lastUpdateSource = 'local';
+              (existing as any)._lastLocalUpdateAt = Math.max((existing as any)._lastLocalUpdateAt || 0, (item as any)._lastLocalUpdateAt || 0);
             }
           }
         });
@@ -535,135 +535,6 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
   // Removed isError check as we are using local data now
 
 
-  // --- Manual Snapshot Trigger (Plan 2.2: R2 Link + History Logic) ---
-  const [isSendingEmail, setIsSendingEmail] = useState(false);
-
-  const triggerDailySnapshot = useCallback(async () => {
-    try {
-      if (!confirm('Are you sure you want to trigger the Daily Snapshot email now? (Includes Inventory Map Link)')) return;
-
-      setIsSendingEmail(true);
-
-      // 0. Get current session token for JWT Verification
-      const { data: { session } } = await supabase.auth.getSession();
-      const headers: Record<string, string> = session?.access_token ? {
-        Authorization: `Bearer ${session.access_token}`
-      } : {};
-
-      // 1. Generate R2 Snapshot FIRST to get the URL
-      toast.loading('Generating R2 Inventory Map...', { id: 'snapshot-toast' });
-      const now = new Date();
-      const todayStr = now.toLocaleDateString();
-      const todayStrComp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-
-      const { data: snapshotData, error: snapshotError } = await supabase.functions.invoke('daily-snapshot', {
-        body: { snapshot_date: todayStrComp },
-        headers
-      });
-
-      if (snapshotError) throw snapshotError;
-      const r2Url = snapshotData?.url;
-      console.log('R2 Snapshot Ready:', r2Url);
-
-      // 2. Fetch Logs for the summary
-      toast.loading('Fetching today\'s activity summary...', { id: 'snapshot-toast' });
-      const { data: logs, error: logsError } = await supabase
-        .from('inventory_logs')
-        .select('*')
-        .gte('created_at', `${todayStrComp}T00:00:00Z`)
-        .lte('created_at', `${todayStrComp}T23:59:59Z`)
-        .order('created_at', { ascending: false });
-
-      if (logsError) throw logsError;
-
-      const todaysLogs = (logs || []).filter(l => !l.is_reversed);
-      const moveCount = todaysLogs.filter((l) => l.action_type === 'MOVE').length;
-      const pickCount = todaysLogs.filter((l) => l.action_type === 'DEDUCT').length;
-      const addCount = todaysLogs.filter((l) => l.action_type === 'ADD').length;
-
-      // 3. Generate Simple HTML (Proven path)
-      const htmlContent = `
-                <div style="font-family: sans-serif; padding: 20px;">
-                <h1>Daily Inventory Summary - ${todayStr}</h1>
-                <p><strong>Total Actions:</strong> ${todaysLogs.length}</p>
-                <ul>
-                    <li>Moves: ${moveCount}</li>
-                    <li>Picks: ${pickCount}</li>
-                    <li>Restocks: ${addCount}</li>
-                </ul>
-                                ${snapshotData?.fileName ? `
-                    <div style="margin: 25px 0; padding: 15px; border: 1px dashed #4f46e5; border-radius: 8px; text-align: center;">
-                        <p style="margin-bottom: 10px; font-size: 14px;">Full inventory details archived here:</p>
-                        <a href="${window.location.origin}/snapshot/${snapshotData.fileName}" style="color: #4f46e5; font-weight: bold; text-decoration: underline;">
-                            SEE FULL INVENTORY MAP (Snapshot)
-                        </a>
-                    </div>
-                    ` : ''}
-
-                <h2>Activity Details</h2>
-                <table style="width: 100%; border-collapse: collapse; text-align: left;">
-                    <thead>
-                        <tr style="background-color: #f3f4f6; color: #374151;">
-                            <th style="padding: 12px; border-bottom: 2px solid #e5e7eb; width: 80px;">Time</th>
-                            <th style="padding: 12px; border-bottom: 2px solid #e5e7eb; width: 120px;">SKU</th>
-                            <th style="padding: 12px; border-bottom: 2px solid #e5e7eb;">Activity</th>
-                            <th style="padding: 12px; border-bottom: 2px solid #e5e7eb; text-align: right; width: 60px;">Qty</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${todaysLogs.slice(0, 100).map((log) => {
-        const logTimeStr = log.created_at || new Date().toISOString();
-        const time = new Date(logTimeStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const from = log.from_location ? `[${log.from_location}]` : '';
-        const to = log.to_location ? `[${log.to_location}]` : '';
-        let desc = '';
-        if (log.action_type === 'MOVE') desc = `Relocated ${from} to ${to}`;
-        else if (log.action_type === 'ADD') desc = `Added to ${to || from}`;
-        else if (log.action_type === 'DEDUCT') desc = `Picked from ${from}`;
-        else desc = `${log.action_type}`;
-
-        return `
-                            <tr style="border-bottom: 1px solid #f3f4f6;">
-                                <td style="padding: 12px; color: #6b7280; font-size: 12px;">${time}</td>
-                                <td style="padding: 12px; font-weight: bold;">${log.sku}</td>
-                                <td style="padding: 12px; color: #374151; font-size: 13px;">${desc}</td>
-                                <td style="padding: 12px; text-align: right; font-weight: bold;">${Math.abs(log.quantity_change || 0)}</td>
-                            </tr>
-                          `;
-      }).join('')}
-                    </tbody>
-                </table>
-                
-                <p style="margin-top: 30px; font-size: 11px; color: #9ca3af; text-align: center;">
-                    Report generated by PickD • ${new Date().toLocaleString()}
-                </p>
-                </div>
-            `;
-
-      // 4. Send the Email
-      toast.loading('Delivering report to rafaelukf@gmail.com...', { id: 'snapshot-toast' });
-      const { data: emailData, error: emailError } = await supabase.functions.invoke('send-daily-report', {
-        body: {
-          to: 'rafaelukf@gmail.com',
-          subject: `Daily Inventory Report - ${todayStr}`,
-          html: htmlContent,
-        },
-        headers
-      });
-
-      if (emailError) throw emailError;
-      if (emailData?.error) throw new Error(JSON.stringify(emailData.error));
-
-      toast.success('Report and Map sent successfully!', { id: 'snapshot-toast' });
-      console.log('Full Snapshot Success:', { snapshot: snapshotData, email: emailData });
-
-    } catch (err: any) {
-      console.error('Snapshot trigger failed:', err);
-      toast.error(`Error: ${err.message || 'Unknown error'}`, { id: 'snapshot-toast' });
-    } finally {
-      setIsSendingEmail(false);
-    }
-  }, []);
 
   return (
     <div className="pb-4 relative">
@@ -688,21 +559,6 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
             )}
           </button>
 
-          <button
-            onClick={triggerDailySnapshot}
-            disabled={isSendingEmail}
-            className={`w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-all ${isSendingEmail
-              ? 'bg-subtle text-muted cursor-wait'
-              : 'bg-surface text-accent border border-accent/20 hover:bg-accent hover:text-white'
-              }`}
-            title="Trigger Daily Snapshot Email"
-          >
-            {isSendingEmail ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent" />
-            ) : (
-              <Mail size={20} />
-            )}
-          </button>
         </div>
       )}
 
