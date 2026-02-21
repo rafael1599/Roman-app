@@ -298,39 +298,66 @@ export const InventoryScreen = () => {
 
       doc.text(metadataLine, 0.5, 1.4);
 
-      doc.setFont('times', 'bold');
-      doc.setFontSize(32);
-      doc.text('SKU | WH | Loc | Qty | Note', 0.5, 2.0);
+      // Group location blocks by warehouse
+      const warehouseGroups: Record<string, typeof allLocationBlocks> = {};
+      allLocationBlocks.forEach(block => {
+        if (!warehouseGroups[block.wh]) warehouseGroups[block.wh] = [];
+        warehouseGroups[block.wh].push(block);
+      });
 
-      const tableData = allLocationBlocks.flatMap(block =>
-        block.items.map(item => [
-          item.sku,
-          item.warehouse || '-',
-          item.location || 'Gen',
-          item.quantity.toString(),
-          item.sku_note || '',
-        ])
-      );
+      let currentY = 1.8;
 
-      autoTable(doc, {
-        startY: 2.2,
-        body: tableData,
-        theme: 'plain',
-        styles: {
-          fontSize: 30,
-          cellPadding: 0.2,
-          textColor: [0, 0, 0],
-          lineColor: [0, 0, 0],
-          lineWidth: 0.02
-        },
-        columnStyles: {
-          0: { cellWidth: 3.5, fontStyle: 'bold' },
-          1: { cellWidth: 1.0 },
-          2: { cellWidth: 1.5 },
-          3: { cellWidth: 1.5, halign: 'right' },
-          4: { cellWidth: 'auto' },
-        },
-        margin: { top: 0.5, right: 0.5, bottom: 0.5, left: 0.5 },
+      Object.entries(warehouseGroups).forEach(([wh, blocks], index) => {
+        // Add a new page if the warehouse doesn't fit (optional, but good for clean breaks)
+        // For simplicity, we'll just check if we need more space or let autoTable handle the bulk
+        if (index > 0 && currentY > 6) {
+          doc.addPage();
+          currentY = 1.0;
+        }
+
+        doc.setFont('times', 'bold');
+        doc.setFontSize(36);
+        doc.text(`ALMACÉN: ${wh}`, 0.5, currentY);
+        currentY += 0.5;
+
+        doc.setFont('times', 'bold');
+        doc.setFontSize(30);
+        doc.text('SKU | Loc | Qty | Note', 0.5, currentY);
+        currentY += 0.2;
+
+        const tableData = blocks.flatMap(block =>
+          block.items.map(item => [
+            item.sku,
+            item.location || 'Gen',
+            item.quantity.toString(),
+            item.sku_note || '',
+          ])
+        );
+
+        autoTable(doc, {
+          startY: currentY,
+          body: tableData,
+          theme: 'plain',
+          styles: {
+            fontSize: 30,
+            cellPadding: 0.2,
+            textColor: [0, 0, 0],
+            lineColor: [0, 0, 0],
+            lineWidth: 0.02
+          },
+          columnStyles: {
+            0: { cellWidth: 4.0, fontStyle: 'bold' },
+            1: { cellWidth: 1.5 },
+            2: { cellWidth: 1.5, halign: 'right' },
+            3: { cellWidth: 'auto' },
+          },
+          margin: { top: 0.5, right: 0.5, bottom: 0.5, left: 0.5 },
+          didDrawPage: (data) => {
+            currentY = data.cursor?.y || 1.0;
+          }
+        });
+
+        currentY = (doc as any).lastAutoTable.finalY + 0.8;
       });
 
       doc.save(`Stock_Report_${todayStr.replace(/\//g, '-')}.pdf`);
