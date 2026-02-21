@@ -9,6 +9,7 @@ import { UserMenu } from './UserMenu';
 import { DoubleCheckHeader } from '../../features/picking/components/DoubleCheckHeader';
 import { SyncStatusIndicator } from './SyncStatusIndicator';
 import { PickingCartDrawer } from '../../features/picking/components/PickingCartDrawer';
+import { PullToRefresh } from '../ui/PullToRefresh';
 
 interface LayoutMainProps {
   children: ReactNode;
@@ -101,7 +102,11 @@ export const LayoutMain = ({ children, onExport }: LayoutMainProps) => {
       />
 
       {/* Content */}
-      <main className="flex-1 w-full relative">{children}</main>
+      <main className="flex-1 w-full relative">
+        <PullToRefresh onRefresh={() => window.location.reload()}>
+          {children}
+        </PullToRefresh>
+      </main>
 
       {!isOrdersPage && <BottomNavigation />}
       <PickingCartDrawer />

@@ -273,7 +273,6 @@ export const InventoryScreen = () => {
     setIsGeneratingPDF(true);
     try {
       const doc = new jsPDF({ orientation: 'l', unit: 'in', format: [8.5, 11] });
-      const todayStr = new Date().toLocaleDateString();
       const generatorName = profile?.full_name || authUser?.email || 'System';
 
       doc.setFont('times', 'bold');
@@ -350,8 +349,9 @@ export const InventoryScreen = () => {
         currentY = (doc as any).lastAutoTable.finalY + 0.8;
       });
 
-      doc.save(`Stock_Report_${todayStr.replace(/\//g, '-')}.pdf`);
-      toast.success('Report downloaded');
+      const blob = doc.output('bloburl');
+      window.open(blob, '_blank');
+      toast.success('Report opened in new tab');
     } catch (error) {
       console.error('Failed to generate PDF:', error);
       toast.error('Failed to generate PDF');

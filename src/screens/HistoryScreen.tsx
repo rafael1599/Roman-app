@@ -570,16 +570,17 @@ export const HistoryScreen = () => {
   };
 
   const generateDailyPDF = useCallback(
-    (jsPDF: any, autoTable: any) => {
-      const doc = new jsPDF({
+    (jsPDFInstance: any, autoTableInstance: any) => {
+      const doc = new jsPDFInstance({
         orientation: 'l',
         unit: 'in',
-        format: [6, 4],
+        format: [8.5, 11],
       });
-      const todayStr = new Date().toLocaleDateString();
+      const today = new Date().toLocaleDateString('es-ES');
       const generatorName = profile?.full_name || authUser?.email || 'System';
+      const firstName = generatorName.split(' ')[0];
 
-      let title = 'Inventory Report';
+      let title = 'History Report';
       if (filter !== 'ALL') {
         const labels: Record<string, string> = {
           MOVE: 'Movement',
@@ -595,107 +596,105 @@ export const HistoryScreen = () => {
         title += ` (${userFilter})`;
       }
 
-      doc.setFont('times', 'bold');
-      doc.setFontSize(16);
-      doc.text(`${title}`, 0.2, 0.4);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(48);
+      doc.text(title, 0.5, 0.9);
 
       const stats = {
         total: filteredLogs.length,
         qty: filteredLogs.reduce((acc, l) => acc + Math.abs(Number(l.quantity_change) || 0), 0),
       };
 
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(18);
+      const metadataLine = `By: ${firstName} | Date: ${today} | Logs: ${stats.total} | Qty: ${stats.qty} | Period: ${timeFilter}`;
+      doc.text(metadataLine, 0.5, 1.3);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(30);
+      doc.text('Time | SKU | Detail | Qty', 0.5, 1.7);
+
       const tableData = filteredLogs.map((log) => {
         let description = '';
         const fromLoc = log.from_location || '';
         const toLoc = log.to_location || '';
         const performer = log.performed_by || 'Unknown';
+        const pFirstName = performer.split(' ')[0];
 
         const whInfo =
           log.from_warehouse && log.to_warehouse && log.from_warehouse !== log.to_warehouse
-            ? ` [${log.from_warehouse}→${log.to_warehouse}]`
+            ? ` [${log.from_warehouse}->${log.to_warehouse}]`
             : log.from_warehouse
               ? ` [${log.from_warehouse}]`
               : '';
 
+        let actionTag = '';
+        switch (log.action_type) {
+          case 'MOVE': actionTag = '[MOVE]'; break;
+          case 'ADD': actionTag = '[ADD]'; break;
+          case 'DEDUCT': actionTag = '[PICK]'; break;
+          case 'DELETE': actionTag = '[DEL]'; break;
+          case 'SYSTEM_RECONCILIATION': actionTag = '[SYS]'; break;
+          default: actionTag = `[${log.action_type}]`;
+        }
+
         switch (log.action_type) {
           case 'MOVE':
-            description = `${performer} moved from ${fromLoc} to ${toLoc}${whInfo}`;
+            description = `${actionTag} ${pFirstName}: ${fromLoc} -> ${toLoc}${whInfo}`;
             break;
           case 'ADD':
-            description = `${performer} restocked at ${toLoc || fromLoc || 'Gen'}`;
+            description = `${actionTag} ${pFirstName}: Stocked @ ${toLoc || fromLoc || 'Gen'}`;
             break;
           case 'DEDUCT':
-            description = `${performer} picked at ${fromLoc || 'Gen'}`;
+            description = `${actionTag} ${pFirstName}: Picked @ ${fromLoc || 'Gen'}`;
             break;
           case 'DELETE':
-            description = `${performer} removed at ${fromLoc || 'Inv'}`;
+            description = `${actionTag} ${pFirstName}: Removed @ ${fromLoc || 'Inv'}`;
             break;
           case 'SYSTEM_RECONCILIATION':
-            description = `System reconciliation by ${performer}`;
+            description = `${actionTag} Reconciliation Audit`;
             break;
           default:
-            description = `${performer} updated record at ${fromLoc || toLoc || '-'}`;
+            description = `${actionTag} ${pFirstName}: Update @ ${fromLoc || toLoc || '-'}`;
+        }
+
+        if (log.is_reversed) {
+          description += ' (REVERSED)';
         }
 
         return [
           new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           log.sku,
           description,
-          Math.abs(log.quantity_change),
+          Math.abs(log.quantity_change).toString(),
         ];
       });
 
-      autoTable(doc, {
-        startY: 0.6,
-        margin: { left: 0.2, right: 0.2, bottom: 0.7 },
-        head: [['Time', 'SKU', 'Activity Detail', 'Qty']],
+      autoTableInstance(doc, {
+        startY: 1.8,
         body: tableData,
         theme: 'grid',
-        headStyles: {
-          fillColor: [255, 255, 255],
-          textColor: [0, 0, 0],
-          font: 'times',
-          fontSize: 13,
-          fontStyle: 'bold',
-          cellPadding: 0.08,
-          lineColor: [0, 0, 0],
-          lineWidth: 0.01,
-        },
         styles: {
-          font: 'times',
-          fontSize: 13,
-          cellPadding: 0.08,
+          fontSize: 24,
+          cellPadding: 0.15,
+          textColor: [0, 0, 0],
           lineColor: [0, 0, 0],
           lineWidth: 0.01,
-          overflow: 'linebreak',
-          fillColor: [255, 255, 255],
-          textColor: [0, 0, 0],
+          font: 'helvetica',
+          valign: 'middle'
         },
         columnStyles: {
-          0: { cellWidth: 0.8 },
-          1: { cellWidth: 1.2, fontStyle: 'bold' },
-          2: { cellWidth: 'auto' },
-          3: { cellWidth: 0.6, halign: 'right', fontStyle: 'bold' },
+          0: { cellWidth: 1.2, fontSize: 20, halign: 'center' },
+          1: { cellWidth: 2.2, fontStyle: 'bold', fontSize: 28, halign: 'left' },
+          2: { cellWidth: 'auto', fontSize: 16, halign: 'left' },
+          3: { cellWidth: 1.0, fontSize: 28, halign: 'right', fontStyle: 'bold' },
         },
-        didDrawPage: () => {
-          const pageSize = doc.internal.pageSize;
-          const pageHeight = pageSize.height ? pageSize.height : pageSize.getHeight();
-
-          doc.setFont('times', 'normal');
-          doc.setFontSize(12);
-          doc.setTextColor(100, 100, 100);
-
-          const footerLine1 = `Resumen: Total SKU's: ${stats.total} | Total Qty: ${stats.qty}`;
-          const footerLine2 = `Date: ${todayStr} | Time: ${new Date().toLocaleTimeString()} | Period: ${timeFilter} | Generated by: ${generatorName}`;
-
-          doc.text(footerLine1, 0.2, pageHeight - 0.4);
-          doc.text(footerLine2, 0.2, pageHeight - 0.2);
-        },
+        margin: { top: 0.5, right: 0.5, bottom: 0.5, left: 0.5 },
       });
 
       return doc;
     },
-    [filteredLogs, filter, userFilter, timeFilter, searchQuery, profile, authUser]
+    [filteredLogs, filter, userFilter, timeFilter, profile, authUser]
   );
 
   const handleDownloadReport = useCallback(async () => {
@@ -706,18 +705,16 @@ export const HistoryScreen = () => {
         import('jspdf-autotable'),
       ]);
       const doc = generateDailyPDF(jsPDF, autoTable);
-
-      const dateStr = new Date().toISOString().split('T')[0];
-      const filterLabel = filter === 'ALL' ? 'inventory' : filter.toLowerCase();
-      const timeLabel = timeFilter.toLowerCase();
-      doc.save(`${filterLabel}-report-${timeLabel}-${dateStr}.pdf`);
+      const blob = doc.output('bloburl');
+      window.open(blob, '_blank');
+      toast.success('History report opened in new tab');
     } catch (err: any) {
       console.error('Failed to generate PDF:', err);
       showError('Error generating PDF report.', err.message);
     } finally {
       setManualLoading(false);
     }
-  }, [generateDailyPDF, filter, timeFilter, showError]);
+  }, [generateDailyPDF, showError]);
 
   const sendDailyEmail = useCallback(async () => {
     try {
