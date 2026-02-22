@@ -3,6 +3,8 @@ import MapPin from 'lucide-react/dist/esm/icons/map-pin';
 import Hash from 'lucide-react/dist/esm/icons/hash';
 import HandMetal from 'lucide-react/dist/esm/icons/hand-metal';
 import ChevronLeft from 'lucide-react/dist/esm/icons/chevron-left';
+import { CustomerAutocomplete } from '../../features/picking/components/CustomerAutocomplete';
+import type { Customer } from '../../types/schema';
 
 interface OrderSidebarProps {
     formData: any;
@@ -69,15 +71,25 @@ export const OrderSidebar: React.FC<OrderSidebarProps> = ({
 
             <form className="flex flex-col gap-5" onSubmit={(e) => e.preventDefault()}>
                 <div className="space-y-2 group">
-                    <label className="text-xs uppercase text-text-muted font-black tracking-[0.2em] transition-colors group-focus-within:text-accent-primary">
+                    <label className="text-xs uppercase text-text-muted font-black tracking-[0.2em] transition-colors group-focus-within:text-accent">
                         Customer Name
                     </label>
-                    <input
-                        type="text"
-                        value={formData.customerName}
-                        onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
-                        placeholder="Customer name..."
-                        className="w-full bg-main border border-subtle rounded-3xl px-5 py-4 text-lg text-content ios-transition font-medium focus:border-accent focus:bg-surface shadow-sm"
+                    <CustomerAutocomplete
+                        value={formData.customerName ? { name: formData.customerName } as any : null}
+                        onChange={(customer) => {
+                            if (customer) {
+                                setFormData({
+                                    ...formData,
+                                    customerName: customer.name,
+                                    street: customer.street || formData.street,
+                                    city: customer.city || formData.city,
+                                    state: customer.state || formData.state,
+                                    zip: customer.zip_code || formData.zip
+                                });
+                            } else {
+                                setFormData({ ...formData, customerName: '' });
+                            }
+                        }}
                     />
                 </div>
 
