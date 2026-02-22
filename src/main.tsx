@@ -1,6 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Toaster } from 'react-hot-toast';
+import { SwipeableToaster } from './components/ui/SwipeableToaster';
 import './index.css';
 import App from './App';
 import { QueryProvider } from './components/QueryProvider';
@@ -12,7 +12,7 @@ createRoot(rootElement).render(
   <StrictMode>
     <QueryProvider>
       <App />
-      <Toaster />
+      <SwipeableToaster />
     </QueryProvider>
   </StrictMode>
 );

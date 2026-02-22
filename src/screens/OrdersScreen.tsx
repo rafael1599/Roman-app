@@ -2,22 +2,19 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
-import Package from 'lucide-react/dist/esm/icons/package';
-import Printer from 'lucide-react/dist/esm/icons/printer';
-import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right';
-import MapPin from 'lucide-react/dist/esm/icons/map-pin';
-import Hash from 'lucide-react/dist/esm/icons/hash';
-import Truck from 'lucide-react/dist/esm/icons/truck';
-import ArrowLeft from 'lucide-react/dist/esm/icons/arrow-left';
 import Home from 'lucide-react/dist/esm/icons/home';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
-import { SearchInput } from '../components/ui/SearchInput';
 import { LivePrintPreview } from '../components/orders/LivePrintPreview';
-import { CustomerAutocomplete } from '../features/picking/components/CustomerAutocomplete';
 import { usePickingSession } from '../context/PickingContext';
 import { useViewMode } from '../context/ViewModeContext';
-import HandMetal from 'lucide-react/dist/esm/icons/hand-metal';
+import Search from 'lucide-react/dist/esm/icons/search';
+import Filter from 'lucide-react/dist/esm/icons/filter';
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down';
+import { OrderChip } from '../components/orders/OrderChip';
+import { OrderSidebar } from '../components/orders/OrderSidebar';
+import { FloatingActionButtons } from '../components/orders/FloatingActionButtons';
+import { PickingSummaryModal } from '../components/orders/PickingSummaryModal';
 
 export const OrdersScreen = () => {
     const { user } = useAuth();
@@ -30,6 +27,26 @@ export const OrdersScreen = () => {
     const [timeFilter, setTimeFilter] = useState('ALL');
     const navigate = useNavigate();
     const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+    const [isFilterOpen, setIsFilterOpen] = useState(false);
+    const [isMobileOrderListOpen, setIsMobileOrderListOpen] = useState(false);
+    const filterRef = useRef(null);
+    const mobileDropdownRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (filterRef.current && !(filterRef.current as any).contains(event.target)) {
+                setIsFilterOpen(false);
+            }
+            if (mobileDropdownRef.current && !(mobileDropdownRef.current as any).contains(event.target)) {
+                setIsMobileOrderListOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+
 
     // Ref to track selectedOrder without triggering re-renders in callbacks
     const selectedOrderRef = useRef(selectedOrder);
@@ -44,6 +61,8 @@ export const OrdersScreen = () => {
         }
     }, [searchQuery]);
     const [isPrinting, setIsPrinting] = useState(false);
+    const [pressedKey, setPressedKey] = useState<'left' | 'right' | null>(null);
+    const [isShowingPickingSummary, setIsShowingPickingSummary] = useState(false);
 
     // Form state for live editing
     const [formData, setFormData] = useState({
@@ -152,53 +171,60 @@ export const OrdersScreen = () => {
         }
     }, [selectedOrder]);
 
-    const filteredOrders = useMemo(() => orders.filter(order => {
-        const query = searchQuery.toLowerCase();
-        const orderNum = String(order.order_number || '').toLowerCase();
-        const customer = String(order.customer?.name || '').toLowerCase();
+    const filteredOrders = useMemo(() => {
+        const query = searchQuery.toLowerCase().trim();
+        const results = orders.filter(order => {
+            const orderNum = String(order.order_number || '').toLowerCase();
+            const customer = String(order.customer?.name || '').toLowerCase();
+            return !query || orderNum.includes(query) || customer.includes(query);
+        });
 
-        return (
-            !searchQuery ||
-            orderNum.includes(query) ||
-            customer.includes(query)
-        );
-    }), [orders, searchQuery]);
+        if (!query) return results;
 
-    const handleCustomerSelect = (customer: any | null) => {
-        if (customer && customer.id) {
-            // Existing Customer Selected
-            setFormData(prev => ({
-                ...prev,
-                customerName: customer.name,
-                street: customer.street || '',
-                city: customer.city || '',
-                state: customer.state || '',
-                zip: customer.zip_code || ''
-            }));
-            setSelectedCustomerId(customer.id);
-            setOriginalCustomerParams(customer);
-        } else if (customer && customer.name) {
-            // Manual typing (New Customer)
-            setFormData(prev => ({
-                ...prev,
-                customerName: customer.name
-            }));
-            setSelectedCustomerId(null);
-            setOriginalCustomerParams(null);
-        } else {
-            // Cleared
-            setFormData(prev => ({
-                ...prev,
-                customerName: '',
-                street: '',
-                city: '',
-                state: '',
-                zip: ''
-            }));
-            setSelectedCustomerId(null);
-            setOriginalCustomerParams(null);
-        }
-    };
+        // Reordering logic: Exact matches or "Starts with" first
+        return [...results].sort((a, b) => {
+            const aNum = String(a.order_number).toLowerCase();
+            const bNum = String(b.order_number).toLowerCase();
+            const aStartsWith = aNum.startsWith(query) ? 1 : 0;
+            const bStartsWith = bNum.startsWith(query) ? 1 : 0;
+            return bStartsWith - aStartsWith;
+        });
+    }, [orders, searchQuery]);
+
+    // Keyboard arrow navigation between orders (placed after filteredOrders is declared)
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            const tag = (e.target as HTMLElement)?.tagName;
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+            if (e.key === 'ArrowRight') setPressedKey('right');
+            if (e.key === 'ArrowLeft') setPressedKey('left');
+            if (filteredOrders.length === 0 || !selectedOrder) return;
+            const currentIndex = filteredOrders.findIndex(o => o.id === selectedOrder?.id);
+            if (e.key === 'ArrowRight') {
+                if (currentIndex >= filteredOrders.length - 1) {
+                    toast('No more orders', { icon: '➡️', duration: 1500 });
+                } else {
+                    setSelectedOrder(filteredOrders[currentIndex + 1]);
+                }
+            }
+            if (e.key === 'ArrowLeft') {
+                if (currentIndex <= 0) {
+                    toast('Already at the latest order', { icon: '⬅️', duration: 1500 });
+                } else {
+                    setSelectedOrder(filteredOrders[currentIndex - 1]);
+                }
+            }
+        };
+        const handleKeyUp = (e: KeyboardEvent) => {
+            if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') setPressedKey(null);
+        };
+        document.addEventListener('keydown', handleKeyDown);
+        document.addEventListener('keyup', handleKeyUp);
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown);
+            document.removeEventListener('keyup', handleKeyUp);
+        };
+    }, [filteredOrders, selectedOrder]);
 
     const handlePrint = async () => {
         if (!selectedOrder) return;
@@ -409,12 +435,20 @@ export const OrdersScreen = () => {
                 if (pallets > 1) {
                     doc.addPage('a4', 'landscape');
                     doc.setFont('helvetica', 'bold');
+
+                    // "PALLET" label above the numbers
+                    doc.setFontSize(110);
+                    const labelText = 'PALLET';
+                    const labelWidth = doc.getTextWidth(labelText);
+                    const labelX = (pageWidth - labelWidth) / 2;
+                    doc.text(labelText, labelX, pageHeight / 2 - 20);
+
+                    // "X of Y" numbers
                     doc.setFontSize(200);
                     const textNum = `${i + 1} of ${pallets}`;
                     const textWidth = doc.getTextWidth(textNum);
                     const xCenter = (pageWidth - textWidth) / 2;
-                    const yCenter = (pageHeight / 2) + 30; // Adjust for font baseline
-                    doc.text(textNum, xCenter, yCenter);
+                    doc.text(textNum, xCenter, (pageHeight / 2) + 50);
                 }
             }
 
@@ -432,495 +466,240 @@ export const OrdersScreen = () => {
         }
     };
 
+    const handleNextOrder = () => {
+        if (filteredOrders.length === 0 || !selectedOrder) return;
+        const currentIndex = filteredOrders.findIndex(o => o.id === selectedOrder?.id);
+        if (currentIndex >= filteredOrders.length - 1) {
+            toast('No more orders', { icon: '➡️', duration: 1500 });
+        } else {
+            setSelectedOrder(filteredOrders[currentIndex + 1]);
+        }
+    };
+
+    const handlePreviousOrder = () => {
+        if (filteredOrders.length === 0 || !selectedOrder) return;
+        const currentIndex = filteredOrders.findIndex(o => o.id === selectedOrder?.id);
+        if (currentIndex <= 0) {
+            toast('Already at the latest order', { icon: '⬅️', duration: 1500 });
+        } else {
+            setSelectedOrder(filteredOrders[currentIndex - 1]);
+        }
+    };
+
     if (loading) {
         return (
-            <div className="flex items-center justify-center min-h-screen">
-                <Loader2 className="w-8 h-8 animate-spin text-accent" />
+            <div className="flex items-center justify-center min-h-screen bg-bg-main">
+                <Loader2 className="w-8 h-8 animate-spin text-accent-primary" />
             </div>
         );
     }
 
     return (
-        <div className="flex h-[100vh] w-full overflow-hidden relative bg-main">
-            {/* Global Home Button (Top Right) */}
-            <div className="absolute top-4 right-4 z-[60] md:top-6 md:right-6">
-                <button
-                    onClick={() => navigate('/')}
-                    className="w-10 h-10 md:w-12 md:h-12 bg-white dark:bg-zinc-800 border border-subtle rounded-full shadow-lg flex items-center justify-center text-muted hover:text-accent hover:border-accent transition-all active:scale-90"
-                    title="Go Home"
-                >
-                    <Home size={20} />
-                </button>
+        <div className="relative flex flex-col md:flex-row h-screen w-full overflow-hidden bg-bg-main font-body">
+            {/* Left Sidebar - Order Details Form (Desktop) */}
+            <div className="hidden md:block">
+                <OrderSidebar
+                    formData={formData}
+                    setFormData={setFormData}
+                    selectedOrder={selectedOrder}
+                    user={user}
+                    takeOverOrder={takeOverOrder}
+                    onRefresh={fetchOrders}
+                    onShowPickingSummary={() => setIsShowingPickingSummary(true)}
+                />
             </div>
 
-            {/* LEFT PANE: Order List + Form */}
-            <aside className={`
-                w-full md:w-[28%] md:min-w-[320px] md:max-w-[400px] border-r border-subtle bg-main flex flex-col overflow-hidden transition-all duration-300
-                ${selectedOrder ? 'hidden md:flex' : 'flex'}
-            `}>
-                {/* Header */}
-                <header className="p-5 border-b border-subtle shrink-0">
-                    <div className="flex items-center gap-3 mb-4">
-                        <div className="p-2 bg-accent/10 rounded-xl border border-accent/20">
-                            <Truck className="text-accent" size={20} />
-                        </div>
-                        <h1 className="font-black text-sm uppercase tracking-tight text-content">PickD Logistics</h1>
-                    </div>
-                    {/* Search */}
-                    <SearchInput
-                        value={searchQuery}
-                        onChange={setSearchQuery}
-                        placeholder="Search orders..."
-                    />
-                    {/* Time Filters */}
-                    <div className="flex gap-1.5 mt-3 overflow-x-auto scrollbar-none">
-                        {['TODAY', 'YESTERDAY', 'WEEK', 'ALL'].map((btn) => (
+            {/* Main Content Area */}
+            <main className="flex-1 flex flex-col relative overflow-hidden h-full">
+                {/* Top Navigation Bar */}
+                <header className="h-24 bg-[#0f0f12]/60 backdrop-blur-3xl border-b border-white/10 shrink-0 flex items-center px-4 md:px-8 z-50">
+                    <div className="flex items-center w-full gap-3 md:gap-6">
+                        {/* Search Container */}
+                        <div className={`flex items-center h-12 bg-white/5 rounded-full border border-white/10 transition-all duration-500 overflow-hidden ${isSearchExpanded ? 'w-full md:w-80 px-4' : 'w-12 justify-center'}`}>
                             <button
-                                key={btn}
-                                onClick={() => setTimeFilter(btn)}
-                                className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all whitespace-nowrap border ${timeFilter === btn
-                                    ? 'bg-accent border-accent text-white'
-                                    : 'bg-surface border-subtle text-muted hover:border-accent/40'
-                                    }`}
+                                onClick={() => setIsSearchExpanded(!isSearchExpanded)}
+                                className="shrink-0 text-white/40 hover:text-emerald-500 transition-colors"
                             >
-                                {btn}
+                                <Search size={20} />
                             </button>
-                        ))}
-                    </div>
-                </header>
-
-                {/* Order List */}
-                <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-3 space-y-2">
-                    {filteredOrders.length === 0 ? (
-                        <div className="p-10 border-2 border-dashed border-subtle rounded-2xl text-center m-3">
-                            <Package className="w-10 h-10 text-muted mx-auto mb-3 opacity-20" />
-                            <p className="text-xs text-muted mb-4 uppercase font-black tracking-widest opacity-40">No orders found</p>
-                            {searchQuery && (
-                                <button
-                                    onClick={() => setSearchQuery('')}
-                                    className="px-4 py-2 bg-subtle text-accent font-black uppercase tracking-widest rounded-lg text-[9px] active:scale-95 transition-all shadow-sm"
-                                >
-                                    Clear Search
-                                </button>
+                            {isSearchExpanded && (
+                                <input
+                                    type="text"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    placeholder="Search orders..."
+                                    className="bg-transparent border-none outline-none text-base text-white ml-3 w-full font-bold placeholder:text-white/20"
+                                    autoFocus
+                                />
                             )}
                         </div>
-                    ) : (
-                        filteredOrders.map((order) => {
-                            const userOnline = order.presence?.last_seen_at
-                                ? new Date(order.presence.last_seen_at) > new Date(Date.now() - 2 * 60 * 1000)
-                                : false;
 
-                            const inactiveMinutes = order.last_activity_at
-                                ? (Date.now() - new Date(order.last_activity_at).getTime()) / 60000
-                                : 0;
-
-                            const isNonBlocking = ['building', 'needs_correction'].includes(order.status);
-                            const isCompleted = order.status === 'completed';
-
-                            let statusColor = 'border-subtle';
-                            if (!isCompleted) {
-                                if (userOnline) {
-                                    statusColor = 'border-green-500/40';
-                                } else {
-                                    if (isNonBlocking && inactiveMinutes > 10) {
-                                        statusColor = 'border-red-500/40';
-                                    } else {
-                                        statusColor = 'border-yellow-500/40';
-                                    }
-                                }
-                            }
-
-                            return (
-                                <div
-                                    key={order.id}
-                                    onClick={() => setSelectedOrder(order)}
-                                    className={`p-3 rounded-xl flex items-center justify-between cursor-pointer transition-all border-2 ${selectedOrder?.id === order.id
-                                        ? 'bg-accent/10 border-accent/50 shadow-sm'
-                                        : `bg-card ${statusColor} hover:border-accent/20`
-                                        }`}
-                                >
-                                    <div className="flex items-center gap-3 min-w-0">
-                                        <div className="relative">
-                                            <div className={`p-2 rounded-lg ${selectedOrder?.id === order.id ? 'bg-accent/20 text-accent' : 'bg-surface text-muted'}`}>
-                                                <Package size={16} />
-                                            </div>
-                                            {!isCompleted && (
-                                                <div className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border-2 border-main ${userOnline ? 'bg-green-500' : 'bg-zinc-400'
-                                                    }`} title={userOnline ? 'User Online' : 'User Offline'} />
-                                            )}
-                                        </div>
-                                        <div className="min-w-0">
-                                            <p className={`text-xs font-black uppercase tracking-tight truncate flex items-center gap-1.5 ${order.order_number?.startsWith('-') ? 'text-red-500' : 'text-content'}`}>
-                                                {order.source === 'pdf_import' && <span title="PDF Import">📥</span>}
-                                                {order.order_number || 'No Order #'}
-                                                {order.is_addon && <span className="text-[8px] bg-amber-500 text-white px-1 rounded scale-90">ADD-ON</span>}
-                                                {!isCompleted && !userOnline && (
-                                                    <span className="text-[8px] font-bold text-muted/60 lowercase italic">
-                                                        ({Math.round(inactiveMinutes)}m ago)
-                                                    </span>
-                                                )}
-                                            </p>
-                                            <p className="text-[9px] text-muted font-black truncate uppercase tracking-tighter opacity-70">
-                                                {order.customer?.name || 'Generic'} {order.user?.full_name ? `• ${order.user.full_name}` : ''}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div className="flex flex-col items-end gap-1">
-                                        <span className={`text-[7px] font-black uppercase px-1.5 py-0.5 rounded-md border ${isCompleted ? 'bg-green-500/10 text-green-600 border-green-500/20' :
-                                            order.status === 'cancelled' ? 'bg-red-500/10 text-red-600 border-red-500/20' :
-                                                'bg-accent/5 text-accent border-accent/10'
-                                            }`}>
-                                            {order.status}
-                                        </span>
-                                        <ChevronRight size={12} className="text-muted/30 shrink-0" />
-                                    </div>
-                                </div>
-                            );
-                        })
-                    )
-                    }
-                </div>
-
-                {/* Active Order Form - Only visible on desktop here, moved inside main for mobile */}
-                {selectedOrder && (
-                    <div className="hidden md:block">
-                        <form
-                            onSubmit={(e) => e.preventDefault()}
-                            className="p-4 border-t border-subtle bg-card shrink-0 space-y-3"
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter' && !isPrinting) {
-                                    e.preventDefault();
-                                    handlePrint();
-                                }
-                            }}
-                        >
-                            <div className="flex items-center justify-between mb-2">
-                                <p className="text-[9px] text-muted font-black uppercase tracking-widest">Active Order</p>
-                                <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded-full bg-accent/10 text-accent border border-accent/20">
-                                    {selectedOrder.status || 'pending'}
-                                </span>
-                            </div>
-
-                            {selectedOrder.user_id !== user?.id && ['active', 'ready_to_double_check', 'double_checking'].includes(selectedOrder.status) && (
-                                <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl space-y-2">
-                                    <div className="flex items-center gap-2 text-amber-600">
-                                        <HandMetal size={14} />
-                                        <p className="text-[10px] font-black uppercase tracking-tight">Owned by {selectedOrder.user?.full_name || 'Another User'}</p>
-                                    </div>
+                        {/* Orders — Mobile: Dropdown, Desktop: Horizontal Scroll */}
+                        {!isSearchExpanded && (
+                            <>
+                                {/* Mobile: Selected order with dropdown */}
+                                <div className="flex-1 md:hidden relative" ref={mobileDropdownRef}>
                                     <button
-                                        type="button"
-                                        onClick={async () => {
-                                            await takeOverOrder(selectedOrder.id);
-                                            fetchOrders(); // Refresh list to see new owner
-                                        }}
-                                        className="w-full py-2 bg-amber-500 text-white text-[9px] font-black uppercase tracking-widest rounded-lg shadow-sm active:scale-95 transition-all"
+                                        onClick={() => setIsMobileOrderListOpen(!isMobileOrderListOpen)}
+                                        className="flex items-center gap-2 h-12 px-5 bg-white/5 border border-white/10 rounded-full transition-all active:scale-95"
                                     >
-                                        Take Over Order
-                                    </button>
-                                </div>
-                            )}
-
-                            {/* Customer Name Autocomplete */}
-                            <div>
-                                <label className="text-[9px] text-muted font-black uppercase tracking-widest mb-1 block">Customer</label>
-                                <CustomerAutocomplete
-                                    value={{ name: formData.customerName } as any}
-                                    onChange={handleCustomerSelect}
-                                    placeholder="Search Customer..."
-                                    className="text-xs"
-                                />
-                            </div>
-
-                            {/* Address Fields */}
-                            <div className="space-y-2">
-                                <label className="text-[9px] text-muted font-black uppercase tracking-widest flex items-center gap-1">
-                                    <MapPin size={10} /> Destination
-                                </label>
-                                <input
-                                    type="text"
-                                    placeholder="Street Address"
-                                    value={formData.street}
-                                    onChange={(e) => setFormData({ ...formData, street: e.target.value })}
-                                    onFocus={(e) => e.target.select()}
-                                    className="w-full bg-surface border border-subtle rounded-lg px-3 py-2 text-xs text-content focus:outline-none focus:border-accent transition-colors"
-                                />
-                                <div className="grid grid-cols-3 gap-2">
-                                    <input
-                                        type="text"
-                                        placeholder="City"
-                                        value={formData.city}
-                                        onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                                        onFocus={(e) => e.target.select()}
-                                        className="col-span-1 bg-surface border border-subtle rounded-lg px-2 py-2 text-xs text-content focus:outline-none focus:border-accent transition-colors"
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="ST"
-                                        maxLength={2}
-                                        value={formData.state}
-                                        onChange={(e) => setFormData({ ...formData, state: e.target.value.toUpperCase() })}
-                                        onFocus={(e) => e.target.select()}
-                                        className="bg-surface border border-subtle rounded-lg px-2 py-2 text-xs text-content focus:outline-none focus:border-accent transition-colors text-center"
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="Zip"
-                                        value={formData.zip}
-                                        onChange={(e) => setFormData({ ...formData, zip: e.target.value })}
-                                        onFocus={(e) => e.target.select()}
-                                        className="bg-surface border border-subtle rounded-lg px-2 py-2 text-xs text-content focus:outline-none focus:border-accent transition-colors"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Pallets & Units */}
-                            <div className="grid grid-cols-2 gap-2">
-                                <div>
-                                    <label className="text-[9px] text-muted font-black uppercase tracking-widest mb-1 block">Pallets</label>
-                                    <input
-                                        type="number"
-                                        min="1"
-                                        onKeyDown={(e) => ['e', 'E', '-', '+'].includes(e.key) && e.preventDefault()}
-                                        value={formData.pallets}
-                                        onChange={(e) => setFormData({ ...formData, pallets: e.target.value })}
-                                        onFocus={(e) => e.target.select()}
-                                        className="w-full bg-surface border border-subtle rounded-lg px-3 py-2 text-xs text-content focus:outline-none focus:border-accent transition-colors"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-[9px] text-muted font-black uppercase tracking-widest mb-1 block">Units</label>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        onKeyDown={(e) => ['e', 'E', '-', '+'].includes(e.key) && e.preventDefault()}
-                                        value={formData.units}
-                                        onChange={(e) => setFormData({ ...formData, units: e.target.value })}
-                                        onFocus={(e) => e.target.select()}
-                                        className="w-full bg-surface border border-subtle rounded-lg px-3 py-2 text-xs text-content focus:outline-none focus:border-accent transition-colors"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Load Number */}
-                            <div>
-                                <label className="text-[9px] text-muted font-black uppercase tracking-widest mb-1 flex items-center gap-1">
-                                    <Hash size={10} /> Load Number
-                                </label>
-                                <input
-                                    type="text"
-                                    value={formData.loadNumber}
-                                    onChange={(e) => setFormData({ ...formData, loadNumber: e.target.value.toUpperCase() })}
-                                    onFocus={(e) => e.target.select()}
-                                    placeholder="E.G. 127035968"
-                                    className="w-full bg-surface border border-subtle rounded-lg px-3 py-2 text-xs text-content focus:outline-none focus:border-accent transition-colors font-mono"
-                                />
-                            </div>
-
-                            {/* Action Button - Print Labels (also saves) */}
-                            <div className="pt-2">
-                                <button
-                                    type="button"
-                                    onClick={handlePrint}
-                                    disabled={isPrinting}
-                                    className="w-full h-12 bg-accent text-white rounded-xl flex items-center justify-center gap-2 text-xs font-black uppercase tracking-widest shadow-lg shadow-accent/20 active:scale-95 transition-all disabled:opacity-50"
-                                >
-                                    {isPrinting ? <Loader2 size={16} className="animate-spin" /> : <Printer size={16} />}
-                                    {isPrinting ? 'Saving & Generating...' : 'Print Labels'}
-                                </button>
-                                <p className="text-[9px] text-muted text-center mt-2">Data is saved automatically</p>
-                            </div>
-                        </form>
-                    </div>
-                )}
-            </aside>
-
-            {/* RIGHT PANE: Live Print Preview */}
-            <main className={`
-                flex-1 bg-surface overflow-hidden transition-all duration-300
-                ${selectedOrder ? 'flex flex-col' : 'hidden md:flex md:flex-col'}
-            `}>
-                {selectedOrder ? (
-                    <>
-                        {/* Mobile Header with Back Button */}
-                        <header className="md:hidden p-4 border-b border-subtle bg-card flex items-center gap-4">
-                            <button
-                                onClick={() => setSelectedOrder(null)}
-                                className="p-2 -ml-2 rounded-full hover:bg-surface active:scale-90 transition-all text-muted"
-                            >
-                                <ArrowLeft size={20} />
-                            </button>
-                            <div className="min-w-0">
-                                <h2 className="text-xs font-black text-content uppercase tracking-tight truncate">
-                                    {selectedOrder.order_number || 'No Order #'}
-                                </h2>
-                                <p className="text-[9px] text-muted font-medium uppercase truncate">
-                                    {selectedOrder.customer?.name || 'Generic'}
-                                </p>
-                            </div>
-                        </header>
-                        <div className="flex-1 overflow-y-auto bg-surface">
-                            {/* Mobile-only form stack */}
-                            <div className="md:hidden">
-                                <form
-                                    onSubmit={(e) => e.preventDefault()}
-                                    className="p-4 border-b border-subtle bg-card space-y-4"
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter' && !isPrinting) {
-                                            e.preventDefault();
-                                            handlePrint();
-                                        }
-                                    }}
-                                >
-                                    <div className="flex items-center justify-between">
-                                        <p className="text-[10px] text-muted font-black uppercase tracking-widest">Edit Order Details</p>
-                                        <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded-full bg-accent/10 text-accent border border-accent/20">
-                                            {selectedOrder.status || 'pending'}
+                                        <span className="text-white font-black text-lg tracking-tight">
+                                            {selectedOrder ? `#${selectedOrder.order_number}` : 'Select'}
                                         </span>
-                                    </div>
-
-                                    {selectedOrder.user_id !== user?.id && ['active', 'ready_to_double_check', 'double_checking'].includes(selectedOrder.status) && (
-                                        <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl space-y-3">
-                                            <div className="flex items-center gap-2 text-amber-600">
-                                                <HandMetal size={16} />
-                                                <p className="text-xs font-black uppercase tracking-tight">Owned by {selectedOrder.user?.full_name || 'Another User'}</p>
-                                            </div>
-                                            <button
-                                                type="button"
-                                                onClick={async () => {
-                                                    await takeOverOrder(selectedOrder.id);
-                                                    fetchOrders();
-                                                }}
-                                                className="w-full py-3 bg-amber-500 text-white text-xs font-black uppercase tracking-widest rounded-xl shadow-md active:scale-95 transition-all"
-                                            >
-                                                Take Over Order
-                                            </button>
+                                        <ChevronDown size={16} className={`text-white/40 transition-transform duration-300 ${isMobileOrderListOpen ? 'rotate-180' : ''}`} />
+                                    </button>
+                                    {isMobileOrderListOpen && (
+                                        <div className="absolute top-14 left-0 right-0 w-64 max-h-80 overflow-y-auto bg-zinc-900/95 backdrop-blur-2xl border border-white/10 rounded-[2rem] shadow-3xl p-3 z-[60] animate-soft-in no-scrollbar">
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-white/20 px-4 mb-2">Orders ({filteredOrders.length})</p>
+                                            {filteredOrders.map(order => (
+                                                <button
+                                                    key={order.id}
+                                                    onClick={() => {
+                                                        setSelectedOrder(order);
+                                                        setIsMobileOrderListOpen(false);
+                                                    }}
+                                                    className={`w-full text-left px-4 py-3 rounded-2xl text-sm font-black uppercase tracking-widest transition-all flex items-center justify-between ${selectedOrder?.id === order.id
+                                                        ? 'bg-white text-black'
+                                                        : 'hover:bg-white/5 text-white/60'
+                                                        }`}
+                                                >
+                                                    <span>#{order.order_number}</span>
+                                                    {order.customer?.name && (
+                                                        <span className={`text-[10px] font-bold normal-case tracking-normal ${selectedOrder?.id === order.id ? 'text-black/40' : 'text-white/20'
+                                                            }`}>{order.customer.name}</span>
+                                                    )}
+                                                </button>
+                                            ))}
                                         </div>
                                     )}
+                                </div>
 
-                                    {/* Customer Name Autocomplete - Mobile */}
-                                    <div>
-                                        <label className="text-[10px] text-muted font-black uppercase tracking-widest mb-1.5 block">Customer</label>
-                                        <CustomerAutocomplete
-                                            value={{ name: formData.customerName } as any}
-                                            onChange={handleCustomerSelect}
-                                            placeholder="Search Customer..."
-                                            className="text-sm"
-                                        />
-                                    </div>
+                                {/* Desktop: Horizontal Scroll */}
+                                <div className="hidden md:flex flex-1 h-24 items-center gap-4 overflow-x-auto no-scrollbar mask-fade-edges py-2">
+                                    {filteredOrders.map(order => {
+                                        const isSelected = selectedOrder?.id === order.id;
+                                        return (
+                                            <div
+                                                key={order.id}
+                                                ref={el => {
+                                                    if (isSelected && el) {
+                                                        el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                                                    }
+                                                }}
+                                                className="shrink-0"
+                                            >
+                                                <OrderChip
+                                                    orderNumber={order.order_number}
+                                                    status={order.status}
+                                                    isSelected={isSelected}
+                                                    onClick={() => setSelectedOrder(order)}
+                                                />
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </>
+                        )}
 
-                                    {/* Address Fields */}
-                                    <div className="space-y-3">
-                                        <label className="text-[10px] text-muted font-black uppercase tracking-widest flex items-center gap-1">
-                                            <MapPin size={12} /> Destination Address
-                                        </label>
-                                        <input
-                                            type="text"
-                                            placeholder="Street Address"
-                                            value={formData.street}
-                                            onChange={(e) => setFormData({ ...formData, street: e.target.value })}
-                                            onFocus={(e) => e.target.select()}
-                                            className="w-full bg-surface border border-subtle rounded-xl px-4 py-3 text-sm text-content focus:outline-none focus:border-accent transition-colors"
-                                        />
-                                        <div className="grid grid-cols-3 gap-2">
-                                            <input
-                                                type="text"
-                                                placeholder="City"
-                                                value={formData.city}
-                                                onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                                                onFocus={(e) => e.target.select()}
-                                                className="col-span-1 bg-surface border border-subtle rounded-xl px-3 py-3 text-sm text-content focus:outline-none focus:border-accent transition-colors"
-                                            />
-                                            <input
-                                                type="text"
-                                                placeholder="ST"
-                                                maxLength={2}
-                                                value={formData.state}
-                                                onChange={(e) => setFormData({ ...formData, state: e.target.value.toUpperCase() })}
-                                                onFocus={(e) => e.target.select()}
-                                                className="bg-surface border border-subtle rounded-xl px-3 py-3 text-sm text-content focus:outline-none focus:border-accent transition-colors text-center"
-                                            />
-                                            <input
-                                                type="text"
-                                                placeholder="Zip"
-                                                value={formData.zip}
-                                                onChange={(e) => setFormData({ ...formData, zip: e.target.value })}
-                                                onFocus={(e) => e.target.select()}
-                                                className="bg-surface border border-subtle rounded-xl px-3 py-3 text-sm text-content focus:outline-none focus:border-accent transition-colors"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {/* Pallets & Units */}
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div>
-                                            <label className="text-[10px] text-muted font-black uppercase tracking-widest mb-1.5 block">Pallets</label>
-                                            <input
-                                                type="number"
-                                                min="1"
-                                                onKeyDown={(e) => ['e', 'E', '-', '+'].includes(e.key) && e.preventDefault()}
-                                                value={formData.pallets}
-                                                onChange={(e) => setFormData({ ...formData, pallets: e.target.value })}
-                                                onFocus={(e) => e.target.select()}
-                                                className="w-full bg-surface border border-subtle rounded-xl px-4 py-3 text-sm text-content focus:outline-none focus:border-accent transition-colors"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="text-[10px] text-muted font-black uppercase tracking-widest mb-1.5 block">Units</label>
-                                            <input
-                                                type="number"
-                                                min="0"
-                                                onKeyDown={(e) => ['e', 'E', '-', '+'].includes(e.key) && e.preventDefault()}
-                                                value={formData.units}
-                                                onChange={(e) => setFormData({ ...formData, units: e.target.value })}
-                                                onFocus={(e) => e.target.select()}
-                                                className="w-full bg-surface border border-subtle rounded-xl px-4 py-3 text-sm text-content focus:outline-none focus:border-accent transition-colors"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {/* Load Number */}
-                                    <div>
-                                        <label className="text-[10px] text-muted font-black uppercase tracking-widest mb-1.5 flex items-center gap-1">
-                                            <Hash size={12} /> Load Number
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={formData.loadNumber}
-                                            onChange={(e) => setFormData({ ...formData, loadNumber: e.target.value.toUpperCase() })}
-                                            onFocus={(e) => e.target.select()}
-                                            placeholder="E.G. 127035968"
-                                            className="w-full bg-surface border border-subtle rounded-xl px-4 py-3 text-sm text-content focus:outline-none focus:border-accent transition-colors font-mono"
-                                        />
-                                    </div>
-
-                                    {/* Action Button - Print Labels (also saves) */}
-                                    <div className="pt-4 pb-20 md:pb-0">
+                        {/* Filter Dropdown */}
+                        <div className="relative" ref={filterRef}>
+                            <button
+                                onClick={() => setIsFilterOpen(!isFilterOpen)}
+                                className="w-12 h-12 flex items-center justify-center rounded-full bg-white/5 border border-white/10 text-white/40 hover:text-emerald-500 ios-transition"
+                            >
+                                <Filter size={20} />
+                            </button>
+                            {isFilterOpen && (
+                                <div className="absolute top-14 right-0 w-56 bg-zinc-900/90 backdrop-blur-2xl border border-white/10 rounded-[2rem] shadow-3xl p-3 z-[60] animate-soft-in">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-white/20 px-4 mb-2">Filter by Time</p>
+                                    {['TODAY', 'YESTERDAY', 'WEEK', 'ALL'].map((filter) => (
                                         <button
-                                            type="button"
-                                            onClick={handlePrint}
-                                            disabled={isPrinting}
-                                            className="w-full h-14 bg-accent text-white rounded-xl flex items-center justify-center gap-2 text-sm font-black uppercase tracking-widest shadow-lg shadow-accent/20 active:scale-95 transition-all disabled:opacity-50"
+                                            key={filter}
+                                            onClick={() => {
+                                                setTimeFilter(filter);
+                                                setIsFilterOpen(false);
+                                            }}
+                                            className={`w-full text-left px-4 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all ${timeFilter === filter ? 'bg-white text-black' : 'hover:bg-white/5 text-white/60'}`}
                                         >
-                                            {isPrinting ? <Loader2 size={18} className="animate-spin" /> : <Printer size={18} />}
-                                            {isPrinting ? 'Saving & Generating...' : 'Print Labels'}
+                                            {filter}
                                         </button>
-                                        <p className="text-[10px] text-muted text-center mt-3">Data is saved automatically</p>
-                                    </div>
-                                </form>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Home Button */}
+                        <button
+                            onClick={() => navigate('/')}
+                            className="w-12 h-12 flex items-center justify-center rounded-full bg-white/5 border border-white/10 text-white/40 hover:text-emerald-500 ios-transition"
+                        >
+                            <Home size={20} />
+                        </button>
+                    </div>
+                </header>
+                <div className="flex-1 overflow-y-auto no-scrollbar relative bg-bg-main p-4 md:p-12 pb-32">
+                    {selectedOrder ? (
+                        <div className="max-w-4xl mx-auto w-full">
+                            {/* Mobile View Toggle/Details (only visible on mobile) */}
+                            <div className="md:hidden mb-8">
+                                <OrderSidebar
+                                    formData={formData}
+                                    setFormData={setFormData}
+                                    selectedOrder={selectedOrder}
+                                    user={user}
+                                    takeOverOrder={takeOverOrder}
+                                    onRefresh={fetchOrders}
+                                    onShowPickingSummary={() => setIsShowingPickingSummary(true)}
+                                />
                             </div>
 
-                            <div className="p-4 md:p-8 h-full flex flex-col">
-                                <LivePrintPreview {...formData} />
-                            </div>
+                            <LivePrintPreview
+                                orderNumber={selectedOrder.order_number}
+                                customerName={formData.customerName}
+                                street={formData.street}
+                                city={formData.city}
+                                state={formData.state}
+                                zip={formData.zip}
+                                pallets={formData.pallets}
+                                units={formData.units}
+                                loadNumber={formData.loadNumber}
+                                completedAt={selectedOrder.updated_at}
+                            />
                         </div>
-                    </>
-                ) : (
-                    <div className="flex-1 flex flex-col items-center justify-center text-muted opacity-30 p-10">
-                        <Printer size={64} className="mb-4" />
-                        <p className="text-sm font-black uppercase tracking-widest">Select an order to print</p>
-                    </div>
-                )}
+                    ) : (
+                        <div className="h-full flex flex-col items-center justify-center text-text-muted space-y-4">
+                            <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center">
+                                <Search size={32} className="opacity-20" />
+                            </div>
+                            <p className="font-heading text-xl font-bold opacity-30">Select an order to preview</p>
+                        </div>
+                    )}
+                </div>
             </main>
+
+            {/* Island — centered on the preview area (right of the sidebar) */}
+            <div className="absolute bottom-10 left-0 md:left-80 right-0 flex justify-center z-[100] pointer-events-none">
+                <div className="pointer-events-auto animate-soft-in">
+                    <FloatingActionButtons
+                        onPrint={handlePrint}
+                        onNext={handleNextOrder}
+                        onPrevious={handlePreviousOrder}
+                        isPrinting={isPrinting}
+                        hasOrders={!!selectedOrder}
+                        pressedKey={pressedKey}
+                    />
+                </div>
+            </div>
+
+            {/* Picking Summary Modal */}
+            {isShowingPickingSummary && selectedOrder && (
+                <PickingSummaryModal
+                    orderNumber={selectedOrder.order_number}
+                    items={selectedOrder.items}
+                    completedAt={selectedOrder.updated_at}
+                    onClose={() => setIsShowingPickingSummary(false)}
+                />
+            )}
         </div>
     );
 };
