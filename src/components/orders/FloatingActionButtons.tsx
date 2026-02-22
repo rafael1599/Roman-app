@@ -66,7 +66,7 @@ export const FloatingActionButtons: React.FC<FloatingActionButtonsProps> = ({
                     onClick={onPrint}
                     disabled={isPrinting}
                     className={`
-                        flex items-center gap-3 px-10 py-4 bg-accent-primary hover:opacity-90 text-white font-[900] text-xl rounded-full ios-transition shadow-xl active:scale-95 disabled:opacity-50
+                        flex items-center gap-3 px-10 py-4 bg-[#22c55e] hover:bg-[#16a34a] text-black font-[900] text-xl rounded-full ios-transition shadow-xl active:scale-95 disabled:opacity-50
                         ${isPrinting ? 'animate-pulse' : ''}
                     `}
                 >
