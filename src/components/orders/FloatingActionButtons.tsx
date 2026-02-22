@@ -47,12 +47,12 @@ export const FloatingActionButtons: React.FC<FloatingActionButtonsProps> = ({
                 }
                 .btn-glow-green { animation: glow-green 2s ease-out forwards; }
             `}} />
-            <div className="flex items-center gap-3 p-3 bg-white/10 backdrop-blur-2xl border border-white/20 rounded-[2.5rem] shadow-2xl">
+            <div className="flex items-center gap-3 p-3 bg-card backdrop-blur-2xl border border-subtle rounded-[2.5rem] shadow-2xl">
                 {/* Previous Button */}
                 <button
                     onClick={onPrevious}
-                    className={`flex items-center justify-center w-14 h-14 bg-white/10 hover:bg-white/20 text-[#3b82f6] rounded-full transition-all active:scale-90
-                        ${pressedKey === 'left' ? 'scale-90 bg-white/25' : ''}
+                    className={`flex items-center justify-center w-14 h-14 bg-surface hover:bg-main text-accent-blue rounded-full transition-all active:scale-90 border border-subtle
+                        ${pressedKey === 'left' ? 'scale-90 bg-accent-blue/10' : ''}
                         ${glowKey === 'left' ? 'btn-glow-green' : ''}
                     `}
                     title="Previous Order"
@@ -66,7 +66,7 @@ export const FloatingActionButtons: React.FC<FloatingActionButtonsProps> = ({
                     onClick={onPrint}
                     disabled={isPrinting}
                     className={`
-                        flex items-center gap-3 px-10 py-4 bg-[#22c55e] hover:bg-emerald-400 text-black font-[900] text-xl rounded-full ios-transition shadow-xl active:scale-95 disabled:opacity-50
+                        flex items-center gap-3 px-10 py-4 bg-accent-primary hover:opacity-90 text-white font-[900] text-xl rounded-full ios-transition shadow-xl active:scale-95 disabled:opacity-50
                         ${isPrinting ? 'animate-pulse' : ''}
                     `}
                 >
@@ -79,8 +79,8 @@ export const FloatingActionButtons: React.FC<FloatingActionButtonsProps> = ({
                 {/* Next Button */}
                 <button
                     onClick={onNext}
-                    className={`flex items-center justify-center w-14 h-14 bg-[#1a1a1a] hover:bg-black/80 text-[#3b82f6] rounded-full transition-all shadow-xl active:scale-90
-                        ${pressedKey === 'right' ? 'scale-90 bg-black/90' : ''}
+                    className={`flex items-center justify-center w-14 h-14 bg-surface hover:bg-main text-accent-blue rounded-full transition-all shadow-xl active:scale-90 border border-subtle
+                        ${pressedKey === 'right' ? 'scale-90 bg-accent-blue/10' : ''}
                         ${glowKey === 'right' ? 'btn-glow-green' : ''}
                     `}
                     title="Next Order"

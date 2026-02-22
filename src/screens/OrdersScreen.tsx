@@ -512,13 +512,13 @@ export const OrdersScreen = () => {
             {/* Main Content Area */}
             <main className="flex-1 flex flex-col relative overflow-hidden h-full">
                 {/* Top Navigation Bar */}
-                <header className="h-24 bg-[#0f0f12]/60 backdrop-blur-3xl border-b border-white/10 shrink-0 flex items-center px-4 md:px-8 z-50">
+                <header className="h-24 ios-glass !border-none !shadow-none shrink-0 flex items-center px-4 md:px-8 z-50">
                     <div className="flex items-center w-full gap-3 md:gap-6">
                         {/* Search Container */}
-                        <div className={`flex items-center h-12 bg-white/5 rounded-full border border-white/10 transition-all duration-500 overflow-hidden ${isSearchExpanded ? 'flex-1 md:w-80 md:flex-none px-4' : 'w-12 justify-center'}`}>
+                        <div className={`flex items-center h-12 bg-surface border border-subtle transition-all duration-500 overflow-hidden ${isSearchExpanded ? 'flex-1 md:w-80 md:flex-none px-4' : 'w-12 justify-center'} rounded-full shadow-sm`}>
                             <button
                                 onClick={() => setIsSearchExpanded(!isSearchExpanded)}
-                                className="shrink-0 text-white/40 hover:text-emerald-500 transition-colors"
+                                className="shrink-0 text-muted hover:text-emerald-500 transition-colors"
                             >
                                 <Search size={20} />
                             </button>
@@ -528,7 +528,7 @@ export const OrdersScreen = () => {
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     placeholder="Search orders..."
-                                    className="bg-transparent border-none outline-none text-base text-white ml-3 w-full font-bold placeholder:text-white/20"
+                                    className="bg-transparent border-none outline-none text-base text-main ml-3 w-full font-bold placeholder:opacity-20"
                                     autoFocus
                                 />
                             )}
@@ -539,16 +539,16 @@ export const OrdersScreen = () => {
                         <div className={`${isSearchExpanded ? 'w-auto' : 'flex-1'} md:hidden relative`} ref={mobileDropdownRef}>
                             <button
                                 onClick={() => setIsMobileOrderListOpen(!isMobileOrderListOpen)}
-                                className="flex items-center gap-2 h-12 px-5 bg-white/5 border border-white/10 rounded-full transition-all active:scale-95"
+                                className="flex items-center gap-2 h-12 px-5 bg-surface border border-subtle rounded-full transition-all active:scale-95 shadow-sm"
                             >
-                                <span className={`text-white font-black text-lg tracking-tight ${isSearchExpanded ? 'max-w-[80px] truncate' : ''}`}>
+                                <span className={`text-main font-black text-lg tracking-tight ${isSearchExpanded ? 'max-w-[80px] truncate' : ''}`}>
                                     {selectedOrder ? `#${selectedOrder.order_number}` : 'Select'}
                                 </span>
-                                <ChevronDown size={16} className={`text-white/40 transition-transform duration-300 ${isMobileOrderListOpen ? 'rotate-180' : ''}`} />
+                                <ChevronDown size={16} className={`text-muted transition-transform duration-300 ${isMobileOrderListOpen ? 'rotate-180' : ''}`} />
                             </button>
                             {isMobileOrderListOpen && (
-                                <div className="absolute top-14 right-0 w-64 max-h-80 overflow-y-auto bg-zinc-900/95 backdrop-blur-2xl border border-white/10 rounded-[2rem] shadow-3xl p-3 z-[60] animate-soft-in no-scrollbar">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-white/20 px-4 mb-2">Orders ({filteredOrders.length})</p>
+                                <div className="absolute top-14 right-0 w-64 max-h-80 overflow-y-auto bg-surface border border-subtle rounded-[2rem] shadow-2xl p-3 z-[60] animate-soft-in no-scrollbar">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-muted/30 px-4 mb-2">Orders ({filteredOrders.length})</p>
                                     {filteredOrders.map(order => (
                                         <button
                                             key={order.id}
@@ -557,13 +557,13 @@ export const OrdersScreen = () => {
                                                 setIsMobileOrderListOpen(false);
                                             }}
                                             className={`w-full text-left px-4 py-3 rounded-2xl text-sm font-black uppercase tracking-widest transition-all flex items-center justify-between ${selectedOrder?.id === order.id
-                                                ? 'bg-white text-black'
-                                                : 'hover:bg-white/5 text-white/60'
+                                                ? 'bg-main text-main border border-subtle'
+                                                : 'hover:bg-main text-muted'
                                                 }`}
                                         >
                                             <span>#{order.order_number}</span>
                                             {order.customer?.name && (
-                                                <span className={`text-[10px] font-bold normal-case tracking-normal ${selectedOrder?.id === order.id ? 'text-black/40' : 'text-white/20'
+                                                <span className={`text-[10px] font-bold normal-case tracking-normal ${selectedOrder?.id === order.id ? 'text-main/40' : 'text-muted/30'
                                                     }`}>{order.customer.name}</span>
                                             )}
                                         </button>
@@ -601,13 +601,13 @@ export const OrdersScreen = () => {
                         <div className="relative" ref={filterRef}>
                             <button
                                 onClick={() => setIsFilterOpen(!isFilterOpen)}
-                                className="w-12 h-12 flex items-center justify-center rounded-full bg-white/5 border border-white/10 text-white/40 hover:text-emerald-500 ios-transition"
+                                className="w-12 h-12 flex items-center justify-center rounded-full bg-surface border border-subtle text-muted hover:text-emerald-500 ios-transition shadow-sm"
                             >
                                 <Filter size={20} />
                             </button>
                             {isFilterOpen && (
-                                <div className="absolute top-14 right-0 w-56 bg-zinc-900/90 backdrop-blur-2xl border border-white/10 rounded-[2rem] shadow-3xl p-3 z-[60] animate-soft-in">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-white/20 px-4 mb-2">Filter by Time</p>
+                                <div className="absolute top-14 right-0 w-56 bg-surface border border-subtle rounded-[2rem] shadow-2xl p-3 z-[60] animate-soft-in">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-muted/30 px-4 mb-2">Filter by Time</p>
                                     {['TODAY', 'YESTERDAY', 'WEEK', 'ALL'].map((filter) => (
                                         <button
                                             key={filter}
@@ -615,7 +615,7 @@ export const OrdersScreen = () => {
                                                 setTimeFilter(filter);
                                                 setIsFilterOpen(false);
                                             }}
-                                            className={`w-full text-left px-4 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all ${timeFilter === filter ? 'bg-white text-black' : 'hover:bg-white/5 text-white/60'}`}
+                                            className={`w-full text-left px-4 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all ${timeFilter === filter ? 'bg-main text-main border border-subtle' : 'hover:bg-main text-muted'}`}
                                         >
                                             {filter}
                                         </button>
@@ -627,7 +627,7 @@ export const OrdersScreen = () => {
                         {/* Home Button */}
                         <button
                             onClick={() => navigate('/')}
-                            className="w-12 h-12 flex items-center justify-center rounded-full bg-white/5 border border-white/10 text-white/40 hover:text-emerald-500 ios-transition"
+                            className="w-12 h-12 flex items-center justify-center rounded-full bg-surface border border-subtle text-muted hover:text-emerald-500 ios-transition shadow-sm"
                         >
                             <Home size={20} />
                         </button>
@@ -664,7 +664,7 @@ export const OrdersScreen = () => {
                         </div>
                     ) : (
                         <div className="h-full flex flex-col items-center justify-center text-text-muted space-y-4">
-                            <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center">
+                            <div className="w-16 h-16 rounded-full bg-surface border border-subtle flex items-center justify-center shadow-sm">
                                 <Search size={32} className="opacity-20" />
                             </div>
                             <p className="font-heading text-xl font-bold opacity-30">Select an order to preview</p>

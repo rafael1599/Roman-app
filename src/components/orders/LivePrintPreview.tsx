@@ -143,7 +143,8 @@ export const LivePrintPreview: React.FC<LivePrintPreviewProps> = ({
     }, [customerName, street, city, state, zip, palletCount, units, loadNumber, fontSizePt, cityStateZip]);
 
     return (
-        <div className="flex flex-col items-center w-full min-h-full pt-8 px-4 bg-black/95">
+        <div className="flex flex-col items-center w-full min-h-full pt-8 px-4 bg-transparent">
+            {/* Standard scaling styles */}
             <style dangerouslySetInnerHTML={{
                 __html: `
                 :root { --preview-scale: 0.22; }
@@ -154,11 +155,11 @@ export const LivePrintPreview: React.FC<LivePrintPreviewProps> = ({
             `}} />
 
             <div className="w-full mb-8 text-center shrink-0">
-                <h2 className="text-3xl md:text-5xl font-[900] text-white tracking-tighter uppercase animate-soft-in">
+                <h2 className="text-3xl md:text-5xl font-[900] text-main tracking-tighter uppercase animate-soft-in">
                     Order #{orderNumber}
                 </h2>
                 {completedAt && (
-                    <p className="text-white/30 text-sm font-bold mt-2 tracking-wide animate-soft-in">
+                    <p className="text-muted text-sm font-bold mt-2 tracking-wide animate-soft-in">
                         {new Date(completedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}{' · '}
                         {new Date(completedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
                     </p>
