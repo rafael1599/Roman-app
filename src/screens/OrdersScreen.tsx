@@ -528,7 +528,7 @@ export const OrdersScreen = () => {
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     placeholder="Search orders..."
-                                    className="bg-transparent border-none outline-none text-base text-main ml-3 w-full font-bold placeholder:opacity-20"
+                                    className="bg-transparent border-none outline-none text-base text-content ml-3 w-full font-bold placeholder:opacity-20"
                                     autoFocus
                                 />
                             )}
@@ -541,7 +541,7 @@ export const OrdersScreen = () => {
                                 onClick={() => setIsMobileOrderListOpen(!isMobileOrderListOpen)}
                                 className="flex items-center gap-2 h-12 px-5 bg-surface border border-subtle rounded-full transition-all active:scale-95 shadow-sm"
                             >
-                                <span className={`text-main font-black text-lg tracking-tight ${isSearchExpanded ? 'max-w-[80px] truncate' : ''}`}>
+                                <span className={`text-content font-black text-lg tracking-tight ${isSearchExpanded ? 'max-w-[80px] truncate' : ''}`}>
                                     {selectedOrder ? `#${selectedOrder.order_number}` : 'Select'}
                                 </span>
                                 <ChevronDown size={16} className={`text-muted transition-transform duration-300 ${isMobileOrderListOpen ? 'rotate-180' : ''}`} />
@@ -557,13 +557,13 @@ export const OrdersScreen = () => {
                                                 setIsMobileOrderListOpen(false);
                                             }}
                                             className={`w-full text-left px-4 py-3 rounded-2xl text-sm font-black uppercase tracking-widest transition-all flex items-center justify-between ${selectedOrder?.id === order.id
-                                                ? 'bg-main text-main border border-subtle'
+                                                ? 'bg-accent text-white border border-accent/20'
                                                 : 'hover:bg-main text-muted'
                                                 }`}
                                         >
                                             <span>#{order.order_number}</span>
                                             {order.customer?.name && (
-                                                <span className={`text-[10px] font-bold normal-case tracking-normal ${selectedOrder?.id === order.id ? 'text-main/40' : 'text-muted/30'
+                                                <span className={`text-[10px] font-bold normal-case tracking-normal ${selectedOrder?.id === order.id ? 'text-white/60' : 'text-muted/30'
                                                     }`}>{order.customer.name}</span>
                                             )}
                                         </button>
@@ -615,7 +615,7 @@ export const OrdersScreen = () => {
                                                 setTimeFilter(filter);
                                                 setIsFilterOpen(false);
                                             }}
-                                            className={`w-full text-left px-4 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all ${timeFilter === filter ? 'bg-main text-main border border-subtle' : 'hover:bg-main text-muted'}`}
+                                            className={`w-full text-left px-4 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all ${timeFilter === filter ? 'bg-accent text-white' : 'hover:bg-main text-muted'}`}
                                         >
                                             {filter}
                                         </button>

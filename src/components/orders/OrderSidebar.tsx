@@ -77,12 +77,12 @@ export const OrderSidebar: React.FC<OrderSidebarProps> = ({
                         value={formData.customerName}
                         onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
                         placeholder="Customer name..."
-                        className="w-full bg-main border border-subtle rounded-3xl px-5 py-4 text-lg text-main ios-transition font-medium focus:border-accent-primary focus:bg-surface shadow-sm"
+                        className="w-full bg-main border border-subtle rounded-3xl px-5 py-4 text-lg text-content ios-transition font-medium focus:border-accent focus:bg-surface shadow-sm"
                     />
                 </div>
 
                 <div className="space-y-2 group">
-                    <label className="text-xs uppercase text-text-muted font-black tracking-[0.2em] flex items-center gap-1 group-focus-within:text-accent-primary">
+                    <label className="text-xs uppercase text-text-muted font-black tracking-[0.2em] flex items-center gap-1 group-focus-within:text-accent">
                         <MapPin size={10} /> Shipping Address
                     </label>
                     <input
@@ -90,12 +90,12 @@ export const OrderSidebar: React.FC<OrderSidebarProps> = ({
                         value={formData.street}
                         onChange={(e) => setFormData({ ...formData, street: e.target.value })}
                         placeholder="Street address..."
-                        className="w-full bg-main border border-subtle rounded-3xl px-5 py-4 text-lg text-main ios-transition font-medium focus:border-accent-primary focus:bg-surface shadow-sm"
+                        className="w-full bg-main border border-subtle rounded-3xl px-5 py-4 text-lg text-content ios-transition font-medium focus:border-accent focus:bg-surface shadow-sm"
                     />
                 </div>
 
                 <div className="space-y-2 group">
-                    <label className="text-xs uppercase text-text-muted font-black tracking-[0.2em] group-focus-within:text-accent-primary">
+                    <label className="text-xs uppercase text-text-muted font-black tracking-[0.2em] group-focus-within:text-accent">
                         City
                     </label>
                     <input
@@ -103,13 +103,13 @@ export const OrderSidebar: React.FC<OrderSidebarProps> = ({
                         value={formData.city}
                         onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                         placeholder="City..."
-                        className="w-full bg-main border border-subtle rounded-3xl px-5 py-4 text-lg text-main ios-transition font-medium focus:border-accent-primary focus:bg-surface shadow-sm"
+                        className="w-full bg-main border border-subtle rounded-3xl px-5 py-4 text-lg text-content ios-transition font-medium focus:border-accent focus:bg-surface shadow-sm"
                     />
                 </div>
 
                 <div className="grid grid-cols-2 gap-5">
                     <div className="space-y-2 group">
-                        <label className="text-xs uppercase text-text-muted font-black tracking-[0.2em] group-focus-within:text-accent-primary">
+                        <label className="text-xs uppercase text-text-muted font-black tracking-[0.2em] group-focus-within:text-accent">
                             State
                         </label>
                         <input
@@ -118,11 +118,11 @@ export const OrderSidebar: React.FC<OrderSidebarProps> = ({
                             value={formData.state}
                             onChange={(e) => setFormData({ ...formData, state: e.target.value.toUpperCase() })}
                             placeholder="CA"
-                            className="w-full bg-main border border-subtle rounded-3xl px-5 py-4 text-lg text-main ios-transition font-medium text-center focus:border-accent-primary focus:bg-surface shadow-sm"
+                            className="w-full bg-main border border-subtle rounded-3xl px-5 py-4 text-lg text-content ios-transition font-medium text-center focus:border-accent focus:bg-surface shadow-sm"
                         />
                     </div>
                     <div className="space-y-2 group">
-                        <label className="text-xs uppercase text-text-muted font-black tracking-[0.2em] group-focus-within:text-accent-primary">
+                        <label className="text-xs uppercase text-text-muted font-black tracking-[0.2em] group-focus-within:text-accent">
                             Zip Code
                         </label>
                         <input
@@ -130,14 +130,14 @@ export const OrderSidebar: React.FC<OrderSidebarProps> = ({
                             value={formData.zip}
                             onChange={(e) => setFormData({ ...formData, zip: e.target.value })}
                             placeholder="00000"
-                            className="w-full bg-main border border-subtle rounded-3xl px-5 py-4 text-lg text-main ios-transition font-medium focus:border-accent-primary focus:bg-surface shadow-sm"
+                            className="w-full bg-main border border-subtle rounded-3xl px-5 py-4 text-lg text-content ios-transition font-medium focus:border-accent focus:bg-surface shadow-sm"
                         />
                     </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-6 mt-4">
                     <div className="flex flex-col gap-2 group">
-                        <label className="text-xs uppercase text-text-muted font-black tracking-[0.2em] text-center group-focus-within:text-accent-primary">
+                        <label className="text-xs uppercase text-text-muted font-black tracking-[0.2em] text-center group-focus-within:text-accent">
                             Pallets
                         </label>
                         <input
@@ -149,7 +149,7 @@ export const OrderSidebar: React.FC<OrderSidebarProps> = ({
                         />
                     </div>
                     <div className="flex flex-col gap-2 group">
-                        <label className="text-xs uppercase text-text-muted font-black tracking-[0.2em] text-center group-focus-within:text-accent-primary">
+                        <label className="text-xs uppercase text-text-muted font-black tracking-[0.2em] text-center group-focus-within:text-accent">
                             Total Units
                         </label>
                         <input
@@ -157,13 +157,13 @@ export const OrderSidebar: React.FC<OrderSidebarProps> = ({
                             min="0"
                             value={formData.units}
                             onChange={(e) => setFormData({ ...formData, units: e.target.value })}
-                            className="w-full bg-main border border-subtle rounded-3xl py-5 text-center font-heading text-3xl font-bold text-main ios-transition focus:border-accent-primary shadow-sm focus:bg-surface"
+                            className="w-full bg-main border border-subtle rounded-3xl py-5 text-center font-heading text-3xl font-bold text-content ios-transition focus:border-accent shadow-sm focus:bg-surface"
                         />
                     </div>
                 </div>
 
                 <div className="space-y-2 group mt-2">
-                    <label className="text-xs uppercase text-text-muted font-black tracking-[0.2em] flex items-center gap-1 group-focus-within:text-accent-primary">
+                    <label className="text-xs uppercase text-text-muted font-black tracking-[0.2em] flex items-center gap-1 group-focus-within:text-accent">
                         <Hash size={10} /> Load Number
                     </label>
                     <input
@@ -171,7 +171,7 @@ export const OrderSidebar: React.FC<OrderSidebarProps> = ({
                         placeholder="E.G. 127035968"
                         value={formData.loadNumber}
                         onChange={(e) => setFormData({ ...formData, loadNumber: e.target.value.toUpperCase() })}
-                        className="w-full bg-main border border-subtle rounded-3xl px-5 py-4 text-lg text-main ios-transition font-medium focus:border-accent-primary focus:bg-surface shadow-sm"
+                        className="w-full bg-main border border-subtle rounded-3xl px-5 py-4 text-lg text-content ios-transition font-medium focus:border-accent focus:bg-surface shadow-sm"
                     />
                 </div>
             </form>

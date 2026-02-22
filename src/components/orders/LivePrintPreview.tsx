@@ -155,7 +155,7 @@ export const LivePrintPreview: React.FC<LivePrintPreviewProps> = ({
             `}} />
 
             <div className="w-full mb-8 text-center shrink-0">
-                <h2 className="text-3xl md:text-5xl font-[900] text-main tracking-tighter uppercase animate-soft-in">
+                <h2 className="text-3xl md:text-5xl font-[900] text-content tracking-tighter uppercase animate-soft-in">
                     Order #{orderNumber}
                 </h2>
                 {completedAt && (
