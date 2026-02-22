@@ -848,7 +848,7 @@ export const HistoryScreen = () => {
   }, [logs, showError]);
 
   return (
-    <div className="flex flex-col h-full bg-main text-content p-4 max-w-2xl mx-auto w-full">
+    <div className="flex flex-col h-full bg-main text-content px-4 max-w-2xl mx-auto w-full relative">
       {!isSearching && (
         <header className="flex justify-between items-end mb-8 pt-6">
           <div>
@@ -990,19 +990,20 @@ export const HistoryScreen = () => {
         ) : (
           Object.entries(groupedLogs).map(([date, items]) => (
             <div key={date} className="space-y-4">
-              <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-muted pl-1 flex items-center gap-2">
-                <Calendar size={12} /> {date}
+              <h3 className="sticky top-0 z-10 py-3 -mx-4 px-5 ios-glass !rounded-none text-[10px] font-black uppercase tracking-[0.3em] text-muted flex items-center gap-2">
+                <Calendar size={12} className="text-accent" /> {date}
               </h3>
-              <div className="space-y-3">
+              <div className="space-y-3 px-1">
                 {items.map((log) => {
                   const info = getActionTypeInfo(log.action_type, log);
                   return (
                     <div
                       key={log.id}
-                      className={`group relative p-5 rounded-[2rem] border transition-all duration-300 hover:scale-[1.01] ${log.is_reversed || (log as any).isOptimistic
-                        ? 'bg-main border-subtle'
-                        : 'bg-surface/40 border-subtle hover:border-accent/30 hover:bg-surface/60'
-                        } ${(log as any).isOptimistic ? 'opacity-60 border-dashed' : ''} ${log.is_reversed ? 'opacity-40 grayscale pointer-events-none' : ''}`}
+                      style={{ animationDelay: `${(items.indexOf(log) % 10) * 0.05}s` }}
+                      className={`group relative p-6 ios-squircle border ios-transition animate-staggered-fade-in ${log.is_reversed || (log as any).isOptimistic
+                        ? 'bg-main/40 border-subtle'
+                        : 'bg-card border-subtle hover:border-accent/30 hover:shadow-lg'
+                        } ${(log as any).isOptimistic ? 'opacity-60 border-dashed' : ''} ${log.is_reversed ? 'opacity-40 grayscale' : ''}`}
                     >
                       <div className="flex justify-between items-start">
                         <div className="flex items-center gap-4">
@@ -1182,21 +1183,24 @@ export const HistoryScreen = () => {
         )}
       </div>
 
-      <div className="fixed bottom-24 right-4 z-50 flex flex-col gap-3">
+      <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 p-2 ios-glass rounded-full shadow-2xl animate-in slide-in-from-bottom-4 duration-700">
         <button
           onClick={sendDailyEmail}
-          className="w-14 h-14 bg-surface text-muted border border-subtle rounded-full flex items-center justify-center shadow-2xl active:scale-90 transition-all hover:bg-card hover:text-content"
+          className="w-12 h-12 bg-white/5 text-muted border border-white/10 rounded-full flex items-center justify-center active:scale-90 ios-transition hover:text-content"
           title="Send Daily Email Now"
         >
-          <Mail size={24} />
+          <Mail size={20} />
         </button>
+
+        <div className="w-px h-6 bg-white/10 mx-1" />
 
         <button
           onClick={handleDownloadReport}
-          className="w-14 h-14 bg-content text-main rounded-full flex items-center justify-center shadow-2xl shadow-accent/20 hover:scale-110 active:scale-90 transition-all font-black"
+          className="px-6 h-12 bg-emerald-500 text-white rounded-full flex items-center gap-2 shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-90 ios-transition font-black uppercase tracking-widest text-[10px]"
           title="Download Daily Report"
         >
-          <FileDown size={24} />
+          <FileDown size={18} />
+          Report
         </button>
       </div>
     </div>

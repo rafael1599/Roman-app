@@ -22,9 +22,9 @@ Centralized management for features, bugs, and ideas.
 - [ ] **Barcode/QR Integration**: Scan items directly. <!-- id: idea-001 -->
 - [ ] **Order List View**: When reviewing orders, show the picking list first with an option to print (leading to the current screen). <!-- id: idea-006 -->
 - [ ] **Automatic Inventory Email**: Automatically send the full inventory table to Jamis's email. **Crucial**: Plain list only, NO links like current reports. <!-- id: idea-007 -->
-- [ ] **Stock Printing**: Allow printing the filtered SKU list in Stock view, opening in a new tab (consistent with Orders print view) instead of direct PDF download. <!-- id: idea-009 -->
+- [x] **Stock Printing**: Allow printing the filtered SKU list in Stock view, opening in a new tab (consistent with Orders print view) instead of direct PDF download. <!-- id: idea-009 -->
 - [ ] **Order Merging**: Ability to combine 2 separate orders into one picking session. <!-- id: idea-010 -->
-- [ ] **iOS Pull-to-Refresh**: Implement a native-feel refresh behavior for iOS (similar to Android's default) to allow updating the app state via top-scroll. <!-- id: idea-011 -->
+- [x] **iOS Pull-to-Refresh**: Implement a native-feel refresh behavior for iOS (similar to Android's default) to allow updating the app state via top-scroll. <!-- id: idea-011 -->
 - [ ] **Multi-Address Customers**: Update database schema and UI to handle multiple shipping/billing addresses for a single client. <!-- id: idea-012 -->
 - [x] **Stock View Enhancements & History Fix**: Implement SKU count summary, PDF export, and consolidated history logs. <!-- id: idea-014 -->
 - [ ] **Automatic Watchdog Startup**: Ensure the python watchdog script executes automatically whenever the PC starts. <!-- id: idea-008 -->

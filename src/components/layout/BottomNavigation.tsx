@@ -53,29 +53,34 @@ export const BottomNavigation = () => {
   };
 
   return (
-    <div className={`fixed bottom-0 left-0 right-0 bg-main/90 backdrop-blur-xl border-t border-subtle flex items-center justify-around z-50 pb-safe transition-all duration-300 ${isSearching ? 'h-12 px-1' : 'h-20 px-2'
-      }`}>
-      <NavItem
-        icon={Box}
-        label="STOCK"
-        isActive={location.pathname === '/' && viewMode === 'stock'}
-        onClick={handleStockClick}
-        isCompact={isSearching}
-      />
-      <NavItem
-        icon={Scan}
-        label="PICKING"
-        isActive={location.pathname === '/' && viewMode === 'picking'}
-        onClick={handlePickingClick}
-        isCompact={isSearching}
-      />
-      <NavItem
-        icon={History}
-        label="HISTORY"
-        isActive={location.pathname === '/history'}
-        onClick={() => navigate('/history')}
-        isCompact={isSearching}
-      />
+    <div className={`fixed bottom-0 left-0 right-0 pointer-events-none flex justify-center z-50 p-4 transition-all duration-300 ${isSearching ? 'h-16' : 'h-24'}`}>
+      <div className={`
+        w-full max-w-sm pointer-events-auto ios-glass frost-grain rounded-[2rem] flex items-center justify-around h-full
+        transition-all duration-500 ease-in-out
+        ${isSearching ? 'px-2' : 'px-4'}
+      `}>
+        <NavItem
+          icon={Box}
+          label="STOCK"
+          isActive={location.pathname === '/' && viewMode === 'stock'}
+          onClick={handleStockClick}
+          isCompact={isSearching}
+        />
+        <NavItem
+          icon={Scan}
+          label="PICKING"
+          isActive={location.pathname === '/' && viewMode === 'picking'}
+          onClick={handlePickingClick}
+          isCompact={isSearching}
+        />
+        <NavItem
+          icon={History}
+          label="HISTORY"
+          isActive={location.pathname === '/history'}
+          onClick={() => navigate('/history')}
+          isCompact={isSearching}
+        />
+      </div>
     </div>
   );
 };
