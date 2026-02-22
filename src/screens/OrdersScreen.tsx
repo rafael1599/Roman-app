@@ -515,7 +515,7 @@ export const OrdersScreen = () => {
                 <header className="h-24 bg-[#0f0f12]/60 backdrop-blur-3xl border-b border-white/10 shrink-0 flex items-center px-4 md:px-8 z-50">
                     <div className="flex items-center w-full gap-3 md:gap-6">
                         {/* Search Container */}
-                        <div className={`flex items-center h-12 bg-white/5 rounded-full border border-white/10 transition-all duration-500 overflow-hidden ${isSearchExpanded ? 'w-full md:w-80 px-4' : 'w-12 justify-center'}`}>
+                        <div className={`flex items-center h-12 bg-white/5 rounded-full border border-white/10 transition-all duration-500 overflow-hidden ${isSearchExpanded ? 'flex-1 md:w-80 md:flex-none px-4' : 'w-12 justify-center'}`}>
                             <button
                                 onClick={() => setIsSearchExpanded(!isSearchExpanded)}
                                 className="shrink-0 text-white/40 hover:text-emerald-500 transition-colors"
@@ -535,71 +535,67 @@ export const OrdersScreen = () => {
                         </div>
 
                         {/* Orders — Mobile: Dropdown, Desktop: Horizontal Scroll */}
-                        {!isSearchExpanded && (
-                            <>
-                                {/* Mobile: Selected order with dropdown */}
-                                <div className="flex-1 md:hidden relative" ref={mobileDropdownRef}>
-                                    <button
-                                        onClick={() => setIsMobileOrderListOpen(!isMobileOrderListOpen)}
-                                        className="flex items-center gap-2 h-12 px-5 bg-white/5 border border-white/10 rounded-full transition-all active:scale-95"
-                                    >
-                                        <span className="text-white font-black text-lg tracking-tight">
-                                            {selectedOrder ? `#${selectedOrder.order_number}` : 'Select'}
-                                        </span>
-                                        <ChevronDown size={16} className={`text-white/40 transition-transform duration-300 ${isMobileOrderListOpen ? 'rotate-180' : ''}`} />
-                                    </button>
-                                    {isMobileOrderListOpen && (
-                                        <div className="absolute top-14 left-0 right-0 w-64 max-h-80 overflow-y-auto bg-zinc-900/95 backdrop-blur-2xl border border-white/10 rounded-[2rem] shadow-3xl p-3 z-[60] animate-soft-in no-scrollbar">
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-white/20 px-4 mb-2">Orders ({filteredOrders.length})</p>
-                                            {filteredOrders.map(order => (
-                                                <button
-                                                    key={order.id}
-                                                    onClick={() => {
-                                                        setSelectedOrder(order);
-                                                        setIsMobileOrderListOpen(false);
-                                                    }}
-                                                    className={`w-full text-left px-4 py-3 rounded-2xl text-sm font-black uppercase tracking-widest transition-all flex items-center justify-between ${selectedOrder?.id === order.id
-                                                        ? 'bg-white text-black'
-                                                        : 'hover:bg-white/5 text-white/60'
-                                                        }`}
-                                                >
-                                                    <span>#{order.order_number}</span>
-                                                    {order.customer?.name && (
-                                                        <span className={`text-[10px] font-bold normal-case tracking-normal ${selectedOrder?.id === order.id ? 'text-black/40' : 'text-white/20'
-                                                            }`}>{order.customer.name}</span>
-                                                    )}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
+                        {/* Mobile: Selected order with dropdown */}
+                        <div className={`${isSearchExpanded ? 'w-auto' : 'flex-1'} md:hidden relative`} ref={mobileDropdownRef}>
+                            <button
+                                onClick={() => setIsMobileOrderListOpen(!isMobileOrderListOpen)}
+                                className="flex items-center gap-2 h-12 px-5 bg-white/5 border border-white/10 rounded-full transition-all active:scale-95"
+                            >
+                                <span className={`text-white font-black text-lg tracking-tight ${isSearchExpanded ? 'max-w-[80px] truncate' : ''}`}>
+                                    {selectedOrder ? `#${selectedOrder.order_number}` : 'Select'}
+                                </span>
+                                <ChevronDown size={16} className={`text-white/40 transition-transform duration-300 ${isMobileOrderListOpen ? 'rotate-180' : ''}`} />
+                            </button>
+                            {isMobileOrderListOpen && (
+                                <div className="absolute top-14 right-0 w-64 max-h-80 overflow-y-auto bg-zinc-900/95 backdrop-blur-2xl border border-white/10 rounded-[2rem] shadow-3xl p-3 z-[60] animate-soft-in no-scrollbar">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-white/20 px-4 mb-2">Orders ({filteredOrders.length})</p>
+                                    {filteredOrders.map(order => (
+                                        <button
+                                            key={order.id}
+                                            onClick={() => {
+                                                setSelectedOrder(order);
+                                                setIsMobileOrderListOpen(false);
+                                            }}
+                                            className={`w-full text-left px-4 py-3 rounded-2xl text-sm font-black uppercase tracking-widest transition-all flex items-center justify-between ${selectedOrder?.id === order.id
+                                                ? 'bg-white text-black'
+                                                : 'hover:bg-white/5 text-white/60'
+                                                }`}
+                                        >
+                                            <span>#{order.order_number}</span>
+                                            {order.customer?.name && (
+                                                <span className={`text-[10px] font-bold normal-case tracking-normal ${selectedOrder?.id === order.id ? 'text-black/40' : 'text-white/20'
+                                                    }`}>{order.customer.name}</span>
+                                            )}
+                                        </button>
+                                    ))}
                                 </div>
+                            )}
+                        </div>
 
-                                {/* Desktop: Horizontal Scroll */}
-                                <div className="hidden md:flex flex-1 h-24 items-center gap-4 overflow-x-auto no-scrollbar mask-fade-edges py-2">
-                                    {filteredOrders.map(order => {
-                                        const isSelected = selectedOrder?.id === order.id;
-                                        return (
-                                            <div
-                                                key={order.id}
-                                                ref={el => {
-                                                    if (isSelected && el) {
-                                                        el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-                                                    }
-                                                }}
-                                                className="shrink-0"
-                                            >
-                                                <OrderChip
-                                                    orderNumber={order.order_number}
-                                                    status={order.status}
-                                                    isSelected={isSelected}
-                                                    onClick={() => setSelectedOrder(order)}
-                                                />
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </>
-                        )}
+                        {/* Desktop: Horizontal Scroll */}
+                        <div className="hidden md:flex flex-1 h-24 items-center gap-4 overflow-x-auto no-scrollbar mask-fade-edges py-2">
+                            {filteredOrders.map(order => {
+                                const isSelected = selectedOrder?.id === order.id;
+                                return (
+                                    <div
+                                        key={order.id}
+                                        ref={el => {
+                                            if (isSelected && el) {
+                                                el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                                            }
+                                        }}
+                                        className="shrink-0"
+                                    >
+                                        <OrderChip
+                                            orderNumber={order.order_number}
+                                            status={order.status}
+                                            isSelected={isSelected}
+                                            onClick={() => setSelectedOrder(order)}
+                                        />
+                                    </div>
+                                );
+                            })}
+                        </div>
 
                         {/* Filter Dropdown */}
                         <div className="relative" ref={filterRef}>
