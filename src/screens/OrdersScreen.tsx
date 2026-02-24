@@ -195,7 +195,18 @@ export const OrdersScreen = () => {
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             const tag = (e.target as HTMLElement)?.tagName;
-            if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
+                // For inputs, only allow the print shortcut to pass through
+                if (!((e.ctrlKey || e.metaKey) && e.key === 'p')) return;
+            }
+
+            // Print Shortcut (Ctrl+P or Cmd+P)
+            if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+                e.preventDefault();
+                handlePrint();
+                return;
+            }
+
             if (e.key === 'ArrowRight') setPressedKey('right');
             if (e.key === 'ArrowLeft') setPressedKey('left');
             if (filteredOrders.length === 0 || !selectedOrder) return;
