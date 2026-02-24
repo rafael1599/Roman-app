@@ -11,33 +11,22 @@ export const generatePickingPdf = async (
     import('jspdf-autotable')
   ]);
 
-  const doc = new jsPDF('p', 'mm', 'a4');
+  const doc = new jsPDF('l', 'mm', 'a4');
+  const todayRaw = new Date();
   const today = new Intl.DateTimeFormat('en-US', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(new Date());
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false,
+  }).format(todayRaw);
 
   // Title
-  doc.setFontSize(22);
-  doc.setTextColor(40, 40, 40);
-  doc.text('PICKING LIST', 15, 20);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(32);
+  doc.setTextColor(0, 0, 0);
+  doc.text('PICKING LIST', 5, 15);
 
-  doc.setFontSize(10);
-  doc.setTextColor(100, 100, 100);
-  doc.text(`Generated: ${today}`, 15, 27);
+  const metadataLine = `Generated: ${today}${orderNumber ? ` | Order: #${orderNumber}` : ''} | Pallets: ${totalPallets}`;
 
-  let startY = 40;
-  if (orderNumber) {
-    doc.text(`Order Number: #${orderNumber}`, 15, 32);
-    doc.text(`Total Pallets: ${totalPallets}`, 15, 37);
-    startY = 45;
-  } else {
-    doc.text(`Total Pallets: ${totalPallets}`, 15, 32);
-  }
+  let startY = 32; // Increased from 22
 
   // --- Picking Sequence Table ---
   const verifiedCount = finalSequence.filter((item) => item.isPicked).length;
@@ -52,42 +41,43 @@ export const generatePickingPdf = async (
   ]);
 
   if (sequenceData.length > 0) {
-    doc.setFontSize(14);
-    doc.setTextColor(0, 0, 0);
-    doc.text(`PICKING SEQUENCE (Verified: ${verifiedCount}/${finalSequence.length})`, 15, startY);
-    startY += 5;
+    doc.setFontSize(28);
+    doc.text(`SEQUENCE (Verified: ${verifiedCount}/${finalSequence.length})`, 5, startY);
+    startY += 8; // Increased from 5 for more separation
 
     autoTable(doc, {
       startY: startY,
-      head: [['#', 'SKU', 'Location / WH', 'Pallet', 'Qty', 'Double check']],
+      head: [['#', 'SKU', 'Loc / WH', 'Pal', 'Qty', 'Check']],
       body: sequenceData,
-      theme: 'grid',
+      theme: 'plain',
       headStyles: {
         fillColor: [255, 255, 255],
         textColor: 0,
-        font: 'times',
-        fontSize: 13,
+        font: 'helvetica',
+        fontSize: 20,
         fontStyle: 'bold',
         lineColor: [0, 0, 0],
         lineWidth: 0.1,
       },
       styles: {
-        font: 'times',
-        fontSize: 13,
-        cellPadding: 3,
+        font: 'helvetica',
+        fontSize: 40,
+        cellPadding: 6,
+        minCellHeight: 20,
         overflow: 'linebreak',
         lineColor: [0, 0, 0],
         lineWidth: 0.1,
         fillColor: [255, 255, 255],
         textColor: [0, 0, 0],
+        valign: 'middle'
       },
       columnStyles: {
-        0: { cellWidth: 12, halign: 'center' },
-        1: { cellWidth: 'auto', fontStyle: 'bold' },
-        2: { cellWidth: 'auto' },
-        3: { cellWidth: 20, halign: 'center' },
-        4: { cellWidth: 15, halign: 'center', fontStyle: 'bold' },
-        5: { halign: 'center', cellWidth: 35 },
+        0: { cellWidth: 15, halign: 'center', fontSize: 16 },
+        1: { cellWidth: 100, fontStyle: 'bold' },
+        2: { cellWidth: 'auto', fontSize: 20 },
+        3: { cellWidth: 20, halign: 'center', fontSize: 20 },
+        4: { cellWidth: 25, halign: 'center', fontStyle: 'bold' },
+        5: { halign: 'center', cellWidth: 40 },
       },
       didDrawCell: (data) => {
         if (
@@ -100,15 +90,22 @@ export const generatePickingPdf = async (
 
           // Draw Green Checkmark manually
           doc.setDrawColor(22, 163, 74); // Green
-          doc.setLineWidth(0.5);
-          doc.line(x - 2, y + 0.5, x - 0.5, y + 2);
-          doc.line(x - 0.5, y + 2, x + 2.5, y - 2);
+          doc.setLineWidth(1.0);
+          doc.line(x - 4, y + 1, x - 1, y + 4);
+          doc.line(x - 1, y + 4, x + 5, y - 4);
 
           // Clear the placeholder text so it doesn't print
           data.cell.text[0] = '';
         }
       },
-      margin: { left: 15, right: 15 },
+      margin: { left: 5, right: 5, top: 5, bottom: 5 },
+      didDrawPage: () => {
+        // Footer metadata
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(14);
+        doc.setTextColor(0, 0, 0);
+        doc.text(metadataLine, 292, 205, { align: 'right' });
+      }
     });
 
     startY = (doc as any).lastAutoTable.finalY + 15;

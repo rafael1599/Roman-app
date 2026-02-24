@@ -272,81 +272,91 @@ export const InventoryScreen = () => {
 
     setIsGeneratingPDF(true);
     try {
-      const doc = new jsPDF({ orientation: 'l', unit: 'in', format: [8.5, 11] });
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
       const generatorName = profile?.full_name || authUser?.email || 'System';
 
-      doc.setFont('times', 'bold');
-      doc.setFontSize(48);
-      doc.text('Stock View Report', 0.5, 0.9);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(32);
+      doc.text('Stock View Report', 5, 15);
 
       const firstName = generatorName.split(' ')[0];
-      const today = new Date().toLocaleDateString('es-ES'); // Example: 21/2/2026
+      const today = new Date().toLocaleDateString('es-ES');
 
-      // Group location blocks by warehouse
-      const warehouseGroups: Record<string, typeof allLocationBlocks> = {};
+      // Group items by Warehouse -> SKU (Aggregate locations)
+      const whAggregates: Record<string, Record<string, { qty: number, locations: Set<string>, notes: Set<string> }>> = {};
+
       allLocationBlocks.forEach(block => {
-        if (!warehouseGroups[block.wh]) warehouseGroups[block.wh] = [];
-        warehouseGroups[block.wh].push(block);
+        if (!whAggregates[block.wh]) whAggregates[block.wh] = {};
+        const whGroup = whAggregates[block.wh];
+
+        block.items.forEach(item => {
+          if (!whGroup[item.sku]) {
+            whGroup[item.sku] = { qty: 0, locations: new Set(), notes: new Set() };
+          }
+          whGroup[item.sku].qty += item.quantity;
+          if (item.location) whGroup[item.sku].locations.add(item.location.trim().toUpperCase());
+          if (item.sku_note) whGroup[item.sku].notes.add(item.sku_note.trim());
+        });
       });
 
-      let currentY = 1.3;
+      let currentY = 32; // Increased from 22
 
-      Object.entries(warehouseGroups).forEach(([wh, blocks], index) => {
-        if (index > 0 && currentY > 6) {
+      Object.entries(whAggregates).forEach(([wh, skuGroups], index) => {
+        if (index > 0 && currentY > 150) {
           doc.addPage();
-          currentY = 1.0;
+          currentY = 22; // Start lower on new pages
         }
 
-        const whStats = blocks.reduce((acc, b) => {
-          acc.skus += new Set(b.items.map(i => i.sku)).size;
-          acc.qty += b.items.reduce((sum, i) => sum + i.quantity, 0);
-          return acc;
-        }, { skus: 0, qty: 0 });
+        const totalSkus = Object.keys(skuGroups).length;
+        const totalQty = Object.values(skuGroups).reduce((sum, g) => sum + g.qty, 0);
+        const metadataLine = `By: ${firstName} | Date: ${today} | SKUs: ${totalSkus} | Qty: ${totalQty} | WH: ${wh}`;
 
-        doc.setFont('times', 'normal');
-        doc.setFontSize(18);
-        const metadataLine = `By: ${firstName} | Date: ${today} | SKUs: ${whStats.skus} | Qty: ${whStats.qty} | WH: ${wh}`;
-        doc.text(metadataLine, 0.5, currentY);
-        currentY += 0.4;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(28);
+        doc.text('SKU | Locs | Qty | Notes', 5, currentY);
+        currentY += 8; // Increased from 5 for more separation
 
-        doc.setFont('times', 'bold');
-        doc.setFontSize(30);
-        doc.text('SKU | Loc | Qty | Detail', 0.5, currentY);
-        currentY += 0.2;
-
-        const tableData = blocks.flatMap(block =>
-          block.items.map(item => [
-            item.sku,
-            item.location || 'Gen',
-            item.quantity.toString(),
-            item.sku_note || '',
-          ])
-        );
+        // Convert grouped data to table rows
+        const tableData = Object.entries(skuGroups)
+          .sort(([skuA], [skuB]) => skuA.localeCompare(skuB))
+          .map(([sku, data]) => [
+            sku,
+            Array.from(data.locations).sort().join(', ') || 'GEN',
+            data.qty.toString(),
+            Array.from(data.notes).join(' | '),
+          ]);
 
         autoTable(doc, {
           startY: currentY,
           body: tableData,
           theme: 'plain',
           styles: {
-            fontSize: 30,
-            cellPadding: 0.2,
+            font: 'helvetica',
+            fontSize: 40,
+            cellPadding: 6,
+            minCellHeight: 20,
             textColor: [0, 0, 0],
             lineColor: [0, 0, 0],
-            lineWidth: 0.02
+            lineWidth: 0.12
           },
           columnStyles: {
-            0: { cellWidth: 4.0, fontStyle: 'bold' },
-            1: { cellWidth: 1.5, fontSize: 18 },
-            2: { cellWidth: 1.5, halign: 'right' },
-            3: { cellWidth: 'auto' },
+            0: { cellWidth: 100, fontStyle: 'bold' },
+            1: { cellWidth: 45, fontSize: 18 },
+            2: { cellWidth: 35, halign: 'right', fontStyle: 'bold' },
+            3: { cellWidth: 'auto', fontSize: 14 },
           },
-          margin: { top: 0.5, right: 0.5, bottom: 0.5, left: 0.5 },
-          didDrawPage: (data) => {
-            currentY = data.cursor?.y || 1.0;
+          margin: { top: 5, right: 5, bottom: 5, left: 5 },
+          didDrawPage: () => {
+            // Footer: By: Rafael | Date: ... | SKUs: ... | Qty: ... | WH: ...
+            // Positioned at bottom right
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(14);
+            doc.text(metadataLine, 292, 205, { align: 'right' });
+            currentY = (doc as any).lastAutoTable?.finalY || 15;
           }
         });
 
-        currentY = (doc as any).lastAutoTable.finalY + 0.8;
+        currentY = (doc as any).lastAutoTable.finalY + 15;
       });
 
       const blob = doc.output('bloburl');

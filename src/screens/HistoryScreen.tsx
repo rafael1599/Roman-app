@@ -572,9 +572,9 @@ export const HistoryScreen = () => {
   const generateDailyPDF = useCallback(
     (jsPDFInstance: any, autoTableInstance: any) => {
       const doc = new jsPDFInstance({
-        orientation: 'l',
-        unit: 'in',
-        format: [8.5, 11],
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a4',
       });
       const today = new Date().toLocaleDateString('es-ES');
       const generatorName = profile?.full_name || authUser?.email || 'System';
@@ -597,22 +597,21 @@ export const HistoryScreen = () => {
       }
 
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(48);
-      doc.text(title, 0.5, 0.9);
+      doc.setFontSize(32);
+      doc.text(title, 5, 15);
 
       const stats = {
         total: filteredLogs.length,
         qty: filteredLogs.reduce((acc, l) => acc + Math.abs(Number(l.quantity_change) || 0), 0),
       };
 
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(18);
       const metadataLine = `By: ${firstName} | Date: ${today} | Logs: ${stats.total} | Qty: ${stats.qty} | Period: ${timeFilter}`;
-      doc.text(metadataLine, 0.5, 1.3);
 
+      let currentY = 32; // Increased from 22
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(30);
-      doc.text('Time | SKU | Detail | Qty', 0.5, 1.7);
+      doc.setFontSize(28);
+      doc.text('Time | SKU | Activity Detail | Qty', 5, currentY);
+      currentY += 8; // Increased from 5 for more separation
 
       const tableData = filteredLogs.map((log) => {
         let description = '';
@@ -671,25 +670,31 @@ export const HistoryScreen = () => {
       });
 
       autoTableInstance(doc, {
-        startY: 1.8,
+        startY: currentY,
         body: tableData,
-        theme: 'grid',
+        theme: 'plain',
         styles: {
-          fontSize: 24,
-          cellPadding: 0.15,
+          fontSize: 40,
+          cellPadding: 6, // Increased padding
+          minCellHeight: 20, // Forces enough space for 40pt font
           textColor: [0, 0, 0],
           lineColor: [0, 0, 0],
-          lineWidth: 0.01,
+          lineWidth: 0.1,
           font: 'helvetica',
           valign: 'middle'
         },
         columnStyles: {
-          0: { cellWidth: 1.2, fontSize: 20, halign: 'center' },
-          1: { cellWidth: 2.2, fontStyle: 'bold', fontSize: 28, halign: 'left' },
-          2: { cellWidth: 'auto', fontSize: 16, halign: 'left' },
-          3: { cellWidth: 1.0, fontSize: 28, halign: 'right', fontStyle: 'bold' },
+          0: { cellWidth: 40, fontSize: 26, halign: 'center' }, // Increased to 26pt
+          1: { cellWidth: 90, fontStyle: 'bold', fontSize: 40, halign: 'left' },
+          2: { cellWidth: 'auto', fontSize: 22, halign: 'left' }, // Increased to 22pt
+          3: { cellWidth: 35, fontSize: 40, halign: 'right', fontStyle: 'bold' },
         },
-        margin: { top: 0.5, right: 0.5, bottom: 0.5, left: 0.5 },
+        margin: { top: 5, right: 5, bottom: 5, left: 5 },
+        didDrawPage: () => {
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(14);
+          doc.text(metadataLine, 292, 205, { align: 'right' });
+        }
       });
 
       return doc;
