@@ -574,7 +574,7 @@ class InventoryService extends BaseService<'inventory', InventoryModel, Inventor
             p_to_location: targetLocation,
             p_qty: qty,
             p_performed_by: userInfo.performed_by,
-            p_user_id: userInfo.user_id || '',
+            p_user_id: (userInfo.user_id || null) as any,
             p_user_role: 'staff'
         });
 
