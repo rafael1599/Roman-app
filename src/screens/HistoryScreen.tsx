@@ -1007,7 +1007,7 @@ export const HistoryScreen = () => {
         ) : (
           Object.entries(groupedLogs).map(([date, items]) => (
             <div key={date} className="space-y-4">
-              <h3 className="sticky top-0 z-10 py-3 -mx-4 px-5 ios-glass !rounded-none text-[10px] font-black uppercase tracking-[0.3em] text-muted flex items-center gap-2">
+              <h3 className="sticky top-0 z-10 py-4 -mx-4 px-6 bg-main/90 backdrop-blur-md border-b border-subtle text-[10px] font-black uppercase tracking-[0.3em] text-muted flex items-center gap-2">
                 <Calendar size={12} className="text-accent" /> {date}
               </h3>
               <div className="space-y-3 px-1">
@@ -1016,11 +1016,15 @@ export const HistoryScreen = () => {
                   return (
                     <div
                       key={log.id}
-                      style={{ animationDelay: `${(items.indexOf(log) % 10) * 0.05}s` }}
-                      className={`group relative p-6 ios-squircle border ios-transition animate-staggered-fade-in ${log.is_reversed || (log as any).isOptimistic
-                        ? 'bg-main/40 border-subtle'
-                        : 'bg-card border-subtle hover:border-accent/30 hover:shadow-lg'
-                        } ${(log as any).isOptimistic ? 'opacity-60 border-dashed' : ''} ${log.is_reversed ? 'opacity-40 grayscale' : ''}`}
+                      style={{
+                        animationDelay: `${(items.indexOf(log) % 15) * 0.03}s`,
+                        zIndex: items.length - items.indexOf(log)
+                      }}
+                      className={`group relative p-6 ios-squircle border animate-staggered-fade-in ${log.is_reversed || (log as any).isOptimistic
+                          ? 'bg-main/40 border-subtle'
+                          : 'bg-card border-subtle hover:border-accent/30 hover:shadow-lg'
+                        } ${(log as any).isOptimistic ? 'opacity-60 border-dashed' : ''
+                        } ${log.is_reversed ? 'opacity-40 grayscale' : ''}`}
                     >
                       <div className="flex justify-between items-start">
                         <div className="flex items-center gap-4">
@@ -1029,7 +1033,7 @@ export const HistoryScreen = () => {
                           </div>
                           <div>
                             <div className="flex items-center gap-2">
-                              <span className="text-lg font-black tracking-tighter uppercase">
+                              <span className="text-lg font-black tracking-tighter uppercase text-content">
                                 {log.sku}
                               </span>
                               <span

@@ -114,8 +114,7 @@ body {
 
 .ios-squircle {
   border-radius: var(--radius-ios);
-  mask-image: paint(squircle);
-  /* Future proofing if smooth corners are loaded */
+  /* mask-image removed as worklet is not registered */
 }
 
 /* Texture Overlays */
