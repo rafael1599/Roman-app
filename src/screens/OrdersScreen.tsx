@@ -32,6 +32,12 @@ export const OrdersScreen = () => {
     const [isMobileOrderListOpen, setIsMobileOrderListOpen] = useState(false);
     const filterRef = useRef(null);
     const mobileDropdownRef = useRef<HTMLDivElement>(null);
+    const searchRef = useRef<HTMLDivElement>(null);
+    const searchQueryRef = useRef(searchQuery);
+
+    useEffect(() => {
+        searchQueryRef.current = searchQuery;
+    }, [searchQuery]);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -40,6 +46,12 @@ export const OrdersScreen = () => {
             }
             if (mobileDropdownRef.current && !(mobileDropdownRef.current as any).contains(event.target)) {
                 setIsMobileOrderListOpen(false);
+            }
+            if (searchRef.current && !(searchRef.current as any).contains(event.target)) {
+                // Only auto-close search if it's empty, otherwise keep it visible
+                if (!searchQueryRef.current.trim()) {
+                    setIsSearchExpanded(false);
+                }
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
@@ -526,7 +538,10 @@ export const OrdersScreen = () => {
                 <header className="h-24 ios-glass !border-none !shadow-none shrink-0 flex items-center px-4 md:px-8 z-50">
                     <div className="flex items-center w-full gap-3 md:gap-6">
                         {/* Search Container */}
-                        <div className={`flex items-center h-12 bg-surface border border-subtle transition-all duration-500 overflow-hidden ${isSearchExpanded ? 'flex-1 md:w-80 md:flex-none px-4' : 'w-12 justify-center'} rounded-full shadow-sm`}>
+                        <div
+                            ref={searchRef}
+                            className={`flex items-center h-12 bg-surface border border-subtle transition-all duration-500 overflow-hidden ${isSearchExpanded ? 'flex-1 md:w-80 md:flex-none px-4' : 'w-12 justify-center'} rounded-full shadow-sm`}
+                        >
                             <button
                                 onClick={() => setIsSearchExpanded(!isSearchExpanded)}
                                 className="shrink-0 text-muted hover:text-emerald-500 transition-colors"
