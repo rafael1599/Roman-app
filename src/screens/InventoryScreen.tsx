@@ -337,7 +337,7 @@ export const InventoryScreen = () => {
             minCellHeight: 20,
             textColor: [0, 0, 0],
             lineColor: [0, 0, 0],
-            lineWidth: 0.12
+            lineWidth: 1.12
           },
           columnStyles: {
             0: { cellWidth: 100, fontStyle: 'bold' },

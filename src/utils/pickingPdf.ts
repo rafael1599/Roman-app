@@ -57,7 +57,7 @@ export const generatePickingPdf = async (
         fontSize: 20,
         fontStyle: 'bold',
         lineColor: [0, 0, 0],
-        lineWidth: 0.1,
+        lineWidth: 1.1,
       },
       styles: {
         font: 'helvetica',
@@ -66,7 +66,7 @@ export const generatePickingPdf = async (
         minCellHeight: 20,
         overflow: 'linebreak',
         lineColor: [0, 0, 0],
-        lineWidth: 0.1,
+        lineWidth: 1.1,
         fillColor: [255, 255, 255],
         textColor: [0, 0, 0],
         valign: 'middle'

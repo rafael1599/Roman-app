@@ -600,18 +600,24 @@ export const HistoryScreen = () => {
       doc.setFontSize(32);
       doc.text(title, 5, 15);
 
+      const getDisplayQty = (l: any) => {
+        if (l.action_type === 'EDIT') return l.new_quantity ?? l.quantity_change ?? 0;
+        if (l.action_type === 'MOVE' && (l.quantity_change === 0 || !l.quantity_change) && l.new_quantity) return l.new_quantity;
+        return Math.abs(l.quantity_change || 0);
+      };
+
       const stats = {
         total: filteredLogs.length,
-        qty: filteredLogs.reduce((acc, l) => acc + Math.abs(Number(l.quantity_change) || 0), 0),
+        qty: filteredLogs.reduce((acc, l) => acc + Number(getDisplayQty(l)), 0),
       };
 
       const metadataLine = `By: ${firstName} | Date: ${today} | Logs: ${stats.total} | Qty: ${stats.qty} | Period: ${timeFilter}`;
 
-      let currentY = 32; // Increased from 22
+      let currentY = 32;
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(28);
       doc.text('Time | SKU | Activity Detail | Qty', 5, currentY);
-      currentY += 8; // Increased from 5 for more separation
+      currentY += 8;
 
       const tableData = filteredLogs.map((log) => {
         let description = '';
@@ -665,7 +671,7 @@ export const HistoryScreen = () => {
           new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           log.sku,
           description,
-          Math.abs(log.quantity_change).toString(),
+          getDisplayQty(log).toString(),
         ];
       });
 
@@ -675,18 +681,18 @@ export const HistoryScreen = () => {
         theme: 'plain',
         styles: {
           fontSize: 40,
-          cellPadding: 6, // Increased padding
-          minCellHeight: 20, // Forces enough space for 40pt font
+          cellPadding: 6,
+          minCellHeight: 20,
           textColor: [0, 0, 0],
           lineColor: [0, 0, 0],
-          lineWidth: 0.1,
+          lineWidth: 1.1,
           font: 'helvetica',
           valign: 'middle'
         },
         columnStyles: {
-          0: { cellWidth: 40, fontSize: 26, halign: 'center' }, // Increased to 26pt
+          0: { cellWidth: 40, fontSize: 26, halign: 'center' },
           1: { cellWidth: 90, fontStyle: 'bold', fontSize: 40, halign: 'left' },
-          2: { cellWidth: 'auto', fontSize: 22, halign: 'left' }, // Increased to 22pt
+          2: { cellWidth: 'auto', fontSize: 22, halign: 'left' },
           3: { cellWidth: 35, fontSize: 40, halign: 'right', fontStyle: 'bold' },
         },
         margin: { top: 5, right: 5, bottom: 5, left: 5 },
@@ -807,7 +813,11 @@ export const HistoryScreen = () => {
                                         ${description}
                                     </td>
                                     <td style="padding: 12px; text-align: right; font-weight: bold;">
-                                        ${Math.abs(log.quantity_change || 0)}
+                                        ${(() => {
+                if (log.action_type === 'EDIT') return log.new_quantity ?? log.quantity_change ?? 0;
+                if (log.action_type === 'MOVE' && (log.quantity_change === 0 || !log.quantity_change) && log.new_quantity) return log.new_quantity;
+                return Math.abs(log.quantity_change || 0);
+              })()}
                                     </td>
                                 </tr>
                             `;
