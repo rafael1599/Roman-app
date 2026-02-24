@@ -29,7 +29,6 @@ import { useViewMode } from '../context/ViewModeContext';
 import type { InventoryLog, LogActionTypeValue } from '../schemas/log.schema';
 
 export const HistoryScreen = () => {
-  useInventory(); // Ensure provider connection if needed, but don't bind unused vars
   const { isAdmin, profile, user: authUser } = useAuth();
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const { showError } = useError();
@@ -64,17 +63,19 @@ export const HistoryScreen = () => {
     queryFn: async () => {
       let query = supabase
         .from('inventory_logs')
-        .select('*, picking_lists(order_number)')
+        .select('*') // Simplified: order_number is already in the table
         .order('created_at', { ascending: false });
 
       if (!isAdmin) {
         query = query.neq('action_type', 'SYSTEM_RECONCILIATION');
       }
 
+      // Timezone-safe start of today in local time
       const startOfToday = new Date();
       startOfToday.setHours(0, 0, 0, 0);
 
       if (timeFilter === 'TODAY') {
+        // We use the ISO string of the LOCAL midnight
         query = query.gte('created_at', startOfToday.toISOString());
       } else if (timeFilter === 'YESTERDAY') {
         const startOfYesterday = new Date(startOfToday);
@@ -92,20 +93,27 @@ export const HistoryScreen = () => {
         lastMonth.setMonth(lastMonth.getMonth() - 1);
         query = query.gte('created_at', lastMonth.toISOString());
       } else {
-        query = query.limit(200);
+        query = query.limit(300); // Increased limit for ALL
       }
 
       const { data, error } = await query;
-      if (error) throw error;
+      if (error) {
+        console.error('History fetch error:', error);
+        throw error;
+      }
 
-      return (data || []).map((log: any) => ({
-        ...log,
-        order_number: log.order_number || log.picking_lists?.order_number,
-      })) as InventoryLog[];
+      return (data || []) as InventoryLog[];
     },
-    staleTime: 1000 * 60 * 1, // 1 minute
-    gcTime: 1000 * 60 * 60 * 24, // 24 hours
+    staleTime: 1000 * 30, // 30 seconds
   });
+
+  const getDisplayQty = useCallback((l: any) => {
+    if (!l) return 0;
+    if (l.action_type === 'EDIT') return l.new_quantity ?? l.quantity_change ?? 0;
+    // For MOVE logs where quantity_change is 0 but it was actually a location rename, show the total quantity moved
+    if (l.action_type === 'MOVE' && (l.quantity_change === 0 || !l.quantity_change) && l.new_quantity) return l.new_quantity;
+    return Math.abs(l.quantity_change || 0);
+  }, []);
 
   // --- OPTIMISTIC LOGS INJECTION (Hybrid Stream) ---
   // Use useMutationState to observe inventory mutations in a React-friendly way
@@ -599,12 +607,6 @@ export const HistoryScreen = () => {
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(32);
       doc.text(title, 5, 15);
-
-      const getDisplayQty = (l: any) => {
-        if (l.action_type === 'EDIT') return l.new_quantity ?? l.quantity_change ?? 0;
-        if (l.action_type === 'MOVE' && (l.quantity_change === 0 || !l.quantity_change) && l.new_quantity) return l.new_quantity;
-        return Math.abs(l.quantity_change || 0);
-      };
 
       const stats = {
         total: filteredLogs.length,
@@ -1159,12 +1161,7 @@ export const HistoryScreen = () => {
                             {log.action_type === 'EDIT' ? 'Total Qty' : 'Change'}
                           </p>
                           <p className={`text-2xl font-black leading-none ${log.action_type === 'EDIT' ? 'text-accent' : 'text-content'}`} data-testid="quantity-change">
-                            {log.action_type === 'EDIT'
-                              ? (log.new_quantity ?? log.quantity_change)
-                              : (typeof log.quantity_change === 'number'
-                                // For old MOVE logs where quantity_change is 0 but it was actually a location rename, show the total quantity moved
-                                ? (log.action_type === 'MOVE' && log.quantity_change === 0 && log.new_quantity && log.new_quantity > 0 ? log.new_quantity : Math.abs(log.quantity_change))
-                                : '??')}
+                            {getDisplayQty(log)}
                           </p>
                         </div>
                       </div>
