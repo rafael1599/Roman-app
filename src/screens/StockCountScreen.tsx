@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { useInventory } from '../hooks/useInventoryData';
 import { useNavigate } from 'react-router-dom';
 import ArrowLeft from 'lucide-react/dist/esm/icons/arrow-left';
@@ -7,6 +7,7 @@ import Search from 'lucide-react/dist/esm/icons/search';
 import CheckCircle2 from 'lucide-react/dist/esm/icons/check-circle-2';
 import XCircle from 'lucide-react/dist/esm/icons/x-circle';
 import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle';
+import Upload from 'lucide-react/dist/esm/icons/upload';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import { type InventoryItem } from '../schemas/inventory.schema';
@@ -218,6 +219,31 @@ export const StockCountScreen = () => {
     const [searchFilter, setSearchFilter] = useState('');
     const [showOnlyMissing, setShowOnlyMissing] = useState(false);
 
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const content = event.target?.result;
+            if (typeof content === 'string') {
+                setRawInput(content);
+                setParseError('');
+            }
+        };
+        reader.onerror = () => {
+            setParseError('Failed to read the selected file.');
+        };
+        reader.readAsText(file);
+
+        // Reset file input value so the same file can be uploaded again if needed
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+    };
+
     // Build count rows from parsed input vs inventory
     const countRows = useMemo<CountRow[]>(() => {
         if (!parsed) return [];
@@ -311,11 +337,28 @@ export const StockCountScreen = () => {
                                     <ClipboardPaste size={20} className="text-accent" />
                                 </div>
                                 <div>
-                                    <h2 className="font-black uppercase tracking-tight text-content">Paste JSON List</h2>
+                                    <h2 className="font-black uppercase tracking-tight text-content">Paste or Upload JSON</h2>
                                     <p className="text-[10px] text-muted font-bold uppercase tracking-widest">
                                         Array of objects with "sku" field
                                     </p>
                                 </div>
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                                <input
+                                    type="file"
+                                    accept=".json,application/json"
+                                    ref={fileInputRef}
+                                    style={{ display: 'none' }}
+                                    onChange={handleFileUpload}
+                                />
+                                <button
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="w-full py-3 bg-surface border border-subtle hover:border-accent/50 text-content font-black uppercase tracking-widest rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 text-xs active:scale-95"
+                                >
+                                    <Upload size={16} className="text-accent" />
+                                    Upload JSON File
+                                </button>
                             </div>
 
                             <textarea
