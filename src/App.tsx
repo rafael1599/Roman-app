@@ -16,6 +16,7 @@ const Settings = React.lazy(() => import('./screens/Settings.tsx'));
 const LoginScreen = React.lazy(() => import('./screens/LoginScreen').then(m => ({ default: m.LoginScreen })));
 const OrdersScreen = React.lazy(() => import('./screens/OrdersScreen').then(m => ({ default: m.OrdersScreen })));
 const SnapshotViewer = React.lazy(() => import('./screens/SnapshotViewer').then(m => ({ default: m.SnapshotViewer })));
+const StockCountScreen = React.lazy(() => import('./screens/StockCountScreen').then(m => ({ default: m.StockCountScreen })));
 
 import { ViewModeProvider } from './context/ViewModeContext';
 import { PickingProvider } from './context/PickingContext';
@@ -47,6 +48,7 @@ const AuthenticatedContent = () => {
               path="/settings"
               element={isAdmin ? <Settings /> : <Navigate to="/" replace />}
             />
+            <Route path="/stock-count" element={<StockCountScreen />} />
             {/* Catch-all for unknown routes */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
