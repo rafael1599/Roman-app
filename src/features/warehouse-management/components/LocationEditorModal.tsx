@@ -42,18 +42,12 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
   });
   const [overrideWarnings, setOverrideWarnings] = useState(false);
 
-  const handleZoneChange = (newZone: string) => {
-    setFormData((prev: any) => ({ ...prev, zone: newZone }));
-  };
 
   // Effect to calculate the impact of all changes made
   useEffect(() => {
     const changes: any = {};
     if (parseInt(formData.max_capacity as any) !== parseInt(location?.max_capacity as any)) {
       changes.max_capacity = parseInt(formData.max_capacity as any);
-    }
-    if (formData.zone !== location?.zone) {
-      changes.zone = formData.zone;
     }
     if (formData.location !== location?.location) {
       changes.location = formData.location;
@@ -131,10 +125,8 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
               <Edit3 className="text-accent" size={24} />
               Location Settings
             </h2>
-            <p className="text-[10px] items-center gap-1.5 font-bold uppercase tracking-widest text-muted mt-1 flex">
-              Zone: <span className="text-content">{location?.zone || 'None'}</span>
-              <span className="w-1 h-1 rounded-full bg-subtle" />
-              Bin: <span className="text-accent">{location?.location}</span>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-accent mt-1">
+              {location?.warehouse} · {location?.location}
             </p>
           </div>
           <div className="flex gap-2">
@@ -192,25 +184,6 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
             />
           </div>
 
-          {/* Zone Selector */}
-          <div>
-            <label className="block text-sm font-semibold text-muted mb-3">Zone Assignment</label>
-            <div className="grid grid-cols-4 gap-2">
-              {['HOT', 'WARM', 'COLD', 'UNASSIGNED'].map((zone) => (
-                <button
-                  key={zone}
-                  type="button"
-                  onClick={() => handleZoneChange(zone)}
-                  className={`px-2 py-3 rounded-lg font-bold text-[10px] uppercase tracking-wider transition-all border ${formData.zone === zone
-                    ? 'bg-accent text-main border-accent shadow-lg shadow-accent/20'
-                    : 'bg-surface text-muted border-subtle hover:border-muted hover:bg-surface/80'
-                    }`}
-                >
-                  {zone}
-                </button>
-              ))}
-            </div>
-          </div>
 
           {/* Picking Order */}
           <div>

@@ -81,18 +81,7 @@ export const LocationList = () => {
     }
   };
 
-  const getZoneColor = (zone: string | null) => {
-    switch (zone) {
-      case 'HOT':
-        return 'bg-red-500/20 text-red-400 border-red-500/30';
-      case 'WARM':
-        return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
-      case 'COLD':
-        return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
-      default:
-        return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
-    }
-  };
+
 
   if (loading) {
     return <div className="p-12 text-center text-muted animate-pulse">Loading Locations...</div>;
@@ -169,17 +158,17 @@ export const LocationList = () => {
               </div>
 
               <div className="flex items-center gap-2 mb-3">
-                {/* Zone Badge */}
-                <span
-                  className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getZoneColor(loc.zone)}`}
-                >
-                  {loc.zone || 'UNASSIGNED'}
-                </span>
-
                 {/* Capacity Badge */}
-                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/20 text-purple-400 border border-purple-500/30">
-                  {loc.max_capacity} cap
-                </span>
+                {loc.max_capacity && (
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-surface text-muted border border-subtle">
+                    Cap: {loc.max_capacity}
+                  </span>
+                )}
+                {loc.picking_order !== null && loc.picking_order < 999 && (
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-accent/10 text-accent border border-accent/20">
+                    #{loc.picking_order}
+                  </span>
+                )}
               </div>
 
               <div className="flex items-center justify-between text-xs">
@@ -190,12 +179,7 @@ export const LocationList = () => {
                 <span className="text-muted">{invInfo.totalQty} units</span>
               </div>
 
-              {/* Picking Order */}
-              {loc.picking_order !== null && loc.picking_order < 999 && (
-                <div className="mt-2 text-[10px] text-muted">
-                  Picking order: #{loc.picking_order}
-                </div>
-              )}
+
             </button>
           );
         })}
