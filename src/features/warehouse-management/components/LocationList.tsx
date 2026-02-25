@@ -39,15 +39,21 @@ export const LocationList = () => {
     }
   }, [warehouses, selectedWarehouse]);
 
-  // Filter locations
   const filteredLocations = useMemo(() => {
-    return locations.filter((loc) => {
-      const matchesSearch =
-        loc.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        loc.warehouse.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesWarehouse = loc.warehouse === selectedWarehouse;
-      return matchesSearch && matchesWarehouse;
-    });
+    return locations
+      .filter((loc) => {
+        const matchesSearch =
+          loc.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          loc.warehouse.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesWarehouse = loc.warehouse === selectedWarehouse;
+        return matchesSearch && matchesWarehouse;
+      })
+      .sort((a, b) => {
+        // Treat null or 999 as "no order" — push to the end
+        const aOrder = (a.picking_order === null || a.picking_order === 999) ? -Infinity : a.picking_order;
+        const bOrder = (b.picking_order === null || b.picking_order === 999) ? -Infinity : b.picking_order;
+        return bOrder - aOrder; // Descending: highest row number first
+      });
   }, [locations, searchTerm, selectedWarehouse]);
 
   // Get inventory count for a location
