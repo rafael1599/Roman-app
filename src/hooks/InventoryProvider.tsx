@@ -678,6 +678,7 @@ export const InventoryProvider = ({
     let channel: ReturnType<typeof supabase.channel> | null = null;
     let retryTimeout: NodeJS.Timeout;
     let retryCount = 0;
+    const MAX_RETRIES = 10;
     const setupSubscription = () => {
       // Ensure any previous zombie channel is cleaned
       if (channel) {
@@ -685,7 +686,7 @@ export const InventoryProvider = ({
         channel = null;
       }
 
-      console.log(`[FORENSIC][REALTIME][INVENTORY_INIT] ${new Date().toISOString()} - Setting up channel inventory-status-sync`);
+      console.log(`[FORENSIC][REALTIME][INVENTORY_INIT] ${new Date().toISOString()} - Setting up channel inventory-status-sync (Attempt ${retryCount + 1}/${MAX_RETRIES})`);
 
       channel = supabase
         .channel('inventory-status-sync')
@@ -742,7 +743,7 @@ export const InventoryProvider = ({
             }
           }
 
-          // Handle disconnection/errors by retrying with exponential backoff or simple limit
+          // Handle disconnection/errors by retrying with exponential backoff
           if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
             // CRITICAL: Only call removeChannel if NOT already closed to avoid infinite recursion
             if (status !== 'CLOSED' && channel) {
@@ -751,13 +752,14 @@ export const InventoryProvider = ({
             }
 
             retryCount++;
-            if (retryCount <= 3) {
-              console.warn(`[FORENSIC][REALTIME][INVENTORY_RETRY] ${new Date().toISOString()} - Status: ${status}. Retry ${retryCount}/3 in 5s...`);
+            if (retryCount <= MAX_RETRIES) {
+              const backoff = Math.min(2000 * Math.pow(1.5, retryCount), 30000); // Max 30s backoff
+              console.warn(`[FORENSIC][REALTIME][INVENTORY_RETRY] ${new Date().toISOString()} - Status: ${status}. Retry ${retryCount}/${MAX_RETRIES} in ${Math.round(backoff / 1000)}s...`);
               clearTimeout(retryTimeout);
-              retryTimeout = setTimeout(setupSubscription, 5000);
+              retryTimeout = setTimeout(setupSubscription, backoff);
             } else {
               console.error(`[FORENSIC][REALTIME][INVENTORY_FATAL] ${new Date().toISOString()} - Max retries reached.`);
-              toast.error('Inventory live updates disconnected. Please refresh if this persists.', {
+              toast.error('Live inventory disconnected. Pull down to refresh or check your connection.', {
                 duration: 6000,
                 id: 'realtime-inventory-error'
               });

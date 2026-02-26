@@ -291,7 +291,7 @@ export const HistoryScreen = () => {
     let retryTimeout: any = null;
     let retryCount = 0;
     let isMounted = true;
-    const MAX_RETRIES = 3;
+    const MAX_RETRIES = 10;
 
     const setupSubscription = () => {
       if (!isMounted) return;
@@ -352,12 +352,13 @@ export const HistoryScreen = () => {
             if (isMounted && status !== 'CLOSED') {
               if (retryCount < MAX_RETRIES) {
                 retryCount++;
-                console.warn(`[FORENSIC][REALTIME][LOGS_RETRY] ${new Date().toISOString()} - Channel ${status}, retrying in 5s...`);
+                const backoff = Math.min(2000 * Math.pow(1.5, retryCount), 30000); // Max 30s backoff
+                console.warn(`[FORENSIC][REALTIME][LOGS_RETRY] ${new Date().toISOString()} - Channel ${status}, retrying in ${Math.round(backoff / 1000)}s...`);
                 clearTimeout(retryTimeout);
-                retryTimeout = setTimeout(setupSubscription, 5000);
+                retryTimeout = setTimeout(setupSubscription, backoff);
               } else {
                 console.error(`[FORENSIC][REALTIME][LOGS_FATAL] ${new Date().toISOString()} - Max retries reached.`);
-                toast.error("Error connecting to real-time updates. Please refresh the page.", { id: 'realtime-logs-error' });
+                toast.error("Real-time logs disconnected. Please refresh if this persists.", { id: 'realtime-logs-error' });
               }
             }
           }
