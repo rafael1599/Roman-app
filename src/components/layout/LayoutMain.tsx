@@ -20,6 +20,7 @@ export const LayoutMain = ({ children, onExport }: LayoutMainProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const isOrdersPage = location.pathname === '/orders';
+  const isStockCountPage = location.pathname === '/stock-count';
   const { isAdmin, profile } = useAuth();
   const { isSearching } = useViewMode();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -33,7 +34,7 @@ export const LayoutMain = ({ children, onExport }: LayoutMainProps) => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const pbClass = isOrdersPage ? 'pb-0' : (isSearching ? 'pb-12' : 'pb-20');
+  const pbClass = (isOrdersPage || isStockCountPage) ? 'pb-0' : (isSearching ? 'pb-12' : 'pb-20');
 
   return (
     <div className={`flex flex-col min-h-screen bg-main transition-all duration-700 ease-in-out relative overflow-x-hidden ${pbClass}`}>
@@ -45,7 +46,7 @@ export const LayoutMain = ({ children, onExport }: LayoutMainProps) => {
       </div>
 
       {/* Header / Brand (Scrolls with the page) */}
-      {!isOrdersPage && (
+      {!isOrdersPage && !isStockCountPage && (
         <header
           className={`
                     relative w-full bg-card border-b border-subtle z-50 transition-all duration-300 overflow-hidden
@@ -115,7 +116,7 @@ export const LayoutMain = ({ children, onExport }: LayoutMainProps) => {
         </PullToRefresh>
       </main>
 
-      {!isOrdersPage && <BottomNavigation />}
+      {!isOrdersPage && !isStockCountPage && <BottomNavigation />}
       <PickingCartDrawer />
     </div>
   );

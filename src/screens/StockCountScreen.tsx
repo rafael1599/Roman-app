@@ -1,462 +1,599 @@
-import { useState, useMemo, useCallback, useRef } from 'react';
-import { useInventory } from '../hooks/useInventoryData';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ArrowLeft from 'lucide-react/dist/esm/icons/arrow-left';
-import ClipboardPaste from 'lucide-react/dist/esm/icons/clipboard-paste';
-import Search from 'lucide-react/dist/esm/icons/search';
 import CheckCircle2 from 'lucide-react/dist/esm/icons/check-circle-2';
-import XCircle from 'lucide-react/dist/esm/icons/x-circle';
 import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle';
-import Upload from 'lucide-react/dist/esm/icons/upload';
+import Plus from 'lucide-react/dist/esm/icons/plus';
+import Edit3 from 'lucide-react/dist/esm/icons/edit-3';
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
+import Play from 'lucide-react/dist/esm/icons/play';
+import Search from 'lucide-react/dist/esm/icons/search';
 import toast from 'react-hot-toast';
+
+import { useInventory } from '../hooks/InventoryProvider';
 import { useAuth } from '../context/AuthContext';
-import { type InventoryItem } from '../schemas/inventory.schema';
+import { useLocationManagement } from '../hooks/useLocationManagement';
+import { SearchInput } from '../components/ui/SearchInput.tsx';
+import { InventoryModal } from '../features/inventory/components/InventoryModal';
+import { InventoryItemWithMetadata } from '../schemas/inventory.schema';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-interface InputItem {
+// ─── Types and Constants ───
+
+const STORAGE_KEY = 'roman_cycle_count_session';
+
+interface SessionAdjustment {
     sku: string;
-    quantity?: number;
-    [key: string]: any;
+    location: string;
+    oldQty: number;
+    newQty: number;
+    timestamp: number;
 }
 
-interface CountRow {
-    sku: string;
-    inputQty: number | null;
-    foundItems: InventoryItem[];
-    found: boolean;
-    suggestions: InventoryItem[];
+interface CycleCountSession {
+    status: 'input' | 'counting' | 'completed';
+    skus: string[];
+    verifiedSkus: string[];
+    adjustments: SessionAdjustment[];
 }
 
-// ─── Similarity helper ────────────────────────────────────────────────────────
-function levenshtein(a: string, b: string): number {
-    const m = a.length, n = b.length;
-    const dp: number[][] = Array.from({ length: m + 1 }, (_, i) =>
-        Array.from({ length: n + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0))
-    );
-    for (let i = 1; i <= m; i++)
-        for (let j = 1; j <= n; j++)
-            dp[i][j] = a[i - 1] === b[j - 1]
-                ? dp[i - 1][j - 1]
-                : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
-    return dp[m][n];
-}
-
-function getSimilarSkus(targetSku: string, allItems: InventoryItem[], maxResults = 5): InventoryItem[] {
-    const target = targetSku.toUpperCase();
-    const seen = new Set<string>();
-    return allItems
-        .filter(i => {
-            if (seen.has(i.sku)) return false;
-            seen.add(i.sku);
-            return true;
-        })
-        .map(i => ({ item: i, dist: levenshtein(target, i.sku.toUpperCase()) }))
-        .filter(({ dist }) => dist <= Math.max(4, Math.floor(target.length * 0.4)))
-        .sort((a, b) => a.dist - b.dist)
-        .slice(0, maxResults)
-        .map(({ item }) => item);
-}
-
-// ─── Parse the pasted JSON input ─────────────────────────────────────────────
-function parseInput(raw: string): InputItem[] | null {
-    try {
-        const parsed = JSON.parse(raw.trim());
-        // Accept array of objects, array of strings, or object with items key
-        if (Array.isArray(parsed)) {
-            return parsed.map((entry: any) => {
-                if (typeof entry === 'string') return { sku: entry.trim().toUpperCase() };
-                const sku = (entry.sku || entry.SKU || entry.Sku || entry.item || '').toString().trim().toUpperCase();
-                const quantity = entry.quantity ?? entry.qty ?? entry.Quantity ?? null;
-                return { sku, quantity: quantity !== null ? Number(quantity) : null, ...entry };
-            }).filter(e => e.sku);
-        }
-        return null;
-    } catch {
-        return null;
-    }
-}
-
-// ─── Count Row Component ──────────────────────────────────────────────────────
-const CountRowItem = ({
-    row,
-    index,
-    updateQuantity,
-}: {
-    row: CountRow;
-    index: number;
-    updateQuantity: (sku: string, delta: number, warehouse?: string | null, location?: string | null) => Promise<void>;
-}) => {
-    const [showSuggestions, setShowSuggestions] = useState(false);
-    const [localQty, setLocalQty] = useState<Record<string, number>>({});
-
-    const handleQtyInput = (item: InventoryItem, newQty: number) => {
-        const delta = newQty - (localQty[String(item.id)] ?? item.quantity);
-        if (delta === 0) return;
-        setLocalQty(prev => ({ ...prev, [String(item.id)]: newQty }));
-        updateQuantity(item.sku, delta, item.warehouse, item.location);
-    };
-
-    return (
-        <div
-            className={`rounded-2xl border transition-all ${row.found
-                ? 'bg-card border-subtle'
-                : 'bg-red-500/5 border-red-500/30'
-                }`}
-        >
-            {/* Main Row */}
-            <div className="flex items-center gap-3 p-4">
-                {/* Index */}
-                <span className="text-[10px] font-black text-muted w-6 text-center shrink-0">{index + 1}</span>
-
-                {/* Status Icon */}
-                <div className="shrink-0">
-                    {row.found ? (
-                        <CheckCircle2 size={18} className="text-green-500" />
-                    ) : (
-                        <XCircle size={18} className="text-red-500" />
-                    )}
-                </div>
-
-                {/* SKU */}
-                <div className="flex-1 min-w-0">
-                    <button
-                        onClick={() => !row.found && setShowSuggestions(s => !s)}
-                        className={`text-left w-full ${!row.found ? 'cursor-pointer' : 'cursor-default'}`}
-                    >
-                        <p className={`font-black text-lg tracking-tighter uppercase truncate ${!row.found ? 'text-red-400' : 'text-content'}`}>
-                            {row.sku}
-                        </p>
-                        {row.found ? (
-                            <p className="text-[9px] text-muted font-bold uppercase tracking-widest">
-                                {row.foundItems.length} location{row.foundItems.length !== 1 ? 's' : ''}
-                            </p>
-                        ) : (
-                            <p className="text-[9px] text-red-500/70 font-bold uppercase tracking-widest flex items-center gap-1">
-                                <AlertCircle size={9} /> Not found — tap for suggestions
-                            </p>
-                        )}
-                    </button>
-                </div>
-
-                {/* Input Qty */}
-                {row.inputQty !== null && (
-                    <span className="text-xs font-black text-muted bg-surface border border-subtle px-2 py-1 rounded-lg shrink-0">
-                        {row.inputQty} req
-                    </span>
-                )}
-            </div>
-
-            {/* Locations */}
-            {row.found && row.foundItems.map(item => (
-                <div
-                    key={`${item.id}`}
-                    className="flex items-center gap-3 px-4 pb-3 border-t border-subtle/50 pt-3 mx-2 mb-2 last:mb-0 bg-surface/30 rounded-xl"
-                >
-                    {/* Location info */}
-                    <div className="flex-1 min-w-0">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-accent">{item.location || '—'}</p>
-                        <p className="text-[9px] text-muted font-bold uppercase">{item.warehouse}</p>
-                    </div>
-
-                    {/* Qty editor */}
-                    <div className="flex items-center gap-1">
-                        <button
-                            onClick={() => handleQtyInput(item, Math.max(0, (localQty[String(item.id)] ?? item.quantity) - 1))}
-                            className="w-8 h-8 rounded-lg bg-main border border-subtle flex items-center justify-center text-muted hover:text-red-500 hover:border-red-500/30 active:scale-90 transition-all font-bold text-lg"
-                        >−</button>
-                        <input
-                            type="number"
-                            value={localQty[String(item.id)] ?? item.quantity}
-                            onChange={e => handleQtyInput(item, parseInt(e.target.value) || 0)}
-                            className="w-14 h-8 text-center font-black text-content bg-main border border-subtle rounded-lg text-sm focus:border-accent focus:outline-none"
-                        />
-                        <button
-                            onClick={() => handleQtyInput(item, (localQty[String(item.id)] ?? item.quantity) + 1)}
-                            className="w-8 h-8 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center text-accent hover:bg-accent hover:text-white active:scale-90 transition-all font-bold text-lg"
-                        >+</button>
-                    </div>
-                </div>
-            ))}
-
-            {/* Suggestions for not-found SKUs */}
-            {!row.found && showSuggestions && (
-                <div className="px-4 pb-4">
-                    {row.suggestions.length > 0 ? (
-                        <div className="space-y-1.5">
-                            <p className="text-[9px] font-black uppercase tracking-widest text-muted mb-2">
-                                Similar SKUs found:
-                            </p>
-                            {row.suggestions.map(s => (
-                                <div key={s.id} className="flex items-center gap-3 p-2.5 bg-surface/50 border border-subtle rounded-xl">
-                                    <div className="flex-1">
-                                        <p className="font-black text-sm text-content uppercase tracking-tight">{s.sku}</p>
-                                        <p className="text-[9px] text-muted font-bold uppercase">{s.location} · {s.warehouse}</p>
-                                    </div>
-                                    <span className="font-black text-accent text-sm">{s.quantity}</span>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <p className="text-[10px] text-muted font-bold uppercase text-center py-2">
-                            No similar SKUs found in inventory
-                        </p>
-                    )}
-                </div>
-            )}
-        </div>
-    );
+const defaultSession: CycleCountSession = {
+    status: 'input',
+    skus: [],
+    verifiedSkus: [],
+    adjustments: [],
 };
 
-// ─── Main Screen ──────────────────────────────────────────────────────────────
+// ─── Main Screen Component ───
 export const StockCountScreen = () => {
     const navigate = useNavigate();
-    const { inventoryData, updateQuantity } = useInventory();
+    const { inventoryData, updateItem, deleteItem } = useInventory();
+    const { locations: allMappedLocations } = useLocationManagement();
     const { profile } = useAuth();
 
-    const [rawInput, setRawInput] = useState('');
-    const [parsed, setParsed] = useState<InputItem[] | null>(null);
-    const [parseError, setParseError] = useState('');
-    const [searchFilter, setSearchFilter] = useState('');
-    const [showOnlyMissing, setShowOnlyMissing] = useState(false);
+    // ─── Session State Management ───
+    const [session, setSession] = useState<CycleCountSession>(() => {
+        try {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            return saved ? JSON.parse(saved) : defaultSession;
+        } catch {
+            return defaultSession;
+        }
+    });
 
-    const fileInputRef = useRef<HTMLInputElement>(null);
+    // Save session continuously
+    useEffect(() => {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+    }, [session]);
 
-    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
+    // ─── Input Phase State ───
+    const [searchQuery, setSearchQuery] = useState('');
 
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            const content = event.target?.result;
-            if (typeof content === 'string') {
-                setRawInput(content);
-                setParseError('');
+    // ─── Counting Phase State ───
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingItem, setEditingItem] = useState<InventoryItemWithMetadata | null>(null);
+
+    // ─── Derived Data: Unique SKUs in Inventory ───
+    // Groups all inventory by SKU to calculate total quantities quickly
+    const inventoryBySku = useMemo(() => {
+        const map = new Map<string, { totalQty: number; items: InventoryItemWithMetadata[] }>();
+        inventoryData.forEach(item => {
+            const sku = item.sku.toUpperCase();
+            if (!map.has(sku)) {
+                map.set(sku, { totalQty: 0, items: [] });
             }
-        };
-        reader.onerror = () => {
-            setParseError('Failed to read the selected file.');
-        };
-        reader.readAsText(file);
+            const group = map.get(sku)!;
+            group.items.push(item);
+            group.totalQty += (item.quantity || 0);
+        });
+        return map;
+    }, [inventoryData]);
 
-        // Reset file input value so the same file can be uploaded again if needed
-        if (fileInputRef.current) {
-            fileInputRef.current.value = '';
+    // ─── Input Phase: Search Results ───
+    const searchResults = useMemo(() => {
+        if (!searchQuery || session.status !== 'input') return [];
+        const query = searchQuery.toUpperCase().trim();
+        const matches = Array.from(inventoryBySku.entries())
+            .filter(([sku]) => sku.includes(query) && !session.skus.includes(sku))
+            .slice(0, 5); // Limit to top 5 hits
+        return matches;
+    }, [searchQuery, inventoryBySku, session.skus, session.status]);
+
+    // ─── Input Phase Actions ───
+    const handleAddSku = (sku: string) => {
+        const upperSku = sku.toUpperCase().trim();
+        if (!upperSku || session.skus.includes(upperSku)) return;
+        setSession(prev => ({ ...prev, skus: [...prev.skus, upperSku] }));
+        setSearchQuery('');
+    };
+
+    const handleRemoveSku = (sku: string) => {
+        setSession(prev => ({ ...prev, skus: prev.skus.filter(s => s !== sku) }));
+    };
+
+    const clearSession = () => {
+        if (window.confirm('Are you sure you want to clear the current counting session?')) {
+            setSession(defaultSession);
         }
     };
 
-    // Build count rows from parsed input vs inventory
-    const countRows = useMemo<CountRow[]>(() => {
-        if (!parsed) return [];
-        return parsed.map(entry => {
-            const foundItems = inventoryData.filter(
-                item => item.sku.toUpperCase() === entry.sku.toUpperCase() && item.is_active !== false
-            );
-            const found = foundItems.length > 0;
-            const suggestions = found ? [] : getSimilarSkus(entry.sku, inventoryData);
+    const startCounting = () => {
+        if (session.skus.length === 0) return;
+        setSession(prev => ({ ...prev, status: 'counting' }));
+    };
+
+    const finishCounting = () => {
+        setSession(prev => ({ ...prev, status: 'completed' }));
+    };
+
+    // ─── Counting Phase: Sorted list by Picking Order ───
+    const sortedCountingList = useMemo(() => {
+        if (session.status === 'input') return [];
+
+        // 1. Map locations for quick picking order lookup
+        const locationSortMap = new Map<string, number>();
+        allMappedLocations.forEach(loc => {
+            const compositeKey = `${loc.warehouse.toUpperCase()}_${loc.location.toUpperCase().trim()}`;
+            locationSortMap.set(compositeKey, loc.picking_order ?? 9999);
+        });
+
+        // 2. Decorate each chosen SKU with its best picking order and items
+        const decorated = session.skus.map(sku => {
+            const group = inventoryBySku.get(sku);
+            let bestPickingOrder = Infinity; // For SKUs not found or lacking locations
+
+            if (group && group.items.length > 0) {
+                group.items.forEach(item => {
+                    const lKey = `${item.warehouse.toUpperCase()}_${(item.location || '').toUpperCase().trim()}`;
+                    const pOrder = locationSortMap.get(lKey) ?? 9999;
+                    if (pOrder < bestPickingOrder) {
+                        bestPickingOrder = pOrder;
+                    }
+                });
+            }
+
             return {
-                sku: entry.sku,
-                inputQty: entry.quantity ?? null,
-                foundItems,
-                found,
-                suggestions,
+                sku,
+                totalQty: group?.totalQty || 0,
+                items: group?.items || [],
+                isVerified: session.verifiedSkus.includes(sku),
+                isMissing: !group,
+                pickingOrder: bestPickingOrder
             };
         });
-    }, [parsed, inventoryData]);
 
-    const filteredRows = useMemo(() => {
-        let rows = countRows;
-        if (showOnlyMissing) rows = rows.filter(r => !r.found);
-        if (searchFilter) {
-            const q = searchFilter.toLowerCase();
-            rows = rows.filter(r => r.sku.toLowerCase().includes(q));
-        }
-        return rows;
-    }, [countRows, showOnlyMissing, searchFilter]);
+        // 3. Sort by Picking Order, then verified items go to bottom (optional, user asked them to be editable/visible but at the bottom?)
+        // Wait, user said: "se correrian al final cuando ocurre el ordenamiento de verificacion".
+        // Also: "los sku rojos son intocables y se correrian al final".
+        return decorated.sort((a, b) => {
+            // Missing/Red SKUs goes to the absolute bottom
+            if (a.isMissing && !b.isMissing) return 1;
+            if (!a.isMissing && b.isMissing) return -1;
 
-    const stats = useMemo(() => ({
-        total: countRows.length,
-        found: countRows.filter(r => r.found).length,
-        missing: countRows.filter(r => !r.found).length,
-    }), [countRows]);
+            // Verified SKUs push to bottom (below unverified, above missing)
+            if (a.isVerified && !b.isVerified) return 1;
+            if (!a.isVerified && b.isVerified) return -1;
 
-    const handleParse = useCallback(() => {
-        if (!rawInput.trim()) {
-            setParseError('Please paste a JSON list first.');
-            return;
-        }
-        const result = parseInput(rawInput);
-        if (!result || result.length === 0) {
-            setParseError('Invalid JSON. Expected an array of objects with a "sku" field, or an array of strings.');
-            return;
-        }
-        setParsed(result);
-        setParseError('');
-        toast.success(`Loaded ${result.length} SKUs for comparison`);
-    }, [rawInput]);
+            // Sort by picking order
+            if (a.pickingOrder !== b.pickingOrder) {
+                return a.pickingOrder - b.pickingOrder;
+            }
 
-    const handleReset = () => {
-        setParsed(null);
-        setRawInput('');
-        setParseError('');
-        setSearchFilter('');
-        setShowOnlyMissing(false);
+            // Fallback alphabet
+            return a.sku.localeCompare(b.sku);
+        });
+    }, [session.skus, session.status, session.verifiedSkus, inventoryBySku, allMappedLocations]);
+
+    // ─── Counting Phase Actions ───
+    const toggleVerify = (sku: string) => {
+        setSession(prev => {
+            const isVerified = prev.verifiedSkus.includes(sku);
+            return {
+                ...prev,
+                verifiedSkus: isVerified
+                    ? prev.verifiedSkus.filter(s => s !== sku)
+                    : [...prev.verifiedSkus, sku]
+            };
+        });
     };
 
-    return (
-        <div className="min-h-screen bg-main text-content">
-            {/* Header */}
-            <header className="sticky top-0 z-30 bg-main/95 backdrop-blur-md border-b border-subtle px-4 py-4 flex items-center gap-3">
+    const handleEditItem = (item: InventoryItemWithMetadata) => {
+        setEditingItem(item);
+        setIsModalOpen(true);
+    };
+
+    const handleSaveAdjustment = async (formData: any) => {
+        if (!editingItem) return;
+        const oldQty = editingItem.quantity || 0;
+        const newQty = formData.quantity || 0;
+
+        // Save using real API
+        await updateItem(editingItem, formData);
+
+        // Log adjustment locally if changed
+        if (oldQty !== newQty) {
+            setSession(prev => ({
+                ...prev,
+                adjustments: [
+                    ...prev.adjustments,
+                    {
+                        sku: editingItem.sku,
+                        location: formData.location,
+                        oldQty,
+                        newQty,
+                        timestamp: Date.now()
+                    }
+                ]
+            }));
+            toast.success(`Adjustment recorded for ${editingItem.sku}`);
+        }
+    };
+
+    const handleDeleteItem = async () => {
+        if (!editingItem) return;
+
+        // Record as 0
+        setSession(prev => ({
+            ...prev,
+            adjustments: [
+                ...prev.adjustments,
+                {
+                    sku: editingItem.sku,
+                    location: editingItem.location || '',
+                    oldQty: editingItem.quantity || 0,
+                    newQty: 0,
+                    timestamp: Date.now()
+                }
+            ]
+        }));
+
+        await deleteItem(editingItem.warehouse, editingItem.sku, editingItem.location);
+        toast.success(`Deleted ${editingItem.sku} from ${editingItem.location}`);
+    };
+
+    // ─── Render: Header ───
+    const renderHeader = () => (
+        <header className="sticky top-0 z-30 bg-main/95 backdrop-blur-md border-b border-subtle px-4 py-4 flex items-center gap-3">
+            <button
+                onClick={() => {
+                    if (session.status === 'input') navigate(-1);
+                    else if (session.status === 'completed') setSession(defaultSession);
+                    else clearSession();
+                }}
+                className="p-2 bg-surface border border-subtle rounded-xl text-muted hover:text-content active:scale-90 transition-all"
+            >
+                <ArrowLeft size={20} />
+            </button>
+            <div className="flex-1">
+                <h1 className="text-2xl font-black uppercase tracking-tighter leading-none">
+                    Cycle Count
+                </h1>
+                <p className="text-[10px] text-muted font-black uppercase tracking-widest">
+                    {session.status === 'input' && 'Phase 1: Build List'}
+                    {session.status === 'counting' && 'Phase 2: Verification Tour'}
+                    {session.status === 'completed' && 'Phase 3: Summary'}
+                </p>
+            </div>
+            {session.status === 'input' && session.skus.length > 0 && (
                 <button
-                    onClick={() => navigate(-1)}
-                    className="p-2 bg-surface border border-subtle rounded-xl text-muted hover:text-content active:scale-90 transition-all"
+                    onClick={clearSession}
+                    className="text-[10px] font-black uppercase tracking-widest text-red-500 border border-red-500/20 bg-red-500/5 px-3 py-2 rounded-xl active:scale-90 transition-all"
                 >
-                    <ArrowLeft size={20} />
+                    Clear All
                 </button>
-                <div className="flex-1">
-                    <h1 className="text-2xl font-black uppercase tracking-tighter leading-none">Stock Count</h1>
-                    <p className="text-[10px] text-muted font-black uppercase tracking-widest">Physical Inventory Check</p>
-                </div>
-                {parsed && (
-                    <button
-                        onClick={handleReset}
-                        className="text-[10px] font-black uppercase tracking-widest text-red-500 border border-red-500/20 bg-red-500/5 px-3 py-2 rounded-xl active:scale-90 transition-all"
-                    >
-                        Reset
-                    </button>
-                )}
-            </header>
+            )}
+        </header>
+    );
 
-            <div className="max-w-2xl mx-auto px-4 py-6 space-y-6 pb-32">
+    // ─── Render: Input Phase ───
+    if (session.status === 'input') {
+        return (
+            <div className="min-h-screen bg-main text-content">
+                {renderHeader()}
+                <div className="max-w-2xl mx-auto py-2">
+                    <SearchInput
+                        value={searchQuery}
+                        onChange={setSearchQuery}
+                        placeholder="Scan or type SKU to add..."
+                    />
 
-                {/* Input Panel */}
-                {!parsed ? (
-                    <div className="space-y-4">
-                        <div className="bg-card border border-subtle rounded-3xl p-6 space-y-4">
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="p-2 bg-accent/10 rounded-xl">
-                                    <ClipboardPaste size={20} className="text-accent" />
-                                </div>
-                                <div>
-                                    <h2 className="font-black uppercase tracking-tight text-content">Paste or Upload JSON</h2>
-                                    <p className="text-[10px] text-muted font-bold uppercase tracking-widest">
-                                        Array of objects with "sku" field
-                                    </p>
-                                </div>
+                    {/* Search Results Dropdown-like */}
+                    {searchQuery && (
+                        <div className="px-4 mb-4">
+                            <div className="bg-card border border-subtle rounded-2xl overflow-hidden shadow-lg shadow-black/20">
+                                {searchResults.length > 0 ? (
+                                    searchResults.map(([sku, data]) => (
+                                        <button
+                                            key={`search-${sku}`}
+                                            onClick={() => handleAddSku(sku)}
+                                            className="w-full px-4 py-3 flex items-center justify-between border-b border-subtle last:border-0 hover:bg-surface active:bg-surface/50 text-left transition-colors"
+                                        >
+                                            <span className="font-black text-lg tracking-tight uppercase">{sku}</span>
+                                            <span className="text-xs font-bold text-muted bg-main px-2 py-1 rounded-md">
+                                                {data.totalQty} in stock
+                                            </span>
+                                        </button>
+                                    ))
+                                ) : (
+                                    <div className="p-4 text-center">
+                                        <p className="text-sm font-bold text-muted mb-2">No SKUs match "{searchQuery}"</p>
+                                    </div>
+                                )}
+
+                                {/* Always allow adding literal search string for NotFound logic */}
+                                {searchQuery.length > 2 && !searchResults.some(([s]) => s === searchQuery.toUpperCase()) && (
+                                    <button
+                                        onClick={() => handleAddSku(searchQuery)}
+                                        className="w-full px-4 py-3 flex items-center justify-between bg-blue-500/10 hover:bg-blue-500/20 text-left transition-colors border-t border-subtle"
+                                    >
+                                        <div className="flex items-center gap-2 text-blue-400">
+                                            <Plus size={16} />
+                                            <span className="font-black text-sm uppercase tracking-tight">Add "{searchQuery}"</span>
+                                        </div>
+                                        <span className="text-[10px] font-bold text-blue-400/60 uppercase tracking-widest">Force Add</span>
+                                    </button>
+                                )}
                             </div>
+                        </div>
+                    )}
 
-                            <div className="flex items-center gap-3">
-                                <input
-                                    type="file"
-                                    accept=".json,application/json"
-                                    ref={fileInputRef}
-                                    style={{ display: 'none' }}
-                                    onChange={handleFileUpload}
-                                />
+                    {/* Selected List */}
+                    <div className="px-4 pb-32 space-y-2 mt-4">
+                        <h2 className="text-[10px] font-black uppercase tracking-widest text-muted mb-3">
+                            Added to Count ({session.skus.length} / {allMappedLocations.length > 0 ? '?' : '?'})
+                        </h2>
+
+                        {session.skus.length === 0 ? (
+                            <div className="text-center py-12 border-2 border-dashed border-subtle rounded-3xl">
+                                <Search className="mx-auto mb-3 opacity-20 text-muted" size={40} />
+                                <p className="text-xs font-black uppercase tracking-widest text-muted">No SKUs added yet.</p>
+                                <p className="text-[10px] text-muted/60 mt-1 uppercase font-bold">Use search above to add items to the audit.</p>
+                            </div>
+                        ) : (
+                            // Render chosen SKUs
+                            session.skus.map((sku, index) => {
+                                const group = inventoryBySku.get(sku);
+                                const isFound = !!group;
+                                return (
+                                    <div key={`input-${sku}-${index}`} className={`flex items-center gap-3 p-3 rounded-2xl border ${isFound ? 'bg-card border-subtle' : 'bg-red-500/5 border-red-500/20'}`}>
+                                        <div className="shrink-0 pl-1">
+                                            {isFound ? (
+                                                <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-accent">
+                                                    <CheckCircle2 size={16} />
+                                                </div>
+                                            ) : (
+                                                <div className="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center text-red-500">
+                                                    <AlertCircle size={16} />
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className={`font-black uppercase tracking-tight text-lg truncate ${isFound ? 'text-content' : 'text-red-400'}`}>
+                                                {sku}
+                                            </p>
+                                            {isFound ? (
+                                                <p className="text-[10px] font-bold text-muted uppercase tracking-widest">
+                                                    {group.items.length} locations · Qty {group.totalQty}
+                                                </p>
+                                            ) : (
+                                                <p className="text-[10px] font-bold text-red-500/70 uppercase tracking-widest">
+                                                    NOT FOUND IN SYSTEM
+                                                </p>
+                                            )}
+                                        </div>
+                                        <button
+                                            onClick={() => handleRemoveSku(sku)}
+                                            className="p-2 text-muted hover:text-red-500 bg-surface rounded-xl active:scale-90 transition-all border border-subtle hover:border-red-500/30 shrink-0"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
+                                );
+                            })
+                        )}
+                    </div>
+
+                    {/* Fixed Bottom CTA */}
+                    {session.skus.length > 0 && (
+                        <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-main via-main to-transparent pointer-events-none z-20 pb-safe">
+                            <div className="max-w-2xl mx-auto pointer-events-auto shadow-2xl shadow-black">
                                 <button
-                                    onClick={() => fileInputRef.current?.click()}
-                                    className="w-full py-3 bg-surface border border-subtle hover:border-accent/50 text-content font-black uppercase tracking-widest rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 text-xs active:scale-95"
+                                    onClick={startCounting}
+                                    className="w-full h-14 bg-accent hover:bg-blue-600 active:scale-[0.98] text-white font-black uppercase tracking-widest rounded-2xl transition-all shadow-lg shadow-accent/20 flex items-center justify-center gap-2"
                                 >
-                                    <Upload size={16} className="text-accent" />
-                                    Upload JSON File
+                                    <Play size={18} fill="currentColor" />
+                                    Sort & Start Audit
                                 </button>
                             </div>
-
-                            <textarea
-                                value={rawInput}
-                                onChange={e => { setRawInput(e.target.value); setParseError(''); }}
-                                placeholder={`[\n  { "sku": "ABC-123", "quantity": 10 },\n  { "sku": "DEF-456" },\n  ...\n]\n\nAlso accepts: ["SKU1", "SKU2", ...]`}
-                                rows={12}
-                                className="w-full px-4 py-3 bg-main border border-subtle rounded-xl text-content placeholder-muted/40 font-mono text-sm focus:border-accent focus:outline-none resize-none"
-                            />
-
-                            {parseError && (
-                                <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-xs font-bold">
-                                    <AlertCircle size={14} />
-                                    {parseError}
-                                </div>
-                            )}
-
-                            <button
-                                onClick={handleParse}
-                                className="w-full h-14 bg-accent hover:opacity-90 active:scale-[0.98] text-white font-black uppercase tracking-widest rounded-2xl transition-all shadow-lg shadow-accent/20 flex items-center justify-center gap-2"
-                            >
-                                <Search size={18} />
-                                Compare Against Inventory
-                            </button>
                         </div>
+                    )}
+                </div>
+            </div>
+        );
+    }
 
-                        {/* Format hint */}
-                        <div className="p-4 bg-surface border border-subtle rounded-2xl text-[10px] text-muted font-bold uppercase tracking-widest space-y-1">
-                            <p className="text-content font-black">Accepted formats:</p>
-                            <p>• <span className="text-accent font-mono">{"[{sku, quantity}, ...]"}</span> — Objects with sku field</p>
-                            <p>• <span className="text-accent font-mono">{"[\"SKU1\", \"SKU2\"]"}</span> — Array of strings</p>
-                            <p className="text-muted/60 text-[9px] pt-1">Order is preserved exactly as provided</p>
+    // ─── Render: Counting Phase ───
+    if (session.status === 'counting') {
+        const total = sortedCountingList.length;
+        const verified = session.verifiedSkus.length;
+        const missing = sortedCountingList.filter(s => s.isMissing).length;
+
+        return (
+            <div className="min-h-screen bg-main text-content pb-32">
+                {renderHeader()}
+
+                {/* Stats Header */}
+                <div className="max-w-2xl mx-auto px-4 py-4 sticky top-[72px] z-20 bg-main/95 backdrop-blur-md border-b border-subtle">
+                    <div className="grid grid-cols-3 gap-3">
+                        <div className="bg-card border border-subtle rounded-2xl p-3 text-center">
+                            <p className="text-xl font-black text-content">{total}</p>
+                            <p className="text-[9px] text-muted font-black uppercase tracking-widest">Total SKUs</p>
+                        </div>
+                        <div className="bg-green-500/10 border border-green-500/20 rounded-2xl p-3 text-center">
+                            <p className="text-xl font-black text-green-500">{verified}</p>
+                            <p className="text-[9px] text-green-500/70 font-black uppercase tracking-widest">Verified</p>
+                        </div>
+                        <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-3 text-center">
+                            <p className="text-xl font-black text-red-500">{missing}</p>
+                            <p className="text-[9px] text-red-500/70 font-black uppercase tracking-widest">Missing</p>
                         </div>
                     </div>
-                ) : (
-                    <>
-                        {/* Stats Bar */}
-                        <div className="grid grid-cols-3 gap-3">
-                            <div className="bg-card border border-subtle rounded-2xl p-4 text-center">
-                                <p className="text-2xl font-black text-content">{stats.total}</p>
-                                <p className="text-[9px] text-muted font-black uppercase tracking-widest mt-1">Total SKUs</p>
-                            </div>
-                            <div className="bg-green-500/10 border border-green-500/20 rounded-2xl p-4 text-center">
-                                <p className="text-2xl font-black text-green-500">{stats.found}</p>
-                                <p className="text-[9px] text-green-500/70 font-black uppercase tracking-widest mt-1">Found</p>
-                            </div>
-                            <div
-                                className={`rounded-2xl p-4 text-center border cursor-pointer transition-all ${showOnlyMissing
-                                    ? 'bg-red-500/20 border-red-500/40'
-                                    : 'bg-red-500/10 border-red-500/20'
-                                    }`}
-                                onClick={() => setShowOnlyMissing(s => !s)}
-                            >
-                                <p className="text-2xl font-black text-red-500">{stats.missing}</p>
-                                <p className="text-[9px] text-red-500/70 font-black uppercase tracking-widest mt-1">
-                                    {showOnlyMissing ? 'Show All' : 'Missing'}
-                                </p>
-                            </div>
-                        </div>
+                    {/* Progress Bar */}
+                    <div className="mt-4 bg-surface rounded-full h-1.5 overflow-hidden">
+                        <div
+                            className="bg-accent h-full transition-all duration-500 rounded-full"
+                            style={{ width: `${(verified / total) * 100}%` }}
+                        />
+                    </div>
+                </div>
 
-                        {/* Search within results */}
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" size={16} />
-                            <input
-                                type="text"
-                                value={searchFilter}
-                                onChange={e => setSearchFilter(e.target.value)}
-                                placeholder="Filter by SKU..."
-                                className="w-full pl-9 pr-4 py-3 bg-card border border-subtle rounded-xl text-content placeholder-muted text-sm focus:border-accent focus:outline-none"
-                            />
-                        </div>
+                {/* Audit List */}
+                <div className="max-w-2xl mx-auto px-4 py-4 space-y-3">
+                    {sortedCountingList.map((row, idx) => {
+                        const verifiedBg = row.isVerified ? 'bg-green-500/5 border-green-500/30' : 'bg-card border-subtle';
+                        const missingBg = row.isMissing ? 'bg-red-500/5 border-red-500/20 opacity-80' : '';
 
-                        {/* Results */}
-                        <div className="space-y-2">
-                            {filteredRows.map((row, i) => (
-                                <CountRowItem
-                                    key={`${row.sku}-${i}`}
-                                    row={row}
-                                    index={countRows.indexOf(row)}
-                                    updateQuantity={updateQuantity}
-                                />
-                            ))}
+                        return (
+                            <div key={`count-${row.sku}-${idx}`} className={`rounded-2xl border transition-all duration-300 ${row.isMissing ? missingBg : verifiedBg} ${row.isVerified ? 'opacity-50 hover:opacity-100' : ''}`}>
 
-                            {filteredRows.length === 0 && (
-                                <div className="text-center py-16 text-muted">
-                                    <Search className="mx-auto mb-3 opacity-20" size={40} />
-                                    <p className="text-xs font-black uppercase tracking-widest">No results</p>
+                                {/* Main SKU Header */}
+                                <div className="flex items-center gap-3 p-4">
+                                    <div className="flex-[3] min-w-0">
+                                        <p className={`font-black text-2xl uppercase tracking-tighter truncate ${row.isMissing ? 'text-red-400' : 'text-content'}`}>
+                                            {row.sku}
+                                        </p>
+                                        <p className="text-[10px] uppercase font-bold tracking-widest text-muted mt-1">
+                                            {row.isMissing ? 'NOT IN SYSTEM' : `Total Expected: ${row.totalQty}`}
+                                        </p>
+                                    </div>
+
+                                    <div className="shrink-0 flex items-center gap-2">
+                                        {!row.isMissing && (
+                                            <button
+                                                onClick={() => toggleVerify(row.sku)}
+                                                className={`h-14 px-6 rounded-xl font-black uppercase tracking-widest transition-all active:scale-90 flex items-center gap-2 ${row.isVerified
+                                                    ? 'bg-subtle text-content border border-subtle/50'
+                                                    : 'bg-green-500 text-white shadow-lg shadow-green-500/20'}`}
+                                            >
+                                                <CheckCircle2 size={18} />
+                                                {row.isVerified ? 'Undo' : 'Verify'}
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
-                            )}
-                        </div>
 
-                        {/* Summary footer */}
-                        <div className="p-4 bg-card border border-subtle rounded-2xl text-[10px] text-muted font-bold uppercase tracking-widest">
-                            <p>Count generated by <span className="text-content">{profile?.full_name || 'Unknown'}</span></p>
-                            <p className="text-[9px] opacity-60 mt-0.5">{new Date().toLocaleString()}</p>
-                        </div>
-                    </>
-                )}
+                                {/* Location Details (If Found) */}
+                                {!row.isMissing && (
+                                    <div className="border-t border-subtle/40 bg-surface/30 px-3 py-2 divide-y divide-subtle/20 rounded-b-2xl">
+                                        {row.items.map(item => (
+                                            <div key={`${item.id}`} className="py-2.5 flex items-center justify-between">
+                                                <div className="flex-1">
+                                                    <p className="text-sm font-black uppercase tracking-tight text-accent">
+                                                        {item.location || 'UNASSIGNED'}
+                                                    </p>
+                                                    <p className="text-[9px] font-bold text-muted uppercase tracking-widest">
+                                                        {item.warehouse} {item.sku_note ? `· Note: ${item.sku_note}` : ''}
+                                                    </p>
+                                                </div>
+                                                <div className="flex items-center gap-4">
+                                                    <span className="text-lg font-black font-mono">{item.quantity}</span>
+                                                    <button
+                                                        onClick={() => handleEditItem(item)}
+                                                        className="w-10 h-10 rounded-lg bg-main border border-subtle flex items-center justify-center text-muted hover:text-accent hover:border-accent/40 active:scale-90 transition-all"
+                                                    >
+                                                        <Edit3 size={16} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+
+                {/* Finalize CTA */}
+                <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-main via-main to-transparent pointer-events-none z-20 pb-safe">
+                    <div className="max-w-2xl mx-auto pointer-events-auto shadow-2xl shadow-black">
+                        <button
+                            onClick={finishCounting}
+                            className={`w-full h-14 font-black uppercase tracking-widest rounded-2xl transition-all shadow-lg flex items-center justify-center gap-2 ${verified === total - missing
+                                ? 'bg-accent hover:bg-blue-600 text-white shadow-accent/20'
+                                : 'bg-surface border border-subtle text-content'}`}
+                        >
+                            Complete Audit
+                        </button>
+                    </div>
+                </div>
+
+                {/* Re-use InventoryModal for editing */}
+                <InventoryModal
+                    isOpen={isModalOpen}
+                    onClose={() => setIsModalOpen(false)}
+                    onSave={handleSaveAdjustment}
+                    onDelete={handleDeleteItem}
+                    initialData={editingItem}
+                    mode="edit"
+                />
+            </div>
+        );
+    }
+
+    // ─── Render: Complete Phase ───
+    return (
+        <div className="min-h-screen bg-main text-content">
+            {renderHeader()}
+            <div className="max-w-xl mx-auto px-4 py-8 space-y-6">
+                <div className="text-center space-y-2 mb-10">
+                    <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-green-500/20">
+                        <CheckCircle2 size={40} className="text-green-500" />
+                    </div>
+                    <h2 className="text-3xl font-black uppercase tracking-tighter">Audit Complete</h2>
+                    <p className="text-xs font-bold uppercase tracking-widest text-muted">
+                        Session generated by {profile?.full_name || 'Staff'}
+                    </p>
+                </div>
+
+                {/* Adjustments Report */}
+                <div className="bg-card border border-subtle rounded-3xl overflow-hidden shadow-lg">
+                    <div className="p-4 border-b border-subtle bg-surface">
+                        <h3 className="font-black uppercase tracking-widest text-sm flex items-center gap-2 text-accent">
+                            <AlertCircle size={16} />
+                            Adjustments Record
+                        </h3>
+                    </div>
+                    <div className="p-4 bg-main/50 space-y-3">
+                        {session.adjustments.length === 0 ? (
+                            <p className="text-xs font-bold text-muted uppercase tracking-widest text-center py-4">No adjustments made</p>
+                        ) : (
+                            session.adjustments.map((adj, i) => (
+                                <div key={`adj-${i}`} className="flex items-center justify-between p-3 bg-surface rounded-xl border border-subtle">
+                                    <div>
+                                        <p className="font-black text-sm uppercase">{adj.sku}</p>
+                                        <p className="text-[10px] font-bold text-muted uppercase tracking-widest">{adj.location}</p>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-sm font-mono font-black">
+                                        <span className="text-muted">{adj.oldQty}</span>
+                                        <ArrowLeft size={12} className="text-accent rotate-180" />
+                                        <span className={adj.newQty > adj.oldQty ? 'text-green-500' : 'text-red-500'}>
+                                            {adj.newQty}
+                                        </span>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+
+                <button
+                    onClick={() => {
+                        setSession(defaultSession);
+                        navigate('/inventory'); // or whatever home is
+                    }}
+                    className="w-full h-14 bg-surface border border-subtle hover:border-accent text-content font-black uppercase tracking-widest rounded-2xl transition-all shadow-sm active:scale-95 mt-8"
+                >
+                    Wrap UP & Exit
+                </button>
             </div>
         </div>
     );
