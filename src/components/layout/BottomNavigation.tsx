@@ -53,7 +53,7 @@ export const BottomNavigation = () => {
   };
 
   return (
-    <div className={`fixed bottom-0 left-0 right-0 pointer-events-none flex justify-center z-50 p-4 transition-all duration-300 ${isSearching ? 'h-16' : 'h-24'}`}>
+    <div className={`fixed bottom-0 left-0 right-0 pointer-events-none flex justify-center z-[100] p-4 transition-all duration-300 ${isSearching ? 'h-16' : 'h-24'}`}>
       <div className={`
         w-full max-w-sm pointer-events-auto ios-glass frost-grain rounded-[2rem] flex items-center justify-around h-full
         transition-all duration-500 ease-in-out

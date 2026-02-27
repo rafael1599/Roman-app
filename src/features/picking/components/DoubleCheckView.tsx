@@ -169,20 +169,45 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
                         <span className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em]">
                             {verifiedCount} / {totalCheckboxes} Verified
                         </span>
-                        {onSelectAll && totalCheckboxes > 0 && verifiedCount < totalCheckboxes && (
+                        {onSelectAll && totalCheckboxes > 0 && (
                             <button
                                 onClick={() => {
-                                    const allKeys = pallets.flatMap(p =>
-                                        p.items.map(item => `${p.id}-${item.sku}-${item.location}`)
-                                    );
-                                    onSelectAll(allKeys);
+                                    if (verifiedCount === totalCheckboxes) {
+                                        onSelectAll([]);
+                                    } else {
+                                        const allKeys = pallets.flatMap(p =>
+                                            p.items.map(item => `${p.id}-${item.sku}-${item.location}`)
+                                        );
+                                        onSelectAll(allKeys);
+                                    }
                                 }}
                                 className="text-[10px] text-accent font-black uppercase tracking-widest hover:opacity-70 transition-opacity flex items-center gap-1.5 bg-accent/5 px-2 py-0.5 rounded-full border border-accent/10"
                             >
-                                <Check size={10} strokeWidth={4} />
-                                Select All
+                                {verifiedCount === totalCheckboxes ? (
+                                    <>
+                                        <X size={10} strokeWidth={4} />
+                                        Deselect All
+                                    </>
+                                ) : (
+                                    <>
+                                        <Check size={10} strokeWidth={4} />
+                                        Select All
+                                    </>
+                                )}
                             </button>
                         )}
+                    </div>
+
+                    {/* Order Summary Brief */}
+                    <div className="flex items-center gap-2 mt-2">
+                        <div className="flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded border border-white/5">
+                            <span className="text-[9px] font-black text-white/30 uppercase tracking-tighter">SKUs:</span>
+                            <span className="text-[9px] font-black text-white/70 uppercase">{totalCheckboxes}</span>
+                        </div>
+                        <div className="flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded border border-white/5">
+                            <span className="text-[9px] font-black text-white/30 uppercase tracking-tighter">Pallets:</span>
+                            <span className="text-[9px] font-black text-white/70 uppercase">{pallets.length}</span>
+                        </div>
                     </div>
                 </div>
 
@@ -239,6 +264,17 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
                                             : item.sku_not_found ? 'bg-red-500/5 border-red-500/20 shadow-[0_0_10px_rgba(239,68,68,0.1)]' : 'bg-white/5 border-white/5 hover:border-white/10'
                                             }`}
                                     >
+                                        {/* Qty on the far left */}
+                                        <div className="flex flex-col items-center justify-center min-w-[3.5rem] shrink-0 border-r border-white/10 pr-4">
+                                            <span className="text-[9px] font-black uppercase tracking-widest text-white/30 mb-0.5">QTY</span>
+                                            <span className={`text-2xl font-black leading-none transition-all ${item.pickingQty !== 1
+                                                ? 'text-amber-500 animate-pulse-warning'
+                                                : isChecked ? 'text-white/60' : 'text-white'
+                                                }`}>
+                                                {item.pickingQty}
+                                            </span>
+                                        </div>
+
                                         <div className="flex flex-col min-w-0 flex-1 gap-1.5">
                                             <div className="flex items-baseline gap-2">
                                                 <span className={`font-black text-2xl tracking-tight leading-none ${isChecked ? (item.sku_not_found || item.insufficient_stock ? 'text-red-400' : 'text-green-400') : (item.sku_not_found || item.insufficient_stock ? 'text-red-500' : 'text-white')}`}>
@@ -264,14 +300,6 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
                                                         Low Stock ({item.available_qty || 0})
                                                     </span>
                                                 )}
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <span className={`text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded transition-all ${item.pickingQty !== 1
-                                                    ? 'bg-amber-500 text-black animate-pulse-warning'
-                                                    : 'bg-white/5 text-white/40'
-                                                    }`}>
-                                                    Qty: {item.pickingQty}
-                                                </span>
                                             </div>
                                         </div>
 

@@ -110,7 +110,7 @@ export const LayoutMain = ({ children, onExport }: LayoutMainProps) => {
       />
 
       {/* Content */}
-      <main className="flex-1 w-full relative">
+      <main className="flex-1 w-full relative flex flex-col">
         <PullToRefresh onRefresh={() => window.location.reload()}>
           {children}
         </PullToRefresh>

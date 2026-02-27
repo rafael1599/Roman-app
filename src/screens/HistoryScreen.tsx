@@ -102,7 +102,7 @@ export const HistoryScreen = () => {
         throw error;
       }
 
-      return (data || []) as InventoryLog[];
+      return (data || []) as any as InventoryLog[];
     },
     staleTime: 1000 * 30, // 30 seconds
   });
@@ -866,7 +866,7 @@ export const HistoryScreen = () => {
   }, [logs, showError]);
 
   return (
-    <div className="flex flex-col h-full bg-main text-content px-4 max-w-2xl mx-auto w-full relative">
+    <div className="pb-32 relative max-w-2xl mx-auto w-full px-4">
       {!isSearching && (
         <header className="flex justify-between items-end mb-8 pt-6">
           <div>
@@ -966,7 +966,7 @@ export const HistoryScreen = () => {
       </div>
 
       {/* Logs List */}
-      <div className="flex-1 overflow-y-auto space-y-8 pb-32">
+      <div className="space-y-8">
         {loading && logs.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3 opacity-30">
             <RotateCcw className="animate-spin" size={32} />
@@ -1022,8 +1022,8 @@ export const HistoryScreen = () => {
                         zIndex: items.length - items.indexOf(log)
                       }}
                       className={`group relative p-6 ios-squircle border animate-staggered-fade-in ${log.is_reversed || (log as any).isOptimistic
-                          ? 'bg-main/40 border-subtle'
-                          : 'bg-card border-subtle hover:border-accent/30 hover:shadow-lg'
+                        ? 'bg-main/40 border-subtle'
+                        : 'bg-card border-subtle hover:border-accent/30 hover:shadow-lg'
                         } ${(log as any).isOptimistic ? 'opacity-60 border-dashed' : ''
                         } ${log.is_reversed ? 'opacity-40 grayscale' : ''}`}
                     >
