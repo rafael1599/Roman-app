@@ -402,8 +402,8 @@ export const InventoryProvider = ({
             warehouse: vars.warehouse as any,
             quantity: vars.newItem.quantity,
             sku_note: vars.newItem.sku_note,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
+            is_active: true,
+            created_at: new Date(),
             sku_metadata: skuMetadataMapRef.current[vars.newItem.sku],
             _lastUpdateSource: 'local',
             _lastLocalUpdateAt: Date.now()
@@ -430,7 +430,7 @@ export const InventoryProvider = ({
 
       return { previousInventory, previousLogs };
     },
-    onError: (err, vars, context: any) => {
+    onError: (err, _vars, context: any) => {
       console.error(`[FORENSIC][MUTATION][ADD_ERROR] ${err.message}`);
       if (context?.previousInventory) {
         setInventoryData(context.previousInventory);
@@ -452,8 +452,35 @@ export const InventoryProvider = ({
     mutationKey: ['inventory', 'updateItem'],
     mutationFn: (vars: { originalItem: InventoryItem, updatedFormData: InventoryItemInput & { isReversal?: boolean; optimistic_id?: string } }) =>
       inventoryService.updateItem(vars.originalItem, vars.updatedFormData, locations, getServiceContext()),
-    onMutate: (vars) => {
+    onMutate: async (vars) => {
       console.log(`[FORENSIC][MUTATION][UPDATE_START] ${new Date().toISOString()} - SKU: ${vars.updatedFormData.sku}, Optimistic ID: ${vars.updatedFormData.optimistic_id}`);
+
+      const previousInventory = inventoryDataRef.current;
+
+      setInventoryData((current) => {
+        return current.map((item) => {
+          if (String(item.id) === String(vars.originalItem.id)) {
+            return {
+              ...item,
+              ...vars.updatedFormData,
+              // Prioritize the latest metadata which might have just been updated
+              sku_metadata: skuMetadataMapRef.current[vars.updatedFormData.sku] || item.sku_metadata,
+              _lastUpdateSource: 'local' as const,
+              _lastLocalUpdateAt: Date.now()
+            };
+          }
+          return item;
+        });
+      });
+
+      return { previousInventory };
+    },
+    onError: (err, _vars, context) => {
+      console.error(`[FORENSIC][MUTATION][UPDATE_ERROR] ${err.message}`);
+      if (context?.previousInventory) {
+        setInventoryData(context.previousInventory);
+      }
+      toast.error(`Error updating item: ${err.message}`);
     },
     onSuccess: () => {
       console.log(`[FORENSIC][MUTATION][UPDATE_SUCCESS] ${new Date().toISOString()}`);
@@ -1162,12 +1189,24 @@ export const InventoryProvider = ({
   const updateSKUMetadata = useCallback(
     async (metadata: SKUMetadataInput) => {
       try {
-        await inventoryApi.upsertMetadata(metadata);
+        const result = await inventoryApi.upsertMetadata(metadata);
+
+        // Immediate Ref update for sequential synchronous operations
+        if (skuMetadataMapRef.current) {
+          skuMetadataMapRef.current[metadata.sku] = result;
+        }
 
         setSkuMetadataMap((prev) => ({
           ...prev,
-          [metadata.sku]: metadata as SKUMetadata,
+          [metadata.sku]: result,
         }));
+
+        // Update all items in state that share this SKU
+        setInventoryData((prev) =>
+          prev.map((item) =>
+            item.sku === metadata.sku ? { ...item, sku_metadata: result } : item
+          )
+        );
 
         queryClient.invalidateQueries({ queryKey: inventoryKeys.metadata(metadata.sku) });
       } catch (err: unknown) {

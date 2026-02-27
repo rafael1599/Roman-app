@@ -207,3 +207,45 @@ body::before {
 .animate-pickd-check {
   animation: pickd-check 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
+
+@keyframes pulse-warning {
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1);
+  }
+}
+
+.animate-pulse-warning {
+  animation: pulse-warning 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-highlight {
+
+  0%,
+  100% {
+    background-color: rgba(245, 158, 11, 0.1);
+    color: inherit;
+  }
+
+  50% {
+    background-color: rgba(245, 158, 11, 0.6);
+    color: #fff;
+    text-shadow: 0 0 8px rgba(245, 158, 11, 0.8);
+  }
+}
+
+.animate-pulse-highlight {
+  animation: pulse-highlight 1.2s ease-in-out infinite;
+  padding: 2px 4px;
+  margin: 0 -2px;
+  border-radius: 4px;
+  font-weight: 900;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}

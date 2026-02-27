@@ -10,13 +10,14 @@ import { CorrectionNotesTimeline, Note } from './CorrectionNotesTimeline';
 import { SlideToConfirm } from '../../../components/ui/SlideToConfirm.tsx';
 import { useConfirmation } from '../../../context/ConfirmationContext';
 import { usePickingSession } from '../../../context/PickingContext';
+import { useInventory } from '../../../hooks/InventoryProvider';
 import toast from 'react-hot-toast';
 
-// Define PickingItem Interface (Redefined or imported from shared location if preferred)
+// Define PickingItem Interface
 export interface PickingItem {
     sku: string;
     location: string | null;
-    pickingQty: number; // usually set by this point
+    pickingQty: number;
     quantity: string | number;
     warehouse?: string;
     [key: string]: any;
@@ -56,8 +57,8 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
     isNotesLoading = false,
     onAddNote,
     onSelectAll,
-    // customer, // Unused in minimalist view
 }) => {
+    const { ludlowData, atsData } = useInventory();
     const { showConfirmation } = useConfirmation();
     const { pallets } = usePickingSession();
     const [isDeducting, setIsDeducting] = useState(false);
@@ -79,9 +80,38 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
         return count;
     }, [pallets, checkedItems]);
 
+    // SKU Similarity Mapping (Now checks against ALL known SKUs in warehouse)
+    const skuSimilarityMap = useMemo(() => {
+        const orderSkus = pallets.flatMap((p: any) => p.items.map((i: any) => i.sku));
+        const warehouseSkus = Array.from(new Set([...ludlowData, ...atsData].map(i => i.sku)));
+        const map: Record<string, { prefix: boolean; suffix: boolean }> = {};
+
+        orderSkus.forEach(sku => {
+            if (!sku || sku.length < 5) return;
+            if (!map[sku]) map[sku] = { prefix: false, suffix: false };
+
+            const core = sku.substring(2, sku.length - 2);
+
+            // Check against warehouse inventory for ANY confusable twins
+            for (const other of warehouseSkus) {
+                if (sku === other) continue;
+                if (other.length !== sku.length) continue;
+
+                if (other.substring(2, other.length - 2) === core) {
+                    if (sku.substring(0, 2) !== other.substring(0, 2)) {
+                        map[sku].prefix = true;
+                    }
+                    if (sku.substring(sku.length - 2) !== other.substring(other.length - 2)) {
+                        map[sku].suffix = true;
+                    }
+                }
+            }
+        });
+        return map;
+    }, [pallets, ludlowData, atsData]);
+
     const handleConfirm = async () => {
         const isFullyVerified = verifiedCount === totalCheckboxes;
-
         setIsDeducting(true);
         try {
             await onDeduct(cartItems, isFullyVerified);
@@ -94,7 +124,6 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
 
     const handleReturnToPicker = async () => {
         if (!correctionNotes.trim()) return;
-
         showConfirmation(
             'Confirm Return',
             'Are you sure you want to return this order to the picker? This will release the order from your verification queue.',
@@ -132,11 +161,7 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
                 <div className="flex flex-col items-center">
                     <div className="flex items-center gap-2">
                         <span className="text-xs font-mono font-bold text-accent/90 tracking-widest bg-accent/10 px-2 py-0.5 rounded border border-accent/20">
-                            {orderNumber
-                                ? `#${orderNumber}`
-                                : activeListId
-                                    ? `#${activeListId.slice(-6).toUpperCase()}`
-                                    : 'STOCK DEDUCTION'}
+                            {orderNumber ? `#${orderNumber}` : activeListId ? `#${activeListId.slice(-6).toUpperCase()}` : 'STOCK DEDUCTION'}
                         </span>
                     </div>
                     {/* Progress Text */}
@@ -200,6 +225,7 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
                             {pallet.items.map((item: any) => {
                                 const itemKey = `${pallet.id}-${item.sku}-${item.location}`;
                                 const isChecked = checkedItems.has(itemKey);
+                                const similarity = skuSimilarityMap[item.sku];
 
                                 return (
                                     <div
@@ -213,11 +239,20 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
                                             : item.sku_not_found ? 'bg-red-500/5 border-red-500/20 shadow-[0_0_10px_rgba(239,68,68,0.1)]' : 'bg-white/5 border-white/5 hover:border-white/10'
                                             }`}
                                     >
-                                        {/* LEFT: SKU & Quantity */}
                                         <div className="flex flex-col min-w-0 flex-1 gap-1.5">
                                             <div className="flex items-baseline gap-2">
                                                 <span className={`font-black text-2xl tracking-tight leading-none ${isChecked ? (item.sku_not_found || item.insufficient_stock ? 'text-red-400' : 'text-green-400') : (item.sku_not_found || item.insufficient_stock ? 'text-red-500' : 'text-white')}`}>
-                                                    {item.sku}
+                                                    {similarity?.prefix ? (
+                                                        <span className="animate-pulse-highlight">{item.sku.substring(0, 2)}</span>
+                                                    ) : (
+                                                        item.sku.substring(0, 2)
+                                                    )}
+                                                    {item.sku.substring(2, item.sku.length - 2)}
+                                                    {similarity?.suffix ? (
+                                                        <span className="animate-pulse-highlight">{item.sku.substring(item.sku.length - 2)}</span>
+                                                    ) : (
+                                                        item.sku.substring(item.sku.length - 2)
+                                                    )}
                                                 </span>
                                                 {item.sku_not_found && (
                                                     <span className="text-[9px] bg-red-500 text-white px-1.5 py-0.5 rounded font-black uppercase tracking-tighter shadow-sm animate-pulse">
@@ -230,28 +265,24 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
                                                     </span>
                                                 )}
                                             </div>
-                                            {/* Quantity moved below SKU */}
                                             <div className="flex items-center gap-2">
-                                                <span className="text-[10px] text-white/40 font-bold uppercase tracking-widest bg-white/5 px-1.5 py-0.5 rounded">
+                                                <span className={`text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded transition-all ${item.pickingQty !== 1
+                                                    ? 'bg-amber-500 text-black animate-pulse-warning'
+                                                    : 'bg-white/5 text-white/40'
+                                                    }`}>
                                                     Qty: {item.pickingQty}
                                                 </span>
                                             </div>
                                         </div>
 
-                                        {/* RIGHT: Location (Most Important) & Checkbox */}
                                         <div className="flex items-center gap-5 shrink-0">
-                                            {/* Location - Prominent like QTY was */}
                                             <div className="flex flex-col items-end">
-                                                <span className="text-[9px] text-white/30 font-black uppercase tracking-widest mb-0.5">
-                                                    ROW
-                                                </span>
+                                                <span className="text-[9px] text-white/30 font-black uppercase tracking-widest mb-0.5">ROW</span>
                                                 <div className="font-mono font-black text-3xl text-amber-500 leading-none">
-                                                    {/* Extract just the number if it matches "Row X" or show full */}
                                                     {item.location?.toLowerCase().replace('row', '').trim() || '-'}
                                                 </div>
                                             </div>
 
-                                            {/* Simplified Checkbox */}
                                             <div
                                                 className={`w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all ${isChecked
                                                     ? item.sku_not_found ? 'bg-red-500 border-red-500 text-white' : 'bg-green-500 border-green-500 text-white shadow-[0_0_15px_rgba(34,197,94,0.3)]'
@@ -268,34 +299,19 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
                     </section>
                 ))}
 
-                {/* Notes History */}
                 <div className="mt-8 mb-6 mx-1">
                     <CorrectionNotesTimeline notes={notes} isLoading={isNotesLoading} />
                 </div>
 
-                {/* Correction Section */}
-                <section
-                    className={`mt-4 mb-12 border rounded-2xl mx-1 transition-all duration-300 ${isNotesExpanded ? 'bg-amber-500/5 border-amber-500/20' : 'bg-surface border-subtle'}`}
-                >
-                    <button
-                        onClick={() => setIsNotesExpanded(!isNotesExpanded)}
-                        className="w-full flex items-center justify-between p-4"
-                    >
+                <section className={`mt-4 mb-12 border rounded-2xl mx-1 transition-all duration-300 ${isNotesExpanded ? 'bg-amber-500/5 border-amber-500/20' : 'bg-surface border-subtle'}`}>
+                    <button onClick={() => setIsNotesExpanded(!isNotesExpanded)} className="w-full flex items-center justify-between p-4">
                         <div className="flex items-center gap-2">
-                            <MessageSquare
-                                size={16}
-                                className={isNotesExpanded ? 'text-amber-500' : 'text-muted'}
-                            />
-                            <h3
-                                className={`text-[11px] font-black uppercase tracking-widest ${isNotesExpanded ? 'text-amber-500/70' : 'text-muted'}`}
-                            >
+                            <MessageSquare size={16} className={isNotesExpanded ? 'text-amber-500' : 'text-muted'} />
+                            <h3 className={`text-[11px] font-black uppercase tracking-widest ${isNotesExpanded ? 'text-amber-500/70' : 'text-muted'}`}>
                                 {notes.length > 0 ? 'Add Another Note' : 'Add Verification Notes'}
                             </h3>
                         </div>
-                        <ChevronDown
-                            size={14}
-                            className={`text-muted transition-transform duration-300 ${isNotesExpanded ? 'rotate-180' : ''}`}
-                        />
+                        <ChevronDown size={14} className={`text-muted transition-transform duration-300 ${isNotesExpanded ? 'rotate-180' : ''}`} />
                     </button>
 
                     {isNotesExpanded && (
@@ -327,9 +343,6 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
                                     Return to Picker
                                 </button>
                             </div>
-                            <p className="text-[9px] text-muted font-bold text-center mt-3 uppercase tracking-tighter italic">
-                                Notes help pickers avoid the same mistakes
-                            </p>
                         </div>
                     )}
                 </section>

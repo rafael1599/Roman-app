@@ -1,6 +1,7 @@
-import { useState, useMemo } from 'react';
 import Search from 'lucide-react/dist/esm/icons/search';
+import X from 'lucide-react/dist/esm/icons/x';
 import Wand2 from 'lucide-react/dist/esm/icons/wand-2';
+import { useState, useMemo, useRef } from 'react';
 import { useError } from '../../../context/ErrorContext';
 import { useConfirmation } from '../../../context/ConfirmationContext';
 import toast from 'react-hot-toast';
@@ -21,6 +22,7 @@ export const ZoneManagementPanel = ({
   autoAssignZones,
 }: ZoneManagementProps) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [filterZone, setFilterZone] = useState('ALL');
   const [isAutoAssigning, setIsAutoAssigning] = useState(false);
   const { showError } = useError();
@@ -76,12 +78,25 @@ export const ZoneManagementPanel = ({
               size={18}
             />
             <input
+              ref={searchInputRef}
               type="text"
               placeholder="Search location..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-main border border-subtle rounded-lg pl-10 pr-4 py-2 text-content focus:border-accent outline-none"
+              className="w-full bg-main border border-subtle rounded-lg pl-10 pr-10 py-2 text-content focus:border-accent outline-none"
             />
+            {searchTerm && (
+              <button
+                onClick={() => {
+                  setSearchTerm('');
+                  searchInputRef.current?.focus();
+                }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-content transition-colors"
+                aria-label="Clear search"
+              >
+                <X size={16} />
+              </button>
+            )}
           </div>
         </div>
 

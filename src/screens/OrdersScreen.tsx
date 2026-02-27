@@ -9,6 +9,7 @@ import { LivePrintPreview } from '../components/orders/LivePrintPreview';
 import { usePickingSession } from '../context/PickingContext';
 import { useViewMode } from '../context/ViewModeContext';
 import Search from 'lucide-react/dist/esm/icons/search';
+import X from 'lucide-react/dist/esm/icons/x';
 import Filter from 'lucide-react/dist/esm/icons/filter';
 import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down';
 import { OrderChip } from '../components/orders/OrderChip';
@@ -33,6 +34,7 @@ export const OrdersScreen = () => {
     const filterRef = useRef(null);
     const mobileDropdownRef = useRef<HTMLDivElement>(null);
     const searchRef = useRef<HTMLDivElement>(null);
+    const searchInputRef = useRef<HTMLInputElement>(null);
     const searchQueryRef = useRef(searchQuery);
 
     useEffect(() => {
@@ -549,14 +551,28 @@ export const OrdersScreen = () => {
                                 <Search size={20} />
                             </button>
                             {isSearchExpanded && (
-                                <input
-                                    type="text"
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    placeholder="Search orders..."
-                                    className="bg-transparent border-none outline-none text-base text-content ml-3 w-full font-bold placeholder:opacity-20"
-                                    autoFocus
-                                />
+                                <>
+                                    <input
+                                        ref={searchInputRef}
+                                        type="text"
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        placeholder="Search orders..."
+                                        className="bg-transparent border-none outline-none text-base text-content ml-3 w-full font-bold placeholder:opacity-20"
+                                        autoFocus
+                                    />
+                                    {searchQuery && (
+                                        <button
+                                            onClick={() => {
+                                                setSearchQuery('');
+                                                searchInputRef.current?.focus();
+                                            }}
+                                            className="p-2 text-muted hover:text-emerald-500 transition-colors"
+                                        >
+                                            <X size={18} />
+                                        </button>
+                                    )}
+                                </>
                             )}
                         </div>
 

@@ -1,6 +1,7 @@
-import { useState, useMemo, useEffect } from 'react';
 import Search from 'lucide-react/dist/esm/icons/search';
+import X from 'lucide-react/dist/esm/icons/x';
 import MapPin from 'lucide-react/dist/esm/icons/map-pin';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import Package from 'lucide-react/dist/esm/icons/package';
 import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right';
 import { useLocationManagement } from '../../../hooks/useLocationManagement';
@@ -16,6 +17,7 @@ export const LocationList = () => {
   const { locations, loading, updateLocation, refresh, deactivateLocation } = useLocationManagement();
   const { ludlowData, atsData } = useInventory();
   const [searchTerm, setSearchTerm] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [selectedWarehouse, setSelectedWarehouse] = useState<Location['warehouse']>('LUDLOW');
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
@@ -108,12 +110,25 @@ export const LocationList = () => {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" size={18} />
           <input
+            ref={searchInputRef}
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search location..."
-            className="w-full pl-10 pr-4 py-2 bg-surface border border-subtle rounded-lg text-content placeholder-muted focus:border-accent focus:outline-none"
+            className="w-full pl-10 pr-10 py-2 bg-surface border border-subtle rounded-lg text-content placeholder-muted focus:border-accent focus:outline-none"
           />
+          {searchTerm && (
+            <button
+              onClick={() => {
+                setSearchTerm('');
+                searchInputRef.current?.focus();
+              }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-content transition-colors"
+              aria-label="Clear search"
+            >
+              <X size={16} />
+            </button>
+          )}
         </div>
 
         {/* Warehouse Filter */}

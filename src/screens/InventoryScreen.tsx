@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useInventory } from '../hooks/InventoryProvider';
 import { useViewMode } from '../context/ViewModeContext';
 import { SearchInput } from '../components/ui/SearchInput.tsx';
@@ -63,6 +63,7 @@ export const InventoryScreen = () => {
   } = useInventory();
 
   const [localSearch, setLocalSearch] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Auto-scroll to top when searching to ensure results are visible
   useEffect(() => {
@@ -606,6 +607,7 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
 
 
       <SearchInput
+        ref={searchInputRef}
         value={localSearch}
         onChange={setLocalSearch}
         placeholder="Search SKU, Loc, Warehouse..."
@@ -746,7 +748,14 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
           </div>
         ) : null}
 
-        {allLocationBlocks.length === 0 ? <NoInventoryFound onClear={() => setLocalSearch('')} /> : null}
+        {allLocationBlocks.length === 0 ? (
+          <NoInventoryFound
+            onClear={() => {
+              setLocalSearch('');
+              searchInputRef.current?.focus();
+            }}
+          />
+        ) : null}
       </div>
 
       {viewMode === 'stock' ? (

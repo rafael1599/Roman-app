@@ -24,6 +24,7 @@ export const CustomerAutocomplete = ({
     const [isOpen, setIsOpen] = useState(false);
     const { customers, isLoading } = useCustomerSearch(query);
     const containerRef = useRef<HTMLDivElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
 
     // Sync query when value changes (e.g. session reset)
     useEffect(() => {
@@ -61,6 +62,7 @@ export const CustomerAutocomplete = ({
         setQuery('');
         onChange(null);
         setIsOpen(false);
+        inputRef.current?.focus();
     };
 
     return (
@@ -70,6 +72,7 @@ export const CustomerAutocomplete = ({
                     <Building2 size={18} />
                 </span>
                 <input
+                    ref={inputRef}
                     type="text"
                     value={query}
                     onChange={(e) => {

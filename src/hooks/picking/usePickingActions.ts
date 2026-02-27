@@ -366,6 +366,28 @@ export const usePickingActions = ({
           return;
         }
 
+        // If the order is already in picking/verification, we should probably CANCEL it
+        // instead of physically deleting it, to keep a record.
+        const inProgressStatuses = ['active', 'ready_to_double_check', 'double_checking', 'needs_correction'];
+        if (currentList?.status && inProgressStatuses.includes(currentList.status)) {
+          // Instead of hard delete, we mark as cancelled
+          const { error: cancelError } = await supabase
+            .from('picking_lists')
+            .update({
+              status: 'cancelled',
+              notes: (currentList as any).notes ? (currentList as any).notes + ' [User Cancelled]' : 'User Cancelled'
+            } as any)
+            .eq('id', listId);
+
+          if (cancelError) throw cancelError;
+
+          if (listId === activeListId && !keepLocalState) {
+            resetSession();
+          }
+          toast.success('Order cancelled and moved to history');
+          return;
+        }
+
         const { error: logsError } = await supabase
           .from('inventory_logs')
           .delete()

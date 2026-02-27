@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, ReactNode, useCallback, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import { useAuth } from './AuthContext';
+import { supabase } from '../lib/supabase';
 import { useInventory } from '../hooks/useInventoryData';
 import { useError } from './ErrorContext';
 import { usePickingCart, CartItem } from '../hooks/picking/usePickingCart';
@@ -263,10 +264,23 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
     }
 
     try {
-      // Delete the picking list from database (releases reservations)
-      await deleteList(targetId, true);
+      // If we are in verification/picking, maybe we don't want to DELETE, 
+      // just go back to building while keeping the DB record as 'active' or 'needs_correction'
+      // To keep it simple and safe: Let's only delete if it's strictly necessary.
+      // If the user wants to EDIT, we should keep the list ID but change status.
 
-      // Change back to building mode
+      const { data: current } = await supabase.from('picking_lists').select('status').eq('id', targetId).maybeSingle();
+
+      if (current?.status === 'ready_to_double_check' || current?.status === 'double_checking') {
+        // Just move it back to 'active' (picking) so it doesn't disappear from the DB
+        await supabase.from('picking_lists').update({ status: 'active', checked_by: null }).eq('id', targetId);
+      } else {
+        // For other states (like initial picking), we might still want to delete to release reservations 
+        // IF the user is specifically wanting to go back to "Building" (free form adding)
+        await deleteList(targetId, true);
+      }
+
+      // Change back to building mode locally
       setSessionMode('building');
       setActiveListId(null);
 

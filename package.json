@@ -29,6 +29,7 @@
     "jspdf": "^3.0.4",
     "jspdf-autotable": "^5.0.7",
     "lucide-react": "^0.555.0",
+    "node-fetch": "^2.7.0",
     "openai": "^6.10.0",
     "papaparse": "^5.5.3",
     "postgres": "^3.4.8",

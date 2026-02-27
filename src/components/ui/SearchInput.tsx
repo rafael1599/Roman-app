@@ -15,16 +15,18 @@ interface SearchInputProps {
     autoFocus?: boolean;
 }
 
-export const SearchInput: React.FC<SearchInputProps> = ({
+export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(({
     value,
     onChange,
     placeholder = 'Search SKU or Location...',
     mode = 'stock',
     onScanClick,
     autoFocus = false,
-}) => {
+}, ref) => {
     const { isSearching, setIsSearching } = useViewMode();
-    const inputRef = useRef<HTMLInputElement>(null);
+    const internalRef = useRef<HTMLInputElement>(null);
+    const inputRef = (ref as React.RefObject<HTMLInputElement>) || internalRef;
+
     const [keyboardMode, setKeyboardMode] = useState<'text' | 'numeric'>(() => {
         const saved = localStorage.getItem('kb_pref_main_search');
         return (saved as 'text' | 'numeric') || 'numeric';
@@ -35,7 +37,7 @@ export const SearchInput: React.FC<SearchInputProps> = ({
         if (autoFocus && inputRef.current) {
             inputRef.current.focus();
         }
-    }, [mode, autoFocus]);
+    }, [mode, autoFocus, inputRef]);
 
     const toggleMode = () => {
         const newMode = keyboardMode === 'text' ? 'numeric' : 'text';
@@ -73,7 +75,10 @@ export const SearchInput: React.FC<SearchInputProps> = ({
                     <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
                         {value && (
                             <button
-                                onClick={() => onChange('')}
+                                onClick={() => {
+                                    onChange('');
+                                    inputRef.current?.focus();
+                                }}
                                 className="p-2 text-muted hover:text-content transition-colors active:scale-90"
                                 aria-label="Clear search"
                             >
@@ -106,4 +111,6 @@ export const SearchInput: React.FC<SearchInputProps> = ({
             </div>
         </div>
     );
-};
+});
+
+SearchInput.displayName = 'SearchInput';

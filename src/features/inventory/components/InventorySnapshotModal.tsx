@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import X from 'lucide-react/dist/esm/icons/x';
 import MapIcon from 'lucide-react/dist/esm/icons/map';
@@ -18,6 +18,7 @@ export const InventorySnapshotModal = ({ isOpen, onClose }: { isOpen: boolean; o
     const { loading, data, fetchSnapshot } = useInventorySnapshot();
     const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
     const [searchQuery, setSearchQuery] = useState('');
+    const searchInputRef = useRef<HTMLInputElement>(null);
 
     const [copiedLink, setCopiedLink] = useState(false);
     const [copiedMarkdown, setCopiedMarkdown] = useState(false);
@@ -168,13 +169,27 @@ export const InventorySnapshotModal = ({ isOpen, onClose }: { isOpen: boolean; o
                         </div>
                         <div className="sm:col-span-1 lg:col-span-2 space-y-2">
                             <label className="text-[10px] text-muted font-black uppercase tracking-widest pl-1">Instant Search</label>
-                            <input
-                                type="text"
-                                placeholder="Search SKU, location or warehouse..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full bg-surface border border-subtle rounded-2xl py-3.5 px-4 text-xs font-bold focus:outline-none focus:border-accent text-content"
-                            />
+                            <div className="relative">
+                                <input
+                                    ref={searchInputRef}
+                                    type="text"
+                                    placeholder="Search SKU, location or warehouse..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="w-full bg-surface border border-subtle rounded-2xl py-3.5 px-4 text-xs font-bold focus:outline-none focus:border-accent text-content pr-10"
+                                />
+                                {searchQuery && (
+                                    <button
+                                        onClick={() => {
+                                            setSearchQuery('');
+                                            searchInputRef.current?.focus();
+                                        }}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-content transition-colors"
+                                    >
+                                        <X size={18} />
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     </div>
 

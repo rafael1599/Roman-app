@@ -153,7 +153,7 @@ export function updateInventoryCache(
                             return {
                                 ...item,
                                 ...newItem,
-                                sku_metadata: item.sku_metadata || metadataMap?.[newItem.sku],
+                                sku_metadata: metadataMap?.[newItem.sku] || item.sku_metadata || (newItem as any).sku_metadata,
                                 _lastUpdateSource: (isExistingLocal && isIncomingRemote && newItem.quantity === item.quantity)
                                     ? 'local'
                                     : ((newItem as any)._lastUpdateSource || 'remote')
