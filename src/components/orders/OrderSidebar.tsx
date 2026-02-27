@@ -3,7 +3,10 @@ import MapPin from 'lucide-react/dist/esm/icons/map-pin';
 import Hash from 'lucide-react/dist/esm/icons/hash';
 import HandMetal from 'lucide-react/dist/esm/icons/hand-metal';
 import ChevronLeft from 'lucide-react/dist/esm/icons/chevron-left';
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
 import { CustomerAutocomplete } from '../../features/picking/components/CustomerAutocomplete';
+import { usePickingSession } from '../../context/PickingContext';
+import { useConfirmation } from '../../context/ConfirmationContext';
 
 interface OrderSidebarProps {
     formData: any;
@@ -12,6 +15,7 @@ interface OrderSidebarProps {
     user: any;
     takeOverOrder: (id: string) => Promise<void>;
     onRefresh: () => void;
+    onDelete: () => void;
     onShowPickingSummary?: () => void;
 }
 
@@ -22,9 +26,28 @@ export const OrderSidebar: React.FC<OrderSidebarProps> = ({
     user,
     takeOverOrder,
     onRefresh,
+    onDelete,
     onShowPickingSummary
 }) => {
+    const { deleteList } = usePickingSession();
+    const { showConfirmation } = useConfirmation();
+
     if (!selectedOrder) return null;
+
+    const handleDelete = () => {
+        showConfirmation(
+            'Delete Order',
+            'Are you sure you want to delete this order? It will be marked as cancelled and will no longer reserve inventory.',
+            async () => {
+                onDelete();
+                await deleteList(selectedOrder.id);
+                onRefresh();
+            },
+            () => { },
+            'Delete',
+            'Cancel'
+        );
+    };
 
     return (
         <aside className="w-full md:w-[360px] md:h-full border-r border-subtle flex flex-col p-5 md:p-7 shrink-0 md:overflow-y-auto bg-card backdrop-blur-3xl z-40 no-scrollbar rounded-3xl md:rounded-none mb-8 md:mb-0 relative overflow-hidden">
@@ -183,12 +206,20 @@ export const OrderSidebar: React.FC<OrderSidebarProps> = ({
                 </div>
             </form>
 
-            <div className="mt-auto pt-8">
+            <div className="mt-auto pt-8 flex flex-col gap-3">
                 <button
                     onClick={onShowPickingSummary}
-                    className="w-full flex items-center justify-center gap-2 h-12 bg-[rgb(245,158,11)]/10 hover:bg-[rgb(245,158,11)]/20 border border-[rgb(245,158,11)]/30 rounded-2xl text-[10px] font-black uppercase tracking-widest text-[rgb(245,158,11)] transition-all active:scale-95 shadow-[0_0_20px_rgba(245,158,11,0.1)]"
+                    className="w-full flex items-center justify-center gap-2 h-12 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-2xl text-[10px] font-black uppercase tracking-widest text-amber-500 transition-all active:scale-95 shadow-[0_0_20px_rgba(245,158,11,0.1)]"
                 >
                     <span>Picking Summary</span>
+                </button>
+
+                <button
+                    onClick={handleDelete}
+                    className="w-full flex items-center justify-center gap-2 h-12 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded-2xl text-[10px] font-black uppercase tracking-widest text-red-500 transition-all active:scale-95"
+                >
+                    <Trash2 size={14} />
+                    <span>Delete Order</span>
                 </button>
             </div>
         </aside>

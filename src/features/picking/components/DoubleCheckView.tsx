@@ -259,65 +259,64 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
                                             if (navigator.vibrate) navigator.vibrate(50);
                                             onToggleCheck(item, pallet.id)
                                         }}
-                                        className={`transition-all duration-200 rounded-2xl p-4 flex items-center justify-between gap-4 active:scale-[0.98] cursor-pointer border ${isChecked
+                                        className={`transition-all duration-200 rounded-2xl p-4 flex items-center justify-between gap-3 active:scale-[0.98] cursor-pointer border ${isChecked
                                             ? item.sku_not_found ? 'bg-red-500/20 border-red-500/50' : 'bg-green-500/10 border-green-500/30'
                                             : item.sku_not_found ? 'bg-red-500/5 border-red-500/20 shadow-[0_0_10px_rgba(239,68,68,0.1)]' : 'bg-white/5 border-white/5 hover:border-white/10'
                                             }`}
                                     >
-                                        {/* Qty on the far left */}
-                                        <div className="flex flex-col items-center justify-center min-w-[3.5rem] shrink-0 border-r border-white/10 pr-4">
-                                            <span className="text-[9px] font-black uppercase tracking-widest text-white/30 mb-0.5">QTY</span>
-                                            <span className={`text-2xl font-black leading-none transition-all ${item.pickingQty !== 1
-                                                ? 'text-amber-500 animate-pulse-warning'
-                                                : isChecked ? 'text-white/60' : 'text-white'
-                                                }`}>
-                                                {item.pickingQty}
-                                            </span>
-                                        </div>
-
-                                        <div className="flex flex-col min-w-0 flex-1 gap-1.5">
-                                            <div className="flex items-baseline gap-2">
-                                                <span className={`font-black text-2xl tracking-tight leading-none ${isChecked ? (item.sku_not_found || item.insufficient_stock ? 'text-red-400' : 'text-green-400') : (item.sku_not_found || item.insufficient_stock ? 'text-red-500' : 'text-white')}`}>
-                                                    {similarity?.prefix ? (
-                                                        <span className="animate-pulse-highlight">{item.sku.substring(0, 2)}</span>
-                                                    ) : (
-                                                        item.sku.substring(0, 2)
-                                                    )}
-                                                    {item.sku.substring(2, item.sku.length - 2)}
-                                                    {similarity?.suffix ? (
-                                                        <span className="animate-pulse-highlight">{item.sku.substring(item.sku.length - 2)}</span>
-                                                    ) : (
-                                                        item.sku.substring(item.sku.length - 2)
-                                                    )}
+                                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                                            {/* Qty on the far left */}
+                                            <div className="flex flex-col items-center justify-center min-w-[3rem] shrink-0 border-r border-white/10 pr-3">
+                                                <span className="text-[8px] font-black uppercase tracking-widest text-white/30 mb-0.5">QTY</span>
+                                                <span className={`text-xl font-black leading-none transition-all ${item.pickingQty !== 1
+                                                    ? 'text-amber-500 animate-pulse-warning'
+                                                    : isChecked ? 'text-white/60' : 'text-white'
+                                                    }`}>
+                                                    {item.pickingQty}
                                                 </span>
-                                                {item.sku_not_found && (
-                                                    <span className="text-[9px] bg-red-500 text-white px-1.5 py-0.5 rounded font-black uppercase tracking-tighter shadow-sm animate-pulse">
-                                                        Unregistered
-                                                    </span>
-                                                )}
-                                                {item.insufficient_stock && (
-                                                    <span className="text-[9px] bg-amber-500 text-black px-1.5 py-0.5 rounded font-black uppercase tracking-tighter shadow-sm">
-                                                        Low Stock ({item.available_qty || 0})
-                                                    </span>
-                                                )}
                                             </div>
-                                        </div>
 
-                                        <div className="flex items-center gap-5 shrink-0">
-                                            <div className="flex flex-col items-end">
-                                                <span className="text-[9px] text-white/30 font-black uppercase tracking-widest mb-0.5">ROW</span>
-                                                <div className="font-mono font-black text-3xl text-amber-500 leading-none">
-                                                    {item.location?.toLowerCase().replace('row', '').trim() || '-'}
+                                            <div className="flex flex-col min-w-0 flex-1 gap-1">
+                                                <div className="flex items-baseline gap-1.5 flex-wrap">
+                                                    <span className={`font-black text-xl tracking-tight leading-none break-all ${isChecked ? (item.sku_not_found || item.insufficient_stock ? 'text-red-400' : 'text-green-400') : (item.sku_not_found || item.insufficient_stock ? 'text-red-500' : 'text-white')}`}>
+                                                        {similarity?.prefix ? (
+                                                            <span className="animate-pulse-highlight">{item.sku.substring(0, 2)}</span>
+                                                        ) : (
+                                                            item.sku.substring(0, 2)
+                                                        )}
+                                                        {item.sku.substring(2, item.sku.length - 2)}
+                                                        {similarity?.suffix ? (
+                                                            <span className="animate-pulse-highlight">{item.sku.substring(item.sku.length - 2)}</span>
+                                                        ) : (
+                                                            item.sku.substring(item.sku.length - 2)
+                                                        )}
+                                                    </span>
+                                                    {item.sku_not_found && (
+                                                        <span className="text-[8px] bg-red-500 text-white px-1 py-0.5 rounded font-black uppercase tracking-tighter animate-pulse">
+                                                            UNREG
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </div>
+                                        </div>
 
-                                            <div
-                                                className={`w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all ${isChecked
-                                                    ? item.sku_not_found ? 'bg-red-500 border-red-500 text-white' : 'bg-green-500 border-green-500 text-white shadow-[0_0_15px_rgba(34,197,94,0.3)]'
-                                                    : 'border-white/20 text-transparent'
-                                                    }`}
-                                            >
-                                                <Check size={18} strokeWidth={4} />
+                                        {/* Location Info on the right - No checkbox to maximize space */}
+                                        <div className="flex items-center gap-3 shrink-0 ml-auto pl-2 border-l border-white/5">
+                                            <div className="flex flex-col items-end">
+                                                <span className="text-[8px] text-white/30 font-black uppercase tracking-widest mb-0.5">
+                                                    {item.location?.toLowerCase().includes('row') ? 'ROW' : 'LOC'}
+                                                </span>
+                                                <div className="flex items-center gap-1.5">
+                                                    <div className={`font-mono font-black text-amber-500 leading-none ${(item.location || '').length > 8 ? 'text-lg' : 'text-2xl'
+                                                        }`}>
+                                                        {item.location?.toLowerCase().replace('row', '').trim() || '-'}
+                                                    </div>
+                                                    {isChecked && (
+                                                        <div className={`flex items-center justify-center ${item.sku_not_found ? 'text-red-500' : 'text-green-500'}`}>
+                                                            <Check size={16} strokeWidth={4} />
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>

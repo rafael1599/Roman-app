@@ -530,6 +530,18 @@ export const OrdersScreen = () => {
                     user={user}
                     takeOverOrder={takeOverOrder}
                     onRefresh={fetchOrders}
+                    onDelete={() => {
+                        if (filteredOrders.length <= 1) {
+                            setSelectedOrder(null);
+                            return;
+                        }
+                        const currentIndex = filteredOrders.findIndex(o => o.id === selectedOrder?.id);
+                        if (currentIndex < filteredOrders.length - 1) {
+                            setSelectedOrder(filteredOrders[currentIndex + 1]);
+                        } else {
+                            setSelectedOrder(filteredOrders[currentIndex - 1]);
+                        }
+                    }}
                     onShowPickingSummary={() => setIsShowingPickingSummary(true)}
                 />
             </div>
@@ -687,6 +699,18 @@ export const OrdersScreen = () => {
                                     user={user}
                                     takeOverOrder={takeOverOrder}
                                     onRefresh={fetchOrders}
+                                    onDelete={() => {
+                                        if (filteredOrders.length <= 1) {
+                                            setSelectedOrder(null);
+                                            return;
+                                        }
+                                        const currentIndex = filteredOrders.findIndex(o => o.id === selectedOrder?.id);
+                                        if (currentIndex < filteredOrders.length - 1) {
+                                            setSelectedOrder(filteredOrders[currentIndex + 1]);
+                                        } else {
+                                            setSelectedOrder(filteredOrders[currentIndex - 1]);
+                                        }
+                                    }}
                                     onShowPickingSummary={() => setIsShowingPickingSummary(true)}
                                 />
                             </div>

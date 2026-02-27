@@ -331,7 +331,21 @@ export const PickingSessionView: React.FC<PickingSessionViewProps> = ({
                             <ChevronDown className="w-6 h-6" />
                         </button>
                         <button
-                            onClick={() => onDelete && onDelete(activeListId ?? null)}
+                            onClick={() => {
+                                showConfirmation(
+                                    'Delete Draft',
+                                    'Are you sure you want to delete this draft? Any inventory reservations will be released.',
+                                    async () => {
+                                        if (onDelete) {
+                                            await onDelete(activeListId ?? null);
+                                        }
+                                        onClose();
+                                    },
+                                    undefined,
+                                    'Delete Draft',
+                                    'Keep Draft'
+                                );
+                            }}
                             className="w-10 h-10 flex items-center justify-center rounded-full bg-card hover:bg-red-500/10 text-muted hover:text-red-500 transition-all border border-subtle ml-1"
                             title="Delete Draft"
                         >
