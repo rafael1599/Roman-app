@@ -188,7 +188,12 @@ export const InventoryScreen = () => {
   }, [filteredInventory, showInactive]);
 
   const allSortedWarehouses = useMemo(() => {
-    const warehouses = Object.keys(allGroupedData);
+    // Only include warehouses that have entries in allGroupedData and aren't effectively empty
+    const warehouses = Object.keys(allGroupedData).filter(wh => {
+      const locs = allGroupedData[wh];
+      return Object.values(locs).some(loc => loc.items.length > 0);
+    });
+
     return warehouses.sort((a, b) => {
       if (a === 'LUDLOW') return -1;
       if (b === 'LUDLOW') return 1;

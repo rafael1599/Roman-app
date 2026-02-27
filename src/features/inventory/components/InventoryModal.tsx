@@ -24,7 +24,7 @@ import { inventoryService } from '../../../services/inventory.service';
 interface InventoryModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (data: InventoryItemInput & { length_ft?: number; width_in?: number }) => void;
+    onSave: (data: InventoryItemInput & { length_in?: number; width_in?: number; height_in?: number }) => void;
     onDelete?: () => void;
     initialData?: InventoryItemWithMetadata | null;
     mode?: 'add' | 'edit';
@@ -32,8 +32,9 @@ interface InventoryModalProps {
 }
 
 const extendedSchema = InventoryItemInputSchema.extend({
-    length_ft: z.coerce.number().optional().nullable(),
+    length_in: z.coerce.number().optional().nullable(),
     width_in: z.coerce.number().optional().nullable(),
+    height_in: z.coerce.number().optional().nullable(),
 });
 
 interface InventoryFormValues {
@@ -42,8 +43,9 @@ interface InventoryFormValues {
     quantity: number;
     sku_note: string | null;
     warehouse: 'LUDLOW' | 'ATS' | 'DELETED ITEMS';
-    length_ft?: number | null;
+    length_in?: number | null;
     width_in?: number | null;
+    height_in?: number | null;
 }
 
 export const InventoryModal: React.FC<InventoryModalProps> = ({
@@ -80,8 +82,9 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
             quantity: 0,
             sku_note: '',
             warehouse: 'LUDLOW',
-            length_ft: 5,
+            length_in: 5,
             width_in: 6,
+            height_in: 6,
         }
     });
 
@@ -101,8 +104,9 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
                     quantity: Number(initialData.quantity) || 0,
                     sku_note: initialData.sku_note || '',
                     warehouse: initialData.warehouse || (screenType as any) || 'LUDLOW',
-                    length_ft: initialData.sku_metadata?.length_ft ?? 5,
+                    length_in: initialData.sku_metadata?.length_in ?? 5,
                     width_in: initialData.sku_metadata?.width_in ?? 6,
+                    height_in: initialData.sku_metadata?.height_in ?? 6,
                 });
             } else {
                 reset({
@@ -111,8 +115,9 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
                     quantity: 0,
                     sku_note: '',
                     warehouse: (screenType as any) || 'LUDLOW',
-                    length_ft: 5,
+                    length_in: 5,
                     width_in: 6,
+                    height_in: 6,
                 });
             }
         } else {
@@ -171,6 +176,27 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
             info: `${count} items here`
         }));
     }, [currentInventory, formData.location, prediction.matches]);
+
+    // 3.5 Dynamic Warehouse List
+    const availableWarehouses = useMemo(() => {
+        // Only show warehouses that have items with quantity > 0
+        const whs = new Set<string>();
+        if (ludlowData.some(i => i.quantity > 0)) whs.add('LUDLOW');
+        if (atsData.some(i => i.quantity > 0)) whs.add('ATS');
+
+        // Always include the current selection or initial data to avoid empty selection
+        if (formData.warehouse) whs.add(formData.warehouse);
+        if (initialData?.warehouse) whs.add(initialData.warehouse);
+
+        // If absolutely no warehouses have items, default to LUDLOW
+        if (whs.size === 0) return ['LUDLOW'];
+
+        return Array.from(whs).sort((a, b) => {
+            if (a === 'LUDLOW') return -1;
+            if (b === 'LUDLOW') return 1;
+            return a.localeCompare(b);
+        }) as ('LUDLOW' | 'ATS')[];
+    }, [ludlowData, atsData, formData.warehouse, initialData]);
 
     // 4. Real-time Validation & Presence Tracking
     const [validationState, setValidationState] = useState<{
@@ -350,8 +376,9 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
         try {
             await updateSKUMetadata({
                 sku: data.sku,
-                length_ft: data.length_ft,
+                length_in: data.length_in,
                 width_in: data.width_in,
+                height_in: data.height_in,
             });
         } catch (e) {
             console.error('Metadata update failed:', e);
@@ -389,11 +416,11 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
                         <div>
                             <label className="block text-[10px] font-black text-accent mb-3 uppercase tracking-widest">Select Warehouse</label>
                             <div className="flex gap-2">
-                                {['LUDLOW', 'ATS'].map((wh) => (
+                                {availableWarehouses.map((wh) => (
                                     <button
                                         key={wh}
                                         type="button"
-                                        onClick={() => setValue('warehouse', wh as any)}
+                                        onClick={() => setValue('warehouse', wh as 'LUDLOW' | 'ATS')}
                                         className={`px-4 py-2 rounded-lg font-bold text-xs transition-all border ${formData.warehouse === wh
                                             ? 'bg-accent text-main border-accent shadow-[0_0_15px_rgba(var(--accent-rgb),0.3)]'
                                             : 'bg-surface text-muted border-subtle hover:border-muted'
@@ -492,14 +519,18 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
                         </div>
 
                         {isAdmin && (
-                            <div className="grid grid-cols-2 gap-4 p-4 bg-accent/5 rounded-2xl border border-accent/10">
+                            <div className="grid grid-cols-3 gap-3 p-4 bg-accent/5 rounded-2xl border border-accent/10">
                                 <div>
-                                    <label className="block text-[10px] font-black text-accent mb-2 uppercase tracking-widest">Length (ft)</label>
-                                    <input type="number" {...register('length_ft', { valueAsNumber: true })} {...autoSelect} step="0.1" className="w-full bg-main border border-subtle rounded-lg px-4 py-2 text-content focus:border-accent focus:outline-none font-mono" />
+                                    <label className="block text-[10px] font-black text-accent mb-2 uppercase tracking-widest">Length (in)</label>
+                                    <input type="number" {...register('length_in', { valueAsNumber: true })} {...autoSelect} step="0.1" className="w-full bg-main border border-subtle rounded-lg px-2 py-2 text-content focus:border-accent focus:outline-none font-mono text-center text-xs" />
                                 </div>
                                 <div>
                                     <label className="block text-[10px] font-black text-accent mb-2 uppercase tracking-widest">Width (in)</label>
-                                    <input type="number" {...register('width_in', { valueAsNumber: true })} {...autoSelect} step="0.1" className="w-full bg-main border border-subtle rounded-lg px-4 py-2 text-content focus:border-accent focus:outline-none font-mono" />
+                                    <input type="number" {...register('width_in', { valueAsNumber: true })} {...autoSelect} step="0.1" className="w-full bg-main border border-subtle rounded-lg px-2 py-2 text-content focus:border-accent focus:outline-none font-mono text-center text-xs" />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-black text-accent mb-2 uppercase tracking-widest">Height (in)</label>
+                                    <input type="number" {...register('height_in', { valueAsNumber: true })} {...autoSelect} step="0.1" className="w-full bg-main border border-subtle rounded-lg px-2 py-2 text-content focus:border-accent focus:outline-none font-mono text-center text-xs" />
                                 </div>
                             </div>
                         )}

@@ -5,8 +5,9 @@ export const SKUMetadataSchema = z.object({
   sku: z.string().min(1),
   name: z.string().nullish(),
   image_url: z.string().nullable().optional(),
-  length_ft: z.number().nullish().optional(),
+  length_in: z.number().nullish().optional(),
   width_in: z.number().nullish().optional(),
+  height_in: z.number().nullish().optional(),
   created_at: z.coerce.date().optional(),
   updated_at: z.coerce.date().optional(),
 });
