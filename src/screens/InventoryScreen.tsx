@@ -726,6 +726,8 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
                           reservedByOthers={stockInfo?.reservedByOthers || 0}
                           available={stockInfo?.available}
                           sku_metadata={item.sku_metadata}
+                          location_hint={(item as any).location_hint}
+                          distribution={(item as any).distribution}
                           lastUpdateSource={(item as any)._lastUpdateSource}
                           is_active={item.is_active}
                         />

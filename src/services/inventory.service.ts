@@ -236,6 +236,8 @@ class InventoryService extends BaseService<'inventory', InventoryModel, Inventor
             location: destination.name,
             location_id: destination.id,
             is_active: true,
+            location_hint: validatedInput.location_hint || null,
+            distribution: validatedInput.distribution || [],
         };
 
         if (newItem.force_id) {
@@ -476,6 +478,8 @@ class InventoryService extends BaseService<'inventory', InventoryModel, Inventor
             sku_note: validatedInput.sku_note,
             status: validatedInput.status || originalItem.status,
             is_active: newQty > 0 ? true : originalItem.is_active,
+            location_hint: validatedInput.location_hint,
+            distribution: validatedInput.distribution || [],
         } as any);
 
         try {

@@ -2,6 +2,7 @@ import { memo, useState, useRef, useEffect } from 'react';
 import Plus from 'lucide-react/dist/esm/icons/plus';
 import Minus from 'lucide-react/dist/esm/icons/minus';
 import ArrowRightLeft from 'lucide-react/dist/esm/icons/arrow-right-left';
+import { type DistributionItem, STORAGE_TYPE_LABELS } from '../../../schemas/inventory.schema';
 
 interface InventoryCardProps {
     sku: string;
@@ -19,6 +20,8 @@ interface InventoryCardProps {
     lastUpdateSource?: 'local' | 'remote';
     is_active?: boolean;
     sku_metadata?: import('../../../schemas/skuMetadata.schema').SKUMetadata | null;
+    location_hint?: string | null;
+    distribution?: DistributionItem[];
 }
 
 export const InventoryCard = memo(
@@ -38,6 +41,8 @@ export const InventoryCard = memo(
         lastUpdateSource,
         is_active = true,
         sku_metadata = null,
+        location_hint = null,
+        distribution = [],
     }: InventoryCardProps) => {
         const [flash, setFlash] = useState(false);
         const prevQuantityRef = useRef(quantity);
@@ -97,8 +102,15 @@ export const InventoryCard = memo(
                     <div className="flex items-center gap-3">
                         <div className="flex flex-col">
                             {location && (
-                                <div className="text-[10px] text-accent font-extrabold uppercase tracking-tighter" style={{ fontFamily: 'var(--font-heading)' }}>
-                                    {location}
+                                <div className="flex items-center gap-1.5">
+                                    <div className="text-[10px] text-accent font-extrabold uppercase tracking-tighter" style={{ fontFamily: 'var(--font-heading)' }}>
+                                        {location}
+                                    </div>
+                                    {location_hint && (
+                                        <span className="text-[8px] text-muted font-bold uppercase tracking-tight bg-white/5 px-1 py-0.5 rounded border border-white/5 max-w-[120px] truncate" title={location_hint}>
+                                            📍 {location_hint}
+                                        </span>
+                                    )}
                                 </div>
                             )}
                             <div className="flex items-center gap-2">
@@ -114,11 +126,16 @@ export const InventoryCard = memo(
                         </div>
                     </div>
 
-                    <div className="flex flex-col items-end">
-                        <span className="text-[9px] text-muted uppercase font-bold tracking-widest leading-none mb-1">Stock</span>
+                    <div className="flex flex-col items-end gap-0.5">
+                        <span className="text-[9px] text-muted uppercase font-bold tracking-widest leading-none">Stock</span>
                         <div className="flex items-baseline gap-1">
                             <span className="text-2xl font-black text-accent tabular-nums tracking-tighter leading-none">{quantity}</span>
                         </div>
+                        {distribution && distribution.length > 0 && (
+                            <span className="hidden md:inline-flex text-[8px] font-black text-white/40 uppercase tracking-widest leading-none">
+                                {distribution.map(d => `${d.count}${STORAGE_TYPE_LABELS[d.type]?.short || '?'}`).join(' | ')}
+                            </span>
+                        )}
                     </div>
                 </div>
 

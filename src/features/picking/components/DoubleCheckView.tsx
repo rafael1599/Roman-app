@@ -11,7 +11,11 @@ import { SlideToConfirm } from '../../../components/ui/SlideToConfirm.tsx';
 import { useConfirmation } from '../../../context/ConfirmationContext';
 import { usePickingSession } from '../../../context/PickingContext';
 import { useInventory } from '../../../hooks/InventoryProvider';
+import { type DistributionItem, STORAGE_TYPE_LABELS } from '../../../schemas/inventory.schema';
 import toast from 'react-hot-toast';
+
+/** Priority: lower number = pick first. Pallets are overstock we want gone ASAP. */
+const DISTRIBUTION_PRIORITY: Record<string, number> = { PALLET: 0, LINE: 1, TOWER: 2, OTHER: 3 };
 
 // Define PickingItem Interface
 export interface PickingItem {
@@ -58,7 +62,7 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
     onAddNote,
     onSelectAll,
 }) => {
-    const { ludlowData, atsData } = useInventory();
+    const { ludlowData, atsData, inventoryData } = useInventory();
     const { showConfirmation } = useConfirmation();
     const { pallets } = usePickingSession();
     const [isDeducting, setIsDeducting] = useState(false);
@@ -113,6 +117,60 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
         });
         return map;
     }, [pallets, ludlowData, atsData]);
+
+    /**
+     * Pick Suggestion Map: For each SKU, find the best distribution group to pick from.
+     * Priority: PALLET > LINE > TOWER > OTHER, then fewest units_each within same type.
+     * Only suggests if at least one location has distribution data.
+     */
+    const pickSuggestionMap = useMemo(() => {
+        const map: Record<string, { type: string; units_each: number; location: string; icon: string }> = {};
+
+        // Get all unique SKUs from the order
+        const orderSkus = new Set(pallets.flatMap((p: any) => p.items.map((i: any) => i.sku)));
+
+        orderSkus.forEach(sku => {
+            // Find all inventory entries for this SKU that have distribution data
+            const entries = inventoryData.filter(
+                inv => inv.sku === sku && Array.isArray((inv as any).distribution) && (inv as any).distribution.length > 0
+            );
+
+            if (entries.length === 0) return; // No distribution data → no suggestion
+
+            // Flatten all distribution items with their location context
+            const candidates: { type: string; units_each: number; location: string; priority: number }[] = [];
+
+            entries.forEach(inv => {
+                const dist = (inv as any).distribution as DistributionItem[];
+                dist.forEach(d => {
+                    candidates.push({
+                        type: d.type,
+                        units_each: d.units_each,
+                        location: inv.location || '',
+                        priority: DISTRIBUTION_PRIORITY[d.type] ?? 99,
+                    });
+                });
+            });
+
+            if (candidates.length === 0) return;
+
+            // Sort: by priority (PALLET first), then by fewest units_each
+            candidates.sort((a, b) => {
+                if (a.priority !== b.priority) return a.priority - b.priority;
+                return a.units_each - b.units_each;
+            });
+
+            const best = candidates[0];
+            map[sku] = {
+                type: best.type,
+                units_each: best.units_each,
+                location: best.location,
+                icon: STORAGE_TYPE_LABELS[best.type as keyof typeof STORAGE_TYPE_LABELS]?.icon || '🔹',
+            };
+        });
+
+        return map;
+    }, [pallets, inventoryData]);
 
     const handleConfirm = async () => {
         const isFullyVerified = verifiedUnitsCount === totalUnitsCount;
@@ -289,28 +347,36 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
                                                 </span>
                                             </div>
 
-                                            <div className="flex items-center gap-2 flex-wrap min-w-0">
-                                                <span className={`font-black text-xl tracking-tight leading-none break-all ${isChecked ? (item.sku_not_found || item.insufficient_stock ? 'text-red-400' : 'text-green-400') : (item.sku_not_found || item.insufficient_stock ? 'text-red-500' : 'text-white')}`}>
-                                                    {similarity?.prefix ? (
-                                                        <span className="animate-pulse-highlight">{item.sku.substring(0, 2)}</span>
-                                                    ) : (
-                                                        item.sku.substring(0, 2)
-                                                    )}
-                                                    {item.sku.substring(2, item.sku.length - 2)}
-                                                    {similarity?.suffix ? (
-                                                        <span className="animate-pulse-highlight">{item.sku.substring(item.sku.length - 2)}</span>
-                                                    ) : (
-                                                        item.sku.substring(item.sku.length - 2)
-                                                    )}
-                                                </span>
-                                                {item.sku_note && (
-                                                    <span className="text-[10px] font-bold text-accent/70 bg-accent/10 px-1.5 py-0.5 rounded border border-accent/20 uppercase tracking-widest leading-none">
-                                                        {item.sku_note.slice(0, 9)}
+                                            <div className="flex flex-col gap-0.5 min-w-0">
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    <span className={`font-black text-xl tracking-tight leading-none break-all ${isChecked ? (item.sku_not_found || item.insufficient_stock ? 'text-red-400' : 'text-green-400') : (item.sku_not_found || item.insufficient_stock ? 'text-red-500' : 'text-white')}`}>
+                                                        {similarity?.prefix ? (
+                                                            <span className="animate-pulse-highlight">{item.sku.substring(0, 2)}</span>
+                                                        ) : (
+                                                            item.sku.substring(0, 2)
+                                                        )}
+                                                        {item.sku.substring(2, item.sku.length - 2)}
+                                                        {similarity?.suffix ? (
+                                                            <span className="animate-pulse-highlight">{item.sku.substring(item.sku.length - 2)}</span>
+                                                        ) : (
+                                                            item.sku.substring(item.sku.length - 2)
+                                                        )}
                                                     </span>
-                                                )}
-                                                {item.sku_not_found && (
-                                                    <span className="text-[8px] bg-red-500 text-white px-1 py-0.5 rounded font-black uppercase tracking-tighter animate-pulse">
-                                                        UNREG
+                                                    {item.sku_note && (
+                                                        <span className="text-[10px] font-bold text-accent/70 bg-accent/10 px-1.5 py-0.5 rounded border border-accent/20 uppercase tracking-widest leading-none">
+                                                            {item.sku_note.slice(0, 9)}
+                                                        </span>
+                                                    )}
+                                                    {item.sku_not_found && (
+                                                        <span className="text-[8px] bg-red-500 text-white px-1 py-0.5 rounded font-black uppercase tracking-tighter animate-pulse">
+                                                            UNREG
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                {/* Distribution-based pick suggestion */}
+                                                {pickSuggestionMap[item.sku] && (
+                                                    <span className="text-[12px] font-bold text-amber-400/80 uppercase tracking-widest leading-none">
+                                                        {pickSuggestionMap[item.sku].icon} {pickSuggestionMap[item.sku].type} · {pickSuggestionMap[item.sku].units_each}u
                                                     </span>
                                                 )}
                                             </div>

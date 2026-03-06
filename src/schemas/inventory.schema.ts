@@ -2,6 +2,27 @@ import { z } from 'zod';
 import { SKUMetadataSchema } from './skuMetadata.schema';
 
 /**
+ * Distribution Item Schema - describes a physical grouping of units
+ * Example: { type: 'TOWER', count: 2, units_each: 30, label: 'near door' }
+ */
+export const DistributionItemSchema = z.object({
+  type: z.enum(['TOWER', 'LINE', 'PALLET', 'OTHER']),
+  count: z.coerce.number().int().positive(),
+  units_each: z.coerce.number().int().positive(),
+  label: z.string().optional(),
+});
+
+export type DistributionItem = z.infer<typeof DistributionItemSchema>;
+
+/** Storage type labels for UI display */
+export const STORAGE_TYPE_LABELS: Record<DistributionItem['type'], { short: string; icon: string }> = {
+  TOWER: { short: 'T', icon: '🗼' },
+  LINE: { short: 'L', icon: '📏' },
+  PALLET: { short: 'P', icon: '📦' },
+  OTHER: { short: 'O', icon: '🔹' },
+};
+
+/**
  * Raw DB Schema - What Supabase returns from the 'inventory' table
  */
 export const InventoryItemDBSchema = z.object({
@@ -23,6 +44,8 @@ export const InventoryItemDBSchema = z.object({
   capacity: z.coerce.number().int().positive().optional().nullable(),
   is_active: z.boolean().default(true),
   created_at: z.coerce.date(),
+  location_hint: z.string().nullable().optional(),
+  distribution: z.array(DistributionItemSchema).default([]),
 });
 
 /**
@@ -49,6 +72,8 @@ export const InventoryItemInputSchema = z.object({
   ),
   status: z.string().optional().nullable(),
   capacity: z.coerce.number().int().positive().optional(),
+  location_hint: z.string().optional().nullable(),
+  distribution: z.array(DistributionItemSchema).optional().default([]),
   // Internal/System fields
   force_id: z.coerce.number().int().positive().optional(),
   isReversal: z.boolean().optional(),

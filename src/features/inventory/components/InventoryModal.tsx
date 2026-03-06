@@ -6,6 +6,9 @@ import Save from 'lucide-react/dist/esm/icons/save';
 import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
 import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle';
 import CheckCircle2 from 'lucide-react/dist/esm/icons/check-circle-2';
+import Plus from 'lucide-react/dist/esm/icons/plus';
+import Minus from 'lucide-react/dist/esm/icons/minus';
+import MapPin from 'lucide-react/dist/esm/icons/map-pin';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import toast from 'react-hot-toast';
@@ -17,7 +20,7 @@ import { useViewMode } from '../../../context/ViewModeContext';
 import { useAutoSelect } from '../../../hooks/useAutoSelect';
 
 import AutocompleteInput from '../../../components/ui/AutocompleteInput.tsx';
-import { InventoryItemWithMetadata, InventoryItemInput, InventoryItemInputSchema } from '../../../schemas/inventory.schema';
+import { InventoryItemWithMetadata, InventoryItemInput, InventoryItemInputSchema, type DistributionItem, STORAGE_TYPE_LABELS } from '../../../schemas/inventory.schema';
 import { predictLocation } from '../../../utils/locationPredictor';
 import { inventoryService } from '../../../services/inventory.service';
 
@@ -46,6 +49,7 @@ interface InventoryFormValues {
     length_in?: number | null;
     width_in?: number | null;
     height_in?: number | null;
+    location_hint?: string | null;
 }
 
 export const InventoryModal: React.FC<InventoryModalProps> = ({
@@ -62,6 +66,8 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
     const { setIsNavHidden } = useViewMode();
     const { showConfirmation } = useConfirmation();
     const autoSelect = useAutoSelect();
+    const [distribution, setDistribution] = useState<DistributionItem[]>([]);
+    const [isDistributionOpen, setIsDistributionOpen] = useState(false);
 
     // const [confirmCreateNew, setConfirmCreateNew] = useState(false); // REMOVED: Ghost Location simplification
 
@@ -85,6 +91,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
             length_in: 5,
             width_in: 6,
             height_in: 6,
+            location_hint: '',
         }
     });
 
@@ -107,7 +114,10 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
                     length_in: initialData.sku_metadata?.length_in ?? 5,
                     width_in: initialData.sku_metadata?.width_in ?? 6,
                     height_in: initialData.sku_metadata?.height_in ?? 6,
+                    location_hint: (initialData as any).location_hint || '',
                 });
+                setDistribution(Array.isArray((initialData as any).distribution) ? (initialData as any).distribution : []);
+                setIsDistributionOpen(Array.isArray((initialData as any).distribution) && (initialData as any).distribution.length > 0);
             } else {
                 reset({
                     sku: '',
@@ -118,7 +128,10 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
                     length_in: 5,
                     width_in: 6,
                     height_in: 6,
+                    location_hint: '',
                 });
+                setDistribution([]);
+                setIsDistributionOpen(false);
             }
         } else {
             setIsNavHidden?.(false);
@@ -371,8 +384,37 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
         executeSave(data);
     };
 
+    // Distribution helpers
+    const DEFAULT_UNITS: Record<string, number> = { TOWER: 30, LINE: 5, PALLET: 10, OTHER: 1 };
+
+    const distributionTotal = useMemo(() =>
+        distribution.reduce((sum, d) => sum + (d.count * d.units_each), 0),
+        [distribution]
+    );
+
+    const addDistributionRow = () => {
+        setDistribution(prev => [...prev, { type: 'TOWER', count: 1, units_each: DEFAULT_UNITS['TOWER'] }]);
+        setIsDistributionOpen(true);
+    };
+
+    const removeDistributionRow = (index: number) => {
+        setDistribution(prev => prev.filter((_, i) => i !== index));
+    };
+
+    const updateDistributionRow = (index: number, field: keyof DistributionItem, value: any) => {
+        setDistribution(prev => prev.map((row, i) => {
+            if (i !== index) return row;
+            const updated = { ...row, [field]: value };
+            // Auto-fill units_each when type changes
+            if (field === 'type' && DEFAULT_UNITS[value]) {
+                updated.units_each = DEFAULT_UNITS[value];
+            }
+            return updated;
+        }));
+    };
+
     const executeSave = async (data: any) => {
-        // ... (metadata update)
+        // 1. Update SKU Metadata (dimensions)
         try {
             await updateSKUMetadata({
                 sku: data.sku,
@@ -384,7 +426,11 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
             console.error('Metadata update failed:', e);
         }
 
-        // 2. CREATE/UPDATE ITEM
+        // 2. Attach distribution and location_hint to save payload
+        data.location_hint = data.location_hint || null;
+        data.distribution = distribution.filter(d => d.count > 0 && d.units_each > 0);
+
+        // 3. CREATE/UPDATE ITEM
         await onSave(data);
         onClose();
     };
@@ -506,6 +552,21 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
                             placeholder="e.g. T, ø, P..."
                         />
 
+                        {/* Location Hint */}
+                        <div>
+                            <label htmlFor="inventory_location_hint" className="block text-[10px] font-black text-accent mb-2 uppercase tracking-widest">
+                                <MapPin size={10} className="inline mr-1 -mt-0.5" />
+                                Location Hint
+                            </label>
+                            <input
+                                id="inventory_location_hint"
+                                type="text"
+                                {...register('location_hint')}
+                                placeholder="e.g. Behind the pole, Bottom shelf..."
+                                className="w-full bg-main border border-subtle rounded-xl px-4 py-3 text-content focus:border-accent focus:outline-none transition-colors text-sm placeholder:text-white/20"
+                            />
+                        </div>
+
                         <div>
                             <label htmlFor="inventory_quantity" className="block text-[10px] font-black text-accent mb-2 uppercase tracking-widest">Quantity</label>
                             <input
@@ -516,6 +577,101 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
                                 className="w-full bg-main border border-subtle rounded-xl px-4 py-4 text-content focus:border-accent focus:outline-none transition-colors font-mono text-center text-2xl font-black"
                                 required
                             />
+                        </div>
+
+                        {/* Distribution Editor */}
+                        <div className="border border-subtle rounded-2xl overflow-hidden">
+                            <button
+                                type="button"
+                                onClick={() => setIsDistributionOpen(!isDistributionOpen)}
+                                className="w-full flex items-center justify-between px-4 py-3 bg-surface hover:bg-white/5 transition-colors"
+                            >
+                                <span className="text-[10px] font-black text-accent uppercase tracking-widest flex items-center gap-1.5">
+                                    📦 Physical Distribution
+                                    {distribution.length > 0 && (
+                                        <span className="text-[9px] bg-accent/20 text-accent px-1.5 py-0.5 rounded-full font-black">
+                                            {distribution.length}
+                                        </span>
+                                    )}
+                                </span>
+                                <span className="text-muted text-xs">{isDistributionOpen ? '▲' : '▼'}</span>
+                            </button>
+
+                            {isDistributionOpen && (
+                                <div className="p-4 space-y-3 border-t border-subtle bg-main/50 animate-in fade-in slide-in-from-top-1 duration-200">
+                                    {distribution.map((row, idx) => (
+                                        <div key={idx} className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2 duration-150">
+                                            <select
+                                                value={row.type}
+                                                onChange={(e) => updateDistributionRow(idx, 'type', e.target.value)}
+                                                className="bg-surface border border-subtle rounded-lg px-2 py-2 text-content text-xs font-bold focus:border-accent focus:outline-none flex-shrink-0 w-24"
+                                            >
+                                                {Object.entries(STORAGE_TYPE_LABELS).map(([key, { icon }]) => (
+                                                    <option key={key} value={key}>{icon} {key}</option>
+                                                ))}
+                                            </select>
+                                            <input
+                                                type="number"
+                                                value={row.count}
+                                                onChange={(e) => updateDistributionRow(idx, 'count', Math.max(1, parseInt(e.target.value) || 1))}
+                                                {...autoSelect}
+                                                className="w-14 bg-surface border border-subtle rounded-lg px-2 py-2 text-content text-center text-xs font-mono font-bold focus:border-accent focus:outline-none"
+                                                min={1}
+                                                placeholder="#"
+                                            />
+                                            <span className="text-muted text-[10px] font-black">×</span>
+                                            <input
+                                                type="number"
+                                                value={row.units_each}
+                                                onChange={(e) => updateDistributionRow(idx, 'units_each', Math.max(1, parseInt(e.target.value) || 1))}
+                                                {...autoSelect}
+                                                className="w-14 bg-surface border border-subtle rounded-lg px-2 py-2 text-content text-center text-xs font-mono font-bold focus:border-accent focus:outline-none"
+                                                min={1}
+                                                placeholder="u"
+                                            />
+                                            <span className="text-[10px] text-muted font-bold">= {row.count * row.units_each}u</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => removeDistributionRow(idx)}
+                                                className="p-1.5 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                                            >
+                                                <Minus size={14} />
+                                            </button>
+                                        </div>
+                                    ))}
+
+                                    <button
+                                        type="button"
+                                        onClick={addDistributionRow}
+                                        className="w-full flex items-center justify-center gap-1.5 py-2.5 border border-dashed border-subtle hover:border-accent/40 rounded-xl text-muted hover:text-accent text-[10px] font-black uppercase tracking-widest transition-colors"
+                                    >
+                                        <Plus size={12} />
+                                        Add Grouping
+                                    </button>
+
+                                    {/* Distribution Summary */}
+                                    {distribution.length > 0 && (
+                                        <div className={`flex items-center justify-between px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest ${distributionTotal > (formData.quantity || 0)
+                                            ? 'bg-red-500/10 border border-red-500/20 text-red-400'
+                                            : distributionTotal === (formData.quantity || 0)
+                                                ? 'bg-green-500/10 border border-green-500/20 text-green-400'
+                                                : 'bg-amber-500/10 border border-amber-500/20 text-amber-400'
+                                            }`}>
+                                            <span>
+                                                Accounted: {distributionTotal} / {formData.quantity || 0} units
+                                            </span>
+                                            <span>
+                                                {distributionTotal > (formData.quantity || 0)
+                                                    ? `⚠ ${distributionTotal - (formData.quantity || 0)} over`
+                                                    : distributionTotal === (formData.quantity || 0)
+                                                        ? '✓ Perfect'
+                                                        : `${(formData.quantity || 0) - distributionTotal} loose`
+                                                }
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
 
                         {isAdmin && (
