@@ -8,6 +8,7 @@ interface ConfirmationState {
   onClose: () => void;
   confirmText?: string;
   cancelText?: string;
+  variant?: 'danger' | 'warning' | 'info';
 }
 
 interface ConfirmationContextType {
@@ -18,7 +19,8 @@ interface ConfirmationContextType {
     onConfirm: () => void,
     onClose?: () => void,
     confirmText?: string,
-    cancelText?: string
+    cancelText?: string,
+    variant?: 'danger' | 'warning' | 'info'
   ) => void;
   hideConfirmation: () => void;
 }
@@ -34,10 +36,11 @@ export const ConfirmationProvider = ({ children }: { children: ReactNode }) => {
     onClose: () => { },
     confirmText: 'Confirm',
     cancelText: 'Cancel',
+    variant: 'danger',
   });
 
   const showConfirmation = useCallback(
-    (title: string, message: string, onConfirm: () => void, onClose?: () => void, confirmText?: string, cancelText?: string) => {
+    (title: string, message: string, onConfirm: () => void, onClose?: () => void, confirmText?: string, cancelText?: string, variant?: 'danger' | 'warning' | 'info') => {
       setConfirmationState({
         isOpen: true,
         title,
@@ -52,6 +55,7 @@ export const ConfirmationProvider = ({ children }: { children: ReactNode }) => {
         },
         confirmText,
         cancelText,
+        variant: variant || 'danger',
       });
     },
     []

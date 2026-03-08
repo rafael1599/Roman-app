@@ -188,7 +188,7 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
         if (!correctionNotes.trim()) return;
         showConfirmation(
             'Confirm Return',
-            'Are you sure you want to return this order to the picker? This will release the order from your verification queue.',
+            'Are you sure you want to return this order to the verification list?',
             async () => {
                 try {
                     await onAddNote(correctionNotes.trim());
@@ -203,8 +203,9 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
                 }
             },
             () => { },
-            'Return to Picker',
-            'Cancel'
+            'Return to Verification List',
+            'Cancel',
+            'warning'
         );
     };
 
@@ -449,7 +450,7 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
                                     className="flex-[2] py-3 bg-amber-500 text-main font-black uppercase tracking-widest text-[9px] rounded-xl shadow-lg shadow-amber-500/10 active:scale-95 transition-all disabled:opacity-30 flex items-center justify-center gap-2"
                                 >
                                     <Send size={14} />
-                                    Return to Picker
+                                    Return to Verification List
                                 </button>
                             </div>
                         </div>

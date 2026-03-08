@@ -6,6 +6,5 @@
 export * from './inventory.schema';
 export * from './log.schema';
 export * from './location.schema';
-export * from './ai.schema';
 export * from './zone.schema';
 export * from './picking.schema';

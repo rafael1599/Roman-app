@@ -113,6 +113,7 @@ const AuthGuard = () => {
           onClose={confirmationState.onClose}
           confirmText={confirmationState.confirmText}
           cancelText={confirmationState.cancelText}
+          variant={confirmationState.variant}
         />
       )}
     </>

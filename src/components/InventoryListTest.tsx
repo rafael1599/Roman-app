@@ -1,4 +1,4 @@
-import { useInventoryList } from '../hooks/useInventory';
+import { useInventoryList } from '../features/inventory/hooks/useInventory';
 import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
 import Package from 'lucide-react/dist/esm/icons/package';
 import MapPin from 'lucide-react/dist/esm/icons/map-pin';
@@ -40,7 +40,7 @@ export function InventoryListTest() {
             </div>
 
             <div className="grid gap-3">
-                {items?.data?.map((item) => (
+                {items?.data?.map((item: any) => (
                     <div
                         key={item.id}
                         className="group p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-all duration-300 hover:translate-x-1"
