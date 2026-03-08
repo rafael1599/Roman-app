@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { useDoubleCheckList, PickingList } from '../../../hooks/useDoubleCheckList';
+import { useDoubleCheckList, PickingList } from '../hooks/useDoubleCheckList';
 import { useViewMode } from '../../../context/ViewModeContext';
 import ClipboardCheck from 'lucide-react/dist/esm/icons/clipboard-check';
 import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down';

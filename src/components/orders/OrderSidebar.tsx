@@ -50,7 +50,7 @@ export const OrderSidebar: React.FC<OrderSidebarProps> = ({
     };
 
     return (
-        <aside className="w-full md:w-[360px] md:h-full border-r border-subtle flex flex-col p-5 md:p-7 shrink-0 md:overflow-y-auto bg-card backdrop-blur-3xl z-40 no-scrollbar rounded-3xl md:rounded-none mb-8 md:mb-0 relative overflow-hidden">
+        <aside className="w-full md:w-80 2xl:w-[400px] h-full border-r border-subtle flex flex-col p-5 md:p-8 shrink-0 overflow-y-auto bg-card backdrop-blur-3xl z-40 no-scrollbar rounded-3xl md:rounded-none mb-8 md:mb-0 relative overflow-hidden">
             {/* Soft Ambient Glow inside sidebar */}
             <div className="absolute -top-20 -right-20 w-40 h-40 bg-accent/5 blur-[80px] pointer-events-none" />
 

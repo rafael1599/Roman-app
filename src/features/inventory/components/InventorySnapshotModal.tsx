@@ -8,8 +8,9 @@ import Check from 'lucide-react/dist/esm/icons/check';
 import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
 import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle';
 
-import { useInventorySnapshot, type SnapshotItem } from '../../../hooks/useInventorySnapshot';
+import { useInventorySnapshot, type SnapshotItem } from '../hooks/useInventorySnapshot';
 import { toast } from 'react-hot-toast';
+import { SearchInput } from '../../../components/ui/SearchInput';
 
 const naturalSort = (a: string, b: string) =>
     a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
@@ -169,27 +170,13 @@ export const InventorySnapshotModal = ({ isOpen, onClose }: { isOpen: boolean; o
                         </div>
                         <div className="sm:col-span-1 lg:col-span-2 space-y-2">
                             <label className="text-[10px] text-muted font-black uppercase tracking-widest pl-1">Instant Search</label>
-                            <div className="relative">
-                                <input
-                                    ref={searchInputRef}
-                                    type="text"
-                                    placeholder="Search SKU, location or warehouse..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full bg-surface border border-subtle rounded-2xl py-3.5 px-4 text-xs font-bold focus:outline-none focus:border-accent text-content pr-10"
-                                />
-                                {searchQuery && (
-                                    <button
-                                        onClick={() => {
-                                            setSearchQuery('');
-                                            searchInputRef.current?.focus();
-                                        }}
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-content transition-colors"
-                                    >
-                                        <X size={18} />
-                                    </button>
-                                )}
-                            </div>
+                            <SearchInput
+                                variant="inline"
+                                value={searchQuery}
+                                onChange={setSearchQuery}
+                                placeholder="Search SKU, location or warehouse..."
+                                preferenceId="snapshot"
+                            />
                         </div>
                     </div>
 

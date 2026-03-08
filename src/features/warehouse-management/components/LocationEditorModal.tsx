@@ -6,7 +6,7 @@ import X from 'lucide-react/dist/esm/icons/x';
 import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle';
 import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle';
 import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
-import { useInventory } from '../../../hooks/useInventoryData';
+import { useInventory } from '../../inventory/hooks/useInventoryData';
 import { useConfirmation } from '../../../context/ConfirmationContext';
 import {
   validateCapacityChange,

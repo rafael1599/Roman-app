@@ -11,7 +11,7 @@ import { useAutoSelect } from '../../../hooks/useAutoSelect';
 import toast from 'react-hot-toast';
 
 // Define Interface for Cart Items matches PickingSessionView definition
-import { type CartItem } from '../../../hooks/picking/usePickingCart';
+import { type CartItem } from '../hooks/usePickingCart';
 
 interface OrderBuilderModeProps {
     cartItems: CartItem[];

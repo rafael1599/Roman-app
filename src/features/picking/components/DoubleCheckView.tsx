@@ -10,7 +10,7 @@ import { CorrectionNotesTimeline, Note } from './CorrectionNotesTimeline';
 import { SlideToConfirm } from '../../../components/ui/SlideToConfirm.tsx';
 import { useConfirmation } from '../../../context/ConfirmationContext';
 import { usePickingSession } from '../../../context/PickingContext';
-import { useInventory } from '../../../hooks/InventoryProvider';
+import { useInventory } from '../../inventory/hooks/InventoryProvider';
 import { type DistributionItem, STORAGE_TYPE_LABELS } from '../../../schemas/inventory.schema';
 import toast from 'react-hot-toast';
 

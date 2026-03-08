@@ -2,7 +2,7 @@ import { useState, useEffect, FormEvent } from 'react';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, rectSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { useInventory } from '../../../hooks/useInventoryData';
+import { useInventory } from '../../inventory/hooks/useInventoryData';
 import Plus from 'lucide-react/dist/esm/icons/plus';
 import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
 import Edit2 from 'lucide-react/dist/esm/icons/edit-2';

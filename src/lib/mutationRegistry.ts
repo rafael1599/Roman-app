@@ -10,7 +10,7 @@
  */
 import { QueryClient } from '@tanstack/react-query';
 import { supabase } from './supabase';
-import { inventoryService } from '../services/inventory.service';
+import { inventoryService } from '../features/inventory/api/inventory.service';
 
 // ─── Types ────────────────────────────────────────────────────────────
 

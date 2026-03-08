@@ -4,10 +4,11 @@ import MapPin from 'lucide-react/dist/esm/icons/map-pin';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import Package from 'lucide-react/dist/esm/icons/package';
 import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right';
-import { useLocationManagement } from '../../../hooks/useLocationManagement';
-import { useInventory } from '../../../hooks/useInventoryData';
+import { useLocationManagement } from '../../inventory/hooks/useLocationManagement';
+import { useInventory } from '../../inventory/hooks/useInventoryData';
 import LocationEditorModal from './LocationEditorModal';
 import { type Location } from '../../../schemas/location.schema';
+import { SearchInput } from '../../../components/ui/SearchInput';
 
 /**
  * LocationList - Grid/List of locations with edit capability
@@ -28,7 +29,7 @@ export const LocationList = () => {
   // Get unique warehouses from locations (only shows warehouses that have locations)
   const warehouses = useMemo(() => {
     const unique = new Set(locations.map((l) => l.warehouse));
-    return Array.from(unique).sort();
+    return Array.from(unique).filter(wh => wh !== 'ATS').sort();
   }, [locations]);
 
   // Update selected warehouse if it no longer exists in the list or on initial load
@@ -106,46 +107,30 @@ export const LocationList = () => {
 
       {/* Toolbar */}
       <div className="flex flex-col sm:flex-row gap-3 bg-card border border-subtle p-4 rounded-xl">
-        {/* Search */}
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" size={18} />
-          <input
-            ref={searchInputRef}
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search location..."
-            className="w-full pl-10 pr-10 py-2 bg-surface border border-subtle rounded-lg text-content placeholder-muted focus:border-accent focus:outline-none"
-          />
-          {searchTerm && (
-            <button
-              onClick={() => {
-                setSearchTerm('');
-                searchInputRef.current?.focus();
-              }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-content transition-colors"
-              aria-label="Clear search"
-            >
-              <X size={16} />
-            </button>
-          )}
-        </div>
-
-        {/* Warehouse Filter */}
-        <div className="flex gap-2">
-          {warehouses.map((wh) => (
-            <button
-              key={wh}
-              onClick={() => setSelectedWarehouse(wh)}
-              className={`px-3 py-2 rounded-lg text-xs font-bold transition-all ${selectedWarehouse === wh
-                ? 'bg-accent text-main'
-                : 'bg-surface text-muted hover:bg-main'
-                }`}
-            >
-              {wh}
-            </button>
-          ))}
-        </div>
+        {/* Search and Filter */}
+        <SearchInput
+          variant="inline"
+          value={searchTerm}
+          onChange={setSearchTerm}
+          placeholder="Search location..."
+          preferenceId="locations"
+          rightSlot={
+            <div className="flex gap-2">
+              {warehouses.map((wh) => (
+                <button
+                  key={wh}
+                  onClick={() => setSelectedWarehouse(wh)}
+                  className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${selectedWarehouse === wh
+                    ? 'bg-accent text-main shadow-lg shadow-accent/20'
+                    : 'bg-surface text-muted border border-subtle hover:bg-main'
+                    }`}
+                >
+                  {wh}
+                </button>
+              ))}
+            </div>
+          }
+        />
       </div>
 
       {/* Stats */}

@@ -2,14 +2,14 @@ import React, { createContext, useContext, useState, ReactNode, useCallback, use
 import toast from 'react-hot-toast';
 import { useAuth } from './AuthContext';
 import { supabase } from '../lib/supabase';
-import { useInventory } from '../hooks/useInventoryData';
+import { useInventory } from '../features/inventory/hooks/useInventoryData';
 import { useError } from './ErrorContext';
-import { usePickingCart, CartItem } from '../hooks/picking/usePickingCart';
-import { usePickingSync } from '../hooks/picking/usePickingSync';
-import { usePickingActions } from '../hooks/picking/usePickingActions';
-import { usePickingNotes, PickingNote } from '../hooks/picking/usePickingNotes';
+import { usePickingCart, CartItem } from '../features/picking/hooks/usePickingCart';
+import { usePickingSync } from '../features/picking/hooks/usePickingSync';
+import { usePickingActions } from '../features/picking/hooks/usePickingActions';
+import { usePickingNotes, PickingNote } from '../features/picking/hooks/usePickingNotes';
 import type { Customer } from '../types/schema';
-import { useLocationManagement } from '../hooks/useLocationManagement';
+import { useLocationManagement } from '../features/inventory/hooks/useLocationManagement';
 import { getOptimizedPickingPath, calculatePallets, type Pallet } from '../utils/pickingLogic';
 
 interface PickingContextType {

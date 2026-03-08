@@ -10,7 +10,7 @@ import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle';
 import ArrowLeft from 'lucide-react/dist/esm/icons/arrow-left';
 import { getOptimizedPickingPath, calculatePallets } from '../../../utils/pickingLogic';
 import { generatePickingPdf } from '../../../utils/pickingPdf';
-import { useLocationManagement } from '../../../hooks/useLocationManagement';
+import { useLocationManagement } from '../../inventory/hooks/useLocationManagement';
 import { SlideToConfirm } from '../../../components/ui/SlideToConfirm.tsx';
 import { useError } from '../../../context/ErrorContext';
 import { useConfirmation } from '../../../context/ConfirmationContext';
@@ -23,7 +23,7 @@ import { useAutoSelect } from '../../../hooks/useAutoSelect';
 import toast from 'react-hot-toast';
 
 // Define explicit interfaces
-import { type CartItem } from '../../../hooks/picking/usePickingCart';
+import { type CartItem } from '../hooks/usePickingCart';
 
 interface PickingSessionViewProps {
     cartItems: CartItem[];

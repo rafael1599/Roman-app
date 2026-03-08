@@ -107,9 +107,9 @@ export default function WarehouseSelectionModal({
                   {/* Ludlow Option */}
                   <button
                     onClick={() => handleSelect(itemKey, 'ludlow')}
-                    className={`p-4 rounded-xl border-2 transition-all active:scale-[0.98] text-left ${selections[itemKey] === 'ludlow'
-                        ? 'bg-green-500/10 border-green-500/30 shadow-lg shadow-green-500/10'
-                        : 'bg-main border-subtle hover:border-green-500/50'
+                    className={`p-4 rounded-xl border-2 transition-all active:scale-[0.98] text-left flex-1 ${selections[itemKey] === 'ludlow'
+                      ? 'bg-green-500/10 border-green-500/30 shadow-lg shadow-green-500/10'
+                      : 'bg-main border-subtle hover:border-green-500/50'
                       }`}
                   >
                     <div className="flex items-center justify-between mb-2">
@@ -155,59 +155,6 @@ export default function WarehouseSelectionModal({
                           </span>
                         </div>
                         {!item.ludlow.hasStock && (
-                          <div className="mt-2 text-red-400 text-[10px] font-bold bg-red-500/10 px-2 py-1 rounded uppercase tracking-wider">
-                            Insufficient stock
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </button>
-
-                  {/* ATS Option */}
-                  <button
-                    onClick={() => handleSelect(itemKey, 'ats')}
-                    className={`p-4 rounded-xl border-2 transition-all active:scale-[0.98] text-left ${selections[itemKey] === 'ats'
-                        ? 'bg-blue-500/10 border-blue-500/30 shadow-lg shadow-blue-500/10'
-                        : 'bg-main border-subtle hover:border-blue-500/50'
-                      }`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <Warehouse
-                          size={18}
-                          className={selections[itemKey] === 'ats' ? 'text-blue-500' : 'text-muted'}
-                        />
-                        <span
-                          className={`font-bold ${selections[itemKey] === 'ats' ? 'text-blue-600' : 'text-content'}`}
-                        >
-                          ATS Grid
-                        </span>
-                      </div>
-                      {selections[itemKey] === 'ats' && (
-                        <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
-                          ✓
-                        </div>
-                      )}
-                    </div>
-                    {item.ats && (
-                      <div className="space-y-1">
-                        <div className="text-sm text-muted">
-                          <span className="opacity-50">Stock:</span>{' '}
-                          <span
-                            className={selections[itemKey] === 'ats' ? 'text-blue-600 font-bold' : ''}
-                          >
-                            {item.ats.available}
-                          </span>
-                        </div>
-                        <div className="text-sm text-muted">
-                          <span className="opacity-50">Loc:</span>{' '}
-                          <span
-                            className={selections[itemKey] === 'ats' ? 'text-blue-600 font-bold' : ''}
-                          >
-                            {item.ats.location}
-                          </span>
-                        </div>
-                        {!item.ats.hasStock && (
                           <div className="mt-2 text-red-400 text-[10px] font-bold bg-red-500/10 px-2 py-1 rounded uppercase tracking-wider">
                             Insufficient stock
                           </div>

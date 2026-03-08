@@ -43,17 +43,7 @@ export interface Transaction {
     deducted: number;
 }
 
-export interface VerificationItem {
-    sku: string;
-    qty: number;
-}
 
-export interface PalletVerificationResult {
-    matched: Array<{ sku: string; expected: number; detected: number; match: boolean }>;
-    missing: Array<{ sku: string; qty: number }>;
-    extra: Array<{ sku: string; qty: number }>;
-    manualOverride?: boolean;
-}
 
 export interface Order {
     id: string;

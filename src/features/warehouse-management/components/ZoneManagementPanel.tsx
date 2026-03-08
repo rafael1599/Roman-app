@@ -1,10 +1,9 @@
-import Search from 'lucide-react/dist/esm/icons/search';
-import X from 'lucide-react/dist/esm/icons/x';
 import Wand2 from 'lucide-react/dist/esm/icons/wand-2';
 import { useState, useMemo, useRef } from 'react';
 import { useError } from '../../../context/ErrorContext';
 import { useConfirmation } from '../../../context/ConfirmationContext';
 import toast from 'react-hot-toast';
+import { SearchInput } from '../../../components/ui/SearchInput';
 
 interface ZoneManagementProps {
   locations: string[];
@@ -70,58 +69,36 @@ export const ZoneManagementPanel = ({
   return (
     <div className="space-y-6">
       {/* Header / Tools */}
-      <div className="flex flex-col md:flex-row gap-4 justify-between items-end bg-card border border-subtle p-4 rounded-xl">
-        <div className="w-full md:w-auto flex-1">
-          <div className="relative">
-            <Search
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted"
-              size={18}
-            />
-            <input
-              ref={searchInputRef}
-              type="text"
-              placeholder="Search location..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-main border border-subtle rounded-lg pl-10 pr-10 py-2 text-content focus:border-accent outline-none"
-            />
-            {searchTerm && (
-              <button
-                onClick={() => {
-                  setSearchTerm('');
-                  searchInputRef.current?.focus();
-                }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-content transition-colors"
-                aria-label="Clear search"
-              >
-                <X size={16} />
-              </button>
-            )}
+      <SearchInput
+        variant="inline"
+        value={searchTerm}
+        onChange={setSearchTerm}
+        placeholder="Search location..."
+        preferenceId="zones"
+        rightSlot={
+          <div className="flex gap-2 w-full md:w-auto">
+            <select
+              value={filterZone}
+              onChange={(e) => setFilterZone(e.target.value)}
+              className="bg-surface text-content border border-subtle rounded-xl px-4 py-2 text-[11px] font-black uppercase tracking-widest outline-none focus:border-accent"
+            >
+              <option value="ALL">All Zones</option>
+              <option value="HOT">🔥 Hot Zone</option>
+              <option value="WARM">☀️ Warm Zone</option>
+              <option value="COLD">❄️ Cold Zone</option>
+            </select>
+
+            <button
+              onClick={handleAutoAssign}
+              disabled={isAutoAssigning}
+              className="bg-purple-600 hover:bg-purple-500 text-white px-5 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest flex items-center gap-2 whitespace-nowrap transition-all active:scale-95 shadow-lg shadow-purple-500/20"
+            >
+              <Wand2 size={16} />
+              {isAutoAssigning ? 'Working...' : 'Auto-Assign'}
+            </button>
           </div>
-        </div>
-
-        <div className="flex gap-2 w-full md:w-auto">
-          <select
-            value={filterZone}
-            onChange={(e) => setFilterZone(e.target.value)}
-            className="bg-surface text-content border border-subtle rounded-lg px-3 py-2 text-sm font-bold"
-          >
-            <option value="ALL">All Zones</option>
-            <option value="HOT">🔥 Hot Zone</option>
-            <option value="WARM">☀️ Warm Zone</option>
-            <option value="COLD">❄️ Cold Zone</option>
-          </select>
-
-          <button
-            onClick={handleAutoAssign}
-            disabled={isAutoAssigning}
-            className="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 whitespace-nowrap transition-colors"
-          >
-            <Wand2 size={16} />
-            {isAutoAssigning ? 'Working...' : 'Auto-Assign'}
-          </button>
-        </div>
-      </div>
+        }
+      />
 
       {/* List */}
       <div className="bg-card border border-subtle rounded-2xl overflow-hidden">

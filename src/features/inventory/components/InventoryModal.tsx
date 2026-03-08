@@ -13,8 +13,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import toast from 'react-hot-toast';
 
-import { useInventory } from '../../../hooks/useInventoryData';
-import { useLocationManagement } from '../../../hooks/useLocationManagement';
+import { useInventory } from '../hooks/useInventoryData';
+import { useLocationManagement } from '../hooks/useLocationManagement';
 import { useConfirmation } from '../../../context/ConfirmationContext';
 import { useViewMode } from '../../../context/ViewModeContext';
 import { useAutoSelect } from '../../../hooks/useAutoSelect';
@@ -22,7 +22,7 @@ import { useAutoSelect } from '../../../hooks/useAutoSelect';
 import AutocompleteInput from '../../../components/ui/AutocompleteInput.tsx';
 import { InventoryItemWithMetadata, InventoryItemInput, InventoryItemInputSchema, type DistributionItem, STORAGE_TYPE_LABELS } from '../../../schemas/inventory.schema';
 import { predictLocation } from '../../../utils/locationPredictor';
-import { inventoryService } from '../../../services/inventory.service';
+import { inventoryService } from '../api/inventory.service';
 
 interface InventoryModalProps {
     isOpen: boolean;
@@ -193,24 +193,8 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
 
     // 3.5 Dynamic Warehouse List
     const availableWarehouses = useMemo(() => {
-        // Only show warehouses that have items with quantity > 0
-        const whs = new Set<string>();
-        if (ludlowData.some(i => i.quantity > 0)) whs.add('LUDLOW');
-        if (atsData.some(i => i.quantity > 0)) whs.add('ATS');
-
-        // Always include the current selection or initial data to avoid empty selection
-        if (formData.warehouse) whs.add(formData.warehouse);
-        if (initialData?.warehouse) whs.add(initialData.warehouse);
-
-        // If absolutely no warehouses have items, default to LUDLOW
-        if (whs.size === 0) return ['LUDLOW'];
-
-        return Array.from(whs).sort((a, b) => {
-            if (a === 'LUDLOW') return -1;
-            if (b === 'LUDLOW') return 1;
-            return a.localeCompare(b);
-        }) as ('LUDLOW' | 'ATS')[];
-    }, [ludlowData, atsData, formData.warehouse, initialData]);
+        return ['LUDLOW'] as ('LUDLOW' | 'ATS')[];
+    }, []);
 
     // 4. Real-time Validation & Presence Tracking
     const [validationState, setValidationState] = useState<{
@@ -493,7 +477,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
                             minChars={2}
                             initialKeyboardMode="numeric"
                             onSelect={(s: any) => {
-                                const match = currentInventory.find(i => i.sku === s.value);
+                                const match = currentInventory.find(i => i.sku === s.value) as InventoryItemWithMetadata | undefined;
                                 if (match && mode === 'add') {
                                     setValue('location', match.location || '', { shouldValidate: true });
                                     setValue('item_name', match.item_name || '', { shouldValidate: true });

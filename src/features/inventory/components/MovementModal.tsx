@@ -7,12 +7,12 @@ import CheckCircle2 from 'lucide-react/dist/esm/icons/check-circle-2';
 import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle';
 import Zap from 'lucide-react/dist/esm/icons/zap';
 import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle';
-import { useInventory } from '../../../hooks/useInventoryData';
-import { useMovementForm } from '../../../hooks/useMovementForm';
-import { useLocationSuggestions } from '../../../hooks/useLocationSuggestions';
+import { useInventory } from '../hooks/useInventoryData';
+import { useMovementForm } from '../hooks/useMovementForm';
+import { useLocationSuggestions } from '../hooks/useLocationSuggestions';
 import AutocompleteInput from '../../../components/ui/AutocompleteInput.tsx';
 import { CapacityBar } from '../../../components/ui/CapacityBar.tsx';
-import { useLocationManagement } from '../../../hooks/useLocationManagement';
+import { useLocationManagement } from '../hooks/useLocationManagement';
 import { predictLocation } from '../../../utils/locationPredictor';
 import { useViewMode } from '../../../context/ViewModeContext';
 import { useAutoSelect } from '../../../hooks/useAutoSelect';
@@ -260,7 +260,7 @@ export const MovementModal: React.FC<MovementModalProps> = ({ isOpen, onClose, o
                                 Target Warehouse
                             </label>
                             <div className="flex flex-wrap gap-2">
-                                {['LUDLOW', 'ATS'].map((wh) => (
+                                {['LUDLOW'].map((wh) => (
                                     <button
                                         key={wh}
                                         type="button"

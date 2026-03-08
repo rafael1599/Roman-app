@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { useInventory } from '../../../hooks/useInventoryData';
+import { useInventory } from '../../inventory/hooks/useInventoryData';
 import {
   Order,
   ScannedItem,

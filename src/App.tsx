@@ -1,22 +1,22 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { InventoryProvider, useInventory } from './hooks/InventoryProvider';
+import { InventoryProvider, useInventory } from './features/inventory/hooks/InventoryProvider';
 import { LayoutMain } from './components/layout/LayoutMain';
 import { ErrorProvider, useError } from './context/ErrorContext'; // Import ErrorProvider and useError
 import { ConfirmationProvider, useConfirmation } from './context/ConfirmationContext'; // Import ConfirmationProvider and useConfirmation
 import { ErrorModal } from './components/ui/ErrorModal'; // Import ErrorModal
 import { ConfirmationModal } from './components/ui/ConfirmationModal'; // Import ConfirmationModal
 const InventoryScreen = React.lazy(() =>
-  import('./screens/InventoryScreen.tsx').then((m) => ({ default: m.InventoryScreen }))
+  import('./features/inventory/InventoryScreen.tsx').then((m) => ({ default: m.InventoryScreen }))
 );
 const HistoryScreen = React.lazy(() =>
-  import('./screens/HistoryScreen.tsx').then((m) => ({ default: m.HistoryScreen }))
+  import('./features/inventory/HistoryScreen.tsx').then((m) => ({ default: m.HistoryScreen }))
 );
-const Settings = React.lazy(() => import('./screens/Settings.tsx'));
-const LoginScreen = React.lazy(() => import('./screens/LoginScreen').then(m => ({ default: m.LoginScreen })));
-const OrdersScreen = React.lazy(() => import('./screens/OrdersScreen').then(m => ({ default: m.OrdersScreen })));
-const SnapshotViewer = React.lazy(() => import('./screens/SnapshotViewer').then(m => ({ default: m.SnapshotViewer })));
-const StockCountScreen = React.lazy(() => import('./screens/StockCountScreen').then(m => ({ default: m.StockCountScreen })));
+const Settings = React.lazy(() => import('./features/settings/Settings.tsx'));
+const LoginScreen = React.lazy(() => import('./features/auth/LoginScreen').then(m => ({ default: m.LoginScreen })));
+const OrdersScreen = React.lazy(() => import('./features/picking/OrdersScreen').then(m => ({ default: m.OrdersScreen })));
+const SnapshotViewer = React.lazy(() => import('./features/inventory/SnapshotViewer').then(m => ({ default: m.SnapshotViewer })));
+const StockCountScreen = React.lazy(() => import('./features/inventory/StockCountScreen').then(m => ({ default: m.StockCountScreen })));
 
 import { ViewModeProvider } from './context/ViewModeContext';
 import { PickingProvider } from './context/PickingContext';

@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import X from 'lucide-react/dist/esm/icons/x';
-import { useLocationManagement } from '../../hooks/useLocationManagement';
+import { useLocationManagement } from '../../features/inventory/hooks/useLocationManagement';
 import { getOptimizedPickingPath, calculatePallets } from '../../utils/pickingLogic';
 
 interface PickingSummaryModalProps {

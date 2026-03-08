@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useWarehouseZones } from '../../../hooks/useWarehouseZones';
-import { useOptimizationReports } from '../../../hooks/useOptimizationReports';
+import { useWarehouseZones } from '../../inventory/hooks/useWarehouseZones';
+import { useOptimizationReports } from '../../inventory/hooks/useOptimizationReports';
 import { OptimizationReportCard } from './OptimizationReportCard';
 import { LocationList } from './LocationList';
 import { UserManagement } from './UserManagement';

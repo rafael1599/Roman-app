@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useInventory } from '../../../hooks/useInventoryData';
+import { useInventory } from '../../inventory/hooks/useInventoryData';
 import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right';
 import Check from 'lucide-react/dist/esm/icons/check';
 import X from 'lucide-react/dist/esm/icons/x';

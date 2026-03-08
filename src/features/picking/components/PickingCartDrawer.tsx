@@ -7,7 +7,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { useConfirmation } from '../../../context/ConfirmationContext';
 import { usePickingSession } from '../../../context/PickingContext';
 import { useViewMode } from '../../../context/ViewModeContext';
-import { useInventory } from '../../../hooks/InventoryProvider';
+import { useInventory } from '../../inventory/hooks/InventoryProvider';
 import { getOptimizedPickingPath, calculatePallets } from '../../../utils/pickingLogic';
 import toast from 'react-hot-toast';
 
