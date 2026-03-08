@@ -53,3 +53,20 @@ The system uses **Optimistic Updates** via React Query. When a user adjusts stoc
 - **Styling**: Tailwind CSS with a custom "iOS Glass" design system.
 - **Database**: Supabase PostgreSQL with Realtime enabled for all major tables.
 - **Types**: 100% TypeScript. Avoid `any` where possible.
+
+## 🧠 Lessons Learned & Critical Solves (Session 2026-03-08)
+
+### 1. The "Completed Order" Regression Bug
+**Problem**: Users could accidentally revert finished orders back to "picking" mode by clicking the "Release" (X) button before the UI refreshed.
+**Solve**: Implemented **Triple-Layer Protection**:
+- **DB Layer**: Every status update (except completion) now includes a `.neq('status', 'completed')` filter in the Supabase query.
+- **UI Layer**: The "Release to Queue" button is conditionally hidden once `listStatus === 'completed'`.
+- **Sync Layer**: A Realtime effect in `PickingCartDrawer` monitors the order status and triggers `resetSession()` immediately upon server completion.
+
+### 2. RPC Argument Mismatch (400 Bad Request)
+**Problem**: The `adjust_inventory_quantity` RPC failed because the frontend was passing parameters (like `sku_note`) that had been removed from the Postgres function.
+**Solve**: Updated `useInventoryMutations` to strictly match the Postgres function signature. Always verify the `v_` parameter names in Supabase when a mutation returns a 400 error.
+
+### 3. Z-Index & Overflow in Fixed Headers
+**Problem**: On mobile, the order selection dropdown was hidden/cut off by the main form due to `overflow-hidden` on the header and low z-index.
+**Solve**: Removed `overflow-hidden` from the global header in `OrdersScreen.tsx` and boosted the dropdown's z-index to `110` to ensure it floats above all other absolute-positioned elements.
