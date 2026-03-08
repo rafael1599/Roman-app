@@ -39,3 +39,7 @@ supabase/.temp/
 tsc_output_expert.txt
 .agent/skills/
 .agents/skills/
+
+# Local Dev Data
+supabase/seed.sql
+supabase/snippets/

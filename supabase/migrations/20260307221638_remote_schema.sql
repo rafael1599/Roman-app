@@ -6,14 +6,18 @@ SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
-SELECT pg_catalog.set_config('search_path', '', false);
+SELECT pg_catalog.set_config('search_path', 'public, auth, extensions', false);
 SET check_function_bodies = false;
 SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
+CREATE SCHEMA IF NOT EXISTS "public";
+CREATE SCHEMA IF NOT EXISTS "auth";
+CREATE SCHEMA IF NOT EXISTS "extensions";
 
-CREATE EXTENSION IF NOT EXISTS "pg_cron" WITH SCHEMA "pg_catalog";
+
+-- CREATE EXTENSION IF NOT EXISTS "pg_cron" WITH SCHEMA "pg_catalog";
 
 
 
@@ -24,14 +28,14 @@ COMMENT ON SCHEMA "public" IS 'standard public schema';
 
 
 
-CREATE EXTENSION IF NOT EXISTS "pg_net" WITH SCHEMA "public";
+-- CREATE EXTENSION IF NOT EXISTS "pg_net" WITH SCHEMA "public";
 
 
 
 
 
 
-CREATE EXTENSION IF NOT EXISTS "pg_graphql" WITH SCHEMA "graphql";
+-- CREATE EXTENSION IF NOT EXISTS "pg_graphql" WITH SCHEMA "graphql";
 
 
 
@@ -52,7 +56,7 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto" WITH SCHEMA "extensions";
 
 
 
-CREATE EXTENSION IF NOT EXISTS "supabase_vault" WITH SCHEMA "vault";
+-- CREATE EXTENSION IF NOT EXISTS "supabase_vault" WITH SCHEMA "vault";
 
 
 
@@ -75,41 +79,55 @@ DECLARE
   v_location_name TEXT;
   v_prev_qty INTEGER;
   v_new_qty INTEGER;
+  v_actual_delta INTEGER;
   v_snapshot JSONB;
 BEGIN
-  -- resolve_location already handles UPPERCASE now
   v_location_id := public.resolve_location(p_warehouse, p_location, p_user_role);
   SELECT location INTO v_location_name FROM locations WHERE id = v_location_id;
+  
+  IF v_location_id IS NOT NULL AND v_location_name IS NULL THEN
+      v_location_name := UPPER(TRIM(p_location));
+  END IF;
+
+  v_actual_delta := p_delta;
 
   SELECT id, quantity, row_to_json(inventory.*)::jsonb INTO v_item_id, v_prev_qty, v_snapshot
   FROM inventory
-  WHERE sku = p_sku AND warehouse = p_warehouse 
-    AND UPPER(COALESCE(location, '')) = UPPER(COALESCE(v_location_name, ''))
+  WHERE sku = p_sku 
+    AND warehouse = p_warehouse 
+    AND UPPER(TRIM(COALESCE(location, ''))) = UPPER(TRIM(COALESCE(v_location_name, '')))
   FOR UPDATE;
 
   IF v_item_id IS NULL THEN
     v_prev_qty := 0;
-    v_new_qty := p_delta;
-    IF v_new_qty < 0 THEN RAISE EXCEPTION 'Insufficient stock'; END IF;
+    IF p_delta < 0 THEN
+      v_actual_delta := 0;
+      v_new_qty := 0;
+    ELSE
+      v_new_qty := p_delta;
+    END IF;
     
     INSERT INTO inventory (sku, warehouse, location, location_id, quantity, is_active, sku_note)
-    VALUES (p_sku, p_warehouse, v_location_name, v_location_id, v_new_qty, true, p_merge_note)
+    VALUES (p_sku, p_warehouse, v_location_name, v_location_id, v_new_qty, (v_new_qty > 0), p_merge_note)
     RETURNING id INTO v_item_id;
   ELSE
     v_new_qty := v_prev_qty + p_delta;
-    IF v_new_qty < 0 THEN RAISE EXCEPTION 'Insufficient stock'; END IF;
+    IF v_new_qty < 0 THEN 
+      v_new_qty := 0;
+      v_actual_delta := -v_prev_qty;
+    END IF;
 
     UPDATE inventory SET 
       quantity = v_new_qty,
       location_id = v_location_id,
-      location = v_location_name, -- Ensure actual column is updated to normalized name
-      is_active = CASE WHEN v_new_qty > 0 THEN true ELSE is_active END, -- Automatic Reactivation
+      location = v_location_name,
+      is_active = CASE WHEN v_new_qty > 0 THEN true ELSE is_active END,
       updated_at = NOW(),
       sku_note = CASE 
-        WHEN p_merge_note IS NOT NULL AND LENGTH(p_merge_note) > 0 THEN
+        WHEN p_merge_note IS NOT NULL AND LENGTH(TRIM(p_merge_note)) > 0 THEN 
             CASE 
-                WHEN sku_note IS NULL OR LENGTH(sku_note) = 0 THEN p_merge_note
-                WHEN sku_note != p_merge_note THEN sku_note || ' | ' || p_merge_note
+                WHEN sku_note IS NULL OR LENGTH(TRIM(sku_note)) = 0 THEN p_merge_note
+                WHEN sku_note != p_merge_note AND sku_note NOT LIKE '%' || p_merge_note || '%' THEN sku_note || ' | ' || p_merge_note
                 ELSE sku_note
             END
         ELSE sku_note
@@ -117,12 +135,10 @@ BEGIN
     WHERE id = v_item_id;
   END IF;
 
-  -- Only create log if not skipped (default behavior is to create log)
-  -- Skip when called from composite operations like MOVE that create their own log
-  IF NOT p_skip_log THEN
+  IF NOT p_skip_log AND v_actual_delta != 0 THEN
     PERFORM public.upsert_inventory_log(
       p_sku, p_warehouse, v_location_name, p_warehouse, v_location_name,
-      p_delta, v_prev_qty, v_new_qty, (CASE WHEN p_delta > 0 THEN 'ADD' ELSE 'DEDUCT' END),
+      v_actual_delta, v_prev_qty, v_new_qty, (CASE WHEN v_actual_delta > 0 THEN 'ADD' ELSE 'DEDUCT' END),
       v_item_id, v_location_id, v_location_id, p_performed_by, p_user_id, p_list_id, p_order_number, v_snapshot
     );
   END IF;
@@ -331,6 +347,39 @@ COMMENT ON FUNCTION "public"."delete_inventory_item"("p_item_id" integer, "p_per
 
 
 
+CREATE OR REPLACE FUNCTION "public"."enforce_uppercase_location"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+  IF NEW.location IS NOT NULL THEN
+    NEW.location := UPPER(TRIM(NEW.location));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."enforce_uppercase_location"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."enforce_uppercase_log_locations"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+  IF NEW.from_location IS NOT NULL THEN
+    NEW.from_location := UPPER(TRIM(NEW.from_location));
+  END IF;
+  IF NEW.to_location IS NOT NULL THEN
+    NEW.to_location := UPPER(TRIM(NEW.to_location));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."enforce_uppercase_log_locations"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."get_snapshot"("p_target_date" "date") RETURNS TABLE("warehouse" "text", "location" "text", "sku" "text", "quantity" integer, "location_id" "uuid", "sku_note" "text")
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
@@ -510,55 +559,41 @@ COMMENT ON FUNCTION "public"."is_user_online"("p_user_id" "uuid") IS 'Returns TR
 
 
 
-CREATE OR REPLACE FUNCTION "public"."move_inventory_stock"("p_sku" "text", "p_from_warehouse" "text", "p_from_location" "text", "p_to_warehouse" "text", "p_to_location" "text", "p_qty" integer, "p_performed_by" "text", "p_user_id" "uuid", "p_user_role" "text" DEFAULT 'staff'::"text") RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."move_inventory_stock"("p_sku" "text", "p_from_warehouse" "text", "p_from_location" "text", "p_to_warehouse" "text", "p_to_location" "text", "p_qty" integer, "p_performed_by" "text", "p_user_id" "uuid" DEFAULT NULL::"uuid", "p_user_role" "text" DEFAULT 'staff'::"text") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
 DECLARE
-  v_src_id INTEGER;
-  v_from_loc_id UUID;
-  v_to_loc_id UUID;
-  v_src_prev_qty INTEGER;
-  v_src_new_qty INTEGER;
-  v_snapshot JSONB;
-  v_src_note TEXT;
+  v_src_id BIGINT; v_src_prev_qty INTEGER; v_src_new_qty INTEGER; v_src_note TEXT;
+  v_from_loc_id UUID; v_from_loc_name TEXT; v_to_loc_id UUID; v_snapshot JSONB;
 BEGIN
-  v_from_loc_id := public.resolve_location(p_from_warehouse, p_from_location, p_user_role);
-  v_to_loc_id := public.resolve_location(p_to_warehouse, p_to_location, p_user_role);
+  p_from_location := NULLIF(TRIM(UPPER(p_from_location)), '');
+  p_to_location := NULLIF(TRIM(UPPER(p_to_location)), '');
 
-  SELECT id, quantity, sku_note, row_to_json(inventory.*)::jsonb INTO v_src_id, v_src_prev_qty, v_src_note, v_snapshot
-  FROM inventory 
-  WHERE sku = p_sku AND warehouse = p_from_warehouse 
-    AND UPPER(location) = (SELECT UPPER(location) FROM locations WHERE id = v_from_loc_id)
-  FOR UPDATE;
+  SELECT id, quantity, sku_note INTO v_src_id, v_src_prev_qty, v_src_note
+  FROM public.inventory WHERE sku = p_sku AND warehouse = p_from_warehouse 
+  AND ((p_from_location IS NULL AND (location IS NULL OR location = '')) OR (location = p_from_location))
+  AND is_active = TRUE FOR UPDATE;
 
-  IF v_src_id IS NULL OR v_src_prev_qty < p_qty THEN RAISE EXCEPTION 'Insufficient source stock'; END IF;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Source item not found or inactive'; END IF;
 
+  v_from_loc_id := public.resolve_location(p_from_warehouse, p_from_location);
+  SELECT location INTO v_from_loc_name FROM public.locations WHERE id = v_from_loc_id;
+  v_to_loc_id := public.resolve_location(p_to_warehouse, p_to_location);
+
+  PERFORM public.adjust_inventory_quantity(p_sku, p_from_warehouse, p_from_location, -p_qty, p_performed_by, p_user_id, p_user_role, NULL, NULL, NULL, TRUE);
   v_src_new_qty := v_src_prev_qty - p_qty;
-  UPDATE inventory SET 
-    quantity = v_src_new_qty,
-    -- Note: is_active follows Zero Stock Persistence (remains true if it was true)
-    updated_at = NOW()
-  WHERE id = v_src_id;
+  PERFORM public.adjust_inventory_quantity(p_sku, p_to_warehouse, p_to_location, p_qty, p_performed_by, p_user_id, p_user_role, NULL, NULL, v_src_note, TRUE);
 
-  -- Target adjustment (handles reactivation and normalization)
-  -- IMPORTANT: Pass p_skip_log = TRUE to prevent duplicate ADD log
-  -- We'll create a single MOVE log below instead
-  PERFORM public.adjust_inventory_quantity(
-    p_sku, p_to_warehouse, p_to_location, p_qty, p_performed_by, p_user_id, p_user_role,
-    NULL, NULL, v_src_note,
-    TRUE  -- p_skip_log = TRUE (prevents duplicate ADD log)
-  );
+  SELECT jsonb_build_object('id', v_src_id, 'sku', p_sku, 'quantity', v_src_new_qty, 'location', p_from_location, 'warehouse', p_from_warehouse) INTO v_snapshot;
 
-  -- Create single MOVE log that represents the entire operation
   PERFORM public.upsert_inventory_log(
-    p_sku, p_from_warehouse, p_from_location, p_to_warehouse, p_to_location,
-    -p_qty, v_src_prev_qty, v_src_new_qty, 'MOVE',
-    v_src_id, v_from_loc_id, v_to_loc_id, p_performed_by, p_user_id, NULL, NULL, v_snapshot
+    p_sku::TEXT, p_from_warehouse::TEXT, v_from_loc_name::TEXT, p_to_warehouse::TEXT, p_to_location::TEXT,
+    (-p_qty)::INTEGER, v_src_prev_qty::INTEGER, v_src_new_qty::INTEGER, 'MOVE'::TEXT,
+    v_src_id::BIGINT, v_from_loc_id::UUID, v_to_loc_id::UUID, p_performed_by::TEXT, p_user_id::UUID, NULL::UUID, NULL::TEXT, v_snapshot::JSONB
   );
 
-  RETURN (SELECT row_to_json(i)::jsonb FROM inventory i WHERE id = v_src_id);
-END;
-$$;
+  RETURN jsonb_build_object('success', true, 'moved_qty', p_qty, 'id', v_src_id);
+END; $$;
 
 
 ALTER FUNCTION "public"."move_inventory_stock"("p_sku" "text", "p_from_warehouse" "text", "p_from_location" "text", "p_to_warehouse" "text", "p_to_location" "text", "p_qty" integer, "p_performed_by" "text", "p_user_id" "uuid", "p_user_role" "text") OWNER TO "postgres";
@@ -575,6 +610,7 @@ DECLARE
   v_location TEXT;
   v_qty INTEGER;
   v_order_number TEXT;
+  v_sku_not_found BOOLEAN;
 BEGIN
   SELECT * INTO v_list FROM picking_lists WHERE id = p_list_id FOR UPDATE;
   
@@ -594,10 +630,12 @@ BEGIN
     v_warehouse := v_item->>'warehouse';
     v_location := v_item->>'location';
     v_qty := (v_item->>'pickingQty')::integer;
+    v_sku_not_found := (v_item->>'sku_not_found')::boolean;
 
-    IF v_qty IS NULL OR v_qty <= 0 THEN CONTINUE; END IF;
+    IF v_qty IS NULL OR v_qty <= 0 OR v_sku_not_found = true THEN 
+      CONTINUE; 
+    END IF;
 
-    -- Call with 10 arguments explicitly to avoid any ambiguity, though defaults should handle it
     PERFORM public.adjust_inventory_quantity(
       v_sku, v_warehouse, v_location, -v_qty,
       p_performed_by, p_user_id, p_user_role, p_list_id, v_order_number,
@@ -683,7 +721,8 @@ CREATE OR REPLACE FUNCTION "public"."sync_inventory_seq_on_insert"() RETURNS "tr
 BEGIN
     -- Si el INSERT trae un ID explícito, ajustamos la secuencia para que el próximo sea ID+1
     IF NEW.id IS NOT NULL THEN
-        PERFORM setval('public.inventory_id_seq', GREATEST(NEW.id, (SELECT last_value FROM public.inventory_id_seq)));
+        -- Safely get last_value, handling case where it might not be initialized
+        PERFORM setval('public.inventory_id_seq', GREATEST(NEW.id, COALESCE((SELECT last_value FROM public.inventory_id_seq), 1)));
     END IF;
     RETURN NEW;
 END;
@@ -848,34 +887,12 @@ $$;
 ALTER FUNCTION "public"."update_warehouse_zones_updated_at"() OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."upsert_inventory_log"("p_sku" "text", "p_from_warehouse" "text", "p_from_location" "text", "p_to_warehouse" "text", "p_to_location" "text", "p_quantity_change" integer, "p_prev_quantity" integer, "p_new_quantity" integer, "p_action_type" "text", "p_item_id" integer, "p_location_id" "uuid", "p_to_location_id" "uuid", "p_performed_by" "text", "p_user_id" "uuid", "p_list_id" "uuid" DEFAULT NULL::"uuid", "p_order_number" "text" DEFAULT NULL::"text", "p_snapshot_before" "jsonb" DEFAULT NULL::"jsonb", "p_is_reversed" boolean DEFAULT false) RETURNS "uuid"
+CREATE OR REPLACE FUNCTION "public"."upsert_inventory_log"("p_sku" "text", "p_from_warehouse" "text", "p_from_location" "text", "p_to_warehouse" "text", "p_to_location" "text", "p_quantity_change" integer, "p_prev_quantity" integer, "p_new_quantity" integer, "p_action_type" "text", "p_item_id" bigint, "p_location_id" "uuid", "p_to_location_id" "uuid", "p_performed_by" "text", "p_user_id" "uuid", "p_list_id" "uuid" DEFAULT NULL::"uuid", "p_order_number" "text" DEFAULT NULL::"text", "p_snapshot_before" "jsonb" DEFAULT NULL::"jsonb", "p_is_reversed" boolean DEFAULT false) RETURNS "uuid"
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
-DECLARE
-  v_log_id UUID;
-  v_candidate_log RECORD;
+DECLARE v_log_id UUID;
 BEGIN
-  -- Intentar unir con un log reciente (ventana de 5 min) del mismo usuario/sku/acción
-  IF p_user_id IS NOT NULL AND p_is_reversed = FALSE THEN
-    SELECT * INTO v_candidate_log FROM inventory_logs
-    WHERE user_id = p_user_id AND sku = p_sku
-      AND COALESCE(from_location, '') = COALESCE(p_from_location, '')
-      AND COALESCE(to_location, '') = COALESCE(p_to_location, '')
-      AND action_type = p_action_type AND is_reversed = FALSE
-      AND created_at > NOW() - INTERVAL '5 minutes'
-    ORDER BY created_at DESC LIMIT 1;
-
-    IF FOUND THEN
-      UPDATE inventory_logs SET 
-        quantity_change = quantity_change + p_quantity_change,
-        new_quantity = p_new_quantity,
-        created_at = NOW()
-      WHERE id = v_candidate_log.id;
-      RETURN v_candidate_log.id;
-    END IF;
-  END IF;
-
-  INSERT INTO inventory_logs (
+  INSERT INTO public.inventory_logs (
     sku, from_warehouse, from_location, to_warehouse, to_location,
     quantity_change, prev_quantity, new_quantity, action_type,
     item_id, location_id, to_location_id, snapshot_before,
@@ -886,13 +903,11 @@ BEGIN
     p_item_id, p_location_id, p_to_location_id, p_snapshot_before,
     p_performed_by, p_user_id, p_list_id, p_order_number, p_is_reversed
   ) RETURNING id INTO v_log_id;
-
   RETURN v_log_id;
-END;
-$$;
+END; $$;
 
 
-ALTER FUNCTION "public"."upsert_inventory_log"("p_sku" "text", "p_from_warehouse" "text", "p_from_location" "text", "p_to_warehouse" "text", "p_to_location" "text", "p_quantity_change" integer, "p_prev_quantity" integer, "p_new_quantity" integer, "p_action_type" "text", "p_item_id" integer, "p_location_id" "uuid", "p_to_location_id" "uuid", "p_performed_by" "text", "p_user_id" "uuid", "p_list_id" "uuid", "p_order_number" "text", "p_snapshot_before" "jsonb", "p_is_reversed" boolean) OWNER TO "postgres";
+ALTER FUNCTION "public"."upsert_inventory_log"("p_sku" "text", "p_from_warehouse" "text", "p_from_location" "text", "p_to_warehouse" "text", "p_to_location" "text", "p_quantity_change" integer, "p_prev_quantity" integer, "p_new_quantity" integer, "p_action_type" "text", "p_item_id" bigint, "p_location_id" "uuid", "p_to_location_id" "uuid", "p_performed_by" "text", "p_user_id" "uuid", "p_list_id" "uuid", "p_order_number" "text", "p_snapshot_before" "jsonb", "p_is_reversed" boolean) OWNER TO "postgres";
 
 SET default_tablespace = '';
 
@@ -966,13 +981,16 @@ CREATE TABLE IF NOT EXISTS "public"."inventory" (
     "sku" "text" NOT NULL,
     "location" "text",
     "quantity" integer DEFAULT 0,
-    "sku_note" "text",
+    "item_name" "text",
     "warehouse" "text",
     "created_at" timestamp with time zone DEFAULT "now"(),
     "capacity" integer DEFAULT 550,
     "location_id" "uuid",
     "is_active" boolean DEFAULT true,
     "updated_at" timestamp with time zone DEFAULT "now"(),
+    "internal_note" "text",
+    "distribution" "jsonb" DEFAULT '[]'::"jsonb",
+    CONSTRAINT "distribution_is_array" CHECK (("jsonb_typeof"("distribution") = 'array'::"text")),
     CONSTRAINT "inventory_quantity_check" CHECK (("quantity" >= 0))
 );
 
@@ -980,6 +998,14 @@ ALTER TABLE ONLY "public"."inventory" REPLICA IDENTITY FULL;
 
 
 ALTER TABLE "public"."inventory" OWNER TO "postgres";
+
+
+COMMENT ON COLUMN "public"."inventory"."internal_note" IS 'Free-text hint for locating items within a location (e.g., "Behind the pole", "Bottom shelf")';
+
+
+
+COMMENT ON COLUMN "public"."inventory"."distribution" IS 'Physical grouping breakdown: [{type, count, units_each, label?}]. Sum of (count * units_each) should not exceed quantity.';
+
 
 
 ALTER TABLE "public"."inventory" ALTER COLUMN "id" ADD GENERATED BY DEFAULT AS IDENTITY (
@@ -1041,7 +1067,7 @@ CREATE TABLE IF NOT EXISTS "public"."locations" (
     "length_ft" numeric(10,2),
     "bike_line" integer,
     "total_bikes" integer,
-    CONSTRAINT "locations_zone_check" CHECK ((("zone")::"text" = ANY ((ARRAY['HOT'::character varying, 'WARM'::character varying, 'COLD'::character varying, 'UNASSIGNED'::character varying])::"text"[])))
+    CONSTRAINT "locations_zone_check" CHECK ((("zone")::"text" = ANY (ARRAY[('HOT'::character varying)::"text", ('WARM'::character varying)::"text", ('COLD'::character varying)::"text", ('UNASSIGNED'::character varying)::"text"])))
 );
 
 
@@ -1126,6 +1152,22 @@ ALTER SEQUENCE "public"."optimization_reports_id_seq" OWNED BY "public"."optimiz
 
 
 
+CREATE TABLE IF NOT EXISTS "public"."pdf_import_log" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "pdf_hash" "text" NOT NULL,
+    "order_number" "text",
+    "file_name" "text" NOT NULL,
+    "items_count" integer DEFAULT 0,
+    "picking_list_id" "uuid",
+    "status" "text" DEFAULT 'processed'::"text",
+    "error_message" "text",
+    "processed_at" timestamp with time zone DEFAULT "now"()
+);
+
+
+ALTER TABLE "public"."pdf_import_log" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."picking_list_notes" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "list_id" "uuid" NOT NULL,
@@ -1155,6 +1197,8 @@ CREATE TABLE IF NOT EXISTS "public"."picking_lists" (
     "total_units" integer DEFAULT 0,
     "customer_id" "uuid",
     "last_activity_at" timestamp with time zone DEFAULT "now"(),
+    "source" "text" DEFAULT 'manual'::"text",
+    "is_addon" boolean DEFAULT false,
     CONSTRAINT "picking_lists_status_check" CHECK (("status" = ANY (ARRAY['active'::"text", 'ready_to_double_check'::"text", 'double_checking'::"text", 'needs_correction'::"text", 'completed'::"text", 'cancelled'::"text"])))
 );
 
@@ -1185,9 +1229,10 @@ ALTER TABLE "public"."profiles" OWNER TO "postgres";
 
 CREATE TABLE IF NOT EXISTS "public"."sku_metadata" (
     "sku" "text" NOT NULL,
-    "length_ft" numeric DEFAULT 5,
+    "length_in" numeric DEFAULT 5,
     "width_in" numeric DEFAULT 6,
-    "created_at" timestamp with time zone DEFAULT "timezone"('utc'::"text", "now"()) NOT NULL
+    "created_at" timestamp with time zone DEFAULT "timezone"('utc'::"text", "now"()) NOT NULL,
+    "height_in" numeric
 );
 
 
@@ -1271,6 +1316,16 @@ ALTER TABLE ONLY "public"."optimization_reports"
 
 
 
+ALTER TABLE ONLY "public"."pdf_import_log"
+    ADD CONSTRAINT "pdf_import_log_pdf_hash_key" UNIQUE ("pdf_hash");
+
+
+
+ALTER TABLE ONLY "public"."pdf_import_log"
+    ADD CONSTRAINT "pdf_import_log_pkey" PRIMARY KEY ("id");
+
+
+
 ALTER TABLE ONLY "public"."picking_list_notes"
     ADD CONSTRAINT "picking_list_notes_pkey" PRIMARY KEY ("id");
 
@@ -1303,6 +1358,10 @@ ALTER TABLE ONLY "public"."inventory"
 
 ALTER TABLE ONLY "public"."user_presence"
     ADD CONSTRAINT "user_presence_pkey" PRIMARY KEY ("user_id");
+
+
+
+CREATE INDEX "idx_inventory_distribution" ON "public"."inventory" USING "gin" ("distribution") WHERE ("distribution" <> '[]'::"jsonb");
 
 
 
@@ -1363,6 +1422,14 @@ CREATE INDEX "idx_locations_warehouse_location" ON "public"."locations" USING "b
 
 
 CREATE INDEX "idx_locations_zone" ON "public"."locations" USING "btree" ("zone");
+
+
+
+CREATE INDEX "idx_pdf_import_log_hash" ON "public"."pdf_import_log" USING "btree" ("pdf_hash");
+
+
+
+CREATE INDEX "idx_pdf_import_log_order" ON "public"."pdf_import_log" USING "btree" ("order_number");
 
 
 
@@ -1430,6 +1497,18 @@ CREATE OR REPLACE TRIGGER "tr_sync_inventory_sequence" AFTER INSERT ON "public".
 
 
 
+CREATE OR REPLACE TRIGGER "trg_inventory_logs_uppercase" BEFORE INSERT OR UPDATE ON "public"."inventory_logs" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_uppercase_log_locations"();
+
+
+
+CREATE OR REPLACE TRIGGER "trg_inventory_uppercase" BEFORE INSERT OR UPDATE ON "public"."inventory" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_uppercase_location"();
+
+
+
+CREATE OR REPLACE TRIGGER "trg_locations_uppercase" BEFORE INSERT OR UPDATE ON "public"."locations" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_uppercase_location"();
+
+
+
 CREATE OR REPLACE TRIGGER "trigger_sync_inventory_location_name" AFTER UPDATE OF "location" ON "public"."locations" FOR EACH ROW EXECUTE FUNCTION "public"."sync_inventory_location_name"();
 
 
@@ -1467,13 +1546,18 @@ ALTER TABLE ONLY "public"."inventory_logs"
 
 
 
-ALTER TABLE ONLY "public"."inventory_logs"
-    ADD CONSTRAINT "inventory_logs_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id");
+-- ALTER TABLE ONLY "public"."inventory_logs"
+--     ADD CONSTRAINT "inventory_logs_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id");
 
 
 
 ALTER TABLE ONLY "public"."inventory"
     ADD CONSTRAINT "inventory_sku_fkey" FOREIGN KEY ("sku") REFERENCES "public"."sku_metadata"("sku");
+
+
+
+ALTER TABLE ONLY "public"."pdf_import_log"
+    ADD CONSTRAINT "pdf_import_log_picking_list_id_fkey" FOREIGN KEY ("picking_list_id") REFERENCES "public"."picking_lists"("id") ON DELETE SET NULL;
 
 
 
@@ -1516,8 +1600,8 @@ ALTER TABLE ONLY "public"."profiles"
 
 
 
-ALTER TABLE ONLY "public"."profiles"
-    ADD CONSTRAINT "profiles_id_fkey" FOREIGN KEY ("id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
+-- ALTER TABLE ONLY "public"."profiles"
+--     ADD CONSTRAINT "profiles_id_fkey" FOREIGN KEY ("id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
 
 
 
@@ -1526,8 +1610,8 @@ ALTER TABLE ONLY "public"."user_presence"
 
 
 
-ALTER TABLE ONLY "public"."user_presence"
-    ADD CONSTRAINT "user_presence_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
+-- ALTER TABLE ONLY "public"."user_presence"
+--     ADD CONSTRAINT "user_presence_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
 
 
 
@@ -1983,6 +2067,18 @@ GRANT ALL ON FUNCTION "public"."delete_inventory_item"("p_item_id" integer, "p_p
 
 
 
+GRANT ALL ON FUNCTION "public"."enforce_uppercase_location"() TO "anon";
+GRANT ALL ON FUNCTION "public"."enforce_uppercase_location"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."enforce_uppercase_location"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."enforce_uppercase_log_locations"() TO "anon";
+GRANT ALL ON FUNCTION "public"."enforce_uppercase_log_locations"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."enforce_uppercase_log_locations"() TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."get_snapshot"("p_target_date" "date") TO "anon";
 GRANT ALL ON FUNCTION "public"."get_snapshot"("p_target_date" "date") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_snapshot"("p_target_date" "date") TO "service_role";
@@ -2085,9 +2181,9 @@ GRANT ALL ON FUNCTION "public"."update_warehouse_zones_updated_at"() TO "service
 
 
 
-GRANT ALL ON FUNCTION "public"."upsert_inventory_log"("p_sku" "text", "p_from_warehouse" "text", "p_from_location" "text", "p_to_warehouse" "text", "p_to_location" "text", "p_quantity_change" integer, "p_prev_quantity" integer, "p_new_quantity" integer, "p_action_type" "text", "p_item_id" integer, "p_location_id" "uuid", "p_to_location_id" "uuid", "p_performed_by" "text", "p_user_id" "uuid", "p_list_id" "uuid", "p_order_number" "text", "p_snapshot_before" "jsonb", "p_is_reversed" boolean) TO "anon";
-GRANT ALL ON FUNCTION "public"."upsert_inventory_log"("p_sku" "text", "p_from_warehouse" "text", "p_from_location" "text", "p_to_warehouse" "text", "p_to_location" "text", "p_quantity_change" integer, "p_prev_quantity" integer, "p_new_quantity" integer, "p_action_type" "text", "p_item_id" integer, "p_location_id" "uuid", "p_to_location_id" "uuid", "p_performed_by" "text", "p_user_id" "uuid", "p_list_id" "uuid", "p_order_number" "text", "p_snapshot_before" "jsonb", "p_is_reversed" boolean) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."upsert_inventory_log"("p_sku" "text", "p_from_warehouse" "text", "p_from_location" "text", "p_to_warehouse" "text", "p_to_location" "text", "p_quantity_change" integer, "p_prev_quantity" integer, "p_new_quantity" integer, "p_action_type" "text", "p_item_id" integer, "p_location_id" "uuid", "p_to_location_id" "uuid", "p_performed_by" "text", "p_user_id" "uuid", "p_list_id" "uuid", "p_order_number" "text", "p_snapshot_before" "jsonb", "p_is_reversed" boolean) TO "service_role";
+GRANT ALL ON FUNCTION "public"."upsert_inventory_log"("p_sku" "text", "p_from_warehouse" "text", "p_from_location" "text", "p_to_warehouse" "text", "p_to_location" "text", "p_quantity_change" integer, "p_prev_quantity" integer, "p_new_quantity" integer, "p_action_type" "text", "p_item_id" bigint, "p_location_id" "uuid", "p_to_location_id" "uuid", "p_performed_by" "text", "p_user_id" "uuid", "p_list_id" "uuid", "p_order_number" "text", "p_snapshot_before" "jsonb", "p_is_reversed" boolean) TO "anon";
+GRANT ALL ON FUNCTION "public"."upsert_inventory_log"("p_sku" "text", "p_from_warehouse" "text", "p_from_location" "text", "p_to_warehouse" "text", "p_to_location" "text", "p_quantity_change" integer, "p_prev_quantity" integer, "p_new_quantity" integer, "p_action_type" "text", "p_item_id" bigint, "p_location_id" "uuid", "p_to_location_id" "uuid", "p_performed_by" "text", "p_user_id" "uuid", "p_list_id" "uuid", "p_order_number" "text", "p_snapshot_before" "jsonb", "p_is_reversed" boolean) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."upsert_inventory_log"("p_sku" "text", "p_from_warehouse" "text", "p_from_location" "text", "p_to_warehouse" "text", "p_to_location" "text", "p_quantity_change" integer, "p_prev_quantity" integer, "p_new_quantity" integer, "p_action_type" "text", "p_item_id" bigint, "p_location_id" "uuid", "p_to_location_id" "uuid", "p_performed_by" "text", "p_user_id" "uuid", "p_list_id" "uuid", "p_order_number" "text", "p_snapshot_before" "jsonb", "p_is_reversed" boolean) TO "service_role";
 
 
 
@@ -2169,6 +2265,12 @@ GRANT ALL ON TABLE "public"."optimization_reports" TO "service_role";
 GRANT ALL ON SEQUENCE "public"."optimization_reports_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."optimization_reports_id_seq" TO "authenticated";
 GRANT ALL ON SEQUENCE "public"."optimization_reports_id_seq" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."pdf_import_log" TO "anon";
+GRANT ALL ON TABLE "public"."pdf_import_log" TO "authenticated";
+GRANT ALL ON TABLE "public"."pdf_import_log" TO "service_role";
 
 
 
@@ -2261,5 +2363,12 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 
 
 
+
+
+drop extension if exists "pg_net";
+
+create extension if not exists "pg_net" with schema "public";
+
+CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 
