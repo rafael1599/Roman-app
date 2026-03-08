@@ -2,4 +2,6 @@
 - Always use Context7 MCP when I need library/API documentation, code generation, setup or configuration steps.
 - Refer to `.agent/knowledge/CONTEXT7_MCP.md` for detailed usage of the Context7 tools.
 - **Project Management**: Always check `.agent/management/BACKLOG.md` before starting new tasks. Follow workflows in `.agent/workflows/` for capturing notes, bugs, and ideas to ensure nothing is lost.
+- **Git Safety**: NEVER use the `&&` operator to chain git commands. Execute each git command (add, commit, push) as a separate process to avoid shell-specific parser errors.
+- **Deep Analysis Protocol**: Before proposing or implementing large-scale refactorings, restructurings, or high-complexity changes, you MUST explicitly ask the user if they want a deep, forensic analysis first. Never sacrifice architectural integrity for token efficiency.
 

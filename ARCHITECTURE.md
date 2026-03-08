@@ -54,6 +54,18 @@ The system uses **Optimistic Updates** via React Query. When a user adjusts stoc
 - **Database**: Supabase PostgreSQL with Realtime enabled for all major tables.
 - **Types**: 100% TypeScript. Avoid `any` where possible.
 
+## 🏛️ Project Governance & AI Safety
+
+### 1. Git Execution Protocol
+To prevent shell-parsing errors in certain environments (like PowerShell), **never use `&&` to chain git commands**. 
+- ❌ `git add . && git commit -m "..." && git push`
+- ✅ Execute `git add`, `git commit`, and `git push` as separate, independent terminal commands.
+
+### 2. Mandatory Deep Analysis Prompt
+Before implementing or suggesting large refactorings, major structural changes, or complex database migrations (Phase-level work):
+- The AI **must** ask: *"Do you want me to perform a deep forensic analysis before proceeding with these changes?"*
+- This protocol prevents shallow suggestions that might break existing functionality to save tokens. Architectural integrity always takes precedence over speed.
+
 ## 🧠 Lessons Learned & Critical Solves (Session 2026-03-08)
 
 ### 1. The "Completed Order" Regression Bug
