@@ -51,7 +51,7 @@ test.describe('Inventory Logic & Smart Operations', () => {
         await inventoryPage.verifyQuantity(sku, 0, locB);
     });
 
-    test('should preserve sku_note during merge', async ({ inventoryPage, movementModal }) => {
+    test('should preserve item_name during merge', async ({ inventoryPage, movementModal }) => {
         const sku = BasePage.generateTestId('TEST-NOTE');
         const locA = 'LOC-NOTE-A';
         const locB = 'LOC-NOTE-B';

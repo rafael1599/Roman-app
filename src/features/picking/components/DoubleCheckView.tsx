@@ -362,9 +362,9 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
                                                             item.sku.substring(item.sku.length - 2)
                                                         )}
                                                     </span>
-                                                    {item.sku_note && (
+                                                    {item.item_name && (
                                                         <span className="text-[10px] font-bold text-accent/70 bg-accent/10 px-1.5 py-0.5 rounded border border-accent/20 uppercase tracking-widest leading-none">
-                                                            {item.sku_note.slice(0, 9)}
+                                                            {item.item_name.slice(0, 9)}
                                                         </span>
                                                     )}
                                                     {item.sku_not_found && (

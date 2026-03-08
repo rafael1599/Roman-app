@@ -20,7 +20,7 @@ interface InventoryCardProps {
     lastUpdateSource?: 'local' | 'remote';
     is_active?: boolean;
     sku_metadata?: import('../../../schemas/skuMetadata.schema').SKUMetadata | null;
-    location_hint?: string | null;
+    internal_note?: string | null;
     distribution?: DistributionItem[];
 }
 
@@ -41,7 +41,7 @@ export const InventoryCard = memo(
         lastUpdateSource,
         is_active = true,
         sku_metadata = null,
-        location_hint = null,
+        internal_note = null,
         distribution = [],
     }: InventoryCardProps) => {
         const [flash, setFlash] = useState(false);
@@ -106,9 +106,9 @@ export const InventoryCard = memo(
                                     <div className="text-[10px] text-accent font-extrabold uppercase tracking-tighter" style={{ fontFamily: 'var(--font-heading)' }}>
                                         {location}
                                     </div>
-                                    {location_hint && (
-                                        <span className="text-[8px] text-muted font-bold uppercase tracking-tight bg-white/5 px-1 py-0.5 rounded border border-white/5 max-w-[120px] truncate" title={location_hint}>
-                                            📍 {location_hint}
+                                    {internal_note && (
+                                        <span className="text-[8px] text-muted font-bold uppercase tracking-tight bg-white/5 px-1 py-0.5 rounded border border-white/5 max-w-[120px] truncate" title={internal_note}>
+                                            📍 {internal_note}
                                         </span>
                                     )}
                                 </div>

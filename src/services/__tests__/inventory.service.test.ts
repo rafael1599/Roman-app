@@ -57,7 +57,7 @@ describe('InventoryService', () => {
             warehouse: 'LUDLOW',
             location: 'Row 1',
             quantity: 5,
-            sku_note: 'Vieja',
+            item_name: 'Vieja',
             created_at: new Date().toISOString()
         };
 
@@ -99,7 +99,7 @@ describe('InventoryService', () => {
                     sku: 'SKU-A',
                     location: 'Row 2',
                     quantity: 10,
-                    sku_note: 'Original',
+                    item_name: 'Original',
                     warehouse: 'LUDLOW',
                     created_at: new Date().toISOString()
                 },
@@ -111,7 +111,7 @@ describe('InventoryService', () => {
                 warehouse: 'LUDLOW',
                 location: 'Row 2',
                 quantity: 5,
-                sku_note: 'NUEVA DESCRIPCIÓN'
+                item_name: 'NUEVA DESCRIPCIÓN'
             };
 
             const result = await inventoryService.updateItem(originalItem, updatedData, mockLocations, mockCtx);
@@ -121,7 +121,7 @@ describe('InventoryService', () => {
             expect(mockSupabase.update).toHaveBeenCalledWith({
                 quantity: 15,
                 location_id: 'loc-2',
-                sku_note: 'Original | NUEVA DESCRIPCIÓN',
+                item_name: 'Original | NUEVA DESCRIPCIÓN',
                 is_active: true
             });
             // Verify that we targeted the correct ID for update and delete
@@ -143,7 +143,7 @@ describe('InventoryService', () => {
                     sku: 'SKU-A',
                     location: 'Row 2',
                     quantity: 10,
-                    sku_note: 'Descripción Valiosa',
+                    item_name: 'Descripción Valiosa',
                     warehouse: 'LUDLOW',
                     created_at: new Date().toISOString()
                 },
@@ -155,14 +155,14 @@ describe('InventoryService', () => {
                 warehouse: 'LUDLOW',
                 location: 'Row 2',
                 quantity: 5,
-                sku_note: '   ' // Empty spaces
+                item_name: '   ' // Empty spaces
             };
 
             await inventoryService.updateItem(originalItem, updatedData, mockLocations, mockCtx);
 
             // Verify note was preserved
             expect(mockSupabase.update).toHaveBeenCalledWith(expect.objectContaining({
-                sku_note: 'Descripción Valiosa'
+                item_name: 'Descripción Valiosa'
             }));
         });
     });

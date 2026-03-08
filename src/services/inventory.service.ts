@@ -174,8 +174,8 @@ class InventoryService extends BaseService<'inventory', InventoryModel, Inventor
             const newTotal = (existingItem.quantity || 0) + qty;
 
             // Concatenated Description Merge: Join with ' | ' if both exist
-            const incomingNote = validatedInput.sku_note?.trim();
-            const existingNote = existingItem.sku_note?.trim();
+            const incomingNote = validatedInput.item_name?.trim();
+            const existingNote = existingItem.item_name?.trim();
             const updatedNote = (incomingNote && existingNote && incomingNote !== existingNote)
                 ? `${existingNote} | ${incomingNote}`
                 : (incomingNote || existingNote);
@@ -190,7 +190,7 @@ class InventoryService extends BaseService<'inventory', InventoryModel, Inventor
             await this.update(existingItem.id, {
                 quantity: newTotal,
                 location_id: destination.id,
-                sku_note: updatedNote,
+                item_name: updatedNote,
                 is_active: newTotal > 0 ? true : existingItem.is_active, // Automatic Reactivation
             } as any);
 
@@ -236,7 +236,7 @@ class InventoryService extends BaseService<'inventory', InventoryModel, Inventor
             location: destination.name,
             location_id: destination.id,
             is_active: true,
-            location_hint: validatedInput.location_hint || null,
+            internal_note: validatedInput.internal_note || null,
             distribution: validatedInput.distribution || [],
         };
 
@@ -361,8 +361,8 @@ class InventoryService extends BaseService<'inventory', InventoryModel, Inventor
                 const consolidatedQty = (targetItem.quantity || 0) + originalItem.quantity;
 
                 // Concatenated Description Merge: Join with ' | ' if both exist
-                const incomingNote = validatedInput.sku_note?.trim();
-                const existingNote = targetItem.sku_note?.trim();
+                const incomingNote = validatedInput.item_name?.trim();
+                const existingNote = targetItem.item_name?.trim();
                 const updatedNote = (incomingNote && existingNote && incomingNote !== existingNote)
                     ? `${existingNote} | ${incomingNote}`
                     : (incomingNote || existingNote);
@@ -378,7 +378,7 @@ class InventoryService extends BaseService<'inventory', InventoryModel, Inventor
                 await this.update(targetItem.id, {
                     quantity: consolidatedQty,
                     location_id: targetLocationId,
-                    sku_note: updatedNote,
+                    item_name: updatedNote,
                     is_active: consolidatedQty > 0 ? true : targetItem.is_active,
                 } as any);
 
@@ -430,7 +430,7 @@ class InventoryService extends BaseService<'inventory', InventoryModel, Inventor
                 location: targetLocation,
                 location_id: targetLocationId,
                 quantity: newQty, // Absolute truth
-                sku_note: validatedInput.sku_note,
+                item_name: validatedInput.item_name,
                 status: validatedInput.status || originalItem.status,
                 is_active: newQty > 0 ? true : originalItem.is_active,
             } as any);
@@ -475,10 +475,10 @@ class InventoryService extends BaseService<'inventory', InventoryModel, Inventor
             quantity: newQty,
             location: targetLocation, // Normalized (UPPERCASE)
             location_id: targetLocationId,
-            sku_note: validatedInput.sku_note,
+            item_name: validatedInput.item_name,
             status: validatedInput.status || originalItem.status,
             is_active: newQty > 0 ? true : originalItem.is_active,
-            location_hint: validatedInput.location_hint,
+            internal_note: validatedInput.internal_note,
             distribution: validatedInput.distribution || [],
         } as any);
 

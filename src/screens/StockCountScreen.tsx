@@ -491,7 +491,7 @@ export const StockCountScreen = () => {
                                                         {item.location || 'UNASSIGNED'}
                                                     </p>
                                                     <p className="text-[9px] font-bold text-muted uppercase tracking-widest flex items-center gap-2">
-                                                        <span>{item.warehouse} {item.sku_note ? `· Note: ${item.sku_note}` : ''}</span>
+                                                        <span>{item.warehouse} {item.item_name ? `· Note: ${item.item_name}` : ''}</span>
                                                         {item.sku_metadata && (item.sku_metadata.length_in || item.sku_metadata.width_in || item.sku_metadata.height_in) && (
                                                             <span className="hidden md:inline-block bg-accent/5 text-accent/70 px-1 rounded border border-accent/10">
                                                                 {item.sku_metadata.length_in || 0} x {item.sku_metadata.width_in || 0} x {item.sku_metadata.height_in || 0} in

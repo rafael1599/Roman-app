@@ -484,7 +484,7 @@ function generatePremiumHTML(stats: any, data: any[]): string {
                                 <tr class="sku-row">
                                     <td class="sku-cell">
                                         ${item.sku} 
-                                        <span class="sku-note">${item.sku_note || ''}</span>
+                                        <span class="sku-note">${item.item_name || ''}</span>
                                     </td>
                                     <td class="quantity-cell">
                                         ${item.quantity}

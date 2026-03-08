@@ -108,7 +108,7 @@ export type Database = {
           location_id: string | null
           quantity: number
           sku: string
-          sku_note: string | null
+          item_name: string | null
           snapshot_date: string
           warehouse: string
         }
@@ -119,7 +119,7 @@ export type Database = {
           location_id?: string | null
           quantity: number
           sku: string
-          sku_note?: string | null
+          item_name?: string | null
           snapshot_date: string
           warehouse: string
         }
@@ -130,7 +130,7 @@ export type Database = {
           location_id?: string | null
           quantity?: number
           sku?: string
-          sku_note?: string | null
+          item_name?: string | null
           snapshot_date?: string
           warehouse?: string
         }
@@ -154,7 +154,7 @@ export type Database = {
           location_id: string | null
           quantity: number | null
           sku: string
-          sku_note: string | null
+          item_name: string | null
           updated_at: string | null
           warehouse: string | null
         }
@@ -167,7 +167,7 @@ export type Database = {
           location_id?: string | null
           quantity?: number | null
           sku: string
-          sku_note?: string | null
+          item_name?: string | null
           updated_at?: string | null
           warehouse?: string | null
         }
@@ -180,7 +180,7 @@ export type Database = {
           location_id?: string | null
           quantity?: number | null
           sku?: string
-          sku_note?: string | null
+          item_name?: string | null
           updated_at?: string | null
           warehouse?: string | null
         }
@@ -617,7 +617,7 @@ export type Database = {
           location_id: string
           quantity: number
           sku: string
-          sku_note: string
+          item_name: string
           warehouse: string
         }[]
       }

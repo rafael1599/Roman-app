@@ -7,7 +7,7 @@ export interface SnapshotItem {
     location: string;
     sku: string;
     quantity: number;
-    sku_note?: string | null;
+    item_name?: string | null;
     location_id?: string | null;
 }
 

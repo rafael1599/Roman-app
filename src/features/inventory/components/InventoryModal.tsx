@@ -44,12 +44,12 @@ interface InventoryFormValues {
     sku: string;
     location: string;
     quantity: number;
-    sku_note: string | null;
+    item_name: string | null;
     warehouse: 'LUDLOW' | 'ATS' | 'DELETED ITEMS';
     length_in?: number | null;
     width_in?: number | null;
     height_in?: number | null;
-    location_hint?: string | null;
+    internal_note?: string | null;
 }
 
 export const InventoryModal: React.FC<InventoryModalProps> = ({
@@ -86,12 +86,12 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
             sku: '',
             location: '',
             quantity: 0,
-            sku_note: '',
+            item_name: '',
             warehouse: 'LUDLOW',
-            length_in: 5,
-            width_in: 6,
-            height_in: 6,
-            location_hint: '',
+            length_in: 54,
+            width_in: 8,
+            height_in: 30,
+            internal_note: '',
         }
     });
 
@@ -109,12 +109,12 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
                     sku: initialData.sku || '',
                     location: initialData.location || '',
                     quantity: Number(initialData.quantity) || 0,
-                    sku_note: initialData.sku_note || '',
+                    item_name: initialData.item_name || '',
                     warehouse: initialData.warehouse || (screenType as any) || 'LUDLOW',
-                    length_in: initialData.sku_metadata?.length_in ?? 5,
-                    width_in: initialData.sku_metadata?.width_in ?? 6,
-                    height_in: initialData.sku_metadata?.height_in ?? 6,
-                    location_hint: (initialData as any).location_hint || '',
+                    length_in: initialData.sku_metadata?.length_in ?? 54,
+                    width_in: initialData.sku_metadata?.width_in ?? 8,
+                    height_in: initialData.sku_metadata?.height_in ?? 30,
+                    internal_note: (initialData as any).internal_note || '',
                 });
                 setDistribution(Array.isArray((initialData as any).distribution) ? (initialData as any).distribution : []);
                 setIsDistributionOpen(Array.isArray((initialData as any).distribution) && (initialData as any).distribution.length > 0);
@@ -123,12 +123,12 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
                     sku: '',
                     location: '',
                     quantity: 0,
-                    sku_note: '',
+                    item_name: '',
                     warehouse: (screenType as any) || 'LUDLOW',
-                    length_in: 5,
-                    width_in: 6,
-                    height_in: 6,
-                    location_hint: '',
+                    length_in: 54,
+                    width_in: 8,
+                    height_in: 30,
+                    internal_note: '',
                 });
                 setDistribution([]);
                 setIsDistributionOpen(false);
@@ -169,9 +169,10 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
         const uniqueSKUs = new Map<string, { value: string; info: string }>();
         currentInventory.forEach((item) => {
             if (item.sku && !uniqueSKUs.has(item.sku)) {
+                const tag = item.quantity === 0 ? ' [0u]' : '';
                 uniqueSKUs.set(item.sku, {
                     value: item.sku,
-                    info: `${item.quantity}u • ${item.location}`,
+                    info: `${item.quantity}u • ${item.location}${tag}`,
                 });
             }
         });
@@ -315,9 +316,14 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
 
                 if (exists) {
                     if (mode === 'add') {
+                        const localMatch = currentInventory.find(i => String(i.sku) === currentSKU && String(i.location) === currentLocation);
+                        const isZero = localMatch && localMatch.quantity === 0;
+
                         setValidationState({
                             status: 'warning',
-                            message: '⚠️ Item already exists here. Quantity will be added and Description updated.'
+                            message: isZero
+                                ? '⚠️ Había un ítem registrado aquí (actualmente 0 unidades). Se sumará la cantidad.'
+                                : '⚠️ Item already exists here. Quantity will be added and Description updated.'
                         });
                     } else if (mode === 'edit') {
                         if (isSkuChanged) {
@@ -426,8 +432,8 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
             console.error('Metadata update failed:', e);
         }
 
-        // 2. Attach distribution and location_hint to save payload
-        data.location_hint = data.location_hint || null;
+        // 2. Attach distribution and internal_note to save payload
+        data.internal_note = data.internal_note || null;
         data.distribution = distribution.filter(d => d.count > 0 && d.units_each > 0);
 
         // 3. CREATE/UPDATE ITEM
@@ -490,7 +496,13 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
                                 const match = currentInventory.find(i => i.sku === s.value);
                                 if (match && mode === 'add') {
                                     setValue('location', match.location || '', { shouldValidate: true });
-                                    setValue('sku_note', match.sku_note || '', { shouldValidate: true });
+                                    setValue('item_name', match.item_name || '', { shouldValidate: true });
+
+                                    if (match.sku_metadata) {
+                                        setValue('length_in', match.sku_metadata.length_in ?? 54);
+                                        setValue('width_in', match.sku_metadata.width_in ?? 8);
+                                        setValue('height_in', match.sku_metadata.height_in ?? 30);
+                                    }
                                 }
                             }}
                         />
@@ -544,24 +556,24 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
 
 
                         <AutocompleteInput
-                            id="sku_note"
-                            label="Internal Note"
-                            value={formData.sku_note || ''}
-                            onChange={(v: string) => setValue('sku_note', v, { shouldValidate: true })}
+                            id="item_name"
+                            label="Item Name"
+                            value={formData.item_name || ''}
+                            onChange={(v: string) => setValue('item_name', v, { shouldValidate: true })}
                             suggestions={[]}
-                            placeholder="e.g. T, ø, P..."
+                            placeholder="e.g. Desk Frame, Monitor Stand..."
                         />
 
-                        {/* Location Hint */}
+                        {/* Internal Note */}
                         <div>
-                            <label htmlFor="inventory_location_hint" className="block text-[10px] font-black text-accent mb-2 uppercase tracking-widest">
+                            <label htmlFor="inventory_internal_note" className="block text-[10px] font-black text-accent mb-2 uppercase tracking-widest">
                                 <MapPin size={10} className="inline mr-1 -mt-0.5" />
-                                Location Hint
+                                Internal Note
                             </label>
                             <input
-                                id="inventory_location_hint"
+                                id="inventory_internal_note"
                                 type="text"
-                                {...register('location_hint')}
+                                {...register('internal_note')}
                                 placeholder="e.g. Behind the pole, Bottom shelf..."
                                 className="w-full bg-main border border-subtle rounded-xl px-4 py-3 text-content focus:border-accent focus:outline-none transition-colors text-sm placeholder:text-white/20"
                             />

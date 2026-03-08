@@ -93,7 +93,7 @@ export const InventoryScreen = () => {
       return (
         (item.sku || '').toLowerCase().includes(s) ||
         (item.location || '').toLowerCase().includes(s) ||
-        (item.sku_note || '').toLowerCase().includes(s) ||
+        (item.item_name || '').toLowerCase().includes(s) ||
         (item.warehouse || '').toLowerCase().includes(s)
       );
     });
@@ -155,10 +155,10 @@ export const InventoryScreen = () => {
             existing.quantity = (existing.quantity || 0) + (item.quantity || 0);
 
             // Merge notes if they differ
-            if (item.sku_note && item.sku_note !== existing.sku_note) {
-              existing.sku_note = existing.sku_note
-                ? `${existing.sku_note} | ${item.sku_note}`
-                : item.sku_note;
+            if (item.item_name && item.item_name !== existing.item_name) {
+              existing.item_name = existing.item_name
+                ? `${existing.item_name} | ${item.item_name}`
+                : item.item_name;
             }
 
             // Sync metadata if missing
@@ -301,7 +301,7 @@ export const InventoryScreen = () => {
           }
           whGroup[item.sku].qty += item.quantity;
           if (item.location) whGroup[item.sku].locations.add(item.location.trim().toUpperCase());
-          if (item.sku_note) whGroup[item.sku].notes.add(item.sku_note.trim());
+          if (item.item_name) whGroup[item.sku].notes.add(item.item_name.trim());
         });
       });
 
@@ -712,7 +712,7 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
                         <InventoryCard
                           sku={item.sku}
                           quantity={item.quantity}
-                          detail={item.sku_note}
+                          detail={item.item_name}
                           warehouse={item.warehouse}
                           onIncrement={() =>
                             updateQuantity(item.sku, 1, item.warehouse, item.location)
@@ -726,7 +726,7 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
                           reservedByOthers={stockInfo?.reservedByOthers || 0}
                           available={stockInfo?.available}
                           sku_metadata={item.sku_metadata}
-                          location_hint={(item as any).location_hint}
+                          internal_note={(item as any).internal_note}
                           distribution={(item as any).distribution}
                           lastUpdateSource={(item as any)._lastUpdateSource}
                           is_active={item.is_active}

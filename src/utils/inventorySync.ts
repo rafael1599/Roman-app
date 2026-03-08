@@ -46,7 +46,7 @@ const matchesContext = (item: InventoryItem, filters: InventoryFilters): boolean
         const query = filters.search.toLowerCase().trim();
         const skuMatch = item.sku.toLowerCase().includes(query);
         const locMatch = (item.location || '').toLowerCase().includes(query);
-        const noteMatch = (item.sku_note || '').toLowerCase().includes(query);
+        const noteMatch = (item.item_name || '').toLowerCase().includes(query);
         if (!skuMatch && !locMatch && !noteMatch) return false;
     }
 

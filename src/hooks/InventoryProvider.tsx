@@ -401,7 +401,7 @@ export const InventoryProvider = ({
             location: (vars.newItem.location || '').trim().toUpperCase(),
             warehouse: vars.warehouse as any,
             quantity: vars.newItem.quantity,
-            sku_note: vars.newItem.sku_note,
+            item_name: vars.newItem.item_name,
             is_active: true,
             created_at: new Date(),
             sku_metadata: skuMetadataMapRef.current[vars.newItem.sku],
@@ -546,9 +546,9 @@ export const InventoryProvider = ({
               return {
                 ...item,
                 quantity: (item.quantity || 0) + vars.qty,
-                sku_note: (item.sku_note && vars.sourceItem.sku_note && item.sku_note !== vars.sourceItem.sku_note)
-                  ? `${item.sku_note} | ${vars.sourceItem.sku_note}`
-                  : (vars.sourceItem.sku_note || item.sku_note),
+                item_name: (item.item_name && vars.sourceItem.item_name && item.item_name !== vars.sourceItem.item_name)
+                  ? `${item.item_name} | ${vars.sourceItem.item_name}`
+                  : (vars.sourceItem.item_name || item.item_name),
                 _lastUpdateSource: 'local' as const,
                 _lastLocalUpdateAt: Date.now()
               };
@@ -563,7 +563,7 @@ export const InventoryProvider = ({
             warehouse: vars.targetWarehouse as any,
             location: targetNormalized,
             quantity: vars.qty,
-            sku_note: vars.sourceItem.sku_note,
+            item_name: vars.sourceItem.item_name,
             is_active: true,
             created_at: new Date(),
             sku_metadata: skuMetadataMapRef.current[vars.sourceItem.sku],
@@ -1081,7 +1081,7 @@ export const InventoryProvider = ({
               location_id: log.location_id || undefined,
               quantity: qty,
               is_active: true,
-              sku_note: log.snapshot_before?.sku_note,
+              item_name: log.snapshot_before?.item_name,
               created_at: new Date()
             };
             newData.push(newItem);

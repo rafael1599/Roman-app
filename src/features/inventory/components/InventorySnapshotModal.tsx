@@ -79,7 +79,7 @@ export const InventorySnapshotModal = ({ isOpen, onClose }: { isOpen: boolean; o
             Object.entries(locations).forEach(([loc, items]) => {
                 md += `\n[${loc}]\n`;
                 items.forEach(item => {
-                    const noteStr = item.sku_note ? ` (${item.sku_note})` : '';
+                    const noteStr = item.item_name ? ` (${item.item_name})` : '';
                     const displayQty = Math.max(0, item.quantity);
                     if (displayQty > 0) {
                         md += `- ${item.sku}${noteStr} | Qty: ${displayQty}\n`;

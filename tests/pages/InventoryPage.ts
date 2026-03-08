@@ -28,8 +28,8 @@ export class InventoryPage extends BasePage {
         await this.page.locator('#inventory_location').press('Escape');
 
         if (data.note) {
-            await this.page.locator('#sku_note').fill(data.note);
-            await this.page.locator('#sku_note').press('Escape');
+            await this.page.locator('#item_name').fill(data.note);
+            await this.page.locator('#item_name').press('Escape');
         }
 
         const qtyInput = this.page.locator('#inventory_quantity');

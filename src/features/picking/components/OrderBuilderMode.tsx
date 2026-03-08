@@ -124,9 +124,9 @@ export const OrderBuilderMode: React.FC<OrderBuilderModeProps> = ({ cartItems, o
                                         {item.warehouse}
                                     </span>
                                 )}
-                                {item.sku_note && (
+                                {item.item_name && (
                                     <span className="bg-yellow-50 text-yellow-700 px-1 rounded border border-yellow-100 text-[10px] truncate max-w-[120px]">
-                                        {item.sku_note}
+                                        {item.item_name}
                                     </span>
                                 )}
                                 {item.sku_metadata && (item.sku_metadata.length_in || item.sku_metadata.width_in || item.sku_metadata.height_in) && (
