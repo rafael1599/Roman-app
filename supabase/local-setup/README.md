@@ -61,7 +61,8 @@ docker exec -e PGPASSWORD=postgres -i supabase_db_Roman-app psql -U supabase_adm
 ```
 
 ### 7. Verificar
-- URL: `http://localhost:3000`
+- App: `http://localhost:5173` (Vite dev server — `pnpm run dev`)
+- Studio: `http://localhost:54323` (Supabase Studio)
 - Login: cualquier email de producción
 - Password: `1111`
 
