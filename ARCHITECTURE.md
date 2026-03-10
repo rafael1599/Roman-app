@@ -79,6 +79,16 @@ Before implementing or suggesting large refactorings, major structural changes, 
 **Problem**: The `adjust_inventory_quantity` RPC failed because the frontend was passing parameters (like `sku_note`) that had been removed from the Postgres function.
 **Solve**: Updated `useInventoryMutations` to strictly match the Postgres function signature. Always verify the `v_` parameter names in Supabase when a mutation returns a 400 error.
 
+### 4. Schema Drift: `sku_note` vs `item_name` / `internal_note` (2026-03-09)
+**Problem**: The production `inventory` table had `item_name` + `internal_note` columns, but local had `sku_note`. Four RPCs (`adjust_inventory_quantity`, `move_inventory_stock`, `create_daily_snapshot`, `undo_inventory_action`) referenced `inventory.sku_note` which doesn't exist in production, causing runtime errors ("column sku_note does not exist"). Additionally, `moveItem` in `useInventoryData` was a no-op stub returning only a toast.
+**Solve**:
+- Renamed `inventory.sku_note` → `item_name` locally via migration; added `internal_note`.
+- Added missing columns to production (`capacity`, `stowage_type`, `stowage_index`, `stowage_qty`, `location_hint`).
+- Rewrote all 4 RPCs to use `item_name`. `undo_inventory_action` uses `COALESCE(item_name, sku_note)` from the snapshot JSON for backwards compatibility with old logs.
+- Implemented `moveItem` as a proper `useMutation` with optimistic update and rollback.
+- Added `scripts/compare-schemas.js` to detect local↔prod drift proactively.
+- **Rule**: Before any column rename in production, always audit all RPCs with `SELECT proname FROM pg_proc WHERE pg_get_functiondef(oid) LIKE '%column_name%'`.
+
 ### 3. Z-Index & Overflow in Fixed Headers
 **Problem**: On mobile, the order selection dropdown was hidden/cut off by the main form due to `overflow-hidden` on the header and low z-index.
 **Solve**: Removed `overflow-hidden` from the global header in `OrdersScreen.tsx` and boosted the dropdown's z-index to `110` to ensure it floats above all other absolute-positioned elements.

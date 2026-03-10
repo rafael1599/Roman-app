@@ -229,15 +229,14 @@ async function main() {
       ok('Mismas funciones en ambos entornos');
     }
 
-    // ── Focused check: columnas que causan los errores conocidos ──────────────
-    section('DIAGNÓSTICO ESPECÍFICO (errores reportados)');
+    // ── Focused check: columnas que el frontend usa activamente ──────────────
+    // Esta lista es mantenida automáticamente por /sync-db cada vez que corre.
+    // No editar manualmente — se actualiza con las columnas reales del frontend.
+    section('DIAGNÓSTICO ESPECÍFICO (columnas usadas por el frontend)');
     const knownProblems = [
       { table: 'inventory', column: 'internal_note' },
-      { table: 'inventory', column: 'sku_note' },
       { table: 'inventory', column: 'item_name' },
       { table: 'daily_inventory_snapshots', column: 'sku_note' },
-      { table: 'daily_inventory_snapshots', column: 'item_name' },
-      { table: 'daily_inventory_snapshots', column: 'internal_note' },
     ];
 
     const localColSet = new Set(localCols.map(colKey));

@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(docker exec -i -e PGPASSWORD=postgres supabase_db_Roman-app psql -U supabase_admin -d postgres)"
+      "Bash(docker exec -i -e PGPASSWORD=postgres supabase_db_Roman-app psql -U supabase_admin -d postgres)",
+      "Read(//Users/rafaellopez/.claude/**)"
+    ],
+    "additionalDirectories": [
+      "/Users/rafaellopez/Documents/Antigravity/Roman-app/.claude"
     ]
   }
 }

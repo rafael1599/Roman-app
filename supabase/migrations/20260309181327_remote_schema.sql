@@ -1,50 +1,33 @@
--- ============================================================
--- MIGRACIÓN: fix_local_schema_drift
--- Aplica en: LOCAL (Docker → Supabase Studio http://localhost:54323)
--- Problema: local tiene `sku_note` pero el código usa `item_name`
---           + `internal_note`. Hay que renombrar + agregar.
--- ============================================================
+create extension if not exists "pg_cron" with schema "pg_catalog";
 
--- ── 1. Renombrar sku_note → item_name en inventory ───────────
--- (preserva todos los datos existentes; seguro si ya fue renombrado)
-DO $$
-BEGIN
-  IF EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_schema = 'public' AND table_name = 'inventory' AND column_name = 'sku_note'
-  ) THEN
-    ALTER TABLE public.inventory RENAME COLUMN sku_note TO item_name;
-  END IF;
-END $$;
+drop trigger if exists "tr_inventory_default_distribution" on "public"."inventory";
 
--- ── 2. Agregar internal_note (nueva columna que falta) ────────
-ALTER TABLE public.inventory
-  ADD COLUMN IF NOT EXISTS internal_note text;
+drop function if exists "public"."set_default_inventory_distribution"();
 
--- ── 3. Verificar resultado en inventory ───────────────────────
-SELECT column_name, data_type
-FROM information_schema.columns
-WHERE table_schema = 'public' AND table_name = 'inventory'
-ORDER BY ordinal_position;
+drop function if exists "public"."get_snapshot"(p_target_date date);
 
--- ── 4. Actualizar la RPC adjust_inventory_quantity ───────────
--- (igual que prod: usa item_name en vez de sku_note)
-CREATE OR REPLACE FUNCTION public.adjust_inventory_quantity(
-  p_sku text,
-  p_warehouse text,
-  p_location text,
-  p_delta integer,
-  p_performed_by text,
-  p_user_id uuid,
-  p_user_role text DEFAULT 'staff'::text,
-  p_list_id uuid DEFAULT NULL::uuid,
-  p_order_number text DEFAULT NULL::text,
-  p_merge_note text DEFAULT NULL::text,
-  p_skip_log boolean DEFAULT false
-)
-RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
+alter table "public"."daily_inventory_snapshots" drop column "item_name";
+
+alter table "public"."daily_inventory_snapshots" add column "sku_note" text;
+
+alter table "public"."inventory_logs" add constraint "inventory_logs_user_id_fkey" FOREIGN KEY (user_id) REFERENCES auth.users(id) not valid;
+
+alter table "public"."inventory_logs" validate constraint "inventory_logs_user_id_fkey";
+
+alter table "public"."profiles" add constraint "profiles_id_fkey" FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE not valid;
+
+alter table "public"."profiles" validate constraint "profiles_id_fkey";
+
+alter table "public"."user_presence" add constraint "user_presence_user_id_fkey" FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE not valid;
+
+alter table "public"."user_presence" validate constraint "user_presence_user_id_fkey";
+
+set check_function_bodies = off;
+
+CREATE OR REPLACE FUNCTION public.adjust_inventory_quantity(p_sku text, p_warehouse text, p_location text, p_delta integer, p_performed_by text, p_user_id uuid, p_user_role text DEFAULT 'staff'::text, p_list_id uuid DEFAULT NULL::uuid, p_order_number text DEFAULT NULL::text, p_merge_note text DEFAULT NULL::text, p_skip_log boolean DEFAULT false)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
 AS $function$
 DECLARE
   v_item_id INTEGER;
@@ -80,6 +63,7 @@ BEGIN
       v_new_qty := p_delta;
     END IF;
 
+    -- FIXED: usa item_name en vez de sku_note
     INSERT INTO inventory (sku, warehouse, location, location_id, quantity, is_active, item_name)
     VALUES (p_sku, p_warehouse, v_location_name, v_location_id, v_new_qty, (v_new_qty > 0), p_merge_note)
     RETURNING id INTO v_item_id;
@@ -90,6 +74,7 @@ BEGIN
       v_actual_delta := -v_prev_qty;
     END IF;
 
+    -- FIXED: usa item_name en vez de sku_note
     UPDATE inventory SET
       quantity    = v_new_qty,
       location_id = v_location_id,
@@ -118,23 +103,71 @@ BEGIN
 
   RETURN (SELECT row_to_json(i)::jsonb FROM inventory i WHERE id = v_item_id);
 END;
-$function$;
+$function$
+;
 
--- ── 5. Actualizar move_inventory_stock ───────────────────────
-CREATE OR REPLACE FUNCTION public.move_inventory_stock(
-  p_sku text,
-  p_from_warehouse text,
-  p_from_location text,
-  p_to_warehouse text,
-  p_to_location text,
-  p_qty integer,
-  p_performed_by text,
-  p_user_id uuid DEFAULT NULL::uuid,
-  p_user_role text DEFAULT 'staff'::text
-)
-RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
+CREATE OR REPLACE FUNCTION public.create_daily_snapshot(p_snapshot_date date DEFAULT CURRENT_DATE)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+DECLARE
+  v_count INTEGER;
+BEGIN
+  DELETE FROM daily_inventory_snapshots
+  WHERE snapshot_date = p_snapshot_date;
+
+  -- FIXED: lee item_name de inventory, guarda en sku_note de snapshots
+  INSERT INTO daily_inventory_snapshots
+    (snapshot_date, warehouse, location, sku, quantity, location_id, sku_note)
+  SELECT
+    p_snapshot_date,
+    warehouse,
+    location,
+    sku,
+    quantity,
+    location_id,
+    item_name   -- <-- era sku_note, que no existe en prod
+  FROM inventory
+  WHERE is_active = TRUE AND quantity > 0;
+
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+
+  RETURN jsonb_build_object(
+    'success',       true,
+    'snapshot_date', p_snapshot_date,
+    'items_saved',   v_count,
+    'created_at',    NOW()
+  );
+END;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.get_snapshot(p_target_date date)
+ RETURNS TABLE(warehouse text, location text, sku text, quantity integer, location_id uuid, sku_note text)
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+BEGIN
+  RETURN QUERY
+  SELECT 
+    s.warehouse,
+    s.location,
+    s.sku,
+    s.quantity,
+    s.location_id,
+    s.sku_note
+  FROM daily_inventory_snapshots s
+  WHERE s.snapshot_date = p_target_date
+  ORDER BY s.warehouse, s.location, s.sku;
+END;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.move_inventory_stock(p_sku text, p_from_warehouse text, p_from_location text, p_to_warehouse text, p_to_location text, p_qty integer, p_performed_by text, p_user_id uuid DEFAULT NULL::uuid, p_user_role text DEFAULT 'staff'::text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
 AS $function$
 DECLARE
   v_src_id BIGINT; v_src_prev_qty INTEGER; v_src_new_qty INTEGER; v_src_note TEXT;
@@ -143,6 +176,7 @@ BEGIN
   p_from_location := NULLIF(TRIM(UPPER(p_from_location)), '');
   p_to_location   := NULLIF(TRIM(UPPER(p_to_location)), '');
 
+  -- FIXED: usa item_name en vez de sku_note
   SELECT id, quantity, item_name INTO v_src_id, v_src_prev_qty, v_src_note
   FROM public.inventory
   WHERE sku = p_sku AND warehouse = p_from_warehouse
@@ -170,42 +204,7 @@ BEGIN
 
   RETURN jsonb_build_object('success', true, 'moved_qty', p_qty, 'id', v_src_id);
 END;
-$function$;
+$function$
+;
 
--- ── 6. Actualizar create_daily_snapshot ──────────────────────
-CREATE OR REPLACE FUNCTION public.create_daily_snapshot(
-  p_snapshot_date date DEFAULT CURRENT_DATE
-)
-RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $function$
-DECLARE
-  v_count INTEGER;
-BEGIN
-  DELETE FROM daily_inventory_snapshots
-  WHERE snapshot_date = p_snapshot_date;
 
-  INSERT INTO daily_inventory_snapshots
-    (snapshot_date, warehouse, location, sku, quantity, location_id, sku_note)
-  SELECT
-    p_snapshot_date,
-    warehouse,
-    location,
-    sku,
-    quantity,
-    location_id,
-    item_name
-  FROM inventory
-  WHERE is_active = TRUE AND quantity > 0;
-
-  GET DIAGNOSTICS v_count = ROW_COUNT;
-
-  RETURN jsonb_build_object(
-    'success',       true,
-    'snapshot_date', p_snapshot_date,
-    'items_saved',   v_count,
-    'created_at',    NOW()
-  );
-END;
-$function$;
