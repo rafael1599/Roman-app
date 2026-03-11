@@ -113,7 +113,7 @@ export const DoubleCheckHeader = () => {
                                                                     {order.is_addon && <span className="ml-2 text-[8px] bg-amber-500 text-white px-1 rounded">ADD-ON</span>}
                                                                 </div>
                                                                 <div className="text-[10px] text-muted font-bold uppercase tracking-wider">
-                                                                    {order.profiles?.full_name}
+                                                                    {order.profiles?.full_name ? `Being picked by ${order.profiles.full_name.split(' ')[0]}` : null}
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -190,7 +190,9 @@ export const DoubleCheckHeader = () => {
                                                             <div className="text-[10px] text-muted font-bold uppercase tracking-wider">
                                                                 {order.status === 'double_checking'
                                                                     ? `Being checked by ${order.checker_profile?.full_name?.split(' ')[0]}`
-                                                                    : order.profiles?.full_name}
+                                                                    : order.profiles?.full_name
+                                                                        ? `Being picked by ${order.profiles.full_name.split(' ')[0]}`
+                                                                        : null}
                                                             </div>
                                                         </div>
                                                     </div>

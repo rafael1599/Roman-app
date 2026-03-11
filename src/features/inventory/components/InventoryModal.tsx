@@ -293,7 +293,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
                         setValidationState({
                             status: 'warning',
                             message: isZero
-                                ? '⚠️ Había un ítem registrado aquí (actualmente 0 unidades). Se sumará la cantidad.'
+                                ? '⚠️ A SKU was previously registered here (currently 0 units). Quantity will be added.'
                                 : '⚠️ Item already exists here. Quantity will be added and Description updated.'
                         });
                     } else if (mode === 'edit') {
@@ -414,7 +414,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
     if (!isOpen) return null;
 
     return createPortal(
-        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[100020] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200">
             <div className="bg-surface border border-subtle rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden scale-100 animate-in zoom-in-95 duration-200">
                 <div className="px-6 py-4 border-b border-subtle bg-main/50 flex items-center justify-between">
                     <div>

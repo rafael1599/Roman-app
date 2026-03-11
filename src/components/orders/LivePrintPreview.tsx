@@ -45,6 +45,7 @@ export const LivePrintPreview: React.FC<LivePrintPreviewProps> = ({
         if (street) contentLines.push(street.toUpperCase());
         if (city || state || zip) contentLines.push(cityStateZip);
         contentLines.push(''); // spacer
+        if (orderNumber) contentLines.push(`ORDER #: ${orderNumber}`);
         contentLines.push(`PALLETS: ${palletCount}`);
         contentLines.push(`UNITS: ${units}`);
         contentLines.push(`LOAD: ${loadNumber || 'N/A'}`);
@@ -83,7 +84,7 @@ export const LivePrintPreview: React.FC<LivePrintPreviewProps> = ({
             }
         }
         return fontSize;
-    }, [customerName, street, city, state, zip, palletCount, units, loadNumber, cityStateZip]);
+    }, [customerName, street, city, state, zip, palletCount, units, loadNumber, cityStateZip, orderNumber]);
 
     const pages = useMemo(() => {
         const p = [];
@@ -108,6 +109,7 @@ export const LivePrintPreview: React.FC<LivePrintPreviewProps> = ({
                     </div>
 
                     <div className="mt-[0.3em] font-black tracking-tighter" style={{ fontSize: 'inherit' }}>
+                        {orderNumber && <p>ORDER #: {orderNumber}</p>}
                         <p>PALLETS: {palletCount}</p>
                         <p>UNITS: {units}</p>
                         <p>LOAD: {loadNumber || 'N/A'}</p>

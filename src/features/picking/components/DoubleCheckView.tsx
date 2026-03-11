@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef, useCallback } from 'react';
 import Check from 'lucide-react/dist/esm/icons/check';
 import ChevronLeft from 'lucide-react/dist/esm/icons/chevron-left';
 import MessageSquare from 'lucide-react/dist/esm/icons/message-square';
@@ -6,12 +6,14 @@ import X from 'lucide-react/dist/esm/icons/x';
 import Send from 'lucide-react/dist/esm/icons/send';
 import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down';
 import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle';
+import Pencil from 'lucide-react/dist/esm/icons/pencil';
 import { CorrectionNotesTimeline, Note } from './CorrectionNotesTimeline';
 import { SlideToConfirm } from '../../../components/ui/SlideToConfirm.tsx';
 import { useConfirmation } from '../../../context/ConfirmationContext';
 import { usePickingSession } from '../../../context/PickingContext';
 import { useInventory } from '../../inventory/hooks/InventoryProvider';
-import { type DistributionItem, STORAGE_TYPE_LABELS } from '../../../schemas/inventory.schema';
+import { type DistributionItem, STORAGE_TYPE_LABELS, type InventoryItemWithMetadata } from '../../../schemas/inventory.schema';
+import { InventoryModal } from '../../inventory/components/InventoryModal';
 import toast from 'react-hot-toast';
 
 /** Priority: lower number = pick first. Pallets are overstock we want gone ASAP. */
@@ -64,12 +66,34 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
     onSelectAll,
     status,
 }) => {
-    const { ludlowData, atsData, inventoryData } = useInventory();
+    const { ludlowData, atsData, inventoryData, updateItem, deleteItem } = useInventory();
     const { showConfirmation } = useConfirmation();
     const { pallets } = usePickingSession();
     const [isDeducting, setIsDeducting] = useState(false);
     const [correctionNotes, setCorrectionNotes] = useState('');
     const [isNotesExpanded, setIsNotesExpanded] = useState(false);
+    const [longPressItem, setLongPressItem] = useState<any>(null);
+    const [editModalItem, setEditModalItem] = useState<InventoryItemWithMetadata | null>(null);
+    const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const longPressTriggered = useRef(false);
+
+    const handlePointerDown = useCallback((item: any) => {
+        longPressTriggered.current = false;
+        longPressTimer.current = setTimeout(() => {
+            longPressTriggered.current = true;
+            if (navigator.vibrate) navigator.vibrate(100);
+            // Find full inventory data for this item
+            const invMatch = inventoryData.find(inv => inv.sku === item.sku && inv.location === item.location);
+            setLongPressItem({ ...item, internal_note: invMatch?.internal_note, distribution: (invMatch as any)?.distribution });
+        }, 500);
+    }, [inventoryData]);
+
+    const handlePointerUp = useCallback(() => {
+        if (longPressTimer.current) {
+            clearTimeout(longPressTimer.current);
+            longPressTimer.current = null;
+        }
+    }, []);
 
     const totalUnitsCount = useMemo(() => {
         return pallets.reduce((sum: number, p: any) =>
@@ -121,54 +145,62 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
     }, [pallets, ludlowData, atsData]);
 
     /**
-     * Pick Suggestion Map: For each SKU, find the best distribution group to pick from.
+     * Pick Plan Map: For each SKU, build a full picking plan that covers the order quantity.
      * Priority: PALLET > LINE > TOWER > OTHER, then fewest units_each within same type.
-     * Only suggests if at least one location has distribution data.
+     * Returns an array of pick steps per SKU instead of a single suggestion.
      */
-    const pickSuggestionMap = useMemo(() => {
-        const map: Record<string, { type: string; units_each: number; location: string; icon: string }> = {};
+    const pickPlanMap = useMemo(() => {
+        const map: Record<string, { type: string; units: number; icon: string }[]> = {};
 
-        // Get all unique SKUs from the order
-        const orderSkus = new Set(pallets.flatMap((p: any) => p.items.map((i: any) => i.sku)));
+        // Aggregate total pickingQty per SKU across all pallets
+        const skuQtyMap: Record<string, number> = {};
+        pallets.forEach((p: any) => p.items.forEach((i: any) => {
+            skuQtyMap[i.sku] = (skuQtyMap[i.sku] || 0) + (i.pickingQty || 0);
+        }));
 
-        orderSkus.forEach(sku => {
-            // Find all inventory entries for this SKU that have distribution data
+        Object.entries(skuQtyMap).forEach(([sku, neededQty]) => {
             const entries = inventoryData.filter(
                 inv => inv.sku === sku && Array.isArray((inv as any).distribution) && (inv as any).distribution.length > 0
             );
+            if (entries.length === 0) return;
 
-            if (entries.length === 0) return; // No distribution data → no suggestion
-
-            // Flatten all distribution items with their location context
-            const candidates: { type: string; units_each: number; location: string; priority: number }[] = [];
-
+            // Flatten all distribution groups with count × units_each
+            const groups: { type: string; count: number; units_each: number; priority: number }[] = [];
             entries.forEach(inv => {
                 const dist = (inv as any).distribution as DistributionItem[];
                 dist.forEach(d => {
-                    candidates.push({
+                    groups.push({
                         type: d.type,
+                        count: d.count,
                         units_each: d.units_each,
-                        location: inv.location || '',
                         priority: DISTRIBUTION_PRIORITY[d.type] ?? 99,
                     });
                 });
             });
 
-            if (candidates.length === 0) return;
-
-            // Sort: by priority (PALLET first), then by fewest units_each
-            candidates.sort((a, b) => {
+            // Sort: by priority (PALLET first), then fewest units_each
+            groups.sort((a, b) => {
                 if (a.priority !== b.priority) return a.priority - b.priority;
                 return a.units_each - b.units_each;
             });
 
-            const best = candidates[0];
-            map[sku] = {
-                type: best.type,
-                units_each: best.units_each,
-                location: best.location,
-                icon: STORAGE_TYPE_LABELS[best.type as keyof typeof STORAGE_TYPE_LABELS]?.icon || '🔹',
-            };
+            // Build pick plan consuming groups until neededQty is covered
+            let remaining = neededQty;
+            const steps: { type: string; units: number; icon: string }[] = [];
+
+            for (const g of groups) {
+                if (remaining <= 0) break;
+                const availableUnits = g.count * g.units_each;
+                const take = Math.min(remaining, availableUnits);
+                steps.push({
+                    type: g.type,
+                    units: take,
+                    icon: STORAGE_TYPE_LABELS[g.type as keyof typeof STORAGE_TYPE_LABELS]?.icon || '🔹',
+                });
+                remaining -= take;
+            }
+
+            if (steps.length > 0) map[sku] = steps;
         });
 
         return map;
@@ -182,13 +214,15 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
         orderSkus.forEach(sku => {
             const entries = inventoryData.filter(inv => inv.sku === sku);
             entries.forEach(inv => {
+                // Skip zero-quantity entries — stale distribution data is irrelevant
+                if (inv.quantity === 0) return;
                 const dist = (inv as any).distribution as DistributionItem[] | undefined;
                 if (!dist || dist.length === 0) return;
                 const distTotal = dist.reduce((sum, d) => sum + d.count * d.units_each, 0);
                 if (distTotal > inv.quantity) {
                     map[sku] = 'over';
                 } else if (distTotal < inv.quantity) {
-                    map[sku] = 'under';
+                    if (!map[sku]) map[sku] = 'under';
                 }
             });
         });
@@ -289,7 +323,7 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
                     <div className="flex items-center gap-2 mt-2">
                         <div className="flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded border border-white/5">
                             <span className="text-[9px] font-black text-white/30 uppercase tracking-tighter">Units:</span>
-                            <span className="text-[9px] font-black text-white/70 uppercase">{totalUnitsCount}</span>
+                            <span className="text-[9px] font-black text-blue-400 uppercase">{totalUnitsCount}</span>
                         </div>
                         <div className="flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded border border-white/5">
                             <span className="text-[9px] font-black text-white/30 uppercase tracking-tighter">SKUs:</span>
@@ -335,7 +369,7 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
                                 <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] border border-white/10 px-3 py-1 rounded-full">
                                     Pallet {pallet.id}
                                 </span>
-                                <span className="text-[8px] font-black text-accent/60 uppercase tracking-widest mt-1">
+                                <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest mt-1">
                                     {pallet.items.reduce((sum: number, i: any) => sum + (i.pickingQty || 0), 0)} Units
                                 </span>
                             </div>
@@ -351,7 +385,11 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
                                 return (
                                     <div
                                         key={itemKey}
+                                        onPointerDown={() => handlePointerDown(item)}
+                                        onPointerUp={handlePointerUp}
+                                        onPointerCancel={handlePointerUp}
                                         onClick={() => {
+                                            if (longPressTriggered.current) return;
                                             if (navigator.vibrate) navigator.vibrate(50);
                                             onToggleCheck(item, pallet.id)
                                         }}
@@ -398,19 +436,24 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
                                                         </span>
                                                     )}
                                                 </div>
-                                                {/* Distribution-based pick suggestion */}
-                                                {pickSuggestionMap[item.sku] && (
-                                                    <span className={`text-[12px] font-bold uppercase tracking-widest leading-none ${
+                                                {/* Distribution-based pick plan */}
+                                                {pickPlanMap[item.sku] && (
+                                                    <div className={`flex items-center gap-1.5 flex-wrap text-[11px] font-bold uppercase tracking-widest leading-none ${
                                                         distributionInconsistencyMap[item.sku] === 'over'
                                                             ? 'text-red-400/90'
                                                             : distributionInconsistencyMap[item.sku] === 'under'
                                                                 ? 'text-orange-400/90'
                                                                 : 'text-amber-400/80'
                                                     }`}>
-                                                        {pickSuggestionMap[item.sku].icon} {pickSuggestionMap[item.sku].type} · {pickSuggestionMap[item.sku].units_each}u
-                                                        {distributionInconsistencyMap[item.sku] === 'over' && ' ⚠'}
-                                                        {distributionInconsistencyMap[item.sku] === 'under' && ' ~'}
-                                                    </span>
+                                                        {pickPlanMap[item.sku].map((step, i) => (
+                                                            <span key={i} className="flex items-center gap-0.5">
+                                                                {i > 0 && <span className="text-white/20 mx-0.5">·</span>}
+                                                                {step.icon} {step.type} {step.units}u
+                                                            </span>
+                                                        ))}
+                                                        {distributionInconsistencyMap[item.sku] === 'over' && <span> ⚠</span>}
+                                                        {distributionInconsistencyMap[item.sku] === 'under' && <span> ~</span>}
+                                                    </div>
                                                 )}
                                             </div>
                                         </div>
@@ -507,6 +550,113 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
                     disabled={false}
                 />
             </div>
+
+            {/* Long-press Item Detail Modal */}
+            {longPressItem && (
+                <div
+                    className="fixed inset-0 z-[200] flex items-end justify-center bg-black/70 backdrop-blur-sm animate-in fade-in duration-150"
+                    onClick={() => setLongPressItem(null)}
+                >
+                    <div
+                        className="w-full max-w-lg bg-[#1a1a1f] border-t border-white/10 rounded-t-3xl p-6 pb-10 animate-in slide-in-from-bottom duration-200"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* SKU Header */}
+                        <div className="flex items-center justify-between mb-5">
+                            <div>
+                                <h3 className="text-white text-2xl font-black tracking-tight">{longPressItem.sku}</h3>
+                                {longPressItem.item_name && (
+                                    <p className="text-accent/70 text-xs font-bold uppercase tracking-widest mt-1">{longPressItem.item_name}</p>
+                                )}
+                            </div>
+                            <button
+                                onClick={() => setLongPressItem(null)}
+                                className="p-2 text-white/30 hover:text-white transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Info Grid */}
+                        <div className="grid grid-cols-3 gap-3 mb-5">
+                            <div className="bg-white/5 rounded-xl p-3 text-center">
+                                <span className="text-[8px] text-white/30 font-black uppercase tracking-widest block mb-1">Qty</span>
+                                <span className="text-white text-lg font-black">{longPressItem.pickingQty}</span>
+                            </div>
+                            <div className="bg-white/5 rounded-xl p-3 text-center">
+                                <span className="text-[8px] text-white/30 font-black uppercase tracking-widest block mb-1">Location</span>
+                                <span className="text-amber-500 text-lg font-black">{longPressItem.location || '-'}</span>
+                            </div>
+                            <div className="bg-white/5 rounded-xl p-3 text-center">
+                                <span className="text-[8px] text-white/30 font-black uppercase tracking-widest block mb-1">In Stock</span>
+                                <span className="text-white text-lg font-black">{longPressItem.quantity ?? '-'}</span>
+                            </div>
+                        </div>
+
+                        {/* Distribution */}
+                        {longPressItem.distribution?.length > 0 && (
+                            <div className="mb-5">
+                                <span className="text-[9px] text-white/30 font-black uppercase tracking-widest block mb-2">Distribution</span>
+                                <div className="flex flex-wrap gap-2">
+                                    {longPressItem.distribution.map((d: DistributionItem, i: number) => (
+                                        <span key={i} className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs font-bold text-white/70">
+                                            {STORAGE_TYPE_LABELS[d.type]?.icon} {d.type} · {d.count}×{d.units_each}u
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Internal Note */}
+                        {longPressItem.internal_note && (
+                            <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-4 mb-5">
+                                <span className="text-[9px] text-amber-500/70 font-black uppercase tracking-widest block mb-1">Note</span>
+                                <p className="text-sm text-white/80">{longPressItem.internal_note}</p>
+                            </div>
+                        )}
+
+                        {/* Edit Button */}
+                        <button
+                            onClick={() => {
+                                const invMatch = inventoryData.find(inv => inv.sku === longPressItem.sku && inv.location === longPressItem.location);
+                                if (invMatch) {
+                                    setEditModalItem(invMatch as InventoryItemWithMetadata);
+                                    setLongPressItem(null);
+                                } else {
+                                    toast.error('Item not found in inventory');
+                                }
+                            }}
+                            className="w-full py-3 bg-white/5 border border-white/10 rounded-xl text-white/60 font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-white/10 transition-all active:scale-95"
+                        >
+                            <Pencil size={14} />
+                            Edit Item
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Item Modal (reuses InventoryModal from stock view) */}
+            <InventoryModal
+                isOpen={!!editModalItem}
+                onClose={() => setEditModalItem(null)}
+                onSave={async (formData) => {
+                    if (editModalItem) {
+                        await updateItem(editModalItem, formData);
+                        toast.success(`Updated ${editModalItem.sku}`);
+                        setEditModalItem(null);
+                    }
+                }}
+                onDelete={() => {
+                    if (editModalItem) {
+                        deleteItem(editModalItem.warehouse, editModalItem.sku, editModalItem.location);
+                        toast.success(`Deleted ${editModalItem.sku}`);
+                        setEditModalItem(null);
+                    }
+                }}
+                initialData={editModalItem}
+                mode="edit"
+                screenType={editModalItem?.warehouse}
+            />
         </div >
     );
 };

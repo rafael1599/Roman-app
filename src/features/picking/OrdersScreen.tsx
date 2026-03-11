@@ -94,9 +94,10 @@ export const OrdersScreen = () => {
             let query = supabase
                 .from('picking_lists')
                 .select(`
-                    *, 
+                    *,
                     customer:customers(id, name, street, city, state, zip_code),
                     user:profiles!user_id(full_name),
+                    checker:profiles!checked_by(full_name),
                     presence:user_presence!user_id(last_seen_at)
                 `)
                 .order('created_at', { ascending: false });
@@ -409,6 +410,7 @@ export const OrdersScreen = () => {
                 if (street) contentLines.push(street);
                 if (formData.city) contentLines.push(cityStateZip);
                 contentLines.push(''); // spacer
+                contentLines.push(`ORDER #: ${selectedOrder?.order_number || 'N/A'}`);
                 contentLines.push(`PALLETS: ${pallets}`);
                 contentLines.push(`UNITS: ${unitsNum}`);
                 contentLines.push(`LOAD: ${formData.loadNumber || 'N/A'}`);
@@ -770,6 +772,8 @@ export const OrdersScreen = () => {
                         orderNumber={selectedOrder.order_number}
                         items={selectedOrder.items}
                         completedAt={selectedOrder.updated_at}
+                        pickedBy={selectedOrder.user?.full_name}
+                        checkedBy={selectedOrder.checker?.full_name}
                         onClose={() => setIsShowingPickingSummary(false)}
                     />
                 )

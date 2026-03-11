@@ -1096,7 +1096,7 @@ export const HistoryScreen = () => {
                                   }`}
                                 title={
                                   !isLatest
-                                    ? "Solo puedes deshacer la acción más reciente de este SKU (LIFO)."
+                                    ? "You can only undo the most recent action for this SKU (LIFO)."
                                     : isStale
                                       ? "This record is over 48h old and requires manual restock."
                                       : (log as any).isOptimistic

@@ -7,10 +7,12 @@ interface PickingSummaryModalProps {
     orderNumber: string;
     items: any[];
     completedAt?: string;
+    pickedBy?: string;
+    checkedBy?: string;
     onClose: () => void;
 }
 
-export const PickingSummaryModal: React.FC<PickingSummaryModalProps> = ({ orderNumber, items, completedAt, onClose }) => {
+export const PickingSummaryModal: React.FC<PickingSummaryModalProps> = ({ orderNumber, items, completedAt, pickedBy, checkedBy, onClose }) => {
     const { locations } = useLocationManagement();
 
     // Group items into pallets using the same logic as the Picking flow
@@ -47,6 +49,20 @@ export const PickingSummaryModal: React.FC<PickingSummaryModalProps> = ({ orderN
                                 {new Date(completedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}{' · '}
                                 {new Date(completedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
                             </p>
+                        )}
+                        {(pickedBy || checkedBy) && (
+                            <div className="flex items-center gap-3 mt-2">
+                                {pickedBy && (
+                                    <span className="text-[10px] font-bold text-white/25 uppercase tracking-widest">
+                                        Picked by <span className="text-white/50">{pickedBy.split(' ')[0]}</span>
+                                    </span>
+                                )}
+                                {checkedBy && (
+                                    <span className="text-[10px] font-bold text-white/25 uppercase tracking-widest">
+                                        Checked by <span className="text-white/50">{checkedBy.split(' ')[0]}</span>
+                                    </span>
+                                )}
+                            </div>
                         )}
                     </div>
                     <button
