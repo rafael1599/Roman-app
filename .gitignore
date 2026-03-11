@@ -35,10 +35,12 @@ backups/
 # Test & Dev Artifacts
 playwright-report/
 playwright/.auth/
+test-results/
 supabase/.temp/
 tsc_output_expert.txt
 .agent/skills/
 .agents/skills/
+.claude/
 
 # Local Dev Data
 supabase/seed.sql
