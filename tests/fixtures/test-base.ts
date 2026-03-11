@@ -27,7 +27,7 @@ export const test = base.extend<MyFixtures>({
 
         // 🛑 BLOCK PRODUCTION — never run destructive operations against prod
         const isProduction = supabaseUrl.includes('xexkttehzpxtviebglei')
-            || !supabaseUrl.includes('localhost');
+            || (!supabaseUrl.includes('localhost') && !supabaseUrl.includes('127.0.0.1'));
 
         if (isProduction) {
             console.warn('🛑 [Fixture] Database cleanup BLOCKED — refusing to run against production!');

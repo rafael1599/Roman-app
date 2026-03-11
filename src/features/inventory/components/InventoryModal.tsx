@@ -49,6 +49,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
     const autoSelect = useAutoSelect();
     const [distribution, setDistribution] = useState<DistributionItem[]>([]);
     const [isDistributionOpen, setIsDistributionOpen] = useState(false);
+    const [userEditedDistribution, setUserEditedDistribution] = useState(false);
 
     const {
         register,
@@ -102,6 +103,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
                 });
                 setDistribution(Array.isArray((initialData as any).distribution) ? (initialData as any).distribution : []);
                 setIsDistributionOpen(Array.isArray((initialData as any).distribution) && (initialData as any).distribution.length > 0);
+                setUserEditedDistribution(false);
             } else {
                 reset({
                     sku: '',
@@ -116,12 +118,27 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
                 });
                 setDistribution([]);
                 setIsDistributionOpen(false);
+                setUserEditedDistribution(false);
             }
         } else {
             setIsNavHidden?.(false);
         }
         return () => setIsNavHidden?.(false);
     }, [isOpen, initialData, mode, screenType, reset, setIsNavHidden]);
+
+    // 2b. Sync distribution from realtime data (unless user has manually edited it)
+    useEffect(() => {
+        if (!isOpen || mode !== 'edit' || !initialData || userEditedDistribution) return;
+        const allItems = [...ludlowData, ...atsData];
+        const liveItem = allItems.find(i => i.id === (initialData as any).id);
+        if (!liveItem) return;
+        const liveDist = Array.isArray((liveItem as any).distribution) ? (liveItem as any).distribution : [];
+        const currentJson = JSON.stringify(distribution);
+        const liveJson = JSON.stringify(liveDist);
+        if (currentJson !== liveJson) {
+            setDistribution(liveDist);
+        }
+    }, [isOpen, mode, initialData, ludlowData, atsData, userEditedDistribution]);
 
     // 3. Location Predictions & Suggestions
     const validLocationNames = useMemo(() => {
@@ -355,10 +372,12 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
     const addDistributionRow = () => {
         setDistribution(prev => [...prev, { type: 'TOWER', count: 1, units_each: DEFAULT_UNITS['TOWER'] }]);
         setIsDistributionOpen(true);
+        setUserEditedDistribution(true);
     };
 
     const removeDistributionRow = (index: number) => {
         setDistribution(prev => prev.filter((_, i) => i !== index));
+        setUserEditedDistribution(true);
     };
 
     const updateDistributionRow = (index: number, field: keyof DistributionItem, value: any) => {
@@ -371,6 +390,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
             }
             return updated;
         }));
+        setUserEditedDistribution(true);
     };
 
     const executeSave = async (data: any) => {

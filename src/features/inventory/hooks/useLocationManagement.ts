@@ -83,7 +83,7 @@ export const useLocationManagement = () => {
         }
 
         const updatedLoc = data as any;
-        // Optimistic update
+        // Optimistic update (uses functional setState — no dependency on locations)
         setLocations((prev) => prev.map((loc) => (loc.id === id ? updatedLoc : loc)));
 
         return { success: true, data: updatedLoc };
@@ -92,7 +92,7 @@ export const useLocationManagement = () => {
         return { success: false, error: err.message };
       }
     },
-    [locations]
+    []
   );
 
   // Create new location
