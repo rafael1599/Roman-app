@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, useMemo, ReactNode } from 'react';
 
 type ViewMode = 'stock' | 'picking' | 'building' | 'double_checking';
 
@@ -24,21 +24,21 @@ export const ViewModeProvider = ({ children }: { children: ReactNode }) => {
   const [isNavHidden, setIsNavHidden] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
 
+  const value = useMemo(() => ({
+    viewMode,
+    setViewMode,
+    externalDoubleCheckId,
+    setExternalDoubleCheckId,
+    externalOrderId,
+    setExternalOrderId,
+    isNavHidden,
+    setIsNavHidden,
+    isSearching,
+    setIsSearching,
+  }), [viewMode, externalDoubleCheckId, externalOrderId, isNavHidden, isSearching]);
+
   return (
-    <ViewModeContext.Provider
-      value={{
-        viewMode,
-        setViewMode,
-        externalDoubleCheckId,
-        setExternalDoubleCheckId,
-        externalOrderId,
-        setExternalOrderId,
-        isNavHidden,
-        setIsNavHidden,
-        isSearching,
-        setIsSearching,
-      }}
-    >
+    <ViewModeContext.Provider value={value}>
       {children}
     </ViewModeContext.Provider>
   );

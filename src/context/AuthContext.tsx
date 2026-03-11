@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, useMemo, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import { queryClient } from '../lib/query-client';
 import { type User } from '@supabase/supabase-js';
@@ -219,7 +219,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const updateProfileName = async (newName: string) => {
+  const updateProfileName = useCallback(async (newName: string) => {
     if (!user) return { success: false, error: 'No user session' };
 
     try {
@@ -236,9 +236,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.error('Update profile error:', err);
       return { success: false, error: err.message };
     }
-  };
+  }, [user]);
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     setLoading(true);
 
     // Voluntary Logout: Clear EVERYTHING (Queries + Mutations)
@@ -262,17 +262,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setProfile(null);
     setUser(null);
     setLoading(false);
-  };
+  }, []);
 
-  const toggleAdminView = () => {
+  const toggleAdminView = useCallback(() => {
     setViewAsUser((prev) => {
       const newValue = !prev;
       localStorage.setItem('view_as_user', String(newValue));
       return newValue;
     });
-  };
+  }, []);
 
-  const value = {
+  const value = useMemo(() => ({
     user,
     role,
     profile,
@@ -283,7 +283,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     signOut,
     updateProfileName,
     toggleAdminView,
-  };
+  }), [user, role, profile, viewAsUser, loading, signOut, updateProfileName, toggleAdminView]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
