@@ -6,7 +6,8 @@
       "Read(//private/tmp/claude-skills/**)",
       "Bash(mkdir -p skills/general)",
       "Bash(mv skills/commit-craft skills/general/)",
-      "Bash(mkdir -p skills/roman-app)"
+      "Bash(mkdir -p skills/roman-app)",
+      "Bash(wc -l /Users/rafaellopez/Documents/Antigravity/Roman-app/supabase/migrations/*.sql)"
     ],
     "additionalDirectories": [
       "/Users/rafaellopez/Documents/Antigravity/Roman-app/.claude",
@@ -15,6 +16,6 @@
     ]
   },
   "enabledPlugins": {
-    "roman-app-skills@rafael-skills": true
+    "roman-app-skills@rafael-skills": false
   }
 }

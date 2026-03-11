@@ -174,6 +174,28 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
         return map;
     }, [pallets, inventoryData]);
 
+    /** Detect distribution ↔ quantity inconsistencies per SKU+location */
+    const distributionInconsistencyMap = useMemo(() => {
+        const map: Record<string, 'over' | 'under'> = {};
+        const orderSkus = new Set(pallets.flatMap((p: any) => p.items.map((i: any) => i.sku)));
+
+        orderSkus.forEach(sku => {
+            const entries = inventoryData.filter(inv => inv.sku === sku);
+            entries.forEach(inv => {
+                const dist = (inv as any).distribution as DistributionItem[] | undefined;
+                if (!dist || dist.length === 0) return;
+                const distTotal = dist.reduce((sum, d) => sum + d.count * d.units_each, 0);
+                if (distTotal > inv.quantity) {
+                    map[sku] = 'over';
+                } else if (distTotal < inv.quantity) {
+                    map[sku] = 'under';
+                }
+            });
+        });
+
+        return map;
+    }, [pallets, inventoryData]);
+
     const handleConfirm = async () => {
         const isFullyVerified = verifiedUnitsCount === totalUnitsCount;
         setIsDeducting(true);
@@ -378,8 +400,16 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
                                                 </div>
                                                 {/* Distribution-based pick suggestion */}
                                                 {pickSuggestionMap[item.sku] && (
-                                                    <span className="text-[12px] font-bold text-amber-400/80 uppercase tracking-widest leading-none">
+                                                    <span className={`text-[12px] font-bold uppercase tracking-widest leading-none ${
+                                                        distributionInconsistencyMap[item.sku] === 'over'
+                                                            ? 'text-red-400/90'
+                                                            : distributionInconsistencyMap[item.sku] === 'under'
+                                                                ? 'text-orange-400/90'
+                                                                : 'text-amber-400/80'
+                                                    }`}>
                                                         {pickSuggestionMap[item.sku].icon} {pickSuggestionMap[item.sku].type} · {pickSuggestionMap[item.sku].units_each}u
+                                                        {distributionInconsistencyMap[item.sku] === 'over' && ' ⚠'}
+                                                        {distributionInconsistencyMap[item.sku] === 'under' && ' ~'}
                                                     </span>
                                                 )}
                                             </div>
