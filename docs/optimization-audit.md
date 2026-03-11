@@ -324,11 +324,11 @@ Eliminar el useEffect completamente. Si en el futuro se necesita sync de filtros
 
 ## Orden de ejecucion recomendado
 
-| Prioridad | ID | Descripcion | Impacto | Esfuerzo | Riesgo |
-|-----------|-----|-------------|---------|----------|--------|
-| 1 | OPT-1 | `useLocationManagement` → useQuery | Alto (10+ fetches redundantes) | Medio | Medio |
-| 2 | OPT-2 | Memoizar AuthContext value | Medio-Alto (16 consumers) | Bajo | Bajo |
-| 3 | OPT-4 | Memoizar ViewModeContext value | Medio (10 consumers) | Minimo | Cero |
-| 4 | OPT-3 | Memoizar return de useInventory | Medio (16 consumers) | Medio | Bajo |
-| 5 | OPT-6 | Eliminar syncFilters useEffect | Bajo (no-op) | Minimo | Cero |
-| 6 | OPT-5 | useCallback para trackLog | Bajo | Minimo | Cero |
+| Prioridad | ID | Descripcion | Estado |
+|-----------|-----|-------------|--------|
+| 1 | OPT-1 | `useLocationManagement` → useQuery | DONE (40a3827) |
+| 2 | OPT-2 | Memoizar AuthContext value | DONE (0d8a475) |
+| 3 | OPT-4 | Memoizar ViewModeContext value | DONE (0d8a475) |
+| 4 | OPT-3 | Memoizar return de useInventory | DONE (8c3432a) |
+| 5 | OPT-6 | Eliminar syncFilters useEffect | DONE (f79496f) |
+| 6 | OPT-5 | useCallback para trackLog | DONE (f79496f) |
