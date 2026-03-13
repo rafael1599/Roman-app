@@ -3,7 +3,7 @@ Progress Update — March 13, 2026
 
 Summary:
 
-We completed the picker identification feature mentioned in the last update, fixed a visual bug in the inventory screen, improved how inventory edits are tracked, and updated the PDF import tool so it sends the correct product names to the verification list.
+Software fixes, PDF import audit, and physical warehouse work on Rows 18 and 19.
 
 
 --- Details below ---
@@ -20,6 +20,7 @@ Inventory Tracking:
 - Fixed an issue where editing an item's distribution (pallets, lines, towers) would not save properly in certain situations. Edits now stick every time.
 - The Update button in the item editor is now grayed out when nothing has changed, so you don't accidentally save without making edits.
 - Fixed the capacity bar on inventory locations — it was showing empty after a recent update. It now correctly shows how full each location is again.
+- Fixed an issue in the item editor where you couldn't fully clear a number in the distribution fields (count and units each). The field would get stuck at 1 instead of letting you delete and retype. Now you can clear the field freely, and it only defaults back to 1 if you leave it empty.
 
 
 PDF Import Tool (Watchdog):
@@ -29,8 +30,14 @@ PDF Import Tool (Watchdog):
 - Product names now come from our database first. If a product doesn't have a name stored yet, it falls back to whatever name the PDF contains. This means verifiers see consistent, familiar names rather than the sometimes-abbreviated names from the PDF.
 
 
+Warehouse Floor:
+
+- Built out the lines for Row 18 and Row 19 as planned. Row 18 is now 99% full with towers and lines. Row 19 still needs to be filled.
+
+
 Coming Up:
 
+- Fill Row 19 with remaining inventory.
 - Set up the PDF import tool to start automatically when the computer turns on, so no one has to remember to launch it manually.
 - Look into combining two separate orders into one picking session for cases where the same customer has multiple orders going out together.
 
@@ -38,3 +45,13 @@ Coming Up:
 Backlog Status:
 
 0 completed today — 11 pending — 0 new items added today
+
+
+Ideas Under Consideration:
+
+The following are early-stage ideas we've identified as potentially valuable. Each one needs further thought on the best way to bring it to life before any work begins — we want to make sure we approach them the right way rather than rush into building something that doesn't fit the workflow.
+
+1. Combine orders from the same shop into a single picking session, so the team doesn't have to pick and verify the same customer's items separately across multiple orders.
+2. Warehouse session lock — after 5 minutes of no activity, the app locks and asks who is using it. This way every action is tied to the right person, not whoever was logged in last.
+3. Daily activity dashboard for supervisors — a view that shows what each warehouse team member did during the day (orders picked, items verified, inventory moved) without needing manual reports.
+4. Auto-start the PDF import tool when the computer turns on, so no one has to remember to launch it manually each morning.
