@@ -18,6 +18,7 @@ import User from 'lucide-react/dist/esm/icons/user';
 import Mail from 'lucide-react/dist/esm/icons/mail';
 import Users from 'lucide-react/dist/esm/icons/users';
 import Settings from 'lucide-react/dist/esm/icons/settings';
+import Package from 'lucide-react/dist/esm/icons/package';
 import { SearchInput } from '../../components/ui/SearchInput';
 import { getUserColor, getUserBgColor } from '../../utils/userUtils';
 import toast from 'react-hot-toast';
@@ -112,6 +113,10 @@ export const HistoryScreen = () => {
   const getDisplayQty = useCallback((l: any) => {
     if (!l) return 0;
     if (l.action_type === 'EDIT') return l.new_quantity ?? l.quantity_change ?? 0;
+    if (l.action_type === 'PHYSICAL_DISTRIBUTION') {
+      const snap = l.snapshot_before;
+      return snap?.count && snap?.units_each ? snap.count * snap.units_each : l.new_quantity ?? 0;
+    }
     // For MOVE logs where quantity_change is 0 but it was actually a location rename, show the total quantity moved
     if (l.action_type === 'MOVE' && (l.quantity_change === 0 || !l.quantity_change) && l.new_quantity) return l.new_quantity;
     return Math.abs(l.quantity_change || 0);
@@ -565,6 +570,17 @@ export const HistoryScreen = () => {
           bg: 'bg-amber-500/10',
           label: 'Update',
         };
+      case 'PHYSICAL_DISTRIBUTION':
+        const snap = log.snapshot_before as any;
+        const distLabel = snap?.type
+          ? `${snap.change === 'removed' ? '- ' : '+ '}${snap.count} ${snap.type} × ${snap.units_each}u`
+          : 'Distribution';
+        return {
+          icon: <Package size={14} />,
+          color: 'text-orange-500',
+          bg: 'bg-orange-500/10',
+          label: distLabel,
+        };
       case 'SYSTEM_RECONCILIATION':
         return {
           icon: <Settings size={14} />,
@@ -822,6 +838,10 @@ export const HistoryScreen = () => {
                                     <td style="padding: 12px; text-align: right; font-weight: bold;">
                                         ${(() => {
                 if (log.action_type === 'EDIT') return log.new_quantity ?? log.quantity_change ?? 0;
+                if (log.action_type === 'PHYSICAL_DISTRIBUTION') {
+                  const s = log.snapshot_before as any;
+                  return s?.count && s?.units_each ? s.count * s.units_each : log.new_quantity ?? 0;
+                }
                 if (log.action_type === 'MOVE' && (log.quantity_change === 0 || !log.quantity_change) && log.new_quantity) return log.new_quantity;
                 return Math.abs(log.quantity_change || 0);
               })()}
@@ -903,7 +923,7 @@ export const HistoryScreen = () => {
         {!isSearching && (
           <>
             <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-              {['ALL', 'MOVE', 'ADD', 'DEDUCT', 'DELETE'].map((f) => (
+              {['ALL', 'MOVE', 'ADD', 'DEDUCT', 'DELETE', 'PHYSICAL_DISTRIBUTION'].map((f) => (
                 <button
                   key={f}
                   onClick={() => setFilter(f as any)}
@@ -912,7 +932,7 @@ export const HistoryScreen = () => {
                     : 'bg-surface text-muted border-subtle hover:border-muted/30'
                     }`}
                 >
-                  {f === 'DEDUCT' ? 'Picking' : f}
+                  {f === 'DEDUCT' ? 'Picking' : f === 'PHYSICAL_DISTRIBUTION' ? 'Distribution' : f}
                 </button>
               ))}
             </div>
@@ -1174,9 +1194,9 @@ export const HistoryScreen = () => {
 
                         <div className="text-right px-4">
                           <p className="text-[7px] text-muted font-black uppercase tracking-widest mb-1">
-                            {log.action_type === 'EDIT' ? 'Total Qty' : 'Change'}
+                            {log.action_type === 'EDIT' ? 'Total Qty' : log.action_type === 'PHYSICAL_DISTRIBUTION' ? 'Units' : 'Change'}
                           </p>
-                          <p className={`text-2xl font-black leading-none ${log.action_type === 'EDIT' ? 'text-accent' : 'text-content'}`} data-testid="quantity-change">
+                          <p className={`text-2xl font-black leading-none ${log.action_type === 'EDIT' ? 'text-accent' : log.action_type === 'PHYSICAL_DISTRIBUTION' ? 'text-orange-500' : 'text-content'}`} data-testid="quantity-change">
                             {getDisplayQty(log)}
                           </p>
                         </div>

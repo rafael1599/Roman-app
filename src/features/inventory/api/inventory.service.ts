@@ -4,7 +4,8 @@ import {
     InventoryItemSchema as inventorySchema,
     type InventoryItem as InventoryModel,
     InventoryItemInputSchema,
-    type InventoryItemInput
+    type InventoryItemInput,
+    type DistributionItem
 } from '../../../schemas/inventory.schema';
 import { type Location } from '../../../schemas/location.schema';
 import { type InventoryLogInput } from '../../../schemas/log.schema';
@@ -29,6 +30,67 @@ interface ResolvedLocation {
 class InventoryService extends BaseService<'inventory', InventoryModel, InventoryItemInput, InventoryItemInput> {
     constructor() {
         super(supabase, 'inventory', () => ({ schema: inventorySchema as any }));
+    }
+
+    /**
+     * Logs individual PHYSICAL_DISTRIBUTION entries for each distribution row that changed.
+     * Compares old vs new distribution arrays and fires one log per added/removed/modified row.
+     */
+    private async logDistributionChanges(
+        oldDist: DistributionItem[],
+        newDist: DistributionItem[],
+        item: { id: number | string; sku: string; warehouse: string; location: string | null | undefined; location_id: string | null | undefined; quantity: number },
+        ctx: InventoryServiceContext
+    ) {
+        const { userInfo, trackLog } = ctx;
+        const key = (d: DistributionItem) => `${d.type}|${d.count}|${d.units_each}|${d.label || ''}`;
+        const oldKeys = new Map<string, DistributionItem>();
+        oldDist.forEach(d => oldKeys.set(key(d), d));
+        const newKeys = new Map<string, DistributionItem>();
+        newDist.forEach(d => newKeys.set(key(d), d));
+
+        // Collect changes: added rows (in new but not old), removed rows (in old but not new)
+        const changes: { action: 'added' | 'removed'; row: DistributionItem }[] = [];
+        for (const [k, row] of newKeys) {
+            if (!oldKeys.has(k)) changes.push({ action: 'added', row });
+        }
+        for (const [k, row] of oldKeys) {
+            if (!newKeys.has(k)) changes.push({ action: 'removed', row });
+        }
+
+        console.log(`[InventoryService] Distribution diff — old: ${JSON.stringify(oldDist)}, new: ${JSON.stringify(newDist)}, changes: ${changes.length}`);
+
+        if (changes.length === 0) return;
+
+        for (const change of changes) {
+            console.log(`[InventoryService] Logging PHYSICAL_DISTRIBUTION: ${change.action} ${change.row.count} ${change.row.type} × ${change.row.units_each}u`);
+            try {
+                await trackLog({
+                    sku: item.sku,
+                    from_warehouse: item.warehouse as any,
+                    from_location: item.location || undefined,
+                    to_warehouse: item.warehouse as any,
+                    to_location: item.location || undefined,
+                    quantity_change: 0,
+                    prev_quantity: item.quantity,
+                    new_quantity: item.quantity,
+                    action_type: 'PHYSICAL_DISTRIBUTION',
+                    item_id: String(item.id),
+                    location_id: item.location_id,
+                    snapshot_before: {
+                        change: change.action,
+                        type: change.row.type,
+                        count: change.row.count,
+                        units_each: change.row.units_each,
+                        label: change.row.label || null,
+                        distribution_before: oldDist,
+                        distribution_after: newDist,
+                    },
+                }, userInfo);
+            } catch (logError) {
+                console.warn('[InventoryService] PHYSICAL_DISTRIBUTION log failed, but operation succeeded.', logError);
+            }
+        }
     }
 
     /**
@@ -380,6 +442,7 @@ class InventoryService extends BaseService<'inventory', InventoryModel, Inventor
                     location_id: targetLocationId,
                     item_name: updatedNote,
                     is_active: consolidatedQty > 0 ? true : targetItem.is_active,
+                    distribution: validatedInput.distribution || [],
                 } as any);
 
                 // Check Zero Stock Persistence rule for origin
@@ -420,6 +483,14 @@ class InventoryService extends BaseService<'inventory', InventoryModel, Inventor
                     console.warn('[InventoryService] Log failed for collision move, but operations succeeded.', logError);
                 }
 
+                // Log distribution changes (one log per added/removed row)
+                const oldDistCase2 = Array.isArray((originalItem as any).distribution) ? (originalItem as any).distribution : [];
+                const newDistCase2 = validatedInput.distribution || [];
+                await this.logDistributionChanges(oldDistCase2, newDistCase2, {
+                    id: targetItem.id, sku: newSku, warehouse: targetWarehouse,
+                    location: targetLocation, location_id: targetLocationId, quantity: consolidatedQty,
+                }, ctx);
+
                 return { action: 'consolidated', id: targetItem.id };
             }
 
@@ -433,6 +504,7 @@ class InventoryService extends BaseService<'inventory', InventoryModel, Inventor
                 item_name: validatedInput.item_name,
                 status: validatedInput.status || originalItem.status,
                 is_active: newQty > 0 ? true : originalItem.is_active,
+                distribution: validatedInput.distribution || [],
             } as any);
 
             const isRename = hasSkuChanged;
@@ -466,6 +538,14 @@ class InventoryService extends BaseService<'inventory', InventoryModel, Inventor
             } catch (logError) {
                 console.warn('[InventoryService] Log failed for standard move/rename, but operation succeeded.', logError);
             }
+
+            // Log distribution changes (one log per added/removed row)
+            const oldDistCase3 = Array.isArray((originalItem as any).distribution) ? (originalItem as any).distribution : [];
+            const newDistCase3 = validatedInput.distribution || [];
+            await this.logDistributionChanges(oldDistCase3, newDistCase3, {
+                id: originalItem.id, sku: newSku, warehouse: targetWarehouse,
+                location: targetLocation, location_id: targetLocationId, quantity: newQty,
+            }, ctx);
 
             return { action: isRename ? 'renamed' : 'moved', id: originalItem.id };
         }
@@ -508,6 +588,14 @@ class InventoryService extends BaseService<'inventory', InventoryModel, Inventor
         } catch (logError) {
             console.warn('[InventoryService] Log failed for in-place edit, but operation succeeded.', logError);
         }
+
+        // Log distribution changes (one log per added/removed row)
+        const oldDistInPlace = Array.isArray((originalItem as any).distribution) ? (originalItem as any).distribution : [];
+        const newDistInPlace = validatedInput.distribution || [];
+        await this.logDistributionChanges(oldDistInPlace, newDistInPlace, {
+            id: originalItem.id, sku: originalItem.sku, warehouse: originalItem.warehouse,
+            location: originalItem.location, location_id: originalItem.location_id, quantity: newQty,
+        }, ctx);
 
         return { action: 'updated', id: originalItem.id };
     }

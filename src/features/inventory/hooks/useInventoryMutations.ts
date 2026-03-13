@@ -3,6 +3,7 @@ import { inventoryService } from '../api/inventory.service';
 import { type InventoryItemInput, type InventoryItemWithMetadata } from '../../../schemas/inventory.schema';
 import { useAuth } from '../../../context/AuthContext';
 import { useLocationManagement } from './useLocationManagement';
+import { useInventoryLogs } from './useInventoryLogs';
 import { INVENTORY_ROOT_KEY } from './useInventoryRealtime';
 import toast from 'react-hot-toast';
 
@@ -10,13 +11,14 @@ export function useInventoryMutations() {
     const queryClient = useQueryClient();
     const { user, profile } = useAuth();
     const { locations } = useLocationManagement();
+    const { trackLog } = useInventoryLogs();
 
     const userName = profile?.full_name || user?.email || 'Warehouse Team';
 
     const getServiceContext = () => ({
         isAdmin: profile?.role === 'admin' || profile?.role === 'manager',
         userInfo: { performed_by: userName, user_id: user?.id },
-        trackLog: async () => 'log_id', // Mocked or connected to actual log system if needed. Logs usually run inside service via trackLog, but the service handles it internally if we provide it.
+        trackLog,
     });
 
     const updateQuantity = useMutation({

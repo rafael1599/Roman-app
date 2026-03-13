@@ -94,7 +94,8 @@ export const useInventoryLogs = () => {
         }
 
         // STRATEGY 2: Fallback to Time-Based Search
-        if (!targetLog) {
+        // Skip coalescing entirely for PHYSICAL_DISTRIBUTION — each row must be its own log
+        if (!targetLog && logData.action_type !== 'PHYSICAL_DISTRIBUTION') {
           // Safety: Only coalesce if we have a user_id to avoid collisions
           if (userInfo.user_id) {
             const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();

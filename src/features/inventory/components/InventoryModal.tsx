@@ -83,6 +83,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
     const warehouse = watch('warehouse');
     const quantity = watch('quantity');
     const itemName = watch('item_name');
+    const internalNote = watch('internal_note');
 
     // 2. Sync Initial Data
     useEffect(() => {
@@ -139,6 +140,22 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
             setDistribution(liveDist);
         }
     }, [isOpen, mode, initialData, ludlowData, atsData, userEditedDistribution]);
+
+    // 2c. Dirty check — has any field changed from initial values?
+    const hasChanges = useMemo(() => {
+        if (mode !== 'edit' || !initialData) return true; // Always allow in add mode
+        const n = (v: any) => String(v ?? '').trim();
+        const formChanged =
+            n(sku) !== n(initialData.sku) ||
+            n(location) !== n(initialData.location) ||
+            n(warehouse) !== n(initialData.warehouse || screenType || 'LUDLOW') ||
+            Number(quantity || 0) !== Number(initialData.quantity || 0) ||
+            n(itemName) !== n(initialData.item_name) ||
+            n(internalNote) !== n((initialData as any).internal_note);
+        if (formChanged) return true;
+        const initDist = Array.isArray((initialData as any).distribution) ? (initialData as any).distribution : [];
+        return JSON.stringify(distribution) !== JSON.stringify(initDist);
+    }, [mode, initialData, sku, location, warehouse, quantity, itemName, internalNote, distribution, screenType]);
 
     // 3. Location Predictions & Suggestions
     const validLocationNames = useMemo(() => {
@@ -696,9 +713,9 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
                         </button>
                     )}
                     <button
-                        disabled={!isValid || !sku?.trim() || !location?.trim() || validationState.status === 'error' || validationState.status === 'checking'}
+                        disabled={!isValid || !sku?.trim() || !location?.trim() || validationState.status === 'error' || validationState.status === 'checking' || !hasChanges}
                         onClick={handleSubmit(onFormSubmit)}
-                        className={`flex-1 font-black uppercase tracking-widest h-14 rounded-2xl flex items-center justify-center gap-2 transition-transform shadow-lg shadow-accent/20 ${(!isValid || !sku?.trim() || !location?.trim() || validationState.status === 'error' || validationState.status === 'checking')
+                        className={`flex-1 font-black uppercase tracking-widest h-14 rounded-2xl flex items-center justify-center gap-2 transition-transform shadow-lg shadow-accent/20 ${(!isValid || !sku?.trim() || !location?.trim() || validationState.status === 'error' || validationState.status === 'checking' || !hasChanges)
                             ? 'bg-neutral-800 text-neutral-500 border border-neutral-700 cursor-not-allowed opacity-50'
                             : 'bg-accent hover:opacity-90 text-main active:scale-95'
                             }`}
