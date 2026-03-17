@@ -4,10 +4,11 @@ interface OrderChipProps {
     orderNumber: string;
     status: string;
     isSelected: boolean;
+    isCombined?: boolean;
     onClick: () => void;
 }
 
-export const OrderChip: React.FC<OrderChipProps> = ({ orderNumber, status, isSelected, onClick }) => {
+export const OrderChip: React.FC<OrderChipProps> = ({ orderNumber, status, isSelected, isCombined, onClick }) => {
     const displayStatus = status === 'ready_to_double_check' ? 'READY' :
         status === 'active' ? 'PICKING' :
             status.toUpperCase();
@@ -24,9 +25,10 @@ export const OrderChip: React.FC<OrderChipProps> = ({ orderNumber, status, isSel
             `}
         >
             <span className={`
-                text-[9px] uppercase tracking-[0.2em] leading-none mb-1 font-black
+                text-[9px] uppercase tracking-[0.2em] leading-none mb-1 font-black flex items-center gap-1
                 ${isSelected ? 'opacity-60 text-white' : 'text-accent opacity-100'}
             `}>
+                {isCombined && <span title="Combined order">🔗</span>}
                 {isSelected ? 'SELECTED' : displayStatus}
             </span>
             <span className={`font-mono text-2xl font-black tracking-tighter ${isSelected ? 'text-white' : 'text-content/80'}`}>

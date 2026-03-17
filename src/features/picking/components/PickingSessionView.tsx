@@ -77,6 +77,15 @@ export const PickingSessionView: React.FC<PickingSessionViewProps> = ({
     const [tempCustomer, setTempCustomer] = useState(customer?.name || '');
 
     const inputRef = useRef<HTMLInputElement>(null);
+    const prevItemCountRef = useRef(cartItems.length);
+
+    // Detect when new items are added (e.g., from auto-combine)
+    useEffect(() => {
+        if (cartItems.length > prevItemCountRef.current) {
+            toast('New items added to this order', { icon: '🔗', duration: 4000 });
+        }
+        prevItemCountRef.current = cartItems.length;
+    }, [cartItems.length]);
     const orderInputRef = useRef<HTMLInputElement>(null);
     const customerInputRef = useRef<HTMLInputElement>(null);
 

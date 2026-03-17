@@ -12,6 +12,22 @@ export const PickingListItemSchema = InventoryItemSchema.extend({
 export type PickingListItem = z.infer<typeof PickingListItemSchema>;
 
 /**
+ * Zod schema for combine_meta (auto-combined orders provenance)
+ */
+export const CombineMetaSchema = z.object({
+    is_combined: z.boolean(),
+    source_orders: z.array(z.object({
+        order_number: z.string(),
+        added_at: z.string(),
+        item_count: z.number().optional(),
+        pdf_hash: z.string().optional(),
+        file_name: z.string().optional(),
+    })),
+}).nullable().optional();
+
+export type CombineMeta = z.infer<typeof CombineMetaSchema>;
+
+/**
  * Zod schema for the picking_lists table
  */
 export const PickingListSchema = z.object({
@@ -24,6 +40,7 @@ export const PickingListSchema = z.object({
     items: z.array(PickingListItemSchema).nullable(),
     correction_notes: z.string().nullable(),
     checked_by: z.string().uuid().nullable(),
+    combine_meta: CombineMetaSchema,
     created_at: z.string(),
     updated_at: z.string(),
 });

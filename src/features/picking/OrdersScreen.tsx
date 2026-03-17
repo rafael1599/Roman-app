@@ -15,6 +15,7 @@ import { OrderChip } from '../../components/orders/OrderChip';
 import { OrderSidebar } from '../../components/orders/OrderSidebar';
 import { FloatingActionButtons } from '../../components/orders/FloatingActionButtons';
 import { PickingSummaryModal } from '../../components/orders/PickingSummaryModal';
+import { SplitOrderModal } from '../../components/orders/SplitOrderModal';
 import { SearchInput } from '../../components/ui/SearchInput.tsx';
 
 export const OrdersScreen = () => {
@@ -69,6 +70,7 @@ export const OrdersScreen = () => {
     const [isPrinting, setIsPrinting] = useState(false);
     const [pressedKey, setPressedKey] = useState<'left' | 'right' | null>(null);
     const [isShowingPickingSummary, setIsShowingPickingSummary] = useState(false);
+    const [isShowingSplitModal, setIsShowingSplitModal] = useState(false);
 
     // Form state for live editing
     const [formData, setFormData] = useState({
@@ -565,6 +567,7 @@ export const OrdersScreen = () => {
                         }
                     }}
                     onShowPickingSummary={() => setIsShowingPickingSummary(true)}
+                    onSplitOrder={() => setIsShowingSplitModal(true)}
                 />
             </div>
 
@@ -649,6 +652,7 @@ export const OrdersScreen = () => {
                                                     orderNumber={order.order_number}
                                                     status={order.status}
                                                     isSelected={isSelected}
+                                                    isCombined={!!(order as any).combine_meta?.is_combined}
                                                     onClick={() => setSelectedOrder(order)}
                                                 />
                                             </div>
@@ -778,6 +782,19 @@ export const OrdersScreen = () => {
                     />
                 )
             }
+
+            {/* Split Order Modal */}
+            {isShowingSplitModal && selectedOrder && (
+                <SplitOrderModal
+                    order={selectedOrder}
+                    onClose={() => setIsShowingSplitModal(false)}
+                    onSplitComplete={() => {
+                        setIsShowingSplitModal(false);
+                        setSelectedOrder(null);
+                        fetchOrders();
+                    }}
+                />
+            )}
         </div >
     );
 };

@@ -4,9 +4,11 @@ import Hash from 'lucide-react/dist/esm/icons/hash';
 import HandMetal from 'lucide-react/dist/esm/icons/hand-metal';
 import ChevronLeft from 'lucide-react/dist/esm/icons/chevron-left';
 import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
+import Scissors from 'lucide-react/dist/esm/icons/scissors';
 import { CustomerAutocomplete } from '../../features/picking/components/CustomerAutocomplete';
 import { usePickingSession } from '../../context/PickingContext';
 import { useConfirmation } from '../../context/ConfirmationContext';
+import type { CombineMeta } from '../../schemas/picking.schema';
 
 interface OrderSidebarProps {
     formData: any;
@@ -17,6 +19,7 @@ interface OrderSidebarProps {
     onRefresh: () => void;
     onDelete: () => void;
     onShowPickingSummary?: () => void;
+    onSplitOrder?: () => void;
 }
 
 export const OrderSidebar: React.FC<OrderSidebarProps> = ({
@@ -27,7 +30,8 @@ export const OrderSidebar: React.FC<OrderSidebarProps> = ({
     takeOverOrder,
     onRefresh,
     onDelete,
-    onShowPickingSummary
+    onShowPickingSummary,
+    onSplitOrder
 }) => {
     const { deleteList } = usePickingSession();
     const { showConfirmation } = useConfirmation();
@@ -205,6 +209,31 @@ export const OrderSidebar: React.FC<OrderSidebarProps> = ({
                     </div>
                 </div>
             </form>
+
+            {/* Combined Order Info */}
+            {(selectedOrder as any).combine_meta?.is_combined && (
+                <div className="mt-4 p-4 bg-blue-500/10 border border-blue-500/20 rounded-2xl space-y-2">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-blue-400 flex items-center gap-1.5">
+                        🔗 Combined Order
+                    </p>
+                    <div className="flex flex-col gap-1">
+                        {((selectedOrder as any).combine_meta as CombineMeta)?.source_orders?.map((src, i) => (
+                            <span key={i} className="text-xs text-blue-300/70 font-mono">
+                                #{src.order_number} — {src.item_count || '?'} items
+                            </span>
+                        ))}
+                    </div>
+                    {onSplitOrder && selectedOrder.status !== 'completed' && (
+                        <button
+                            onClick={onSplitOrder}
+                            className="w-full mt-2 flex items-center justify-center gap-2 h-10 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 rounded-xl text-[10px] font-black uppercase tracking-widest text-blue-400 transition-all active:scale-95"
+                        >
+                            <Scissors size={12} />
+                            <span>Split Orders</span>
+                        </button>
+                    )}
+                </div>
+            )}
 
             <div className="mt-auto pt-8 flex flex-col gap-3">
                 <button

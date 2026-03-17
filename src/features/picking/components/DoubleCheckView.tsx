@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef, useCallback } from 'react';
+import React, { useMemo, useState, useRef, useCallback, useEffect } from 'react';
 import Check from 'lucide-react/dist/esm/icons/check';
 import ChevronLeft from 'lucide-react/dist/esm/icons/chevron-left';
 import MessageSquare from 'lucide-react/dist/esm/icons/message-square';
@@ -73,6 +73,15 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
     const [isNotesExpanded, setIsNotesExpanded] = useState(false);
     const [editModalItem, setEditModalItem] = useState<InventoryItemWithMetadata | null>(null);
     const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const prevItemCountRef = useRef(cartItems.length);
+
+    // Detect when new items are added (e.g., from auto-combine)
+    useEffect(() => {
+        if (cartItems.length > prevItemCountRef.current) {
+            toast('New items added to this order', { icon: '🔗', duration: 4000 });
+        }
+        prevItemCountRef.current = cartItems.length;
+    }, [cartItems.length]);
     const longPressTriggered = useRef(false);
 
     const handlePointerDown = useCallback((item: any) => {
