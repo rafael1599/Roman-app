@@ -35,6 +35,20 @@ Shipping Labels — Weight Display:
 - For now, a general default weight was applied across all SKUs. Still pending: update weight_lbs for e-bikes and kids bikes, which have different weights than standard bikes.
 
 
+
+Backlog Review:
+
+- Capacity bar regression (#3): confirmed resolved — data is consistent between DB and frontend. Two locations (ROW 34, ROW 19B) are over capacity, but that is an operational issue, not a bug.
+- Session lock (#4): descartado — each picker uses their own device, no shared tablet rotation.
+- Takeover shows real picker (#5): confirmed already implemented (commit c4e0b3e from March 13).
+- Remaining active item: #6 (daily activity dashboard for supervisors) — on standby.
+
+
+Realtime Sync Improvement:
+
+- Added realtime sync for sku_metadata changes (dimensions + weight). If someone updates these fields on another device, the open edit form now reflects the change immediately. Previously, only distribution had live sync — now all metadata fields do too.
+
+
 Still Pending Testing (from yesterday):
 
 - Pick instructions: confirm the "LINE has Xu, PALLET has Yu" format shows correctly in production and matches the actual warehouse storage layout.
