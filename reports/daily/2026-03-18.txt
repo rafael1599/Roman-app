@@ -3,7 +3,7 @@ Progress Update — March 18, 2026
 
 Summary:
 
-Set up watchdog-pickd as a persistent service on the Bay 2 MacBook, deployed the auto-combine orders feature to production, applied the database migration, and added total weight display to shipping labels.
+Set up watchdog-pickd as a persistent service on the Bay 2 MacBook, deployed the auto-combine orders feature to production, applied the database migration, added total weight display to shipping labels, finalized correct weights for all bike categories, and added a missing-weight warning in the orders view with inline editing.
 
 
 --- Details below ---
@@ -32,7 +32,16 @@ Shipping Labels — Weight Display:
 
 - Shipping labels now show "WEIGHT: X LBS" after the LOAD field, both in the on-screen preview and the printed PDF.
 - The weight is calculated automatically from each SKU's weight_lbs in the metadata, multiplied by the quantity picked. Different SKUs with different weights are handled individually.
-- For now, a general default weight was applied across all SKUs. Still pending: update weight_lbs for e-bikes and kids bikes, which have different weights than standard bikes.
+- All bike categories now have their correct weights set: kids bikes (35 lbs), adult bikes (45 lbs), e-bikes (60 lbs), and specific models like 07-3686BK (28.5 lbs).
+- Going forward, every new item added to inventory must be entered with its correct weight. This prevents inconsistencies when generating the BOL and avoids correction claims from carriers.
+
+
+Missing Weight Warning — Orders View:
+
+- When an order contains items that have no weight assigned in sku_metadata, a yellow warning banner now appears above the shipping label preview.
+- The banner lists each SKU missing weight with an inline input field. The user types the weight in lbs and presses Enter to save it directly to sku_metadata.
+- Once saved, the total weight on the label updates immediately — no need to leave the screen or go to inventory to fix it.
+- This prevents shipping labels from being printed with inaccurate "N/A" or zero weight.
 
 
 

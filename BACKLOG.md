@@ -1,7 +1,7 @@
 # Roman-app — Backlog de Mejoras
 
 > Mejoras pendientes ordenadas por impacto en el usuario final.
-> Actualizado: 2026-03-18 10:00 EDT
+> Actualizado: 2026-03-18 16:00 EDT
 >
 > **Formato:** cada item incluye `[fecha hora]` de creación para trazabilidad.
 
@@ -35,6 +35,13 @@
 - **Estado:** Completado — pendiente prueba manual en producción.
 - `claimAsPicker` actualiza el `user_id` al usuario real cuando alguien pickea una orden creada por script. Handlers unificados en `handleReleaseOrder`. Tests unitarios incluidos.
 - **Archivos:** `usePickingActions.ts`, `PickingCartDrawer.tsx`, `PickingContext.tsx`, commit `c4e0b3e`
+
+### 7. Merge de órdenes FedEx (drag-and-drop en vista de verificación)
+- **Creado:** `[2026-03-18 16:00]`
+- **Estado:** Por hacer.
+- Permitir arrastrar una orden sobre otra en la lista de verificación para disparar un popup que permita elegir "FedEx" como tipo de envío y combinar ambas órdenes. Los SKUs de ambas órdenes se fusionan, los diferentes order numbers se concatenan (similar a la lógica de auto-combine por cliente: `"878279 / 878280"`), y la orden resultante se marca con un nuevo tipo `fedex`.
+- **Consideración clave:** integridad de datos para auditoría futura — cada item debe conservar trazabilidad a su orden original (`source_order`), y el merge debe ser reversible (split). Evaluar si reusar `combine_meta` o crear un campo separado para distinguir combines automáticos (mismo cliente) de merges manuales (FedEx).
+- **Archivos estimados:** `DoubleCheckView.tsx` (drag-and-drop), nuevo `MergeOrderModal.tsx`, `picking.schema.ts` (nuevo tipo), posible migración para `order_type` o similar.
 
 ### 6. Vista de reporte diario por usuario de almacén
 - **Creado:** `[2026-03-11 15:30]`

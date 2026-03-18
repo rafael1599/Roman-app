@@ -10,6 +10,7 @@ import { usePickingSession } from '../../context/PickingContext';
 import { useViewMode } from '../../context/ViewModeContext';
 import Search from 'lucide-react/dist/esm/icons/search';
 import Filter from 'lucide-react/dist/esm/icons/filter';
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle';
 import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down';
 import { OrderChip } from '../../components/orders/OrderChip';
 import { OrderSidebar } from '../../components/orders/OrderSidebar';
@@ -84,16 +85,52 @@ export const OrdersScreen = () => {
         loadNumber: ''
     });
 
-    // Calculate total weight from order items' sku_metadata.weight_lbs
+    // SKU weight map fetched from sku_metadata
+    const [skuWeights, setSkuWeights] = useState<Record<string, number | null>>({});
+
+    // Fetch sku_metadata weights when selected order changes
+    useEffect(() => {
+        if (!selectedOrder?.items || !Array.isArray(selectedOrder.items)) {
+            setSkuWeights({});
+            return;
+        }
+        const skus = [...new Set(selectedOrder.items.map((i: any) => i.sku))] as string[];
+        if (skus.length === 0) return;
+
+        supabase
+            .from('sku_metadata')
+            .select('sku, weight_lbs')
+            .in('sku', skus)
+            .then(({ data }) => {
+                const map: Record<string, number | null> = {};
+                skus.forEach(s => { map[s] = null; }); // default null for missing
+                data?.forEach((row: any) => { map[row.sku] = row.weight_lbs; });
+                setSkuWeights(map);
+            });
+    }, [selectedOrder?.id, selectedOrder?.items]);
+
+    // Items missing weight
+    const itemsMissingWeight = useMemo(() => {
+        const items = selectedOrder?.items;
+        if (!Array.isArray(items) || Object.keys(skuWeights).length === 0) return [];
+        const seen = new Set<string>();
+        return items.filter((item: any) => {
+            if (seen.has(item.sku)) return false;
+            seen.add(item.sku);
+            return skuWeights[item.sku] == null;
+        });
+    }, [selectedOrder?.items, skuWeights]);
+
+    // Calculate total weight from sku_metadata weights
     const totalWeight = useMemo(() => {
         const items = selectedOrder?.items;
         if (!Array.isArray(items)) return 0;
         return Math.round(items.reduce((sum: number, item: any) => {
-            const weight = item.sku_metadata?.weight_lbs ?? 0;
+            const weight = skuWeights[item.sku] ?? 0;
             const qty = item.pickingQty ?? 0;
             return sum + weight * qty;
         }, 0));
-    }, [selectedOrder?.items]);
+    }, [selectedOrder?.items, skuWeights]);
 
     // Track the selected customer ID to link/unlink
     const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
@@ -702,6 +739,55 @@ export const OrdersScreen = () => {
                                     onShowPickingSummary={() => setIsShowingPickingSummary(true)}
                                 />
                             </div>
+
+                            {/* Weight Warning Banner */}
+                            {itemsMissingWeight.length > 0 && (
+                                <div className="mb-6 bg-amber-50 border border-amber-300 rounded-2xl p-4 animate-soft-in">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <AlertTriangle size={18} className="text-amber-600 shrink-0" />
+                                        <span className="text-amber-800 font-black text-xs uppercase tracking-widest">
+                                            {itemsMissingWeight.length} item{itemsMissingWeight.length > 1 ? 's' : ''} without weight
+                                        </span>
+                                    </div>
+                                    <div className="space-y-2">
+                                        {itemsMissingWeight.map((item: any) => (
+                                            <div key={item.sku} className="flex items-center gap-3 bg-white rounded-xl px-3 py-2 border border-amber-200">
+                                                <div className="flex-1 min-w-0">
+                                                    <span className="font-mono text-xs font-bold text-gray-800">{item.sku}</span>
+                                                    {item.description && (
+                                                        <span className="ml-2 text-xs text-gray-500 truncate">{item.description}</span>
+                                                    )}
+                                                </div>
+                                                <div className="flex items-center gap-2 shrink-0">
+                                                    <input
+                                                        type="number"
+                                                        step="0.1"
+                                                        placeholder="lbs"
+                                                        className="w-20 bg-amber-50 border border-amber-300 rounded-lg px-2 py-1.5 text-xs font-mono text-center focus:border-amber-500 focus:outline-none"
+                                                        onKeyDown={(e) => {
+                                                            if (e.key !== 'Enter') return;
+                                                            const val = parseFloat((e.target as HTMLInputElement).value);
+                                                            if (isNaN(val) || val <= 0) return;
+                                                            supabase
+                                                                .from('sku_metadata')
+                                                                .upsert({ sku: item.sku, weight_lbs: val }, { onConflict: 'sku' })
+                                                                .then(({ error }) => {
+                                                                    if (error) {
+                                                                        toast.error('Failed to save weight');
+                                                                    } else {
+                                                                        toast.success(`${item.sku} → ${val} lbs`);
+                                                                        setSkuWeights(prev => ({ ...prev, [item.sku]: val }));
+                                                                    }
+                                                                });
+                                                        }}
+                                                    />
+                                                    <span className="text-[10px] text-amber-600 font-bold">ENTER to save</span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
 
                             <LivePrintPreview
                                 orderNumber={selectedOrder.order_number}
