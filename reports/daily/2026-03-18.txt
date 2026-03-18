@@ -1,0 +1,37 @@
+Progress Update — March 18, 2026
+
+
+Summary:
+
+Set up watchdog-pickd as a persistent service on the Bay 2 MacBook, deployed the auto-combine orders feature to production, and applied the database migration.
+
+
+--- Details below ---
+
+
+Bay 2 Setup — Persistent Service:
+
+- Cloned the watchdog-pickd repository fresh on the Bay 2 MacBook and configured the environment (venv, dependencies, .env credentials).
+- Ran the watcher for the first time, which automatically installed a launchd service (com.antigravity.watchdog-pickd). This means the PDF watcher now starts automatically on login and restarts itself if it ever crashes — no need to keep a terminal open.
+- Tested and confirmed the service survives machine restarts. Orders can continue to be sent from Bay 2 without any manual intervention.
+
+
+Auto-Combine Orders — Deployed:
+
+- Applied the database migration (combine_meta column) to production via supabase db push.
+- Pulled the latest watchdog-pickd code on Bay 2 with the combine logic active. From now on, when multiple PDFs come in for the same customer, the system will automatically merge them into a single order.
+- Pending: test with real orders — need different order numbers arriving for the same customer to confirm the combine works end-to-end in production.
+
+
+3D Printing — Location Numbers:
+
+- All numbers (0–9) are now fully printed and ready to go. Next step is to start labeling the warehouse aisles/islands with them.
+
+
+Still Pending Testing (from yesterday):
+
+- Pick instructions: confirm the "LINE has Xu, PALLET has Yu" format shows correctly in production and matches the actual warehouse storage layout.
+- Product names: verify they appear for every item on the double-check screen.
+- Long-press edit: confirm long-pressing an item opens the edit form directly without an intermediate detail screen.
+- Split combined orders: test the split modal UI to separate a combined order back into individual orders.
+- "No inventory" label: confirm items with zero stock show "No inventory" in red instead of a blank space.
