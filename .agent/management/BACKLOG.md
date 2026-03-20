@@ -1,33 +1,56 @@
-# 📋 Project Backlog - Roman-app
+# Roman-app — Backlog de Mejoras
 
-Centralized management for features, bugs, and ideas.
-
----
-
-## 🎯 Active Phase: Project Organization & Refinement
-*Focused on cleaning up the workspace and refining existing features.*
-
-- [x] Implement local Management System (.agent/management) <!-- id: task-001 -->
-- [x] Migrate root MD files to `.agent/roadmap/` <!-- id: task-002 -->
-- [x] Create `/todo` capture workflow <!-- id: task-003 -->
-- [x] Configure `.cursorrules` for automatic backlog awareness <!-- id: task-004 -->
-- [ ] **Warehouse Selection Refinement**: Update `processOrder` to apply selected warehouse preferences. <!-- id: task-005 -->
-- [ ] **Optimistic UI Fixes**: Address flashes in quantity updates. <!-- id: task-006 -->
+> Mejoras pendientes ordenadas por impacto en el usuario final.
+> Actualizado: 2026-03-20
+>
+> **Formato:** cada item incluye `[fecha hora]` de creación para trazabilidad y `<!-- id: xxx -->` para tracking.
+> **Single source of truth** — no editar BACKLOG.md en la raíz del proyecto (es un puntero a este archivo).
 
 ---
 
-## 💡 Future Features & Ideas
-*Long-term improvements or new functionality.*
+## Prioridad 1 — Impacto Alto (operación diaria / integridad de datos)
+
+### 1. Combinar órdenes del mismo shop — PENDIENTE PRUEBA MANUAL <!-- id: task-007 -->
+- **Creado:** `[2026-03-11 10:00]` · **Desarrollado:** `[2026-03-18 09:00]`
+- **Estado:** Desarrollado y desplegado — pendiente prueba manual en producción con órdenes reales del mismo cliente.
+- Órdenes del mismo customer se combinan automáticamente en watchdog-pickd. Items se tagean con `source_order` para poder separarlas desde el UI con el Split Modal. Indicador 🔗 en OrderChip para órdenes combinadas.
+- **Archivos:** `watchdog-pickd/supabase_client.py`, `watchdog-pickd/watcher.py`, `SplitOrderModal.tsx`, `OrderChip.tsx`, `OrderSidebar.tsx`, migración `20260317000001_add_combine_meta.sql`
+
+### 2. Merge de órdenes FedEx (drag-and-drop en vista de verificación) <!-- id: idea-010b -->
+- **Creado:** `[2026-03-18 16:00]`
+- **Estado:** Por hacer.
+- Permitir arrastrar una orden sobre otra en la lista de verificación para disparar un popup que permita elegir "FedEx" como tipo de envío y combinar ambas órdenes. Los SKUs de ambas órdenes se fusionan, los diferentes order numbers se concatenan (similar a la lógica de auto-combine por cliente: `"878279 / 878280"`), y la orden resultante se marca con un nuevo tipo `fedex`.
+- **Consideración clave:** integridad de datos para auditoría futura — cada item debe conservar trazabilidad a su orden original (`source_order`), y el merge debe ser reversible (split). Evaluar si reusar `combine_meta` o crear un campo separado para distinguir combines automáticos (mismo cliente) de merges manuales (FedEx).
+- **Archivos estimados:** `DoubleCheckView.tsx` (drag-and-drop), nuevo `MergeOrderModal.tsx`, `picking.schema.ts` (nuevo tipo), posible migración para `order_type` o similar.
+
+### 3. 📦 Distribución física inteligente <!-- id: idea-015 -->
+- **Creado:** `[2026-03-18 17:00]`
+- **Estado:** Por hacer — pendiente análisis a fondo.
+- Hacer más inteligente la distribución de inventario entre locations (LINE, PALLET, ROW). Definir alcance y enfoque en una sesión futura.
+
+### 4. Vista de reporte diario por usuario de almacén <!-- id: idea-016 -->
+- **Creado:** `[2026-03-11 15:30]`
+- **Estado:** Por hacer.
+- Nueva vista tipo dashboard para un rol de supervisión/gerencia que muestre la actividad diaria de cada usuario del almacén: órdenes pickeadas, verificadas, items movidos, y cualquier otra métrica derivada de los movimientos registrados.
+- **Impacto:** visibilidad de productividad individual sin depender de reportes manuales; habilita un nuevo tipo de usuario (supervisor/manager).
+
+### 5. Warehouse Selection Refinement <!-- id: task-005 -->
+- **Estado:** Por hacer.
+- Update `processOrder` to apply selected warehouse preferences.
+
+### 6. Optimistic UI Fixes <!-- id: task-006 -->
+- **Estado:** Por hacer.
+- Address flashes in quantity updates.
+
+---
+
+## Prioridad 2 — Impacto Medio (mejoras de conveniencia)
 
 - [ ] **Barcode/QR Integration**: Scan items directly. <!-- id: idea-001 -->
-- [ ] **Order List View**: When reviewing orders, show the picking list first with an option to print (leading to the current screen). <!-- id: idea-006 -->
-- [ ] **Automatic Inventory Email**: Automatically send the full inventory table to Jamis's email. **Crucial**: Plain list only, NO links like current reports. <!-- id: idea-007 -->
-- [x] **Stock Printing**: Allow printing the filtered SKU list in Stock view, opening in a new tab (consistent with Orders print view) instead of direct PDF download. <!-- id: idea-009 -->
-- [ ] **Order Merging**: Ability to combine 2 separate orders into one picking session. <!-- id: idea-010 -->
-- [x] **iOS Pull-to-Refresh**: Implement a native-feel refresh behavior for iOS (similar to Android's default) to allow updating the app state via top-scroll. <!-- id: idea-011 -->
-- [ ] **Multi-Address Customers**: Update database schema and UI to handle multiple shipping/billing addresses for a single client. <!-- id: idea-012 -->
-- [x] **Stock View Enhancements & History Fix**: Implement SKU count summary, PDF export, and consolidated history logs. <!-- id: idea-014 -->
-- [ ] **Automatic Watchdog Startup**: Ensure the python watchdog script executes automatically whenever the PC starts. <!-- id: idea-008 -->
+- [ ] **Order List View**: When reviewing orders, show the picking list first with an option to print. <!-- id: idea-006 -->
+- [ ] **Automatic Inventory Email**: Send full inventory table to Jamis's email. Plain list only, NO links. <!-- id: idea-007 -->
+- [ ] **Order Merging**: Combine 2 separate orders into one picking session. <!-- id: idea-010 -->
+- [ ] **Multi-Address Customers**: Handle multiple shipping/billing addresses per client. <!-- id: idea-012 -->
 - [ ] **Inventory Heatmaps**: Visualize picking frequency. <!-- id: idea-002 -->
 - [ ] **Advanced Analytics**: Dashboard for warehouse efficiency. <!-- id: idea-003 -->
 - [ ] **Smart Rebalancing**: Suggestions to move stock between warehouses. <!-- id: idea-004 -->
@@ -36,19 +59,57 @@ Centralized management for features, bugs, and ideas.
 ---
 
 ## 🐛 Bug Tracker
-*Identified issues that need fixing.*
 
 - [ ] **Offline Sync Edge Cases**: Handle complex rollback scenarios in InventoryProvider. <!-- id: bug-001 -->
 
 ---
 
-## ✅ Completed Tasks
-*Log of achievements.*
+## ✅ Completado
 
-- [x] **Multi-user Support**: Realtime takeover and picking session locking.
-- [x] **TypeScript Core Migration**: Smart Picking, types, and hooks moved to TS.
-- [x] **Robust Realtime System**: Fixed connection stability and zombie cleanups.
-- [x] **Dual-Provider AI**: Gemini with OpenAI fallback for order scanning.
-- [x] **Full English Localization**: Application is now fully in English.
-- [x] **Management Setup**: Organized `.agent/` structure and backlog.
-- [x] **Warehouse Selection Basic**: Detect duplicate SKUs and show selection modal.
+### Items con detalle
+
+| Item | Creado | Completado | Estado |
+|------|--------|------------|--------|
+| Order number en label de pallets | `[2026-03-11]` | `[2026-03-11 14:28]` | Completado |
+| Barra de capacidad de locations | `[2026-03-11]` | `[2026-03-18 10:00]` | Resuelto (fix de performance) |
+| Takeover muestra picker real | `[2026-03-11]` | `[2026-03-13 13:12]` | Completado |
+| Auto-inicio watchdog-pickd | `[2026-03-11]` | `[2026-03-18 09:30]` | Completado (launchd service) |
+| Stock Printing (filtros + nueva tab) | — | — | Completado |
+| iOS Pull-to-Refresh | — | — | Completado |
+| Stock View Enhancements & History Fix | — | — | Completado |
+| Multi-user Support (Realtime takeover) | — | — | Completado |
+| TypeScript Core Migration | — | — | Completado |
+| Robust Realtime System | — | — | Completado |
+| Dual-Provider AI (Gemini + OpenAI) | — | — | Completado |
+| Full English Localization | — | — | Completado |
+| Management Setup (.agent/) | — | — | Completado |
+| Warehouse Selection Basic | — | — | Completado |
+
+### Descartado
+
+| Item | Razón |
+|------|-------|
+| Sesión de warehouse: inactividad 5min + selector de perfil | No aplica — cada picker usa su propio dispositivo. `[2026-03-18]` |
+
+### Verificado en código
+
+| Mejora | Fecha | Evidencia |
+|--------|-------|-----------|
+| Orden completada no regresa a double-check | `[2026-03-11]` | Guards `.neq('status', 'completed')` + botón X oculto |
+| Order number en label de impresión | `[2026-03-11]` | `PalletLabelsPrinter.tsx:111-116` |
+| Jalar medidas al seleccionar item | `[2026-03-11]` | `InventoryModal.tsx:471-475` auto-fill |
+| Buscador de locations mantiene opciones | `[2026-03-11]` | `AutocompleteInput.tsx` |
+| Persistencia de nueva location al agregar | `[2026-03-11]` | `useLocationManagement.ts` |
+| Order number clickeable en History | `[2026-03-11]` | `HistoryScreen.tsx:570-580` |
+| Validación de items con 0 unidades | `[2026-03-11]` | `InventoryModal.tsx:291-298` |
+| Consolidation: desglose multi-tipo | `[2026-03-10]` | `adjust_distribution()` + `pickPlanMap` |
+| Limpieza distribution stale (qty=0) | `[2026-03-11]` | Migración `20260311000001` |
+| Picked by / Checked by | `[2026-03-11]` | `DoubleCheckHeader.tsx`, `PickingSummaryModal.tsx` |
+| Long-press → modal detalle + Edit | `[2026-03-11]` | `DoubleCheckView.tsx` |
+| Performance: memoize + stabilize refs | `[2026-03-11]` | `AuthContext`, `ViewModeContext`, etc. |
+| Fix: infinite re-render InventoryModal | `[2026-03-11]` | `InventoryModal.tsx` |
+| Fix: infinite fetch loop distribution | `[2026-03-10]` | Distribution editing flow |
+| Test: distribution e2e + realtime | `[2026-03-10]` | E2E tests |
+| Script: prod→local data sync | `[2026-03-11]` | `scripts/sync-local-db.sh` |
+
+---
