@@ -1,8 +1,12 @@
 # Location CRUD - Warehouse Map Builder
 
-## 🎯 New Functionality
+## Status: PARTIAL
 
-The Map Builder now includes a **full CRUD** to manage warehouse locations.
+CRUD works for **custom locations** stored in localStorage only. Inventory locations (from Supabase DB) are read-only — they cannot be edited or deleted from this UI. `useLocationManagement.ts` manages custom locations with React Query caching.
+
+## 🎯 Functionality
+
+The Map Builder includes a **full CRUD** to manage custom warehouse locations.
 
 ---
 

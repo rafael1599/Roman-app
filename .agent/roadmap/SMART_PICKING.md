@@ -208,8 +208,7 @@ src/
 ## 🔮 Future Enhancements
 
 - [ ] Barcode scanning support
-- [ ] Multi-warehouse support
-- [ ] Historical order tracking
-- [ ] Performance analytics
 - [ ] Voice commands for hands-free operation
-- [ ] Integration with shipping labels
+- [x] ~~Multi-warehouse support~~ — Implemented via warehouse selection modal (`useOrderProcessing.ts`)
+- [x] ~~Integration with shipping labels~~ — `PalletLabelsPrinter.tsx` (commit 9495d4d)
+- [x] ~~Performance analytics~~ — `useOptimizationReports.ts`

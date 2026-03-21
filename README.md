@@ -24,10 +24,18 @@ The system has matured from a CSV-based prototype into a full-scale warehouse or
 
 - 📸 **AI Order Extraction** - Scan physical invoices; Gemini extracts items and quantities automatically.
 - 🧠 **Hybrid Reasoning** - Powered by Gemini 2.5 Flash with automatic fallback to OpenAI GPT-4o.
-- 📦 **Auto Palletization** - Intelligent order splitting into pallets (max 13 items) based on warehouse mapping.
+- 📦 **Auto Palletization** - Intelligent order splitting into pallets (max 13 items) with footprint calculation.
 - 🗺️ **Visual Map Builder** - Drag-and-drop picking route optimizer.
-- ✅ **Photo Verification** - AI-driven validation of completed pallets to prevent shipping errors.
-- ↩️ **Global Undo** - Single-click restoration of any inventory movement or picking session.
+- 🏷️ **Pallet Labels** - Print shipping labels with order number, item list, and weights.
+- 🔀 **Warehouse Selection** - Choose between Ludlow/ATS when SKUs exist in both warehouses.
+- ✏️ **Picking Notes & Corrections** - Attach notes to picks; correction timeline for audit trail.
+- ⚖️ **Weight Tracking** - Per-item weight (lbs) with inline editing and label integration.
+- ↩️ **Inventory Undo** - Single-click restoration of any inventory movement (add, edit, move, delete).
+
+### Planned
+
+- ✅ **Photo Verification** - AI-driven validation of completed pallets (not yet implemented).
+- 📊 **Performance Analytics Dashboard** - Supervisor view with per-user productivity metrics.
 
 ## Installation
 
@@ -84,13 +92,14 @@ The project follows a **Feature-Sliced Design (FSD)** inspired architecture for 
 - **Google Gemini 2.5 Flash** - Vision & Extraction AI
 - **AI Agent Skills** - Specialized workflows for frontend design, database performance, and artifact building.
 
-## Development Tools (AI Skills)
+## AI Agent Skills
 
-This project includes specialized instructions and scripts to assist AI agents in maintaining high code quality and architectural consistency:
+Skills are managed from the `my-agent-skills` repo (single source of truth). This project declares its dependencies in `.skills-config.json` and syncs them via `scripts/sync-skills.ps1`.
+
+Active skills:
 - **frontend-design**: UX/UI standards and modern component patterns.
 - **supabase-postgres-best-practices**: Hardened database schema and RPC patterns.
 - **vercel-react-best-practices**: Optimization for performance and React 19 standards.
-- **web-artifacts-builder**: Automated tools for documentation and proof-of-work generation.
 
 ## Troubleshooting
 

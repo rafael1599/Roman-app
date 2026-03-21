@@ -10,10 +10,9 @@
 
 ## Prioridad 1 — Impacto Alto (operación diaria / integridad de datos)
 
-### 1. Combinar órdenes del mismo shop — PENDIENTE PRUEBA MANUAL <!-- id: task-007 -->
-- **Creado:** `[2026-03-11 10:00]` · **Desarrollado:** `[2026-03-18 09:00]`
-- **Estado:** Desarrollado y desplegado — pendiente prueba manual en producción con órdenes reales del mismo cliente.
-- Órdenes del mismo customer se combinan automáticamente en watchdog-pickd. Items se tagean con `source_order` para poder separarlas desde el UI con el Split Modal. Indicador 🔗 en OrderChip para órdenes combinadas.
+### ~~1. Combinar órdenes del mismo shop~~ — COMPLETADO <!-- id: task-007 -->
+- **Creado:** `[2026-03-11 10:00]` · **Desarrollado:** `[2026-03-18 09:00]` · **Verificado:** `[2026-03-20]`
+- **Estado:** En producción. Migración aplicada, auto-combine en watchdog, SplitOrderModal, OrderChip con 🔗.
 - **Archivos:** `watchdog-pickd/supabase_client.py`, `watchdog-pickd/watcher.py`, `SplitOrderModal.tsx`, `OrderChip.tsx`, `OrderSidebar.tsx`, migración `20260317000001_add_combine_meta.sql`
 
 ### 2. Merge de órdenes FedEx (drag-and-drop en vista de verificación) <!-- id: idea-010b -->
@@ -34,9 +33,8 @@
 - Nueva vista tipo dashboard para un rol de supervisión/gerencia que muestre la actividad diaria de cada usuario del almacén: órdenes pickeadas, verificadas, items movidos, y cualquier otra métrica derivada de los movimientos registrados.
 - **Impacto:** visibilidad de productividad individual sin depender de reportes manuales; habilita un nuevo tipo de usuario (supervisor/manager).
 
-### 5. Warehouse Selection Refinement <!-- id: task-005 -->
-- **Estado:** Por hacer.
-- Update `processOrder` to apply selected warehouse preferences.
+### ~~5. Warehouse Selection Refinement~~ <!-- id: task-005 --> — COMPLETADO
+- **Estado:** Completado. `processOrder()` ya acepta `warehousePreferences` como segundo parámetro.
 
 ### 6. Optimistic UI Fixes <!-- id: task-006 -->
 - **Estado:** Por hacer.

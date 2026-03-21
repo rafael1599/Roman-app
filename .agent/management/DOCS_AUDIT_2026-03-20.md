@@ -1,5 +1,7 @@
 # Documentation Audit — 2026-03-20
 
+> **STATUS: RESOLVED** — All items addressed in commit session 2026-03-20.
+
 Auditoría de documentación vs código real (últimos 50 commits).
 
 ## Crítico (info incorrecta que confunde al agente)

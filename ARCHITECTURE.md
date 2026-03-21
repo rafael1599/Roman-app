@@ -1,94 +1,118 @@
-# Project Architecture & Documentation
+# Project Architecture
+
+> Last updated: 2026-03-20
 
 ## Overview
-Roman Inv is an inventory management PWA built with React 19, TypeScript, and Supabase. It follows a **Feature-Sliced Design (FSD)** inspired architecture to ensure modularity and scalability.
+
+PickD (Roman Inv) is a multi-user inventory management and warehouse operations PWA. Built with React 19, TypeScript, and Supabase. Follows **Feature-Sliced Design (FSD)** for modularity.
 
 ## Directory Structure
 
 ### `src/features/`
-This is the heart of the application. Each folder represents a distinct business domain.
-- **`inventory/`**: Logic for managing stock, editing items, and location Capacity.
-  - `hooks/useInventoryData.ts`: Core data fetching using React Query.
-  - `hooks/useInventoryMutations.ts`: Inventory operations (Add, Edit, Move, Delete).
-- **`picking/`**: Manages the order fulfillment process.
-  - `context/PickingContext.tsx`: Manages the active picking session state.
-  - `hooks/usePickingActions.ts`: Business logic for transitions (Ready -> Double Check -> Completed).
-- **`smart-picking/`**: AI features (Gemini/OpenAI) for invoice processing.
-- **`warehouse-management/`**: 3D Visualization of the warehouse and zone configuration.
+
+Each folder is a self-contained business domain with its own `hooks/`, `components/`, and optionally `api/`, `context/`, `types.ts`.
+
+| Feature | Purpose | Key files |
+|---------|---------|-----------|
+| **inventory/** | Stock management, CRUD, location capacity | `useInventoryData.ts`, `useInventoryMutations.ts`, `useInventoryLogs.ts`, `useLocationManagement.ts`, `useOptimizationReports.ts` |
+| **picking/** | Order fulfillment lifecycle | `usePickingActions.ts` (claim, ready, double-check, complete), `usePickingNotes.ts`, `CorrectionNotesTimeline.tsx` |
+| **smart-picking/** | AI invoice scanning, palletization, route optimization | `useOrderProcessing.ts`, `MapBuilder.tsx`, `CamScanner.tsx` |
+| **warehouse-management/** | Zone configuration (HOT/WARM/COLD) | Zone editor components |
+| **settings/** | App configuration, AI keys, warehouse map | Settings screen |
 
 ### `src/context/`
-Global contexts that provide shared state across multiple features.
-- `AuthContext.tsx`: Supabase authentication session management.
-- `PickingContext.tsx`: (Redirects to internal feature context) Manages active order state.
+
+- `AuthContext.tsx` — Supabase auth session
+- `PickingContext.tsx` — Active picking session state (shared across picking components)
 
 ### `src/components/`
-Reusable UI components that are agnostic to specific business logic.
-- `SearchInput.tsx`: Global search component used across the app.
-- `ConfirmationModal.tsx`: Standardized confirmation dialogs.
+
+Shared UI components (feature-agnostic):
+- `SearchInput.tsx` — Global search
+- `ConfirmationModal.tsx` — Standardized dialogs
+- `AutocompleteInput.tsx` — Smart autocomplete with metadata (SKU shows qty + location; Location shows item count)
+- `orders/PalletLabelsPrinter.tsx` — Shipping label generation with order number, items, weights
 
 ### `src/schemas/`
-Zod validation schemas used for both frontend forms and backend data integrity.
-- `inventory.schema.ts`: Unified schema for inventory items and locations.
+
+Zod validation schemas. **Must match DB columns exactly.**
+- `inventory.schema.ts` — Inventory items, locations, `weight_lbs`
+- `skuMetadata.schema.ts` — SKU metadata including weight
+- `picking.schema.ts` — Picking list types and statuses
 
 ### `src/utils/`
-Stateless utility functions.
-- `pickingLogic.ts`: Algorithms for path optimization and palletization.
+
+- `pickingLogic.ts` — Path optimization algorithm and palletization (max 13 items, footprint calculation)
+
+### `src/services/`
+
+- `aiScanner.ts` — Multi-provider AI integration (Gemini primary, OpenAI fallback)
+
+### `supabase/`
+
+- `migrations/` — PostgreSQL migrations (source of truth for schema)
+- `functions/` — Edge functions (daily snapshots, reports, auto-cancel)
+
+### `scripts/`
+
+- `sync-skills.ps1` — Sync AI skills from `my-agent-skills` repo
+- `compare-schemas.js` — Detect local↔prod schema drift
+- `sync-local-db.sh` — Pull production data to local
 
 ## Core Workflows
 
-### 1. Inventory Mutation Flow
-The system uses **Optimistic Updates** via React Query. When a user adjusts stock:
-1. The UI updates immediately (0ms latency).
-2. An RPC call (`adjust_inventory_quantity`) is sent to Supabase.
-3. If the call fails, the UI rolls back to the previous state automatically.
+### 1. Inventory Mutations (Optimistic Updates)
 
-### 2. Picking & Verification
-1. **Building**: User adds items to a cart.
-2. **Ready**: Order is locked in the database with status `ready_to_double_check`.
-3. **Double Check**: Another user (or the same) verifies the physical items.
-4. **Completion**: Inventory is deducted server-side via `process_picking_list` to prevent race conditions.
+1. UI updates immediately (0ms latency)
+2. RPC call to Supabase (`adjust_inventory_quantity`, `move_inventory_stock`)
+3. On failure → automatic rollback to previous state
+4. Undo available via `undo_inventory_action` RPC (inventory movements only, not picking)
+
+### 2. Picking Lifecycle
+
+```
+Building → Ready (ready_to_double_check) → Double Check → Completed
+```
+
+- **claimAsPicker**: Transfers order ownership from automation account to human picker
+- **Triple-layer protection** prevents completed orders from being reverted (DB filter + UI guard + Realtime sync)
+- **Picking notes**: Attach correction notes with timeline audit trail
+- **Server-side deduction**: `process_picking_list` RPC ensures no race conditions
+
+### 3. Smart Picking (AI)
+
+1. User scans invoice → Gemini extracts SKUs + quantities
+2. System validates against inventory in both warehouses
+3. If SKU exists in Ludlow AND ATS → warehouse selection modal
+4. `processOrder(items, warehousePreferences)` applies selections
+5. Items split into pallets (max 13) with route optimization
+6. Labels printed via `PalletLabelsPrinter` with weight data
+
+### 4. Weight System
+
+- `weight_lbs` field on inventory items and SKU metadata
+- Inline editing in inventory modal
+- Integrated into pallet labels for shipping
 
 ## Technical Standards
-- **Framework**: React 19 (using `useMemo`, `useCallback` for optimization).
-- **Styling**: Tailwind CSS with a custom "iOS Glass" design system.
-- **Database**: Supabase PostgreSQL with Realtime enabled for all major tables.
-- **Types**: 100% TypeScript. Avoid `any` where possible.
 
-## 🏛️ Project Governance & AI Safety
+- **Framework**: React 19 with `useMemo`, `useCallback` for optimization
+- **Styling**: Tailwind CSS with custom "iOS Glass" design system
+- **Database**: Supabase PostgreSQL with Realtime on all major tables, RLS enabled
+- **Types**: 100% TypeScript strict mode, no `any`
+- **No cross-feature imports** — share via context or utils
+- **Git**: Separate commands (no `&&` chaining) for PowerShell compatibility
 
-### 1. Git Execution Protocol
-To prevent shell-parsing errors in certain environments (like PowerShell), **never use `&&` to chain git commands**. 
-- ❌ `git add . && git commit -m "..." && git push`
-- ✅ Execute `git add`, `git commit`, and `git push` as separate, independent terminal commands.
+## Lessons Learned
 
-### 2. Mandatory Deep Analysis Prompt
-Before implementing or suggesting large refactorings, major structural changes, or complex database migrations (Phase-level work):
-- The AI **must** ask: *"Do you want me to perform a deep forensic analysis before proceeding with these changes?"*
-- This protocol prevents shallow suggestions that might break existing functionality to save tokens. Architectural integrity always takes precedence over speed.
+### Completed Order Regression (2026-03-08)
+Users could revert finished orders. Fixed with triple-layer protection: DB `.neq('status', 'completed')` filter, UI button hidden, Realtime `resetSession()`.
 
-## 🧠 Lessons Learned & Critical Solves (Session 2026-03-08)
+### RPC Argument Mismatch
+Frontend passing removed parameters caused 400 errors. **Rule**: Always verify `v_` parameter names match the Postgres function signature.
 
-### 1. The "Completed Order" Regression Bug
-**Problem**: Users could accidentally revert finished orders back to "picking" mode by clicking the "Release" (X) button before the UI refreshed.
-**Solve**: Implemented **Triple-Layer Protection**:
-- **DB Layer**: Every status update (except completion) now includes a `.neq('status', 'completed')` filter in the Supabase query.
-- **UI Layer**: The "Release to Queue" button is conditionally hidden once `listStatus === 'completed'`.
-- **Sync Layer**: A Realtime effect in `PickingCartDrawer` monitors the order status and triggers `resetSession()` immediately upon server completion.
+### Schema Drift: `sku_note` → `item_name` (2026-03-09)
+Four RPCs referenced a renamed column. **Rule**: Before any column rename, audit all RPCs with `SELECT proname FROM pg_proc WHERE pg_get_functiondef(oid) LIKE '%column_name%'`.
 
-### 2. RPC Argument Mismatch (400 Bad Request)
-**Problem**: The `adjust_inventory_quantity` RPC failed because the frontend was passing parameters (like `sku_note`) that had been removed from the Postgres function.
-**Solve**: Updated `useInventoryMutations` to strictly match the Postgres function signature. Always verify the `v_` parameter names in Supabase when a mutation returns a 400 error.
-
-### 4. Schema Drift: `sku_note` vs `item_name` / `internal_note` (2026-03-09)
-**Problem**: The production `inventory` table had `item_name` + `internal_note` columns, but local had `sku_note`. Four RPCs (`adjust_inventory_quantity`, `move_inventory_stock`, `create_daily_snapshot`, `undo_inventory_action`) referenced `inventory.sku_note` which doesn't exist in production, causing runtime errors ("column sku_note does not exist"). Additionally, `moveItem` in `useInventoryData` was a no-op stub returning only a toast.
-**Solve**:
-- Renamed `inventory.sku_note` → `item_name` locally via migration; added `internal_note`.
-- Added missing columns to production (`capacity`, `stowage_type`, `stowage_index`, `stowage_qty`, `location_hint`).
-- Rewrote all 4 RPCs to use `item_name`. `undo_inventory_action` uses `COALESCE(item_name, sku_note)` from the snapshot JSON for backwards compatibility with old logs.
-- Implemented `moveItem` as a proper `useMutation` with optimistic update and rollback.
-- Added `scripts/compare-schemas.js` to detect local↔prod drift proactively.
-- **Rule**: Before any column rename in production, always audit all RPCs with `SELECT proname FROM pg_proc WHERE pg_get_functiondef(oid) LIKE '%column_name%'`.
-
-### 3. Z-Index & Overflow in Fixed Headers
-**Problem**: On mobile, the order selection dropdown was hidden/cut off by the main form due to `overflow-hidden` on the header and low z-index.
-**Solve**: Removed `overflow-hidden` from the global header in `OrdersScreen.tsx` and boosted the dropdown's z-index to `110` to ensure it floats above all other absolute-positioned elements.
+### Z-Index on Mobile
+Order dropdown hidden by `overflow-hidden` header. Fixed by removing overflow constraint and boosting z-index to 110.

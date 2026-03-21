@@ -294,27 +294,18 @@ Picking List:
 
 ---
 
-## 🔄 Next Steps
+## Status: COMPLETED (core) + Future Ideas
 
-### **TODO:**
+### Completed
 
-1. **Apply selections to processing**
-   - Update `processOrder` to accept preferences
-   - Deduct from the selected warehouse
+- `processOrder()` already accepts `warehousePreferences: Record<string, 'ludlow' | 'ats'>` as second parameter.
+- Warehouse selection modal works end-to-end.
 
-2. **Remember preferences**
-   - Save user selections
-   - Suggest the same warehouse in future orders
+### Future Ideas (not started)
 
-3. **Automatic optimization**
-   - Suggest the nearest warehouse
-   - Suggest the warehouse with more stock
-   - Balance automatically
-
-4. **Reports**
-   - Track which warehouse is used more
-   - Efficiency analysis
-   - Rebalancing recommendations
+- Remember user preferences across sessions
+- Auto-suggest nearest warehouse or best stock balance
+- Usage analytics per warehouse
 
 ---
 
