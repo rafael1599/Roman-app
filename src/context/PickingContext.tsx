@@ -48,7 +48,10 @@ interface PickingContextType {
     inMyCart: number;
   };
 
-  completeList: (metrics?: { pallets_qty: number; total_units: number }, id?: string) => Promise<void>;
+  completeList: (
+    metrics?: { pallets_qty: number; total_units: number },
+    id?: string
+  ) => Promise<void>;
   markAsReady: (items?: any[], orderNum?: string) => Promise<string | null>;
   lockForCheck: (id: string) => Promise<void>;
   releaseCheck: (id: string) => Promise<void>;
@@ -97,9 +100,9 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
   const [checkedBy, setCheckedBy] = useState<string | null>(null);
   const [ownerId, setOwnerId] = useState<string | null>(null);
   const [correctionNotes, setCorrectionNotes] = useState<string | null>(null);
-  const [sessionMode, setSessionMode] = useState<'idle' | 'building' | 'picking' | 'double_checking'>(
-    'idle'
-  );
+  const [sessionMode, setSessionMode] = useState<
+    'idle' | 'building' | 'picking' | 'double_checking'
+  >('idle');
 
   // Initialization State
   const [isInitializing, setIsInitializing] = useState(false);
@@ -140,43 +143,58 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
     return calculatePallets(optimizedItems);
   }, [cartItems, locations, sessionMode]);
 
-  const resetSession = useCallback((skipState = false) => {
-    // Atomic Reset
-    if (!skipState) {
-      clearCart();
-      setActiveListId(null);
-      setListStatus('active');
-      setCheckedBy(null);
-      setOwnerId(null);
-      setCorrectionNotes(null);
-      setSessionMode('idle');
-      setOrderNumber(null);
-      setCustomer(null);
-      setLoadNumber(null);
-      setIsInitializing(false);
-    }
-
-    // Comprehensive localStorage cleanup
-    const keysToRemove = [
-      'picking_cart_items',
-      'picking_order_number',
-      'picking_customer_obj',
-      'picking_load_number',
-      'active_picking_list_id',
-      'picking_session_mode',
-    ];
-
-    keysToRemove.forEach((k) => localStorage.removeItem(k));
-
-    // Also clean up double check progress if any
-    Object.keys(localStorage).forEach((key) => {
-      if (key.startsWith('double_check_progress_')) {
-        localStorage.removeItem(key);
+  const resetSession = useCallback(
+    (skipState = false) => {
+      // Atomic Reset
+      if (!skipState) {
+        clearCart();
+        setActiveListId(null);
+        setListStatus('active');
+        setCheckedBy(null);
+        setOwnerId(null);
+        setCorrectionNotes(null);
+        setSessionMode('idle');
+        setOrderNumber(null);
+        setCustomer(null);
+        setLoadNumber(null);
+        setIsInitializing(false);
       }
-    });
 
-    console.log('🧹 [Atomic Reset] Session cleared');
-  }, [clearCart, setOrderNumber]);
+      // Comprehensive localStorage cleanup
+      const keysToRemove = [
+        'picking_cart_items',
+        'picking_order_number',
+        'picking_customer_obj',
+        'picking_load_number',
+        'active_picking_list_id',
+        'picking_session_mode',
+      ];
+
+      keysToRemove.forEach((k) => localStorage.removeItem(k));
+
+      // Also clean up double check progress if any
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith('double_check_progress_')) {
+          localStorage.removeItem(key);
+        }
+      });
+
+      console.log('🧹 [Atomic Reset] Session cleared');
+    },
+    [
+      clearCart,
+      setOrderNumber,
+      setCustomer,
+      setLoadNumber,
+      setActiveListId,
+      setListStatus,
+      setCheckedBy,
+      setOwnerId,
+      setCorrectionNotes,
+      setSessionMode,
+      setIsInitializing,
+    ]
+  );
 
   const { loadExternalList } = usePickingSync({
     user,
@@ -248,137 +266,172 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
 
   const { notes, isLoading: isNotesLoading, addNote: addNoteRaw } = usePickingNotes(activeListId);
 
-  const addNote = useCallback(async (message: string) => {
-    if (!user) return;
-    await addNoteRaw(user.id, message);
-  }, [user, addNoteRaw]);
+  const addNote = useCallback(
+    async (message: string) => {
+      if (!user) return;
+      await addNoteRaw(user.id, message);
+    },
+    [user, addNoteRaw]
+  );
 
   // Return to Building: Revert from Picking mode back to Building mode
-  const returnToBuilding = useCallback(async (id?: string | null) => {
-    const targetId = id || activeListId;
+  const returnToBuilding = useCallback(
+    async (id?: string | null) => {
+      const targetId = id || activeListId;
 
-    if (!targetId) {
-      // If we really have no ID but we have items in cart, we might already be in building mode
-      // or in a transition state. Let's force mode to building.
-      setSessionMode('building');
-      localStorage.setItem('picking_session_mode', 'building');
-      return;
-    }
-
-    try {
-      // If we are in verification/picking, maybe we don't want to DELETE, 
-      // just go back to building while keeping the DB record as 'active' or 'needs_correction'
-      // To keep it simple and safe: Let's only delete if it's strictly necessary.
-      // If the user wants to EDIT, we should keep the list ID but change status.
-
-      const { data: current } = await supabase.from('picking_lists').select('status').eq('id', targetId).maybeSingle();
-
-      if (current?.status === 'ready_to_double_check' || current?.status === 'double_checking') {
-        // Just move it back to 'active' (picking) so it doesn't disappear from the DB
-        await supabase.from('picking_lists').update({ status: 'active', checked_by: null }).eq('id', targetId);
-      } else if (current?.status === 'completed') {
-        // Already finished, don't touch DB
-        console.log('⚠️ [returnToBuilding] List is already completed. Skipping DB update.');
-      } else {
-        // For other states (like initial picking), we might still want to delete to release reservations 
-        // IF the user is specifically wanting to go back to "Building" (free form adding)
-        await deleteList(targetId, true);
+      if (!targetId) {
+        // If we really have no ID but we have items in cart, we might already be in building mode
+        // or in a transition state. Let's force mode to building.
+        setSessionMode('building');
+        localStorage.setItem('picking_session_mode', 'building');
+        return;
       }
 
-      // Change back to building mode locally
-      setSessionMode('building');
-      setActiveListId(null);
+      try {
+        // If we are in verification/picking, maybe we don't want to DELETE,
+        // just go back to building while keeping the DB record as 'active' or 'needs_correction'
+        // To keep it simple and safe: Let's only delete if it's strictly necessary.
+        // If the user wants to EDIT, we should keep the list ID but change status.
 
-      // Keep cartItems intact (user doesn't lose work)
-      // Update localStorage
-      localStorage.setItem('picking_session_mode', 'building');
-      localStorage.removeItem('active_picking_list_id');
+        const { data: current } = await supabase
+          .from('picking_lists')
+          .select('status')
+          .eq('id', targetId)
+          .maybeSingle();
 
-      toast('Returned to building mode. Stock reservations released.', {
-        icon: '↩️',
-        duration: 3000,
-      });
-    } catch (err) {
-      console.error('Failed to return to building:', err);
-      toast.error('Failed to return to building mode');
-    }
-  }, [activeListId, deleteList, setSessionMode, setActiveListId]);
+        if (current?.status === 'ready_to_double_check' || current?.status === 'double_checking') {
+          // Just move it back to 'active' (picking) so it doesn't disappear from the DB
+          await supabase
+            .from('picking_lists')
+            .update({ status: 'active', checked_by: null })
+            .eq('id', targetId);
 
-  const addToCart = useCallback((item: any) => {
-    // Block adding items in picking mode
-    if (sessionMode === 'picking') {
-      toast.error('Cannot add items in picking mode. Use "Return to Building" to make changes.', {
-        icon: '🔒',
-      });
-      return;
-    }
+          // Keep activeListId so generatePickingPath() can UPDATE instead of INSERT (bug-004 fix)
+          setSessionMode('building');
+          localStorage.setItem('picking_session_mode', 'building');
+          localStorage.setItem('active_picking_list_id', targetId);
 
-    // If idle and no order number, store item and show modal
-    if (sessionMode === 'idle' && !orderNumber) {
-      setPendingItem(item);
-      setIsInitializing(true);
-      return;
-    }
+          toast('Returned to building mode. You can correct items and re-generate.', {
+            icon: '↩️',
+            duration: 3000,
+          });
+        } else if (current?.status === 'completed') {
+          // Already finished, don't touch DB
+          console.log('⚠️ [returnToBuilding] List is already completed. Skipping DB update.');
+          setSessionMode('building');
+          setActiveListId(null);
+          localStorage.setItem('picking_session_mode', 'building');
+          localStorage.removeItem('active_picking_list_id');
+        } else {
+          // For other states (like initial picking), delete to release reservations
+          await deleteList(targetId, true);
+          setSessionMode('building');
+          setActiveListId(null);
+          localStorage.setItem('picking_session_mode', 'building');
+          localStorage.removeItem('active_picking_list_id');
 
-    // Transition to building mode if idle (with order number)
-    if (sessionMode === 'idle') {
-      setSessionMode('building');
-    }
-
-    addToCartInternal(item);
-  }, [sessionMode, orderNumber, setSessionMode, addToCartInternal]);
-
-  const startNewSession = useCallback(async (
-    strategy: 'auto' | 'manual' | 'resume',
-    manualOrderNumber?: string,
-    customerData?: Customer | string
-  ) => {
-    // Capture pending item before reset
-    const itemToAdd = pendingItem;
-
-    // Clear initialization state
-    setIsInitializing(false);
-    setPendingItem(null);
-
-    // Clean slate for new session
-    resetSession(true);
-
-    let newOrderNumber = manualOrderNumber;
-
-    if (strategy === 'auto') {
-      const dateStr = new Date().toISOString().slice(2, 10).replace(/-/g, '');
-      const random = Math.floor(Math.random() * 1000)
-        .toString()
-        .padStart(3, '0');
-      newOrderNumber = `ORD-${dateStr}-${random}`;
-    }
-
-    if (newOrderNumber) {
-      setOrderNumber(newOrderNumber);
-      localStorage.setItem('picking_order_number', newOrderNumber);
-    }
-
-    if (customerData) {
-      if (typeof customerData === 'string') {
-        // Temporary customer object for quick sessions
-        const quickCustomer = { name: customerData } as Customer;
-        setCustomer(quickCustomer);
-        localStorage.setItem('picking_customer_obj', JSON.stringify(quickCustomer));
-      } else {
-        setCustomer(customerData);
-        localStorage.setItem('picking_customer_obj', JSON.stringify(customerData));
+          toast('Returned to building mode. Stock reservations released.', {
+            icon: '↩️',
+            duration: 3000,
+          });
+        }
+      } catch (err) {
+        console.error('Failed to return to building:', err);
+        toast.error('Failed to return to building mode');
       }
-    }
+    },
+    [activeListId, deleteList, setSessionMode, setActiveListId]
+  );
 
-    // Start in Building Mode
-    setSessionMode('building');
-    localStorage.setItem('picking_session_mode', 'building');
+  const addToCart = useCallback(
+    (item: any) => {
+      // Block adding items in picking mode
+      if (sessionMode === 'picking') {
+        toast.error('Cannot add items in picking mode. Use "Return to Building" to make changes.', {
+          icon: '🔒',
+        });
+        return;
+      }
 
-    // Now add the pending item to cart
-    if (itemToAdd) {
-      addToCartInternal(itemToAdd);
-    }
-  }, [pendingItem, loadExternalList, addToCartInternal, resetSession, setOrderNumber, setCustomer, setSessionMode]);
+      // If idle and no order number, store item and show modal
+      if (sessionMode === 'idle' && !orderNumber) {
+        setPendingItem(item);
+        setIsInitializing(true);
+        return;
+      }
+
+      // Transition to building mode if idle (with order number)
+      if (sessionMode === 'idle') {
+        setSessionMode('building');
+      }
+
+      addToCartInternal(item);
+    },
+    [sessionMode, orderNumber, setSessionMode, addToCartInternal]
+  );
+
+  const startNewSession = useCallback(
+    async (
+      strategy: 'auto' | 'manual' | 'resume',
+      manualOrderNumber?: string,
+      customerData?: Customer | string
+    ) => {
+      // Capture pending item before reset
+      const itemToAdd = pendingItem;
+
+      // Clear initialization state
+      setIsInitializing(false);
+      setPendingItem(null);
+
+      // Clean slate for new session
+      resetSession(true);
+
+      let newOrderNumber = manualOrderNumber;
+
+      if (strategy === 'auto') {
+        const dateStr = new Date().toISOString().slice(2, 10).replace(/-/g, '');
+        const random = Math.floor(Math.random() * 1000)
+          .toString()
+          .padStart(3, '0');
+        newOrderNumber = `ORD-${dateStr}-${random}`;
+      }
+
+      if (newOrderNumber) {
+        setOrderNumber(newOrderNumber);
+        localStorage.setItem('picking_order_number', newOrderNumber);
+      }
+
+      if (customerData) {
+        if (typeof customerData === 'string') {
+          // Temporary customer object for quick sessions
+          const quickCustomer = { name: customerData } as Customer;
+          setCustomer(quickCustomer);
+          localStorage.setItem('picking_customer_obj', JSON.stringify(quickCustomer));
+        } else {
+          setCustomer(customerData);
+          localStorage.setItem('picking_customer_obj', JSON.stringify(customerData));
+        }
+      }
+
+      // Start in Building Mode
+      setSessionMode('building');
+      localStorage.setItem('picking_session_mode', 'building');
+
+      // Now add the pending item to cart
+      if (itemToAdd) {
+        addToCartInternal(itemToAdd);
+      }
+    },
+    [
+      pendingItem,
+      loadExternalList,
+      addToCartInternal,
+      resetSession,
+      setOrderNumber,
+      setCustomer,
+      setSessionMode,
+    ]
+  );
 
   const startManualSession = useCallback(() => {
     setIsInitializing(true);
@@ -389,111 +442,114 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
     setPendingItem(null);
   }, []);
 
-  const value: PickingContextType = useMemo(() => ({
-    cartItems,
-    setCartItems,
-    activeListId,
-    setActiveListId,
-    orderNumber,
-    setOrderNumber,
-    customer,
-    setCustomer,
-    loadNumber,
-    setLoadNumber,
-    listStatus,
-    checkedBy,
-    ownerId,
-    correctionNotes,
-    notes,
-    isNotesLoading,
-    addNote,
-    sessionMode,
-    setSessionMode,
-    pallets,
-    addToCart,
-    updateCartQty,
-    setCartQty,
-    removeFromCart,
-    clearCart,
-    getAvailableStock,
-    completeList,
-    markAsReady,
-    lockForCheck,
-    releaseCheck,
-    returnToPicker,
-    revertToPicking,
-    deleteList,
-    loadExternalList,
-    generatePickingPath,
-    takeOverOrder,
-    claimAsPicker,
-    returnToBuilding,
-    isLoaded,
-    isSaving,
-    lastSaved,
-    resetSession,
-    onStartSession: () => {
-      if (sessionMode === 'idle') startManualSession();
-    },
-    updateCustomerDetails,
-    // removed duplicate updateCustomerDetails
-    startNewSession,
-    isInitializing,
-    setIsInitializing,
-    pendingItem,
-    startManualSession,
-    cancelInitialization,
-  }), [
-    cartItems,
-    setCartItems,
-    activeListId,
-    setActiveListId,
-    orderNumber,
-    setOrderNumber,
-    customer,
-    setCustomer,
-    loadNumber,
-    setLoadNumber,
-    listStatus,
-    checkedBy,
-    ownerId,
-    correctionNotes,
-    notes,
-    isNotesLoading,
-    addNote,
-    sessionMode,
-    setSessionMode,
-    pallets,
-    addToCart,
-    updateCartQty,
-    setCartQty,
-    removeFromCart,
-    clearCart,
-    getAvailableStock,
-    completeList,
-    markAsReady,
-    lockForCheck,
-    releaseCheck,
-    returnToPicker,
-    revertToPicking,
-    takeOverOrder,
-    claimAsPicker,
-    deleteList,
-    loadExternalList,
-    generatePickingPath,
-    returnToBuilding,
-    isLoaded,
-    isSaving,
-    lastSaved,
-    resetSession,
-    updateCustomerDetails,
-    startNewSession,
-    isInitializing,
-    setIsInitializing,
-    pendingItem,
-    startManualSession,
-    cancelInitialization,
-  ]);
+  const value: PickingContextType = useMemo(
+    () => ({
+      cartItems,
+      setCartItems,
+      activeListId,
+      setActiveListId,
+      orderNumber,
+      setOrderNumber,
+      customer,
+      setCustomer,
+      loadNumber,
+      setLoadNumber,
+      listStatus,
+      checkedBy,
+      ownerId,
+      correctionNotes,
+      notes,
+      isNotesLoading,
+      addNote,
+      sessionMode,
+      setSessionMode,
+      pallets,
+      addToCart,
+      updateCartQty,
+      setCartQty,
+      removeFromCart,
+      clearCart,
+      getAvailableStock,
+      completeList,
+      markAsReady,
+      lockForCheck,
+      releaseCheck,
+      returnToPicker,
+      revertToPicking,
+      deleteList,
+      loadExternalList,
+      generatePickingPath,
+      takeOverOrder,
+      claimAsPicker,
+      returnToBuilding,
+      isLoaded,
+      isSaving,
+      lastSaved,
+      resetSession,
+      onStartSession: () => {
+        if (sessionMode === 'idle') startManualSession();
+      },
+      updateCustomerDetails,
+      // removed duplicate updateCustomerDetails
+      startNewSession,
+      isInitializing,
+      setIsInitializing,
+      pendingItem,
+      startManualSession,
+      cancelInitialization,
+    }),
+    [
+      cartItems,
+      setCartItems,
+      activeListId,
+      setActiveListId,
+      orderNumber,
+      setOrderNumber,
+      customer,
+      setCustomer,
+      loadNumber,
+      setLoadNumber,
+      listStatus,
+      checkedBy,
+      ownerId,
+      correctionNotes,
+      notes,
+      isNotesLoading,
+      addNote,
+      sessionMode,
+      setSessionMode,
+      pallets,
+      addToCart,
+      updateCartQty,
+      setCartQty,
+      removeFromCart,
+      clearCart,
+      getAvailableStock,
+      completeList,
+      markAsReady,
+      lockForCheck,
+      releaseCheck,
+      returnToPicker,
+      revertToPicking,
+      takeOverOrder,
+      claimAsPicker,
+      deleteList,
+      loadExternalList,
+      generatePickingPath,
+      returnToBuilding,
+      isLoaded,
+      isSaving,
+      lastSaved,
+      resetSession,
+      updateCustomerDetails,
+      startNewSession,
+      isInitializing,
+      setIsInitializing,
+      pendingItem,
+      startManualSession,
+      cancelInitialization,
+    ]
+  );
 
   return <PickingContext.Provider value={value}>{children}</PickingContext.Provider>;
 };
