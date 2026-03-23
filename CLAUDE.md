@@ -41,5 +41,14 @@ idle (UI) → building (UI-only, no DB) → active (DB)
 
 ## Skills
 
-Skills compartidas via symlinks en `.claude/skills/` (personal-skills, external-skills, template).
-Skills de proyecto en `.claude/skills/project-skills/pickd/` (daily-report, supabase).
+Este proyecto usa skills de `.claude/skills/` (symlink a `~/Documents/Antigravity/skills`). Para actualizar: `cd .claude/skills && git pull`
+
+### Skills disponibles para este proyecto
+- `commit-craft` — commits convencionales automáticos
+- `project-standardize` — estandarización de proyectos
+- `skills-hub` — gestión de skills entre proyectos
+- `daily-report` — reportes diarios de progreso (project-skill)
+- `supabase` — operaciones de base de datos Supabase (project-skill)
+
+### Preferencias de conexión
+- Siempre usar **symlink** para conectar skills (nunca git clone dentro del proyecto)

@@ -41,11 +41,10 @@ tsc_output_expert.txt
 test_db.*
 .agent/skills/
 .agents/skills/
-.claude/*
-!.claude/skills/
-.claude/skills/*
-!.claude/skills/project-skills/
 claude-skills/
+
+# Claude skills (symlink, not tracked)
+.claude/skills/
 
 # Local Dev Data
 supabase/seed.sql
