@@ -1,6 +1,12 @@
 ---
 name: daily-report
-description: "Genera el reporte diario de progreso del proyecto. Usa este skill al final del día, cuando el usuario diga 'reporte', 'daily report', 'resumen del día', 'report', 'qué hicimos hoy', 'update para mi jefe', o cualquier variante sobre generar un resumen de avances del día."
+description: >
+  Genera el reporte DIARIO de progreso del proyecto PickD basado en commits de git del dia.
+  NO es para informes academicos ni documentos — eso es report-gen.
+  Triggers: "daily report", "reporte del dia", "resumen del dia", "que hicimos hoy",
+  "update para mi jefe", "progress update", "reporte diario". Este skill analiza los
+  commits de hoy, el BACKLOG.md, y las migraciones para generar un resumen no tecnico
+  en texto plano listo para enviar por email.
 ---
 
 # /daily-report — Reporte diario de progreso
@@ -28,7 +34,7 @@ Escribe el reporte en `reports/daily/YYYY-MM-DD.txt` con estas reglas:
 ### Estructura del reporte:
 
 ```
-Progress Update — [Month Day, Year]
+Progress Update — [Month Day, Year] at [HH:MM AM/PM]
 
 
 Summary:

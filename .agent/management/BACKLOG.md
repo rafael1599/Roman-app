@@ -74,20 +74,17 @@
       El watchdog-pickd elegía locations por prioridad (PALLET>LINE>TOWER) sin verificar stock. Ahora filtra candidatos con qty=0 antes de ordenar: si hay stock en otra location, salta a esa; si qty=0 en todas, deja `location=None` + `insufficient_stock=True` para que el frontend muestre la alerta.
       **Archivos:** `watchdog-pickd/supabase_client.py` → `_to_cart_items()` (líneas 500-523).
 
-- [ ] **[bug-004] Órdenes duplicadas al retroceder de double-check a building** — `[2026-03-21]`
-      Reproducido con orden 878695: al retroceder de double-check → building para corregir un SKU, luego volver a double-check y completar, el sistema genera un segundo registro en `picking_lists` con el mismo order number. La orden original queda sin completar. El usuario ve dos entradas en la lista; el teléfono sigue mostrando la original después de completar la copia.
-      **Causa probable:** retroceder a building crea un nuevo `picking_list` en vez de reusar el existente.
-      **Archivos:** `usePickingActions.ts` → flujo building→active, `PickingCartDrawer.tsx`.
-      **Riesgo:** doble deducción de inventario si el usuario completa ambas.
+- [x] **[bug-004] Órdenes duplicadas al retroceder de double-check a building** — `[2026-03-21]` · **Fix:** `[2026-03-23]`
+      `returnToBuilding()` nulleaba `activeListId`, perdiendo la referencia al registro DB. Al generar path de nuevo, `generatePickingPath()` siempre hacía INSERT creando un duplicado. Fix: preservar `activeListId` al volver de double-check, y hacer UPDATE del registro existente en vez de INSERT. También se excluye la lista actual del cálculo de reservaciones para evitar falsos conflictos de stock.
+      **Archivos:** `PickingContext.tsx` → `returnToBuilding()`, `usePickingActions.ts` → `generatePickingPath()`.
 
 - [x] **[bug-005] Items con qty=0 aparecen en double-check sin advertencia** — `[2026-03-21]` · **Fix:** `[2026-03-23]`
       La causa raíz era bug-003: el watcher asignaba locations con qty=0 y los flags `insufficient_stock` no se propagaban correctamente. El DoubleCheckView ya tenía el indicador rojo ("No inventory") — el problema era que los datos llegaban mal desde el watcher. Resuelto con el fix de bug-003.
       **Archivos:** No requirió cambios en frontend — fix upstream en `watchdog-pickd/supabase_client.py`.
 
-- [ ] **[bug-006] Orden completada reaparece desde estado original (watcher vs edición manual)** — `[2026-03-21]`
-      Reproducido con orden 878662: usuario edita manualmente una orden que el watcher creó mal, la completa. Al reabrir la app, aparece la orden original sin los cambios manuales (como si el estado local se hubiera restaurado). Casi causó doble deducción.
-      **Investigar:** si el watcher tiene algún mecanismo de re-envío, o si hay un estado local (localStorage/context) que no se limpió al completar.
-      **Archivos:** `watchdog-pickd/watcher.py`, `PickingContext.tsx`, manejo de `activeListId` post-completion.
+- [x] **[bug-006] Orden completada reaparece desde estado original (watcher vs edición manual)** — `[2026-03-21]` · **Fix:** `[2026-03-23]`
+      Causa raíz compartida con bug-004: `returnToBuilding()` creaba registros zombie en `active` que sobrevivían post-completion. El fix de bug-004 (preservar `activeListId` + UPDATE en vez de INSERT) elimina la creación de zombies. Adicionalmente, el watcher ya tenía protección: hash SHA-256 para PDFs duplicados, lookup por `order_number` antes de insertar, y `reopen_completed_order()` que hace UPDATE (no INSERT). `usePickingSync` también purga IDs stale que apuntan a órdenes completadas al recargar la app.
+      **Archivos:** Mismo fix que bug-004 — no requirió cambios adicionales.
 
 - [ ] **Offline Sync Edge Cases**: Handle complex rollback scenarios in InventoryProvider. <!-- id: bug-001 -->
 
@@ -97,24 +94,26 @@
 
 ### Items con detalle
 
-| Item                                                       | Creado         | Completado           | Estado                                                               |
-| ---------------------------------------------------------- | -------------- | -------------------- | -------------------------------------------------------------------- |
-| Fix: undo move pierde qty y distribution (bug-002)         | `[2026-03-21]` | `[2026-03-23]`       | Completado — snapshot con `row_to_json` + undo restaura distribution |
-| Fix: watcher asigna location con qty=0 (bug-003 + bug-005) | `[2026-03-21]` | `[2026-03-23]`       | Completado — filtro qty>0 en `_to_cart_items()`                      |
-| Order number en label de pallets                           | `[2026-03-11]` | `[2026-03-11 14:28]` | Completado                                                           |
-| Barra de capacidad de locations                            | `[2026-03-11]` | `[2026-03-18 10:00]` | Resuelto (fix de performance)                                        |
-| Takeover muestra picker real                               | `[2026-03-11]` | `[2026-03-13 13:12]` | Completado                                                           |
-| Auto-inicio watchdog-pickd                                 | `[2026-03-11]` | `[2026-03-18 09:30]` | Completado (launchd service)                                         |
-| Stock Printing (filtros + nueva tab)                       | —              | —                    | Completado                                                           |
-| iOS Pull-to-Refresh                                        | —              | —                    | Completado                                                           |
-| Stock View Enhancements & History Fix                      | —              | —                    | Completado                                                           |
-| Multi-user Support (Realtime takeover)                     | —              | —                    | Completado                                                           |
-| TypeScript Core Migration                                  | —              | —                    | Completado                                                           |
-| Robust Realtime System                                     | —              | —                    | Completado                                                           |
-| Dual-Provider AI (Gemini + OpenAI)                         | —              | —                    | Completado                                                           |
-| Full English Localization                                  | —              | —                    | Completado                                                           |
-| Management Setup (.agent/)                                 | —              | —                    | Completado                                                           |
-| Warehouse Selection Basic                                  | —              | —                    | Completado                                                           |
+| Item                                                        | Creado         | Completado           | Estado                                                               |
+| ----------------------------------------------------------- | -------------- | -------------------- | -------------------------------------------------------------------- |
+| Fix: undo move pierde qty y distribution (bug-002)          | `[2026-03-21]` | `[2026-03-23]`       | Completado — snapshot con `row_to_json` + undo restaura distribution |
+| Fix: watcher asigna location con qty=0 (bug-003 + bug-005)  | `[2026-03-21]` | `[2026-03-23]`       | Completado — filtro qty>0 en `_to_cart_items()`                      |
+| Fix: órdenes duplicadas al volver de double-check (bug-004) | `[2026-03-21]` | `[2026-03-23]`       | Completado — preservar activeListId + UPDATE en vez de INSERT        |
+| Fix: orden completada reaparece (bug-006)                   | `[2026-03-21]` | `[2026-03-23]`       | Completado — misma raíz que bug-004, watcher ya tenía protección     |
+| Order number en label de pallets                            | `[2026-03-11]` | `[2026-03-11 14:28]` | Completado                                                           |
+| Barra de capacidad de locations                             | `[2026-03-11]` | `[2026-03-18 10:00]` | Resuelto (fix de performance)                                        |
+| Takeover muestra picker real                                | `[2026-03-11]` | `[2026-03-13 13:12]` | Completado                                                           |
+| Auto-inicio watchdog-pickd                                  | `[2026-03-11]` | `[2026-03-18 09:30]` | Completado (launchd service)                                         |
+| Stock Printing (filtros + nueva tab)                        | —              | —                    | Completado                                                           |
+| iOS Pull-to-Refresh                                         | —              | —                    | Completado                                                           |
+| Stock View Enhancements & History Fix                       | —              | —                    | Completado                                                           |
+| Multi-user Support (Realtime takeover)                      | —              | —                    | Completado                                                           |
+| TypeScript Core Migration                                   | —              | —                    | Completado                                                           |
+| Robust Realtime System                                      | —              | —                    | Completado                                                           |
+| Dual-Provider AI (Gemini + OpenAI)                          | —              | —                    | Completado                                                           |
+| Full English Localization                                   | —              | —                    | Completado                                                           |
+| Management Setup (.agent/)                                  | —              | —                    | Completado                                                           |
+| Warehouse Selection Basic                                   | —              | —                    | Completado                                                           |
 
 ### Descartado
 

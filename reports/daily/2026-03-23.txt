@@ -1,0 +1,57 @@
+Progress Update — March 23, 2026 at 10:45 AM
+
+
+Summary:
+
+Fixed four production bugs affecting inventory accuracy and order integrity, cleaned up the codebase by removing unused features and adding quality checks, and started prototyping a 2D warehouse visualizer.
+
+
+--- Details below ---
+
+
+Bug Fixes — Inventory & Orders:
+
+- Fixed a problem where undoing a stock move would erase the item's storage breakdown (how many units are on a pallet vs. a line vs. a tower) instead of restoring it. The undo now fully restores the item to exactly how it was before the move, including all storage details.
+
+- Fixed the order watcher sending items with zero stock to the picking screen. It was choosing a storage location without checking if there was actually anything there. Now it skips empty locations and, if an item truly has no stock anywhere, it flags it clearly so the picker sees a warning instead of being sent to an empty shelf.
+
+- Fixed a bug where going back from the verification screen to correct an item would create a duplicate order. The picker would end up seeing two copies of the same order — one stuck and one completed — which risked deducting inventory twice. Now, going back and re-submitting correctly updates the original order instead of creating a new one.
+
+- Confirmed and closed the bug where a completed order would reappear as if it was never finished. After investigation, this turned out to be the same root cause as the duplicate order bug above — the stuck copy was showing up as an active order even after the real one was completed. The fix covers both scenarios. Additionally, the order watcher already had its own safeguards in place (it checks for existing orders before creating new ones), so this is now protected from both sides.
+
+
+Codebase Cleanup:
+
+- Removed approximately 2,000 lines of unused code, old scripts, and a deprecated feature that was never launched. This keeps the system leaner and easier to maintain going forward.
+
+- Added automated formatting and quality checks that run before every code change is saved. This catches common mistakes before they reach production.
+
+
+Warehouse Visualizer — Early Prototype (pickd-2d):
+
+- Started building a 2D visual map of the warehouse that pulls live data from the inventory system. The idea is to see the entire warehouse layout on screen — which locations have stock, which ones are empty, where things are concentrated, and where there is open space. This will help make smarter decisions about consolidation, better use of available space, and quickly spotting where new stock can go without having to walk the floor first.
+
+
+Coming Up:
+
+- Continue developing the warehouse visualizer prototype with real location data.
+
+
+Backlog Status:
+
+5 completed today — 6 pending — 0 new items added today
+
+
+Ideas Under Consideration:
+
+The following are early-stage ideas we've identified as potentially valuable. Each one needs further thought on the best way to bring it to life before any work begins — we want to make sure we approach them the right way rather than rush into building something that doesn't fit the workflow.
+
+1. FedEx order merging — let the verifier drag one order onto another to combine them for FedEx shipments, keeping a clear record of which original orders were merged so it can be reversed if needed.
+
+2. Smarter inventory distribution — make the system more intelligent about suggesting where to place stock across pallets, lines, and rows based on how frequently items are picked and how much space is available.
+
+3. Daily activity dashboard — a supervisor view showing how many orders each picker handled, items moved, and verifications completed, without relying on manual tracking.
+
+4. Barcode and QR scanning — allow pickers to scan items directly instead of searching by name or SKU.
+
+5. Automatic inventory email — send a plain-text inventory summary to the team on a schedule, no links or logins required.
