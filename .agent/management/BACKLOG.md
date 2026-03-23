@@ -66,9 +66,9 @@
 
 ### Bugs confirmados en producción (actualizado 2026-03-23)
 
-- [ ] **[bug-002] Undo borra en vez de mover** — `[2026-03-21]`
-      Al mover un item (ej. 62 uds.) y hacer Undo, el item no regresa a la location original sino que queda con qty=0 sin distribución. El usuario tuvo que editar manualmente la qty y volver a mover.
-      **Archivos:** `useInventoryMutations.ts` → `undoInventoryAction`, RPC `undo_inventory_action`.
+- [x] **[bug-002] Undo borra en vez de mover** — `[2026-03-21]` · **Fix:** `[2026-03-23]`
+      Dos bugs encadenados: (1) `move_inventory_stock` construía el snapshot manualmente con `jsonb_build_object` usando qty post-move (=0) y sin distribution/item_name/is_active/location_id. (2) `undo_inventory_action` no restauraba la columna `distribution`. Fix: snapshot ahora usa `row_to_json(inventory.*)` pre-move, y undo restaura distribution con fallback para logs legacy.
+      **Archivos:** migración `20260323000001_fix_undo_move_restore_distribution.sql` — redefine ambos RPCs.
 
 - [x] **[bug-003] Watcher envía items con qty=0** — `[2026-03-21]` · **Fix:** `[2026-03-23]`
       El watchdog-pickd elegía locations por prioridad (PALLET>LINE>TOWER) sin verificar stock. Ahora filtra candidatos con qty=0 antes de ordenar: si hay stock en otra location, salta a esa; si qty=0 en todas, deja `location=None` + `insufficient_stock=True` para que el frontend muestre la alerta.
@@ -97,23 +97,24 @@
 
 ### Items con detalle
 
-| Item                                                       | Creado         | Completado           | Estado                                          |
-| ---------------------------------------------------------- | -------------- | -------------------- | ----------------------------------------------- |
-| Fix: watcher asigna location con qty=0 (bug-003 + bug-005) | `[2026-03-21]` | `[2026-03-23]`       | Completado — filtro qty>0 en `_to_cart_items()` |
-| Order number en label de pallets                           | `[2026-03-11]` | `[2026-03-11 14:28]` | Completado                                      |
-| Barra de capacidad de locations                            | `[2026-03-11]` | `[2026-03-18 10:00]` | Resuelto (fix de performance)                   |
-| Takeover muestra picker real                               | `[2026-03-11]` | `[2026-03-13 13:12]` | Completado                                      |
-| Auto-inicio watchdog-pickd                                 | `[2026-03-11]` | `[2026-03-18 09:30]` | Completado (launchd service)                    |
-| Stock Printing (filtros + nueva tab)                       | —              | —                    | Completado                                      |
-| iOS Pull-to-Refresh                                        | —              | —                    | Completado                                      |
-| Stock View Enhancements & History Fix                      | —              | —                    | Completado                                      |
-| Multi-user Support (Realtime takeover)                     | —              | —                    | Completado                                      |
-| TypeScript Core Migration                                  | —              | —                    | Completado                                      |
-| Robust Realtime System                                     | —              | —                    | Completado                                      |
-| Dual-Provider AI (Gemini + OpenAI)                         | —              | —                    | Completado                                      |
-| Full English Localization                                  | —              | —                    | Completado                                      |
-| Management Setup (.agent/)                                 | —              | —                    | Completado                                      |
-| Warehouse Selection Basic                                  | —              | —                    | Completado                                      |
+| Item                                                       | Creado         | Completado           | Estado                                                               |
+| ---------------------------------------------------------- | -------------- | -------------------- | -------------------------------------------------------------------- |
+| Fix: undo move pierde qty y distribution (bug-002)         | `[2026-03-21]` | `[2026-03-23]`       | Completado — snapshot con `row_to_json` + undo restaura distribution |
+| Fix: watcher asigna location con qty=0 (bug-003 + bug-005) | `[2026-03-21]` | `[2026-03-23]`       | Completado — filtro qty>0 en `_to_cart_items()`                      |
+| Order number en label de pallets                           | `[2026-03-11]` | `[2026-03-11 14:28]` | Completado                                                           |
+| Barra de capacidad de locations                            | `[2026-03-11]` | `[2026-03-18 10:00]` | Resuelto (fix de performance)                                        |
+| Takeover muestra picker real                               | `[2026-03-11]` | `[2026-03-13 13:12]` | Completado                                                           |
+| Auto-inicio watchdog-pickd                                 | `[2026-03-11]` | `[2026-03-18 09:30]` | Completado (launchd service)                                         |
+| Stock Printing (filtros + nueva tab)                       | —              | —                    | Completado                                                           |
+| iOS Pull-to-Refresh                                        | —              | —                    | Completado                                                           |
+| Stock View Enhancements & History Fix                      | —              | —                    | Completado                                                           |
+| Multi-user Support (Realtime takeover)                     | —              | —                    | Completado                                                           |
+| TypeScript Core Migration                                  | —              | —                    | Completado                                                           |
+| Robust Realtime System                                     | —              | —                    | Completado                                                           |
+| Dual-Provider AI (Gemini + OpenAI)                         | —              | —                    | Completado                                                           |
+| Full English Localization                                  | —              | —                    | Completado                                                           |
+| Management Setup (.agent/)                                 | —              | —                    | Completado                                                           |
+| Warehouse Selection Basic                                  | —              | —                    | Completado                                                           |
 
 ### Descartado
 
