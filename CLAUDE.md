@@ -36,12 +36,9 @@ idle (UI) → building (UI-only, no DB) → active (DB)
     → completed (terminal) | needs_correction → active (loop)
   → cancelled (terminal — manual o auto-cancel >15min/24hrs)
 ```
+
 6 estados DB: `active`, `ready_to_double_check`, `double_checking`, `needs_correction`, `completed`, `cancelled`. Órdenes completadas tienen triple protección contra reversión.
 
 ## Skills
 
-Las skills se gestionan desde el repo `my-agent-skills` (source of truth).
-
-- `.skills-config.json` declara qué skills usa este proyecto y de dónde vienen.
-- `scripts/sync-skills.ps1` copia los SKILL.md al proyecto (`.claude/commands/` y `.agents/skills/`).
-- **Nunca editar las skills copiadas directamente.** Editar en `my-agent-skills` y correr `.\scripts\sync-skills.ps1` para sincronizar.
+Este proyecto usa skills de `.claude/skills/`. Para actualizar: `cd .claude/skills && git pull`
