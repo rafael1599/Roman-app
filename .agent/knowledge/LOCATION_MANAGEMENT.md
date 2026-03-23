@@ -1,6 +1,6 @@
 # Location Management Knowledge
 
-This file documents the logic, business rules, and patterns for warehouse locations in Roman-app.
+This file documents the logic, business rules, and patterns for warehouse locations in PickD.
 
 ## 🏛 Architecture
 

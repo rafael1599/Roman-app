@@ -1,4 +1,4 @@
-# Roman-app Scratchpad
+# PickD Scratchpad
 
 Quick, transient notes for the current session. Move permanent insights to `.agent/knowledge/`.
 

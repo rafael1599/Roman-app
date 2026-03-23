@@ -1,4 +1,4 @@
-# Backlog — Roman-app
+# Backlog — PickD
 
 > **Este archivo es un puntero.** El backlog autoritativo está en:
 > `.agent/management/BACKLOG.md`

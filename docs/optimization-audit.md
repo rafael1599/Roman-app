@@ -1,4 +1,4 @@
-# Audit de Optimizacion — Roman-app
+# Audit de Optimizacion — PickD
 
 Documento generado tras la investigacion del bug "Maximum update depth exceeded".
 Cada seccion describe un problema, su impacto, los archivos afectados y la estrategia de correccion.
@@ -17,22 +17,23 @@ Cada seccion describe un problema, su impacto, los archivos afectados y la estra
 
 ### Consumidores (10 archivos)
 
-| Archivo | Destructura |
-|---------|-------------|
-| `InventoryModal.tsx` | `locations` |
-| `useLocationSuggestions.ts` | `locations` |
-| `useInventoryMutations.ts` | `locations` |
-| `LocationList.tsx` | `locations`, `loading`, `updateLocation`, `refresh`, `deactivateLocation` |
-| `PickingSessionView.tsx` | `locations` |
-| `MovementModal.tsx` | `locations` |
-| `StockCountScreen.tsx` | `locations` (alias `allMappedLocations`) |
-| `InventoryScreen.tsx` | `locations`, `createLocation`, `updateLocation`, `deactivateLocation` |
-| `PickingContext.tsx` | `locations` |
-| `PickingSummaryModal.tsx` | `locations` |
+| Archivo                     | Destructura                                                               |
+| --------------------------- | ------------------------------------------------------------------------- |
+| `InventoryModal.tsx`        | `locations`                                                               |
+| `useLocationSuggestions.ts` | `locations`                                                               |
+| `useInventoryMutations.ts`  | `locations`                                                               |
+| `LocationList.tsx`          | `locations`, `loading`, `updateLocation`, `refresh`, `deactivateLocation` |
+| `PickingSessionView.tsx`    | `locations`                                                               |
+| `MovementModal.tsx`         | `locations`                                                               |
+| `StockCountScreen.tsx`      | `locations` (alias `allMappedLocations`)                                  |
+| `InventoryScreen.tsx`       | `locations`, `createLocation`, `updateLocation`, `deactivateLocation`     |
+| `PickingContext.tsx`        | `locations`                                                               |
+| `PickingSummaryModal.tsx`   | `locations`                                                               |
 
 ### Cadena de multiplicacion
 
 Algunos consumidores se llaman dentro de hooks que a su vez son llamados por otros:
+
 - `useInventory()` llama `useInventoryMutations()` que llama `useLocationManagement()`
 - `useInventory()` se llama en 16 archivos
 - Resultado: **cada `useInventory()` dispara un fetch adicional** a `locations`
@@ -46,6 +47,7 @@ Algunos consumidores se llaman dentro de hooks que a su vez son llamados por otr
 ### Estrategia propuesta
 
 Migrar a `useQuery` de TanStack Query (igual que inventory). Beneficios:
+
 - Cache global automatica: un solo fetch real, N consumidores comparten el resultado
 - `staleTime` configurable para evitar refetches innecesarios
 - Las funciones de mutacion (`createLocation`, `updateLocation`, `deactivateLocation`) se mantienen con `useMutation` + invalidacion del query
@@ -67,9 +69,16 @@ En `src/context/AuthContext.tsx` linea 275-286:
 
 ```tsx
 const value = {
-  user, role, profile, isAdmin: role === 'admin' && !viewAsUser,
-  isSystemAdmin: role === 'admin', viewAsUser, loading, signOut,
-  updateProfileName, toggleAdminView,
+  user,
+  role,
+  profile,
+  isAdmin: role === 'admin' && !viewAsUser,
+  isSystemAdmin: role === 'admin',
+  viewAsUser,
+  loading,
+  signOut,
+  updateProfileName,
+  toggleAdminView,
 };
 return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 ```
@@ -78,24 +87,24 @@ return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 
 ### Consumidores (16 archivos)
 
-| Archivo | Destructura |
-|---------|-------------|
-| `useInventoryData.ts` | `isAdmin`, `user`, `profile` |
-| `useInventoryLogs.ts` | `isAdmin` |
-| `useInventoryMutations.ts` | `user`, `profile` |
-| `usePresence.ts` | `user` |
-| `IntegratedMapManager.tsx` | `isAdmin` |
-| `PickingSessionView.tsx` | `user` |
-| `SessionInitializationModal.tsx` | `user` |
-| `PickingCartDrawer.tsx` | `user` |
-| `OrdersScreen.tsx` | `user` |
-| `StockCountScreen.tsx` | `profile` |
-| `HistoryScreen.tsx` | `isAdmin`, `profile`, `user` |
-| `InventoryScreen.tsx` | `isAdmin`, `user`, `profile` |
-| `PickingContext.tsx` | `user` |
-| `LayoutMain.tsx` | `isAdmin`, `profile` |
-| `UserMenu.tsx` | `profile`, `signOut`, `updateProfileName`, `isAdmin`, `isSystemAdmin`, `viewAsUser`, `toggleAdminView` |
-| `App.tsx` | `user`, `loading` |
+| Archivo                          | Destructura                                                                                            |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `useInventoryData.ts`            | `isAdmin`, `user`, `profile`                                                                           |
+| `useInventoryLogs.ts`            | `isAdmin`                                                                                              |
+| `useInventoryMutations.ts`       | `user`, `profile`                                                                                      |
+| `usePresence.ts`                 | `user`                                                                                                 |
+| `IntegratedMapManager.tsx`       | `isAdmin`                                                                                              |
+| `PickingSessionView.tsx`         | `user`                                                                                                 |
+| `SessionInitializationModal.tsx` | `user`                                                                                                 |
+| `PickingCartDrawer.tsx`          | `user`                                                                                                 |
+| `OrdersScreen.tsx`               | `user`                                                                                                 |
+| `StockCountScreen.tsx`           | `profile`                                                                                              |
+| `HistoryScreen.tsx`              | `isAdmin`, `profile`, `user`                                                                           |
+| `InventoryScreen.tsx`            | `isAdmin`, `user`, `profile`                                                                           |
+| `PickingContext.tsx`             | `user`                                                                                                 |
+| `LayoutMain.tsx`                 | `isAdmin`, `profile`                                                                                   |
+| `UserMenu.tsx`                   | `profile`, `signOut`, `updateProfileName`, `isAdmin`, `isSystemAdmin`, `viewAsUser`, `toggleAdminView` |
+| `App.tsx`                        | `user`, `loading`                                                                                      |
 
 ### Impacto
 
@@ -107,12 +116,21 @@ return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 Envolver `value` en `useMemo`:
 
 ```tsx
-const value = useMemo(() => ({
-  user, role, profile,
-  isAdmin: role === 'admin' && !viewAsUser,
-  isSystemAdmin: role === 'admin',
-  viewAsUser, loading, signOut, updateProfileName, toggleAdminView,
-}), [user, role, profile, viewAsUser, loading, signOut, updateProfileName, toggleAdminView]);
+const value = useMemo(
+  () => ({
+    user,
+    role,
+    profile,
+    isAdmin: role === 'admin' && !viewAsUser,
+    isSystemAdmin: role === 'admin',
+    viewAsUser,
+    loading,
+    signOut,
+    updateProfileName,
+    toggleAdminView,
+  }),
+  [user, role, profile, viewAsUser, loading, signOut, updateProfileName, toggleAdminView]
+);
 ```
 
 ### Riesgos
@@ -133,13 +151,15 @@ En `src/features/inventory/hooks/useInventoryData.ts` lineas 125-163, el hook re
 
 ```tsx
 return {
-  inventoryData, ludlowData, atsData, // useMemo'd - estables
-  updateQuantity,    // inline async - NUEVO cada render
-  addItem,           // inline async - NUEVO cada render
-  updateItem,        // inline async - NUEVO cada render
-  moveItem,          // inline async - NUEVO cada render
-  deleteItem,        // inline async - NUEVO cada render
-  syncFilters,       // inline arrow - NUEVO cada render
+  inventoryData,
+  ludlowData,
+  atsData, // useMemo'd - estables
+  updateQuantity, // inline async - NUEVO cada render
+  addItem, // inline async - NUEVO cada render
+  updateItem, // inline async - NUEVO cada render
+  moveItem, // inline async - NUEVO cada render
+  deleteItem, // inline async - NUEVO cada render
+  syncFilters, // inline arrow - NUEVO cada render
   // ... mas funciones
 };
 ```
@@ -207,18 +227,18 @@ return (
 
 ### Consumidores (10 archivos)
 
-| Archivo | Destructura |
-|---------|-------------|
-| `InventoryModal.tsx` | `setIsNavHidden` |
-| `PickingCartDrawer.tsx` | `externalDoubleCheckId`, `setExternalDoubleCheckId` |
+| Archivo                 | Destructura                                                     |
+| ----------------------- | --------------------------------------------------------------- |
+| `InventoryModal.tsx`    | `setIsNavHidden`                                                |
+| `PickingCartDrawer.tsx` | `externalDoubleCheckId`, `setExternalDoubleCheckId`             |
 | `DoubleCheckHeader.tsx` | `setExternalDoubleCheckId`, `setExternalOrderId`, `setViewMode` |
-| `OrdersScreen.tsx` | `externalOrderId`, `setExternalOrderId` |
-| `MovementModal.tsx` | `setIsNavHidden` |
-| `HistoryScreen.tsx` | `isSearching`, `setIsSearching` |
-| `InventoryScreen.tsx` | `viewMode`, `isSearching` |
-| `SearchInput.tsx` | `isSearching`, `setIsSearching` |
-| `BottomNavigation.tsx` | `viewMode`, `setViewMode`, `isNavHidden`, `isSearching` |
-| `LayoutMain.tsx` | `isSearching` |
+| `OrdersScreen.tsx`      | `externalOrderId`, `setExternalOrderId`                         |
+| `MovementModal.tsx`     | `setIsNavHidden`                                                |
+| `HistoryScreen.tsx`     | `isSearching`, `setIsSearching`                                 |
+| `InventoryScreen.tsx`   | `viewMode`, `isSearching`                                       |
+| `SearchInput.tsx`       | `isSearching`, `setIsSearching`                                 |
+| `BottomNavigation.tsx`  | `viewMode`, `setViewMode`, `isNavHidden`, `isSearching`         |
+| `LayoutMain.tsx`        | `isSearching`                                                   |
 
 ### Impacto
 
@@ -228,11 +248,21 @@ return (
 ### Estrategia propuesta
 
 ```tsx
-const value = useMemo(() => ({
-  viewMode, setViewMode, externalDoubleCheckId, setExternalDoubleCheckId,
-  externalOrderId, setExternalOrderId, isNavHidden, setIsNavHidden,
-  isSearching, setIsSearching,
-}), [viewMode, externalDoubleCheckId, externalOrderId, isNavHidden, isSearching]);
+const value = useMemo(
+  () => ({
+    viewMode,
+    setViewMode,
+    externalDoubleCheckId,
+    setExternalDoubleCheckId,
+    externalOrderId,
+    setExternalOrderId,
+    isNavHidden,
+    setIsNavHidden,
+    isSearching,
+    setIsSearching,
+  }),
+  [viewMode, externalDoubleCheckId, externalOrderId, isNavHidden, isSearching]
+);
 ```
 
 Nota: los `setX` de useState son estables por garantia de React — no necesitan estar en deps.
@@ -276,9 +306,12 @@ return useMemo(() => ({
 ### Estrategia propuesta
 
 ```tsx
-const trackLog = useCallback(async (logData, userInfo, candidateLogId) => {
-  return trackLogMutation.mutateAsync({ logData, userInfo, candidateLogId });
-}, [trackLogMutation.mutateAsync]);
+const trackLog = useCallback(
+  async (logData, userInfo, candidateLogId) => {
+    return trackLogMutation.mutateAsync({ logData, userInfo, candidateLogId });
+  },
+  [trackLogMutation.mutateAsync]
+);
 ```
 
 ### Riesgos
@@ -303,7 +336,7 @@ useEffect(() => {
 `syncFilters` es un no-op definido en `useInventoryData.ts` linea 118:
 
 ```tsx
-const syncFilters = (_filters?: any) => { };
+const syncFilters = (_filters?: any) => {};
 ```
 
 ### Impacto
@@ -324,11 +357,11 @@ Eliminar el useEffect completamente. Si en el futuro se necesita sync de filtros
 
 ## Orden de ejecucion recomendado
 
-| Prioridad | ID | Descripcion | Estado |
-|-----------|-----|-------------|--------|
-| 1 | OPT-1 | `useLocationManagement` → useQuery | DONE (40a3827) |
-| 2 | OPT-2 | Memoizar AuthContext value | DONE (0d8a475) |
-| 3 | OPT-4 | Memoizar ViewModeContext value | DONE (0d8a475) |
-| 4 | OPT-3 | Memoizar return de useInventory | DONE (8c3432a) |
-| 5 | OPT-6 | Eliminar syncFilters useEffect | DONE (f79496f) |
-| 6 | OPT-5 | useCallback para trackLog | DONE (f79496f) |
+| Prioridad | ID    | Descripcion                        | Estado         |
+| --------- | ----- | ---------------------------------- | -------------- |
+| 1         | OPT-1 | `useLocationManagement` → useQuery | DONE (40a3827) |
+| 2         | OPT-2 | Memoizar AuthContext value         | DONE (0d8a475) |
+| 3         | OPT-4 | Memoizar ViewModeContext value     | DONE (0d8a475) |
+| 4         | OPT-3 | Memoizar return de useInventory    | DONE (8c3432a) |
+| 5         | OPT-6 | Eliminar syncFilters useEffect     | DONE (f79496f) |
+| 6         | OPT-5 | useCallback para trackLog          | DONE (f79496f) |

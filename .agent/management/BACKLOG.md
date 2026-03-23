@@ -1,4 +1,4 @@
-# Roman-app — Backlog de Mejoras
+# PickD — Backlog de Mejoras
 
 > Mejoras pendientes ordenadas por impacto en el usuario final.
 > Actualizado: 2026-03-23

@@ -1,4 +1,4 @@
-# Instrucciones para Claude — PickD (Roman-app)
+# Instrucciones para Claude — PickD
 
 PWA de gestión de inventario y warehouse operations. Multi-usuario con sync en tiempo real.
 

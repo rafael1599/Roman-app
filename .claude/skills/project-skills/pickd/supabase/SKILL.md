@@ -1,9 +1,9 @@
 ---
 name: supabase
-description: "Operaciones con Supabase en Roman-app: testing SQL local, migraciones, sync DB, reset, queries, debugging de RPCs. Usa este skill cuando el agente necesite interactuar con Supabase de cualquier forma — ejecutar SQL, testear funciones, crear migraciones, sincronizar bases de datos, resolver errores de DB, o cualquier operación que involucre la base de datos local o remota. Triggers: 'test sql', 'run query', 'supabase', 'migration', 'db reset', 'sync db', 'check db', 'psql', 'rpc error', 'schema drift', 'test function', 'database'."
+description: "Operaciones con Supabase en PickD: testing SQL local, migraciones, sync DB, reset, queries, debugging de RPCs. Usa este skill cuando el agente necesite interactuar con Supabase de cualquier forma — ejecutar SQL, testear funciones, crear migraciones, sincronizar bases de datos, resolver errores de DB, o cualquier operación que involucre la base de datos local o remota. Triggers: 'test sql', 'run query', 'supabase', 'migration', 'db reset', 'sync db', 'check db', 'psql', 'rpc error', 'schema drift', 'test function', 'database'."
 ---
 
-# /supabase — Operaciones Supabase para Roman-app
+# /supabase — Operaciones Supabase para PickD
 
 ## Instrucciones para el agente
 
