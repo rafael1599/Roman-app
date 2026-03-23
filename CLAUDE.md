@@ -41,9 +41,10 @@ idle (UI) → building (UI-only, no DB) → active (DB)
 
 ## Skills
 
-Este proyecto usa skills de `.claude/skills/` (symlink a `~/Documents/Antigravity/skills`). Para actualizar: `cd .claude/skills && git pull`
+Este proyecto usa skills de `.claude/skills/` (symlink a `~/Documents/Projects/skills`). Para actualizar: `cd .claude/skills && git pull`
 
 ### Skills disponibles para este proyecto
+
 - `commit-craft` — commits convencionales automáticos
 - `project-standardize` — estandarización de proyectos
 - `skills-hub` — gestión de skills entre proyectos
@@ -51,4 +52,5 @@ Este proyecto usa skills de `.claude/skills/` (symlink a `~/Documents/Antigravit
 - `supabase` — operaciones de base de datos Supabase (project-skill)
 
 ### Preferencias de conexión
+
 - Siempre usar **symlink** para conectar skills (nunca git clone dentro del proyecto)

@@ -44,6 +44,7 @@ test_db.*
 claude-skills/
 
 # Claude skills (symlink, not tracked)
+.claude/skills
 .claude/skills/
 
 # Local Dev Data
