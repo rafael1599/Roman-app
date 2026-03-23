@@ -1,7 +1,7 @@
 /**
  * Fetches and parses a CSV file from the given URL.
  */
-export const fetchAndParseCSV = async <T = any>(url: string): Promise<T[]> => {
+export const fetchAndParseCSV = async <T = Record<string, unknown>>(url: string): Promise<T[]> => {
   try {
     const { default: Papa } = await import('papaparse');
     const response = await fetch(url);
@@ -14,7 +14,7 @@ export const fetchAndParseCSV = async <T = any>(url: string): Promise<T[]> => {
       Papa.parse<T>(csvText, {
         header: true,
         skipEmptyLines: true,
-        complete: (results: any) => {
+        complete: (results: { data: T[] }) => {
           resolve(results.data);
         },
         error: (error: Error) => {

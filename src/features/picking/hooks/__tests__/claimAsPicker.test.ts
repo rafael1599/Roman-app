@@ -14,14 +14,14 @@ const mockFrom = vi.fn((table: string) => {
 });
 
 vi.mock('../../../../lib/supabase', () => ({
-  supabase: { from: (...args: any[]) => mockFrom(...args) },
+  supabase: { from: (...args: string[]) => mockFrom(...args) },
 }));
 
 // --- Helpers -----------------------------------------------------------------
 const REAL_USER = { id: 'user-real-abc' };
 const SCRIPT_USER = 'user-script-xyz';
 
-function makeProps(overrides: Record<string, any> = {}) {
+function makeProps(overrides: Record<string, unknown> = {}) {
   return {
     user: REAL_USER,
     activeListId: 'list-1',
@@ -110,9 +110,7 @@ describe('claimAsPicker', () => {
   it('should NOT claim when there is no user', async () => {
     const setOwnerId = vi.fn();
 
-    const { result } = renderHook(() =>
-      usePickingActions(makeProps({ user: null, setOwnerId }))
-    );
+    const { result } = renderHook(() => usePickingActions(makeProps({ user: null, setOwnerId })));
 
     await act(() => result.current.claimAsPicker('list-1'));
 

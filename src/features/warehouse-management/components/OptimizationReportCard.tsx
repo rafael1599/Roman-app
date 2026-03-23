@@ -74,15 +74,17 @@ export const OptimizationReportCard = ({ report, onGenerateNew }: OptimizationRe
     setApplying(idx);
 
     try {
+      type Warehouse = 'LUDLOW' | 'ATS' | 'DELETED ITEMS';
+
       // Execute the swap!
       // 1. Move LOW velocity item (demote) from HOT to WARM
       await moveItem(
         {
-          SKU: suggestion.demote.sku,
-          Warehouse: suggestion.demote.warehouse.toUpperCase() as any,
-          Location: suggestion.demote.location,
-        } as any,
-        suggestion.promote.warehouse.toUpperCase() as any,
+          sku: suggestion.demote.sku,
+          warehouse: suggestion.demote.warehouse.toUpperCase() as Warehouse,
+          location: suggestion.demote.location,
+        } as Parameters<typeof moveItem>[0],
+        suggestion.promote.warehouse.toUpperCase(),
         suggestion.promote.location,
         suggestion.demote.quantity
       );
@@ -90,11 +92,11 @@ export const OptimizationReportCard = ({ report, onGenerateNew }: OptimizationRe
       // 2. Move HIGH velocity item (promote) from WARM to HOT
       await moveItem(
         {
-          SKU: suggestion.promote.sku,
-          Warehouse: suggestion.promote.warehouse.toUpperCase() as any,
-          Location: suggestion.promote.location,
-        } as any,
-        suggestion.demote.warehouse.toUpperCase() as any,
+          sku: suggestion.promote.sku,
+          warehouse: suggestion.promote.warehouse.toUpperCase() as Warehouse,
+          location: suggestion.promote.location,
+        } as Parameters<typeof moveItem>[0],
+        suggestion.demote.warehouse.toUpperCase(),
         suggestion.demote.location,
         suggestion.promote.quantity
       );
@@ -103,9 +105,9 @@ export const OptimizationReportCard = ({ report, onGenerateNew }: OptimizationRe
       toast.success(
         `✅ Successfully swapped ${suggestion.promote.sku} and ${suggestion.demote.sku}`
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      showError('Failed to apply suggestion', err.message);
+      showError('Failed to apply suggestion', err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setApplying(null);
     }
@@ -248,10 +250,11 @@ const SuggestionItem = ({ suggestion, onApply, onDismiss, isApplying }: Suggesti
             className={`
                             w-full py-3 rounded-xl font-black text-sm uppercase tracking-wide
                             flex items-center justify-center gap-2
-                            ${isApplying
-                ? 'bg-surface text-muted cursor-wait'
-                : 'bg-accent hover:opacity-90 text-main shadow-lg shadow-accent/20'
-              }
+                            ${
+                              isApplying
+                                ? 'bg-surface text-muted cursor-wait'
+                                : 'bg-accent hover:opacity-90 text-main shadow-lg shadow-accent/20'
+                            }
                             transition-all
                         `}
           >

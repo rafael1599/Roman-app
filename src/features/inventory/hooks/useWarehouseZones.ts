@@ -43,13 +43,16 @@ export const useWarehouseZones = () => {
         }
 
         const zoneMap: Record<string, ZoneMapItem> = {};
-        data?.forEach((row: any) => {
+        data?.forEach((row) => {
           const key = `${row.warehouse}-${row.location}`;
           zoneMap[key] = {
             id: row.id,
             zone: (row.zone as ZoneType) || 'UNASSIGNED', // Fallback if null, matches schema change
             pickingOrder: row.picking_order,
-            isShippingArea: row.is_shipping_area,
+            isShippingArea: (row as Record<string, unknown>).is_shipping_area as
+              | boolean
+              | null
+              | undefined,
             notes: row.notes,
           };
         });
@@ -58,14 +61,13 @@ export const useWarehouseZones = () => {
 
         // Also populate allLocations list from same source to avoid double query
         const uniqueLocs = new Set<string>();
-        data?.forEach((row: any) => {
+        data?.forEach((row) => {
           uniqueLocs.add(`${row.warehouse}-${row.location}`);
         });
         const sortedLocs = Array.from(uniqueLocs).sort((a, b) =>
           a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
         );
         setAllLocations(sortedLocs);
-
       } catch (err) {
         console.error('Error fetching locations for zones:', err);
       } finally {
@@ -195,9 +197,9 @@ export const useWarehouseZones = () => {
       // Clear pending changes on success
       setPendingChanges({});
       return { success: true };
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error saving zone changes to locations:', err);
-      return { success: false, error: err.message };
+      return { success: false, error: err instanceof Error ? err.message : String(err) };
     }
   }, [pendingChanges]);
 
@@ -221,9 +223,8 @@ export const useWarehouseZones = () => {
       );
 
       sorted.forEach((location) => {
-        let zone: ZoneType;
         // Temporarily disabled: Route all to UNASSIGNED until full logic is complete
-        zone = 'UNASSIGNED';
+        const zone: ZoneType = 'UNASSIGNED';
 
         updates.push({ warehouse: warehouse as 'LUDLOW' | 'ATS', location, zone });
       });

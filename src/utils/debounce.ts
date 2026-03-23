@@ -3,6 +3,7 @@
  * Useful for optimizing real-time subscriptions and user input handlers
  */
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Generic constraint requires `any` for proper type inference with Parameters<T>
 export function debounce<T extends (...args: any[]) => any>(
   func: T,
   wait: number
@@ -19,6 +20,7 @@ export function debounce<T extends (...args: any[]) => any>(
  * Throttle utility - ensures function is called at most once per interval
  * First call executes immediately, subsequent calls are delayed
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Generic constraint requires `any` for proper type inference with Parameters<T>
 export function throttle<T extends (...args: any[]) => any>(
   func: T,
   limit: number

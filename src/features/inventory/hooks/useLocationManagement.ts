@@ -1,6 +1,10 @@
 import { useCallback, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { type Location, type LocationInput, LocationSchema } from '../../../schemas/location.schema';
+import {
+  type Location,
+  type LocationInput,
+  LocationSchema,
+} from '../../../schemas/location.schema';
 import { validateData } from '../../../utils/validate';
 import { DEFAULT_MAX_CAPACITY } from '../../../utils/capacityUtils';
 import { supabase } from '../../../lib/supabase';
@@ -16,7 +20,11 @@ const EMPTY_LOCATIONS: Location[] = [];
 export const useLocationManagement = () => {
   const queryClient = useQueryClient();
 
-  const { data: rawLocations, isLoading: loading, error: queryError } = useQuery<Location[]>({
+  const {
+    data: rawLocations,
+    isLoading: loading,
+    error: queryError,
+  } = useQuery<Location[]>({
     queryKey: LOCATIONS_KEY,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -28,10 +36,10 @@ export const useLocationManagement = () => {
 
       if (error) throw error;
 
-      return (data as any[] || []).map(loc => ({
+      return ((data || []) as Location[]).map((loc) => ({
         ...loc,
-        location: (loc.location || '').toUpperCase()
-      })) as Location[];
+        location: (loc.location || '').toUpperCase(),
+      }));
     },
     staleTime: 5 * 60 * 1000, // 5 min — locations change rarely
     refetchOnWindowFocus: false,
@@ -42,16 +50,17 @@ export const useLocationManagement = () => {
 
   const getLocation = useCallback(
     (warehouse: string, locationName: string) => {
-      return locations.find((loc) =>
-        loc.warehouse === warehouse &&
-        (loc.location || '').trim().toUpperCase() === (locationName || '').trim().toUpperCase()
+      return locations.find(
+        (loc) =>
+          loc.warehouse === warehouse &&
+          (loc.location || '').trim().toUpperCase() === (locationName || '').trim().toUpperCase()
       );
     },
     [locations]
   );
 
   const updateLocation = useCallback(
-    async (id: string, updates: any) => {
+    async (id: string, updates: Partial<Location> & { invalidateReports?: number[] }) => {
       try {
         const { invalidateReports, ...dbUpdates } = updates;
 
@@ -65,9 +74,11 @@ export const useLocationManagement = () => {
         if (error) throw error;
 
         if (invalidateReports && invalidateReports.length > 0) {
+          // 'status' column exists in DB but is not in generated Supabase types
+          const reportUpdate: Record<string, unknown> = { status: 'obsolete' };
           const { error: reportError } = await supabase
-            .from('optimization_reports' as any)
-            .update({ status: 'obsolete' } as any)
+            .from('optimization_reports')
+            .update(reportUpdate as never)
             .in('id', invalidateReports);
 
           if (reportError) {
@@ -75,16 +86,16 @@ export const useLocationManagement = () => {
           }
         }
 
-        const updatedLoc = data as any;
+        const updatedLoc = data as Location;
         // Optimistic cache update
         queryClient.setQueryData<Location[]>(LOCATIONS_KEY, (prev) =>
           prev ? prev.map((loc) => (loc.id === id ? updatedLoc : loc)) : prev
         );
 
         return { success: true, data: updatedLoc };
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error updating location:', err);
-        return { success: false, error: err.message };
+        return { success: false, error: err instanceof Error ? err.message : String(err) };
       }
     },
     [queryClient]
@@ -107,15 +118,15 @@ export const useLocationManagement = () => {
 
         if (error) throw error;
 
-        const newLoc = data as any;
+        const newLoc = data as Location;
         queryClient.setQueryData<Location[]>(LOCATIONS_KEY, (prev) =>
           prev ? [...prev, newLoc] : [newLoc]
         );
 
         return { success: true, data: newLoc };
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error creating location:', err);
-        return { success: false, error: err.message };
+        return { success: false, error: err instanceof Error ? err.message : String(err) };
       }
     },
     [queryClient]
@@ -126,7 +137,7 @@ export const useLocationManagement = () => {
       try {
         const { error } = await supabase
           .from('locations')
-          .update({ is_active: false } as any)
+          .update({ is_active: false })
           .eq('id', id);
 
         if (error) throw error;
@@ -136,9 +147,9 @@ export const useLocationManagement = () => {
         );
 
         return { success: true };
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error deactivating location:', err);
-        return { success: false, error: err.message };
+        return { success: false, error: err instanceof Error ? err.message : String(err) };
       }
     },
     [queryClient]

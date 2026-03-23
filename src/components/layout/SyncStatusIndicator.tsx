@@ -14,111 +14,124 @@ import { queryClient } from '../../lib/query-client';
  * Hierarchy: Error (Red) > Offline/Paused (Orange) > Syncing (Blue) > Ready (Green)
  */
 export const SyncStatusIndicator: React.FC = () => {
-    const isMutating = useIsMutating();
-    const isFetching = useIsFetching();
-    const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const isMutating = useIsMutating();
+  const isFetching = useIsFetching();
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
 
-    // Monitor mutations in error state
-    const errorMutations = useMutationState({
-        filters: { status: 'error' },
-        select: (mutation) => mutation.state.error,
-    });
+  // Monitor mutations in error state
+  const errorMutations = useMutationState({
+    filters: { status: 'error' },
+    select: (mutation) => mutation.state.error,
+  });
 
-    // Monitor paused mutations in the cache using the official hook
-    const pausedMutations = useMutationState({
-        filters: { status: 'pending' },
-        select: (mutation) => mutation.state.isPaused,
-    });
-    const hasPausedMutations = pausedMutations.some(p => p === true);
+  // Monitor paused mutations in the cache using the official hook
+  const pausedMutations = useMutationState({
+    filters: { status: 'pending' },
+    select: (mutation) => mutation.state.isPaused,
+  });
+  const hasPausedMutations = pausedMutations.some((p) => p === true);
 
-    // Monitor online/offline status
-    useEffect(() => {
-        const handleOnline = () => setIsOnline(true);
-        const handleOffline = () => setIsOnline(false);
+  // Monitor online/offline status
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
 
-        window.addEventListener('online', handleOnline);
-        window.addEventListener('offline', handleOffline);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
 
-        return () => {
-            window.removeEventListener('online', handleOnline);
-            window.removeEventListener('offline', handleOffline);
-        };
-    }, []);
-
-    const isSyncing = isMutating > 0 || isFetching > 0;
-    const hasErrors = errorMutations.length > 0;
-
-    const handleShowErrors = () => {
-        if (hasErrors) {
-            const error: any = errorMutations[0];
-            const message = error?.message || 'Unknown synchronization error';
-            toast.error(`Sync Error: ${message}`, {
-                id: 'sync-error-toast',
-                duration: 5000,
-            });
-            console.error('[Sync] Active mutation errors:', errorMutations);
-        }
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
     };
+  }, []);
 
-    const handlePurgeErrors = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        if (window.confirm('Do you want to clear all sync errors? This will remove failed actions from your browser queue.')) {
-            const cache = queryClient.getMutationCache();
-            const errors = cache.getAll().filter(m => m.state.status === 'error');
-            errors.forEach(m => cache.remove(m));
-            queryClient.invalidateQueries();
-            toast.success('Sync queue cleared.');
-        }
-    };
+  const isSyncing = isMutating > 0 || isFetching > 0;
+  const hasErrors = errorMutations.length > 0;
 
-    // 1. RED STATE: Errors (Server rejection, logic error, etc.)
+  const handleShowErrors = () => {
     if (hasErrors) {
-        return (
-            <div className="flex items-center gap-1">
-                <button
-                    onClick={handleShowErrors}
-                    className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-500 hover:bg-red-500/20 transition-colors"
-                    title="Synchronization Error - Click for details"
-                >
-                    <AlertCircle size={16} />
-                    <span className="text-[10px] font-bold uppercase hidden sm:inline">Error</span>
-                </button>
-                <button
-                    onClick={handlePurgeErrors}
-                    className="p-1 rounded-full bg-red-500/5 hover:bg-red-500/20 text-red-400 border border-red-500/10 transition-colors"
-                    title="Clear Error Queue"
-                >
-                    <Trash2 size={13} />
-                </button>
-            </div>
-        );
+      const error = errorMutations[0] as { message?: string };
+      const message = error?.message || 'Unknown synchronization error';
+      toast.error(`Sync Error: ${message}`, {
+        id: 'sync-error-toast',
+        duration: 5000,
+      });
+      console.error('[Sync] Active mutation errors:', errorMutations);
     }
+  };
 
-    // 2. ORANGE STATE: Offline or Paused (Network wait)
-    if (!isOnline || hasPausedMutations) {
-        return (
-            <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-500 animate-pulse" title={!isOnline ? "No connection" : "Pending synchronization (Paused)"}>
-                <CloudOff size={16} />
-                <span className="text-[10px] font-bold uppercase hidden sm:inline">Paused</span>
-            </div>
-        );
+  const handlePurgeErrors = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (
+      window.confirm(
+        'Do you want to clear all sync errors? This will remove failed actions from your browser queue.'
+      )
+    ) {
+      const cache = queryClient.getMutationCache();
+      const errors = cache.getAll().filter((m) => m.state.status === 'error');
+      errors.forEach((m) => cache.remove(m));
+      queryClient.invalidateQueries();
+      toast.success('Sync queue cleared.');
     }
+  };
 
-    // 3. BLUE STATE: Busy (Active transmit)
-    if (isSyncing) {
-        return (
-            <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-500" title="Syncing with server...">
-                <RefreshCw size={16} className="animate-spin" />
-                <span className="text-[10px] font-bold uppercase hidden sm:inline">Syncing</span>
-            </div>
-        );
-    }
-
-    // 4. GREEN STATE: Perfect (Verified)
+  // 1. RED STATE: Errors (Server rejection, logic error, etc.)
+  if (hasErrors) {
     return (
-        <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-500" title="All changes saved and synchronized">
-            <CheckCircle2 size={16} />
-            <span className="text-[10px] font-bold uppercase hidden sm:inline">Ready</span>
-        </div>
+      <div className="flex items-center gap-1">
+        <button
+          onClick={handleShowErrors}
+          className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-500 hover:bg-red-500/20 transition-colors"
+          title="Synchronization Error - Click for details"
+        >
+          <AlertCircle size={16} />
+          <span className="text-[10px] font-bold uppercase hidden sm:inline">Error</span>
+        </button>
+        <button
+          onClick={handlePurgeErrors}
+          className="p-1 rounded-full bg-red-500/5 hover:bg-red-500/20 text-red-400 border border-red-500/10 transition-colors"
+          title="Clear Error Queue"
+        >
+          <Trash2 size={13} />
+        </button>
+      </div>
     );
+  }
+
+  // 2. ORANGE STATE: Offline or Paused (Network wait)
+  if (!isOnline || hasPausedMutations) {
+    return (
+      <div
+        className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-500 animate-pulse"
+        title={!isOnline ? 'No connection' : 'Pending synchronization (Paused)'}
+      >
+        <CloudOff size={16} />
+        <span className="text-[10px] font-bold uppercase hidden sm:inline">Paused</span>
+      </div>
+    );
+  }
+
+  // 3. BLUE STATE: Busy (Active transmit)
+  if (isSyncing) {
+    return (
+      <div
+        className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-500"
+        title="Syncing with server..."
+      >
+        <RefreshCw size={16} className="animate-spin" />
+        <span className="text-[10px] font-bold uppercase hidden sm:inline">Syncing</span>
+      </div>
+    );
+  }
+
+  // 4. GREEN STATE: Perfect (Verified)
+  return (
+    <div
+      className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-500"
+      title="All changes saved and synchronized"
+    >
+      <CheckCircle2 size={16} />
+      <span className="text-[10px] font-bold uppercase hidden sm:inline">Ready</span>
+    </div>
+  );
 };

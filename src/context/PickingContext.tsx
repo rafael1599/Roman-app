@@ -9,6 +9,7 @@ import { usePickingSync } from '../features/picking/hooks/usePickingSync';
 import { usePickingActions } from '../features/picking/hooks/usePickingActions';
 import { usePickingNotes, PickingNote } from '../features/picking/hooks/usePickingNotes';
 import type { Customer } from '../types/schema';
+import type { InventoryItem } from '../schemas/inventory.schema';
 import { useLocationManagement } from '../features/inventory/hooks/useLocationManagement';
 import { getOptimizedPickingPath, calculatePallets, type Pallet } from '../utils/pickingLogic';
 
@@ -36,12 +37,12 @@ interface PickingContextType {
 
   onStartSession: () => void;
 
-  addToCart: (item: any) => void;
-  updateCartQty: (item: any, change: number) => void;
-  setCartQty: (item: any, qty: number) => void;
-  removeFromCart: (item: any) => void;
+  addToCart: (item: InventoryItem) => void;
+  updateCartQty: (item: InventoryItem, change: number) => void;
+  setCartQty: (item: InventoryItem, qty: number) => void;
+  removeFromCart: (item: Partial<InventoryItem>) => void;
   clearCart: () => void;
-  getAvailableStock: (item: any) => {
+  getAvailableStock: (item: Partial<InventoryItem>) => {
     available: number;
     reservedByOthers: number;
     totalStock: number;
@@ -52,7 +53,7 @@ interface PickingContextType {
     metrics?: { pallets_qty: number; total_units: number },
     id?: string
   ) => Promise<void>;
-  markAsReady: (items?: any[], orderNum?: string) => Promise<string | null>;
+  markAsReady: (items?: CartItem[], orderNum?: string) => Promise<string | null>;
   lockForCheck: (id: string) => Promise<void>;
   releaseCheck: (id: string) => Promise<void>;
   returnToPicker: (id: string, notes: string) => Promise<void>;
@@ -61,7 +62,7 @@ interface PickingContextType {
   takeOverOrder: (id: string) => Promise<void>;
   claimAsPicker: (listId?: string) => Promise<void>;
 
-  loadExternalList: (id: string) => Promise<any>;
+  loadExternalList: (id: string) => Promise<unknown>;
 
   generatePickingPath: () => Promise<void>;
 
@@ -74,7 +75,7 @@ interface PickingContextType {
 
   isInitializing: boolean;
   setIsInitializing: (val: boolean) => void;
-  pendingItem: any;
+  pendingItem: InventoryItem | null;
   startManualSession: () => void;
   cancelInitialization: () => void;
   startNewSession: (
@@ -106,7 +107,7 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
 
   // Initialization State
   const [isInitializing, setIsInitializing] = useState(false);
-  const [pendingItem, setPendingItem] = useState<any>(null);
+  const [pendingItem, setPendingItem] = useState<InventoryItem | null>(null);
 
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
@@ -344,7 +345,7 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
   );
 
   const addToCart = useCallback(
-    (item: any) => {
+    (item: InventoryItem) => {
       // Block adding items in picking mode
       if (sessionMode === 'picking') {
         toast.error('Cannot add items in picking mode. Use "Return to Building" to make changes.', {
@@ -422,15 +423,7 @@ export const PickingProvider = ({ children }: { children: ReactNode }) => {
         addToCartInternal(itemToAdd);
       }
     },
-    [
-      pendingItem,
-      loadExternalList,
-      addToCartInternal,
-      resetSession,
-      setOrderNumber,
-      setCustomer,
-      setSessionMode,
-    ]
+    [pendingItem, addToCartInternal, resetSession, setOrderNumber, setCustomer, setSessionMode]
   );
 
   const startManualSession = useCallback(() => {

@@ -1,4 +1,12 @@
-import { createContext, useContext, useEffect, useState, useCallback, useMemo, ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+  useMemo,
+  ReactNode,
+} from 'react';
 import { supabase } from '../lib/supabase';
 import { queryClient } from '../lib/query-client';
 import { type User } from '@supabase/supabase-js';
@@ -132,7 +140,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     // Listen for global 401 auth errors from QueryClient
     const handleAuthError = () => {
-      console.warn('[AuthContext] 401 detected. Session expired. Preserving mutations, clearing queries.');
+      console.warn(
+        '[AuthContext] 401 detected. Session expired. Preserving mutations, clearing queries.'
+      );
       // 401 is involuntary logout: remove queries only
       queryClient.removeQueries();
 
@@ -155,8 +165,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, []);
 
-
-
   // Update last seen
   useEffect(() => {
     if (user) {
@@ -168,6 +176,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       };
       updateLastSeen();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally depends on user.id only to avoid re-running on every user object change
   }, [user?.id]);
 
   const fetchProfileWithTimeout = async (userId: string, isBackground = false) => {
@@ -206,8 +215,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setViewAsUser(false);
           localStorage.setItem('view_as_user', 'false');
         }
-
-
       } else {
         if (!isBackground) setRole('staff');
       }
@@ -219,24 +226,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const updateProfileName = useCallback(async (newName: string) => {
-    if (!user) return { success: false, error: 'No user session' };
+  const updateProfileName = useCallback(
+    async (newName: string) => {
+      if (!user) return { success: false, error: 'No user session' };
 
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ full_name: newName })
-        .eq('id', user.id);
+      try {
+        const { error } = await supabase
+          .from('profiles')
+          .update({ full_name: newName })
+          .eq('id', user.id);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      setProfile((prev) => (prev ? { ...prev, full_name: newName } : null));
-      return { success: true };
-    } catch (err: any) {
-      console.error('Update profile error:', err);
-      return { success: false, error: err.message };
-    }
-  }, [user]);
+        setProfile((prev) => (prev ? { ...prev, full_name: newName } : null));
+        return { success: true };
+      } catch (err) {
+        console.error('Update profile error:', err);
+        return { success: false, error: err instanceof Error ? err.message : String(err) };
+      }
+    },
+    [user]
+  );
 
   const signOut = useCallback(async () => {
     setLoading(true);
@@ -272,18 +282,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
   }, []);
 
-  const value = useMemo(() => ({
-    user,
-    role,
-    profile,
-    isAdmin: role === 'admin' && !viewAsUser,
-    isSystemAdmin: role === 'admin',
-    viewAsUser,
-    loading,
-    signOut,
-    updateProfileName,
-    toggleAdminView,
-  }), [user, role, profile, viewAsUser, loading, signOut, updateProfileName, toggleAdminView]);
+  const value = useMemo(
+    () => ({
+      user,
+      role,
+      profile,
+      isAdmin: role === 'admin' && !viewAsUser,
+      isSystemAdmin: role === 'admin',
+      viewAsUser,
+      loading,
+      signOut,
+      updateProfileName,
+      toggleAdminView,
+    }),
+    [user, role, profile, viewAsUser, loading, signOut, updateProfileName, toggleAdminView]
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

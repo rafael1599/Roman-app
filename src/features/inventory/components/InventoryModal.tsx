@@ -39,8 +39,10 @@ interface InventoryModalProps {
   onDelete?: () => void;
   initialData?: InventoryItemWithMetadata | null;
   mode?: 'add' | 'edit';
-  screenType?: string;
+  screenType?: WarehouseType | string;
 }
+
+type WarehouseType = 'LUDLOW' | 'ATS' | 'DELETED ITEMS';
 
 export const InventoryModal: React.FC<InventoryModalProps> = ({
   isOpen,
@@ -71,7 +73,9 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
     // Zod v3 z.coerce/z.preprocess produces `unknown` output types that don't align
     // with RHF's Resolver generics. This is a known compatibility issue. The runtime
     // validation is correct — only the TS inference needs the cast.
-    resolver: zodResolver(InventoryFormSchema) as any,
+    resolver: zodResolver(InventoryFormSchema) as unknown as Parameters<
+      typeof useForm<InventoryFormValues>
+    >[0]['resolver'],
     mode: 'onChange',
     defaultValues: {
       sku: '',
@@ -110,19 +114,16 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
           location: initialData.location || '',
           quantity: Number(initialData.quantity) || 0,
           item_name: initialData.item_name || '',
-          warehouse: initialData.warehouse || (screenType as any) || 'LUDLOW',
+          warehouse: initialData.warehouse || (screenType as WarehouseType) || 'LUDLOW',
           length_in: initialData.sku_metadata?.length_in ?? 54,
           width_in: initialData.sku_metadata?.width_in ?? 8,
           height_in: initialData.sku_metadata?.height_in ?? 30,
           weight_lbs: initialData.sku_metadata?.weight_lbs ?? null,
-          internal_note: (initialData as any).internal_note || '',
+          internal_note: initialData.internal_note || '',
         });
-        setDistribution(
-          Array.isArray((initialData as any).distribution) ? (initialData as any).distribution : []
-        );
+        setDistribution(Array.isArray(initialData.distribution) ? initialData.distribution : []);
         setIsDistributionOpen(
-          Array.isArray((initialData as any).distribution) &&
-            (initialData as any).distribution.length > 0
+          Array.isArray(initialData.distribution) && initialData.distribution.length > 0
         );
         setUserEditedDistribution(false);
       } else {
@@ -131,7 +132,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
           location: '',
           quantity: 0,
           item_name: '',
-          warehouse: (screenType as any) || 'LUDLOW',
+          warehouse: (screenType as WarehouseType) || 'LUDLOW',
           length_in: 54,
           width_in: 8,
           height_in: 30,
@@ -152,26 +153,24 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
   useEffect(() => {
     if (!isOpen || mode !== 'edit' || !initialData || userEditedDistribution) return;
     const allItems = [...ludlowData, ...atsData];
-    const liveItem = allItems.find((i) => i.id === (initialData as any).id);
+    const liveItem = allItems.find((i) => i.id === initialData.id);
     if (!liveItem) return;
-    const liveDist = Array.isArray((liveItem as any).distribution)
-      ? (liveItem as any).distribution
-      : [];
+    const liveDist = Array.isArray(liveItem.distribution) ? liveItem.distribution : [];
     const currentJson = JSON.stringify(distribution);
     const liveJson = JSON.stringify(liveDist);
     if (currentJson !== liveJson) {
       setDistribution(liveDist);
     }
-  }, [isOpen, mode, initialData, ludlowData, atsData, userEditedDistribution]);
+  }, [isOpen, mode, initialData, ludlowData, atsData, userEditedDistribution, distribution]);
 
   // 2b2. Sync sku_metadata from realtime data (dimensions + weight)
   useEffect(() => {
     if (!isOpen || mode !== 'edit' || !initialData) return;
     const allItems = [...ludlowData, ...atsData];
-    const liveItem = allItems.find((i) => i.id === (initialData as any).id) as any;
+    const liveItem = allItems.find((i) => i.id === initialData.id);
     if (!liveItem?.sku_metadata) return;
     const liveMeta = liveItem.sku_metadata;
-    const initMeta = (initialData as any).sku_metadata;
+    const initMeta = initialData.sku_metadata;
     if (JSON.stringify(liveMeta) !== JSON.stringify(initMeta)) {
       if (liveMeta.length_in != null) setValue('length_in', liveMeta.length_in);
       if (liveMeta.width_in != null) setValue('width_in', liveMeta.width_in);
@@ -183,15 +182,15 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
   // 2c. Dirty check — has any field changed from initial values?
   const hasChanges = useMemo(() => {
     if (mode !== 'edit' || !initialData) return true; // Always allow in add mode
-    const n = (v: any) => String(v ?? '').trim();
-    const num = (v: any) => Number(v ?? 0);
+    const n = (v: string | number | null | undefined) => String(v ?? '').trim();
+    const num = (v: string | number | null | undefined) => Number(v ?? 0);
     const formChanged =
       n(sku) !== n(initialData.sku) ||
       n(location) !== n(initialData.location) ||
       n(warehouse) !== n(initialData.warehouse || screenType || 'LUDLOW') ||
       Number(quantity || 0) !== Number(initialData.quantity || 0) ||
       n(itemName) !== n(initialData.item_name) ||
-      n(internalNote) !== n((initialData as any).internal_note);
+      n(internalNote) !== n(initialData.internal_note);
     if (formChanged) return true;
     // Check metadata changes (dimensions + weight)
     const meta = initialData.sku_metadata;
@@ -201,9 +200,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
       num(heightIn) !== num(meta?.height_in) ||
       num(weightLbs) !== num(meta?.weight_lbs);
     if (metaChanged) return true;
-    const initDist = Array.isArray((initialData as any).distribution)
-      ? (initialData as any).distribution
-      : [];
+    const initDist = Array.isArray(initialData.distribution) ? initialData.distribution : [];
     return JSON.stringify(distribution) !== JSON.stringify(initDist);
   }, [
     mode,
@@ -298,7 +295,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
   // Use a custom debounce hook or simple timeout for now
   useEffect(() => {
     // LEVEL 1: DIRTY CHECK (Has anything changed?)
-    const normalize = (str: any) => String(str || '').trim();
+    const normalize = (str: string | number | null | undefined) => String(str || '').trim();
 
     const currentSKU = normalize(sku);
     const originalSKU = normalize(initialData?.sku);
@@ -307,7 +304,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
     const originalLocation = normalize(initialData?.location);
 
     const currentWh = normalize(warehouse);
-    const originalWh = normalize((screenType as any) || 'LUDLOW');
+    const originalWh = normalize(screenType || 'LUDLOW');
 
     const skuChanged = currentSKU !== originalSKU;
     const locationChanged = currentLocation !== originalLocation;
@@ -423,23 +420,24 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
     }
   };
 
-  const onFormSubmit = (data: any) => {
-    // 🛡️ SUBMIT-TIME PREDICTION FIX:
+  const onFormSubmit = (data: InventoryFormValues) => {
+    // SUBMIT-TIME PREDICTION FIX:
     // Ensure location is normalized if user clicked save too fast for blur handler
-    if (prediction.bestGuess && prediction.bestGuess !== data.location) {
+    const submitData = { ...data };
+    if (prediction.bestGuess && prediction.bestGuess !== submitData.location) {
       console.log(
-        `[SUBMIT] Auto-corrected location from "${data.location}" to "${prediction.bestGuess}"`
+        `[SUBMIT] Auto-corrected location from "${submitData.location}" to "${prediction.bestGuess}"`
       );
-      data.location = prediction.bestGuess;
+      submitData.location = prediction.bestGuess;
       setValue('location', prediction.bestGuess); // Sync back to form state
     }
 
     // Rename Confirmation
-    if (mode === 'edit' && initialData && data.sku !== initialData.sku) {
+    if (mode === 'edit' && initialData && submitData.sku !== initialData.sku) {
       showConfirmation(
         'Identity Change (SKU)',
-        `Rename "${initialData.sku}" to "${data.sku}"?\nThis will update or merge the product row.`,
-        () => executeSave(data),
+        `Rename "${initialData.sku}" to "${submitData.sku}"?\nThis will update or merge the product row.`,
+        () => executeSave(submitData),
         undefined,
         'Rename',
         'Cancel'
@@ -447,7 +445,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
       return;
     }
 
-    executeSave(data);
+    executeSave(submitData);
   };
 
   // Distribution helpers
@@ -478,13 +476,17 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
     setUserEditedDistribution(true);
   };
 
-  const updateDistributionRow = (index: number, field: keyof DistributionItem, value: any) => {
+  const updateDistributionRow = (
+    index: number,
+    field: keyof DistributionItem,
+    value: string | number
+  ) => {
     setDistribution((prev) =>
       prev.map((row, i) => {
         if (i !== index) return row;
         const updated = { ...row, [field]: value };
         // Auto-fill units_each when type changes
-        if (field === 'type' && DEFAULT_UNITS[value]) {
+        if (field === 'type' && typeof value === 'string' && DEFAULT_UNITS[value]) {
           updated.units_each = DEFAULT_UNITS[value];
         }
         return updated;
@@ -493,7 +495,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
     setUserEditedDistribution(true);
   };
 
-  const executeSave = async (data: any) => {
+  const executeSave = async (data: InventoryFormValues) => {
     // 1. Update SKU Metadata (dimensions)
     updateSKUMetadata({
       // Fire and forget
@@ -502,14 +504,19 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
       width_in: data.width_in,
       height_in: data.height_in,
       weight_lbs: data.weight_lbs,
-    }).catch((e) => console.error('Metadata update failed:', e));
+    }).catch((e: unknown) => console.error('Metadata update failed:', e));
 
-    // 2. Attach distribution and internal_note to save payload
-    data.internal_note = data.internal_note || null;
-    data.distribution = distribution.filter((d) => d.count > 0 && d.units_each > 0);
+    // 2. Build save payload with distribution and internal_note
+    const payload = {
+      ...data,
+      internal_note: data.internal_note || null,
+      distribution: distribution.filter((d) => d.count > 0 && d.units_each > 0),
+    };
 
     // 3. CREATE/UPDATE ITEM
-    onSave(data); // Fire and forget
+    onSave(
+      payload as InventoryItemInput & { length_in?: number; width_in?: number; height_in?: number }
+    ); // Fire and forget
     onClose();
   };
 
@@ -570,7 +577,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
               placeholder="Enter SKU..."
               minChars={2}
               initialKeyboardMode="numeric"
-              onSelect={(s: any) => {
+              onSelect={(s: { value: string; info?: string }) => {
                 const match = currentInventory.find((i) => i.sku === s.value) as
                   | InventoryItemWithMetadata
                   | undefined;

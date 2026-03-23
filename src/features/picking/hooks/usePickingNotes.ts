@@ -38,7 +38,9 @@ export const usePickingNotes = (listId: string | null) => {
       const formattedNotes = (data || []).map((note) => ({
         ...note,
         user_display_name:
-          (note.profiles as any)?.full_name || (note.profiles as any)?.email || 'Unknown User',
+          (note.profiles as { full_name?: string; email?: string } | null)?.full_name ||
+          (note.profiles as { full_name?: string; email?: string } | null)?.email ||
+          'Unknown User',
       }));
 
       setNotes(formattedNotes);

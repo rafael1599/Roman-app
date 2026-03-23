@@ -36,9 +36,9 @@ export const createLocationRecord = async (
 
     if (error) throw error;
     return { success: true, data: data as Location };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Failed to create location record:', err);
-    return { success: false, error: err.message };
+    return { success: false, error: err instanceof Error ? err.message : String(err) };
   }
 };
 

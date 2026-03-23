@@ -16,7 +16,7 @@ const mockFrom = vi.fn(() => ({
 }));
 
 vi.mock('../../../../lib/supabase', () => ({
-  supabase: { from: (...args: any[]) => mockFrom(...args) },
+  supabase: { from: (...args: string[]) => mockFrom(...args) },
 }));
 
 vi.mock('react-hot-toast', () => ({
@@ -33,7 +33,7 @@ const CART_ITEMS = [
 
 const STOCK_ROWS = [{ sku: 'SKU-001', quantity: 10, warehouse: 'WH1', location: 'LINE-A' }];
 
-function makeProps(overrides: Record<string, any> = {}) {
+function makeProps(overrides: Record<string, unknown> = {}) {
   return {
     user: USER,
     activeListId: null as string | null,

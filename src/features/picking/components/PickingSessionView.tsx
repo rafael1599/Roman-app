@@ -24,6 +24,21 @@ import toast from 'react-hot-toast';
 
 // Define explicit interfaces
 import { type CartItem } from '../hooks/usePickingCart.ts';
+import { type PickingNote } from '../hooks/usePickingNotes.ts';
+import { type Pallet, type PickingItem } from '../../../utils/pickingLogic.ts';
+
+/** CartItem extended with properties added during pallet calculation */
+interface PalletCartItem extends CartItem {
+  insufficient_stock?: boolean;
+  available_qty?: number;
+}
+
+/** Sequence item for the finalSequence (used for PDF generation) */
+interface SequenceItem extends PalletCartItem {
+  key: string;
+  palletId: number;
+  isPicked: boolean;
+}
 
 interface PickingSessionViewProps {
   cartItems: CartItem[];
@@ -31,7 +46,7 @@ interface PickingSessionViewProps {
   orderNumber?: string | null;
   customer?: import('../../../types/schema.ts').Customer | null;
   correctionNotes?: string | null;
-  notes?: any[]; // Keep as any if complex timeline object not defined
+  notes?: PickingNote[];
   isNotesLoading?: boolean;
   onUpdateOrderNumber: (newOrder: string | null) => void;
   onUpdateCustomer?: (details: Partial<import('../../../types/schema.ts').Customer>) => void;
@@ -90,7 +105,7 @@ export const PickingSessionView: React.FC<PickingSessionViewProps> = ({
   const customerInputRef = useRef<HTMLInputElement>(null);
 
   const optimizedItems = useMemo(() => {
-    return getOptimizedPickingPath(cartItems, locations);
+    return getOptimizedPickingPath(cartItems as unknown as PickingItem[], locations);
   }, [cartItems, locations]);
 
   // Calculate Pallets
@@ -195,7 +210,8 @@ export const PickingSessionView: React.FC<PickingSessionViewProps> = ({
 
         if (data) {
           // Another session is active with this order number
-          const ownerName = (data.profiles as any)?.full_name || 'Another user';
+          const ownerName =
+            (data.profiles as { full_name: string | null } | null)?.full_name || 'Another user';
 
           const confirmed = await new Promise<boolean>((resolve) => {
             showConfirmation(
@@ -278,13 +294,13 @@ export const PickingSessionView: React.FC<PickingSessionViewProps> = ({
   };
 
   const finalSequence = useMemo(() => {
-    const sequence: any[] = [];
+    const sequence: SequenceItem[] = [];
     cartItems.forEach((cartItem) => {
       // Find all instances of this item across all pallets
-      pallets.forEach((p: any) => {
+      pallets.forEach((p: Pallet) => {
         const palletItem = p.items.find(
-          (pi: any) => pi.sku === cartItem.sku && pi.location === cartItem.location
-        );
+          (pi) => pi.sku === cartItem.sku && pi.location === cartItem.location
+        ) as PalletCartItem | undefined;
         if (palletItem) {
           const key = getItemKey(p.id, palletItem);
           sequence.push({
@@ -505,13 +521,16 @@ export const PickingSessionView: React.FC<PickingSessionViewProps> = ({
             {/* Detailed Timeline */}
             {notes.length > 0 && (
               <div className="px-1 pt-2">
-                <CorrectionNotesTimeline notes={notes} isLoading={isNotesLoading} />
+                <CorrectionNotesTimeline
+                  notes={notes as unknown as import('./CorrectionNotesTimeline.tsx').Note[]}
+                  isLoading={isNotesLoading}
+                />
               </div>
             )}
           </div>
         )}
 
-        {pallets.map((pallet: any, pIdx: number) => (
+        {pallets.map((pallet: Pallet, pIdx: number) => (
           <section key={pallet.id} className="mb-4">
             <div className="flex items-center justify-between mb-3 sticky top-0 bg-card z-10 py-2">
               <div className="flex items-center gap-3">
@@ -538,8 +557,11 @@ export const PickingSessionView: React.FC<PickingSessionViewProps> = ({
             </div>
 
             <div className="grid gap-1.5">
-              {pallet.items.map((item: any) => {
-                const maxStock = parseInt(item.quantity, 10) || 0;
+              {(pallet.items as unknown as PalletCartItem[]).map((item) => {
+                const maxStock =
+                  typeof item.quantity === 'string'
+                    ? parseInt(item.quantity, 10)
+                    : item.quantity || 0;
                 const isAtMax = (item.pickingQty || 0) >= maxStock;
 
                 return (

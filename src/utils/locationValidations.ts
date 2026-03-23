@@ -117,11 +117,25 @@ interface LocationChangeImpact {
   impacts: ImpactDetail[];
 }
 
+interface OptimizationReportSuggestionItem {
+  promote?: { location: string };
+  demote?: { location: string };
+}
+
+interface OptimizationReport {
+  id: string;
+  report_date?: string;
+  generated_at?: string;
+  suggestions?: {
+    items?: OptimizationReportSuggestionItem[];
+  };
+}
+
 interface LocationChanges {
-  zone?: any;
-  max_capacity?: any;
-  picking_order?: any;
-  [key: string]: any;
+  zone?: string;
+  max_capacity?: number;
+  picking_order?: number;
+  [key: string]: string | number | boolean | null | undefined;
 }
 
 /**
@@ -132,7 +146,7 @@ export const calculateLocationChangeImpact = (
   location: string,
   changes: LocationChanges,
   inventory: InventoryItem[],
-  optimizationReports: any[] = [] // TODO: Define OptimizationReport type when migrating reports
+  optimizationReports: OptimizationReport[] = []
 ): LocationChangeImpact => {
   const affectedItems = inventory.filter(
     (item) => item.warehouse === warehouse && item.location === location
@@ -181,7 +195,7 @@ export const calculateLocationChangeImpact = (
   const affectedReports = optimizationReports.filter((report) => {
     // Verify if the report includes this location
     return report.suggestions?.items?.some(
-      (item: any) => item.promote?.location === location || item.demote?.location === location
+      (item) => item.promote?.location === location || item.demote?.location === location
     );
   });
 
@@ -190,9 +204,9 @@ export const calculateLocationChangeImpact = (
       type: 'REPORTS_INVALIDATED',
       message: `${affectedReports.length} optimization report(s) will be invalidated`,
       details: affectedReports.map(
-        (r: any) => `Report from ${new Date(r.report_date || r.generated_at).toLocaleDateString()}`
+        (r) => `Report from ${new Date(r.report_date || r.generated_at || '').toLocaleDateString()}`
       ),
-      reportIds: affectedReports.map((r: any) => r.id),
+      reportIds: affectedReports.map((r) => r.id),
     });
   }
 

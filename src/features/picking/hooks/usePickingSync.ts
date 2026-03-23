@@ -1,12 +1,14 @@
 import { useEffect, useRef, useCallback } from 'react';
+import { type User } from '@supabase/supabase-js';
 import { supabase } from '../../../lib/supabase';
 import { debounce } from '../../../utils/debounce';
 import toast from 'react-hot-toast';
 import type { CartItem } from './usePickingCart';
 import type { Customer } from '../../../types/schema';
+import type { Json } from '../../../integrations/supabase/types';
 
 interface UsePickingSyncProps {
-  user: any;
+  user: User | null;
   sessionMode: 'building' | 'picking' | 'double_checking' | 'idle';
   cartItems: CartItem[];
   orderNumber: string | null;
@@ -130,10 +132,10 @@ export const usePickingSync = ({
               .eq('id', doubleCheckData.id);
             resetSession();
           } else {
-            setCartItems((doubleCheckData.items as any[]) || []);
+            setCartItems((doubleCheckData.items as unknown as CartItem[]) || []);
             setActiveListId(doubleCheckData.id as string);
             setOrderNumber(doubleCheckData.order_number || null);
-            setCustomer(doubleCheckData.customer as Customer || null);
+            setCustomer((doubleCheckData.customer as Customer) || null);
             setLoadNumber(doubleCheckData.load_number || null);
             setListStatus(doubleCheckData.status as string);
             setCheckedBy(doubleCheckData.checked_by || null);
@@ -168,10 +170,10 @@ export const usePickingSync = ({
             await supabase.from('picking_lists').delete().eq('id', pickingData.id);
             resetSession();
           } else {
-            setCartItems((pickingData.items as any[]) || []);
+            setCartItems((pickingData.items as unknown as CartItem[]) || []);
             setActiveListId(pickingData.id as string);
             setOrderNumber(pickingData.order_number || null);
-            setCustomer(pickingData.customer as Customer || null);
+            setCustomer((pickingData.customer as Customer) || null);
             setLoadNumber(pickingData.load_number || null);
             setListStatus(pickingData.status as string);
             setCheckedBy(pickingData.checked_by || null);
@@ -207,6 +209,7 @@ export const usePickingSync = ({
     };
 
     loadSession();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Intentionally depends only on user.id; setter functions are stable and adding them would cause re-subscribe loops on every render
   }, [user?.id]);
 
   // 2. Real-time Monitor
@@ -248,7 +251,9 @@ export const usePickingSync = ({
     let retryCount = 0;
     const setupSubscription = () => {
       const channelName = `list_status_sync_${activeListId}`;
-      console.log(`🔌 [Realtime] Attempting connection to ${channelName}... (Attempt ${retryCount + 1}/3)`);
+      console.log(
+        `🔌 [Realtime] Attempting connection to ${channelName}... (Attempt ${retryCount + 1}/3)`
+      );
 
       // Ensure any previous zombie channel is cleaned
       if (channel) {
@@ -260,16 +265,29 @@ export const usePickingSync = ({
         .channel(channelName)
         .on(
           'postgres_changes',
-          { event: 'UPDATE', schema: 'public', table: 'picking_lists', filter: `id=eq.${activeListId}` },
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'picking_lists',
+            filter: `id=eq.${activeListId}`,
+          },
           (payload) => {
             const newData = payload.new;
 
-            if (sessionModeRef.current === 'picking' && newData.user_id && (newData.user_id as string) !== user.id) {
+            if (
+              sessionModeRef.current === 'picking' &&
+              newData.user_id &&
+              (newData.user_id as string) !== user.id
+            ) {
               showTakeoverAlert(newData.user_id as string);
               return;
             }
 
-            if (sessionModeRef.current === 'double_checking' && newData.checked_by && (newData.checked_by as string) !== user.id) {
+            if (
+              sessionModeRef.current === 'double_checking' &&
+              newData.checked_by &&
+              (newData.checked_by as string) !== user.id
+            ) {
               showTakeoverAlert(newData.checked_by as string);
               return;
             }
@@ -277,17 +295,25 @@ export const usePickingSync = ({
             if (newData.status !== listStatusRef.current) {
               // TERMINAL STATUS AUTO-CLEANUP
               if (newData.status === 'completed' || newData.status === 'cancelled') {
-                console.log(`🏁 [PickingSync] List ${activeListId} reached terminal status: ${newData.status}. Resetting local session.`);
+                console.log(
+                  `🏁 [PickingSync] List ${activeListId} reached terminal status: ${newData.status}. Resetting local session.`
+                );
                 resetSession();
                 return; // Early exit, session is gone
               }
               setListStatus(newData.status as string);
             }
-            if (newData.correction_notes !== correctionNotesRef.current) setCorrectionNotes(newData.correction_notes as string | null);
-            if (newData.checked_by !== checkedByRef.current) setCheckedBy(newData.checked_by as string | null);
-            if (newData.user_id !== ownerIdRef.current) setOwnerId(newData.user_id as string | null);
+            if (newData.correction_notes !== correctionNotesRef.current)
+              setCorrectionNotes(newData.correction_notes as string | null);
+            if (newData.checked_by !== checkedByRef.current)
+              setCheckedBy(newData.checked_by as string | null);
+            if (newData.user_id !== ownerIdRef.current)
+              setOwnerId(newData.user_id as string | null);
 
-            if (sessionModeRef.current === 'double_checking' && (newData.status === 'active' || newData.status === 'needs_correction')) {
+            if (
+              sessionModeRef.current === 'double_checking' &&
+              (newData.status === 'active' || newData.status === 'needs_correction')
+            ) {
               if (newData.user_id === user.id) setSessionMode('picking');
             }
           }
@@ -309,13 +335,18 @@ export const usePickingSync = ({
 
             retryCount++;
             if (retryCount <= 3) {
-              console.warn(`❌ [Realtime] Connection error (${status}). Retrying ${retryCount}/3 in 5s...`, err);
+              console.warn(
+                `❌ [Realtime] Connection error (${status}). Retrying ${retryCount}/3 in 5s...`,
+                err
+              );
               retryTimeout = setTimeout(setupSubscription, 5000);
             } else {
-              console.error(`❌ [Realtime] Max retries reached for ${channelName}. Live sync disabled.`);
+              console.error(
+                `❌ [Realtime] Max retries reached for ${channelName}. Live sync disabled.`
+              );
               toast.error('Sync lost for this order. Changes by others may not appear.', {
                 duration: 5000,
-                id: `sync-error-${activeListId}`
+                id: `sync-error-${activeListId}`,
               });
             }
           }
@@ -329,10 +360,16 @@ export const usePickingSync = ({
       if (channel) supabase.removeChannel(channel);
       if (retryTimeout) clearTimeout(retryTimeout);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Subscribes to realtime channel; setter functions use refs to avoid re-subscribing on every state change
   }, [activeListId, user?.id]);
 
   // 3. Save Logic
-  const saveToDb = async (items: CartItem[], userId: string, listId: string | null, orderNum: string | null) => {
+  const saveToDb = async (
+    items: CartItem[],
+    userId: string,
+    listId: string | null,
+    orderNum: string | null
+  ) => {
     if (sessionMode === 'building') return;
     if (!userId || isSyncingRef.current || sessionMode !== 'picking') return;
 
@@ -341,22 +378,29 @@ export const usePickingSync = ({
     try {
       const sanitizedItems = items; // Data already in correct format from database
       if (listId) {
-        const { error } = await supabase.from('picking_lists').update({
-          items: sanitizedItems as any,
-          order_number: orderNum,
-          customer_id: customer?.id,
-          load_number: loadNumber
-        }).eq('id', listId);
+        const { error } = await supabase
+          .from('picking_lists')
+          .update({
+            items: sanitizedItems as unknown as Json,
+            order_number: orderNum,
+            customer_id: customer?.id,
+            load_number: loadNumber,
+          })
+          .eq('id', listId);
         if (error) throw error;
       } else if (items.length > 0) {
-        const { data, error } = await supabase.from('picking_lists').insert({
-          user_id: userId,
-          items: sanitizedItems as any,
-          status: 'active',
-          order_number: orderNum,
-          customer_id: customer?.id,
-          load_number: loadNumber
-        } as any).select('*, customer:customers(*)').single();
+        const { data, error } = await supabase
+          .from('picking_lists')
+          .insert({
+            user_id: userId,
+            items: sanitizedItems as unknown as Json,
+            status: 'active',
+            order_number: orderNum,
+            customer_id: customer?.id ?? null,
+            load_number: loadNumber,
+          })
+          .select('*, customer:customers(*)')
+          .single();
         if (error) throw error;
         if (data) {
           setActiveListId(data.id);
@@ -373,10 +417,17 @@ export const usePickingSync = ({
     }
   };
 
-  const debouncedSaveRef = useRef<any>(null);
+  const debouncedSaveRef = useRef<
+    | ((items: CartItem[], userId: string, listId: string | null, orderNum: string | null) => void)
+    | null
+  >(null);
   useEffect(() => {
-    debouncedSaveRef.current = debounce((items: CartItem[], userId: string, listId: string | null, orderNum: string | null) =>
-      saveToDb(items, userId, listId, orderNum), SYNC_DEBOUNCE_MS);
+    debouncedSaveRef.current = debounce(
+      (items: CartItem[], userId: string, listId: string | null, orderNum: string | null) =>
+        saveToDb(items, userId, listId, orderNum),
+      SYNC_DEBOUNCE_MS
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- saveToDb is intentionally excluded; it reads sessionMode via closure and recreating the debounce on every dep change would defeat debouncing
   }, [sessionMode]);
 
   useEffect(() => {
@@ -389,38 +440,43 @@ export const usePickingSync = ({
       debouncedSaveRef.current(cartItems, user.id, activeListId, orderNumber);
       isInitialSyncRef.current = false;
     }
-  }, [cartItems, orderNumber, activeListId, isLoaded, user, sessionMode]);
+  }, [cartItems, orderNumber, activeListId, isLoaded, user, sessionMode]); // debouncedSaveRef is a ref, not needed in deps
 
   // 4. Load External List
-  const loadExternalList = useCallback(async (listId: string) => {
-    if (!user) return;
-    setIsSaving(true);
-    try {
-      const { data, error } = await supabase.from('picking_lists')
-        .select('*, customer:customers(*)')
-        .eq('id', listId)
-        .single();
-      if (error) throw error;
-      if (data) {
-        setCartItems((data.items as any[]) || []);
-        setActiveListId(data.id as string);
-        setOrderNumber(data.order_number || null);
-        setCustomer(data.customer as Customer || null);
-        setLoadNumber(data.load_number || null);
-        setListStatus(data.status as string);
-        setCheckedBy(data.checked_by || null);
-        setOwnerId(data.user_id || null);
-        setCorrectionNotes(data.correction_notes || null);
-        setSessionMode('double_checking');
-        return data;
+  const loadExternalList = useCallback(
+    async (listId: string) => {
+      if (!user) return;
+      setIsSaving(true);
+      try {
+        const { data, error } = await supabase
+          .from('picking_lists')
+          .select('*, customer:customers(*)')
+          .eq('id', listId)
+          .single();
+        if (error) throw error;
+        if (data) {
+          setCartItems((data.items as unknown as CartItem[]) || []);
+          setActiveListId(data.id as string);
+          setOrderNumber(data.order_number || null);
+          setCustomer((data.customer as Customer) || null);
+          setLoadNumber(data.load_number || null);
+          setListStatus(data.status as string);
+          setCheckedBy(data.checked_by || null);
+          setOwnerId(data.user_id || null);
+          setCorrectionNotes(data.correction_notes || null);
+          setSessionMode('double_checking');
+          return data;
+        }
+      } catch (err: unknown) {
+        console.error('Failed to load external list:', err);
+        showError('Load Error', err instanceof Error ? err.message : 'Unknown error');
+      } finally {
+        setIsSaving(false);
       }
-    } catch (err: any) {
-      console.error('Failed to load external list:', err);
-      showError('Load Error', err.message);
-    } finally {
-      setIsSaving(false);
-    }
-  }, [user, showError]);
+       
+    },
+    [user, showError]
+  );
 
   return { isLoaded, isSaving, lastSaved, loadExternalList };
 };

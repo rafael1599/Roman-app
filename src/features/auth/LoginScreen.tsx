@@ -24,12 +24,11 @@ export const LoginScreen = () => {
 
       if (sbError) throw sbError;
       // AuthContext will handle state update via onAuthStateChange
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Login error:', err);
+      const message = err instanceof Error ? err.message : String(err);
       setError(
-        err.message === 'Invalid login credentials'
-          ? 'Incorrect credentials. Try again.'
-          : err.message
+        message === 'Invalid login credentials' ? 'Incorrect credentials. Try again.' : message
       );
     } finally {
       setLoading(false);
@@ -49,8 +48,14 @@ export const LoginScreen = () => {
                 className="w-full h-full relative z-10 drop-shadow-2xl animate-pickd-check"
               />
             </div>
-            <h1 className="text-4xl font-black text-content tracking-tighter" style={{ fontFamily: 'var(--font-heading)' }}>
-              <span className="text-accent underline decoration-4 decoration-accent/30 underline-offset-4">P</span>ICK<span className="text-accent">D</span>
+            <h1
+              className="text-4xl font-black text-content tracking-tighter"
+              style={{ fontFamily: 'var(--font-heading)' }}
+            >
+              <span className="text-accent underline decoration-4 decoration-accent/30 underline-offset-4">
+                P
+              </span>
+              ICK<span className="text-accent">D</span>
             </h1>
           </div>
           <p className="text-muted font-medium">Sign in to access</p>

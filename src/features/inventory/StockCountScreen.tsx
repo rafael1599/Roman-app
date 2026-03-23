@@ -15,7 +15,7 @@ import { useAuth } from '../../context/AuthContext.tsx';
 import { useLocationManagement } from './hooks/useLocationManagement.ts';
 import { SearchInput } from '../../components/ui/SearchInput.tsx';
 import { InventoryModal } from './components/InventoryModal.tsx';
-import { InventoryItemWithMetadata } from '../../schemas/inventory.schema.ts';
+import { InventoryItemWithMetadata, InventoryItemInput } from '../../schemas/inventory.schema.ts';
 
 // ─── Types and Constants ───
 
@@ -201,7 +201,9 @@ export const StockCountScreen = () => {
     setIsModalOpen(true);
   };
 
-  const handleSaveAdjustment = async (formData: any) => {
+  const handleSaveAdjustment = async (
+    formData: InventoryItemInput & { length_in?: number; width_in?: number; height_in?: number }
+  ) => {
     if (!editingItem) return;
     const oldQty = editingItem.quantity || 0;
     const newQty = formData.quantity || 0;

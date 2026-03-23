@@ -16,6 +16,7 @@ import {
   STORAGE_TYPE_LABELS,
   type InventoryItemWithMetadata,
 } from '../../../schemas/inventory.schema.ts';
+import type { Pallet } from '../../../utils/pickingLogic.ts';
 import { InventoryModal } from '../../inventory/components/InventoryModal.tsx';
 import toast from 'react-hot-toast';
 
@@ -27,9 +28,12 @@ export interface PickingItem {
   sku: string;
   location: string | null;
   pickingQty: number;
-  quantity: string | number;
+  quantity?: string | number;
   warehouse?: string;
-  [key: string]: any;
+  sku_not_found?: boolean;
+  insufficient_stock?: boolean;
+  item_name?: string | null;
+  description?: string | null;
 }
 
 interface DoubleCheckViewProps {
@@ -89,7 +93,7 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
   const longPressTriggered = useRef(false);
 
   const handlePointerDown = useCallback(
-    (item: any) => {
+    (item: PickingItem) => {
       longPressTriggered.current = false;
       longPressTimer.current = setTimeout(() => {
         longPressTriggered.current = true;
@@ -117,8 +121,8 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
 
   const totalUnitsCount = useMemo(() => {
     return pallets.reduce(
-      (sum: number, p: any) =>
-        sum + p.items.reduce((pSum: number, i: any) => pSum + (i.pickingQty || 0), 0),
+      (sum: number, p: Pallet) =>
+        sum + p.items.reduce((pSum: number, i: PickingItem) => pSum + (i.pickingQty || 0), 0),
       0
     );
   }, [pallets]);
@@ -138,7 +142,7 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
 
   // SKU Similarity Mapping (Now checks against ALL known SKUs in warehouse)
   const skuSimilarityMap = useMemo(() => {
-    const orderSkus = pallets.flatMap((p: any) => p.items.map((i: any) => i.sku));
+    const orderSkus = pallets.flatMap((p: Pallet) => p.items.map((i: PickingItem) => i.sku));
     const warehouseSkus = Array.from(new Set([...ludlowData, ...atsData].map((i) => i.sku)));
     const map: Record<string, { prefix: boolean; suffix: boolean }> = {};
 
@@ -177,25 +181,22 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
 
     // Aggregate total pickingQty per SKU across all pallets
     const skuQtyMap: Record<string, number> = {};
-    pallets.forEach((p: any) =>
-      p.items.forEach((i: any) => {
+    pallets.forEach((p: Pallet) =>
+      p.items.forEach((i: PickingItem) => {
         skuQtyMap[i.sku] = (skuQtyMap[i.sku] || 0) + (i.pickingQty || 0);
       })
     );
 
     Object.entries(skuQtyMap).forEach(([sku, neededQty]) => {
       const entries = inventoryData.filter(
-        (inv) =>
-          inv.sku === sku &&
-          Array.isArray((inv as any).distribution) &&
-          (inv as any).distribution.length > 0
+        (inv) => inv.sku === sku && Array.isArray(inv.distribution) && inv.distribution.length > 0
       );
       if (entries.length === 0) return;
 
       // Flatten all distribution groups with count × units_each
       const groups: { type: string; count: number; units_each: number; priority: number }[] = [];
       entries.forEach((inv) => {
-        const dist = (inv as any).distribution as DistributionItem[];
+        const dist = inv.distribution;
         dist.forEach((d) => {
           groups.push({
             type: d.type,
@@ -238,14 +239,16 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
   /** Detect distribution ↔ quantity inconsistencies per SKU+location */
   const distributionInconsistencyMap = useMemo(() => {
     const map: Record<string, 'over' | 'under'> = {};
-    const orderSkus = new Set(pallets.flatMap((p: any) => p.items.map((i: any) => i.sku)));
+    const orderSkus = new Set(
+      pallets.flatMap((p: Pallet) => p.items.map((i: PickingItem) => i.sku))
+    );
 
     orderSkus.forEach((sku) => {
       const entries = inventoryData.filter((inv) => inv.sku === sku);
       entries.forEach((inv) => {
         // Skip zero-quantity entries — stale distribution data is irrelevant
         if (inv.quantity === 0) return;
-        const dist = (inv as any).distribution as DistributionItem[] | undefined;
+        const dist: DistributionItem[] | undefined = inv.distribution;
         if (!dist || dist.length === 0) return;
         const distTotal = dist.reduce((sum, d) => sum + d.count * d.units_each, 0);
         if (distTotal > inv.quantity) {
@@ -405,7 +408,7 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
           </div>
         )}
 
-        {pallets.map((pallet: any) => (
+        {pallets.map((pallet: Pallet) => (
           <section key={pallet.id} className="mb-8">
             {/* Pallet Header */}
             <div className="flex items-center gap-3 mb-4 sticky top-0 bg-black/95 py-2 z-5 backdrop-blur-sm">
@@ -415,14 +418,18 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
                   Pallet {pallet.id}
                 </span>
                 <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest mt-1">
-                  {pallet.items.reduce((sum: number, i: any) => sum + (i.pickingQty || 0), 0)} Units
+                  {pallet.items.reduce(
+                    (sum: number, i: PickingItem) => sum + (i.pickingQty || 0),
+                    0
+                  )}{' '}
+                  Units
                 </span>
               </div>
               <div className="h-[1px] flex-1 bg-white/10" />
             </div>
 
             <div className="flex flex-col gap-3">
-              {pallet.items.map((item: any) => {
+              {pallet.items.map((item: PickingItem) => {
                 const itemKey = `${pallet.id}-${item.sku}-${item.location}`;
                 const isChecked = checkedItems.has(itemKey);
                 const similarity = skuSimilarityMap[item.sku];

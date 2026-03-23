@@ -3,16 +3,51 @@ import toast from 'react-hot-toast';
 import { supabase } from '../../../lib/supabase';
 import type { CartItem } from './usePickingCart';
 import type { Customer } from '../../../types/schema';
-import { getOptimizedPickingPath, calculatePallets } from '../../../utils/pickingLogic';
+import {
+  getOptimizedPickingPath,
+  calculatePallets,
+  type PickingItem,
+} from '../../../utils/pickingLogic';
+import type { User } from '@supabase/supabase-js';
+import type { Json } from '../../../integrations/supabase/types';
+import type { Location } from '../../../schemas/location.schema';
+
+/** Shape for stock tracking with reservation info */
+interface StockEntry {
+  stock: number;
+  reserved: number;
+  reservingOrders: Set<string>;
+}
+
+/** Shape returned by the inventory select query */
+interface InventoryRow {
+  sku: string;
+  quantity: number;
+  warehouse: string;
+  location: string | null;
+}
+
+/** Shape returned by the picking_lists select query (partial) */
+interface PickingListRow {
+  id: string;
+  items: CartItem[] | null;
+  order_number: string | null;
+}
+
+/** Shape returned by picking_list status query */
+interface PickingListStatusRow {
+  status: string | null;
+  notes?: string | null;
+}
 
 interface UsePickingActionsProps {
-  user: any;
+  user: User | null;
   activeListId: string | null;
   cartItems: CartItem[];
   orderNumber: string | null;
   customer: Customer | null;
   sessionMode: 'building' | 'picking' | 'double_checking' | 'idle';
-  setCartItems: (items: any[]) => void;
+  setCartItems: (items: CartItem[]) => void;
   setActiveListId: (id: string | null) => void;
   setOrderNumber: (num: string | null) => void;
   setCustomer: (cust: Customer | null) => void;
@@ -55,7 +90,12 @@ export const usePickingActions = ({
       if (!targetId || !user) return;
       setIsSaving(true);
       try {
-        const updateData: any = {
+        const updateData: {
+          status: string;
+          checked_by: string;
+          pallets_qty?: number;
+          total_units?: number;
+        } = {
           status: 'completed',
           checked_by: user.id, // Record who verified it
         };
@@ -79,7 +119,7 @@ export const usePickingActions = ({
         setIsSaving(false);
       }
     },
-    [activeListId, user, resetSession, setIsSaving]
+    [activeListId, user, setIsSaving]
   );
 
   const markAsReady = useCallback(
@@ -102,7 +142,7 @@ export const usePickingActions = ({
           .update({
             status: 'ready_to_double_check',
             checked_by: null,
-          } as any)
+          })
           .eq('checked_by', user.id)
           .neq('status', 'completed')
           .neq('status', 'cancelled')
@@ -143,26 +183,26 @@ export const usePickingActions = ({
         if (listsError) throw listsError;
 
         // C. Calculate availability
-        const stockMap = new Map<string, { stock: number; reserved: number }>();
+        const stockMap = new Map<string, StockEntry>();
 
         // Fill stock
-        currentStock?.forEach((row: any) => {
+        (currentStock as InventoryRow[] | null)?.forEach((row) => {
           const key = `${row.sku}-${row.warehouse}-${(row.location || '').toUpperCase()}`;
           stockMap.set(key, {
             stock: Number(row.quantity || 0),
             reserved: 0,
             reservingOrders: new Set(),
-          } as any);
+          });
         });
 
         // Fill reservations
-        activeLists?.forEach((list: any) => {
+        (activeLists as PickingListRow[] | null)?.forEach((list) => {
           const listItems = list.items || [];
           if (Array.isArray(listItems)) {
-            listItems.forEach((li: any) => {
+            listItems.forEach((li: CartItem) => {
               const key = `${li.sku}-${li.warehouse}-${(li.location || '').toUpperCase()}`;
               if (stockMap.has(key)) {
-                const entry = stockMap.get(key) as any;
+                const entry = stockMap.get(key)!;
                 entry.reserved += li.pickingQty || 0;
                 if (list.order_number) entry.reservingOrders.add(list.order_number);
               }
@@ -185,7 +225,7 @@ export const usePickingActions = ({
           const myQty = myItem.pickingQty || 0;
 
           if (myQty > availableForMe) {
-            const orders = Array.from((entry as any).reservingOrders).join(', ');
+            const orders = Array.from(entry.reservingOrders).join(', ');
             const reservedInfo = orders ? `is reserved in ${orders}.` : 'is reserved.';
             const availabilityInfo =
               availableForMe > 0
@@ -201,7 +241,10 @@ export const usePickingActions = ({
         // --- End Validation ---
 
         // Calculate Pallets using the same logic as UI
-        const optimizedItems = getOptimizedPickingPath(finalItems, (locationsData as any) || []);
+        const optimizedItems = getOptimizedPickingPath(
+          finalItems as unknown as PickingItem[],
+          (locationsData as Location[]) || []
+        );
         const pallets = calculatePallets(optimizedItems);
         const palletsQty = pallets.length;
 
@@ -211,13 +254,13 @@ export const usePickingActions = ({
           .update({
             status: 'double_checking',
             checked_by: user.id, // Auto-assign to self for verification
-            items: finalItems as any,
+            items: finalItems as unknown as Json,
             order_number: finalOrderNum,
             customer_id: customer?.id,
             load_number: loadNumber,
             correction_notes: null,
             pallets_qty: palletsQty, // AUTOMATION: Save the calculated pallets count
-          } as any)
+          })
           .eq('id', activeListId);
 
         if (error) throw error;
@@ -231,7 +274,7 @@ export const usePickingActions = ({
         setSessionMode('double_checking');
         toast.success('Order ready! You can now verify it.');
         return listId;
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Failed to mark as ready:', err);
         toast.error('Failed to mark order ready');
         return null;
@@ -244,6 +287,8 @@ export const usePickingActions = ({
       user,
       cartItems,
       orderNumber,
+      customer,
+      loadNumber,
       setCartItems,
       setOrderNumber,
       setCorrectionNotes,
@@ -262,7 +307,7 @@ export const usePickingActions = ({
         .update({
           status: 'ready_to_double_check',
           checked_by: null,
-        } as any)
+        })
         .eq('checked_by', user.id)
         .neq('status', 'completed')
         .neq('status', 'cancelled')
@@ -275,7 +320,7 @@ export const usePickingActions = ({
         .update({
           status: 'double_checking',
           checked_by: user.id,
-        } as any)
+        })
         .eq('id', listId)
         .neq('status', 'completed');
       if (error) throw error;
@@ -290,7 +335,7 @@ export const usePickingActions = ({
         .update({
           status: 'ready_to_double_check',
           checked_by: null,
-        } as any)
+        })
         .eq('id', listId)
         .neq('status', 'completed');
       if (error) throw error;
@@ -314,14 +359,14 @@ export const usePickingActions = ({
           .update({
             status: 'needs_correction',
             checked_by: null,
-          } as any)
+          })
           .eq('id', listId)
           .neq('status', 'completed');
 
         if (listError) throw listError;
 
         // 2. Add to historical notes timeline
-        const { error: noteError } = await supabase.from('picking_list_notes' as any).insert({
+        const { error: noteError } = await supabase.from('picking_list_notes').insert({
           list_id: listId,
           user_id: user.id,
           message: notes,
@@ -351,7 +396,7 @@ export const usePickingActions = ({
         .update({
           status: 'active',
           checked_by: null,
-        } as any)
+        })
         .eq('id', activeListId);
 
       if (error) throw error;
@@ -383,7 +428,7 @@ export const usePickingActions = ({
           .maybeSingle();
 
         if (currentList?.status === 'completed') {
-          console.log('🛡️ Blocked deletion of a completed order to protect inventory history.');
+          console.log('Blocked deletion of a completed order to protect inventory history.');
           if (listId === activeListId && !keepLocalState) {
             resetSession();
           }
@@ -400,14 +445,13 @@ export const usePickingActions = ({
         ];
         if (currentList?.status && inProgressStatuses.includes(currentList.status)) {
           // Instead of hard delete, we mark as cancelled
+          const typedList = currentList as PickingListStatusRow;
           const { error: cancelError } = await supabase
             .from('picking_lists')
             .update({
               status: 'cancelled',
-              notes: (currentList as any).notes
-                ? (currentList as any).notes + ' [User Cancelled]'
-                : 'User Cancelled',
-            } as any)
+              notes: typedList.notes ? typedList.notes + ' [User Cancelled]' : 'User Cancelled',
+            })
             .eq('id', listId);
 
           if (cancelError) throw cancelError;
@@ -472,26 +516,26 @@ export const usePickingActions = ({
 
       if (listsError) throw listsError;
 
-      const stockMap = new Map<string, { stock: number; reserved: number }>();
+      const stockMap = new Map<string, StockEntry>();
 
-      currentStock?.forEach((row: any) => {
+      (currentStock as InventoryRow[] | null)?.forEach((row) => {
         const key = `${row.sku}-${row.warehouse}-${row.location}`;
         stockMap.set(key, {
           stock: Number(row.quantity || 0),
           reserved: 0,
           reservingOrders: new Set(),
-        } as any);
+        });
       });
 
-      activeLists?.forEach((list: any) => {
+      (activeLists as PickingListRow[] | null)?.forEach((list) => {
         // Skip our own list when recalculating reservations (bug-004: we're updating it, not adding a new one)
         if (activeListId && list.id === activeListId) return;
         const listItems = list.items || [];
         if (Array.isArray(listItems)) {
-          listItems.forEach((li: any) => {
+          listItems.forEach((li: CartItem) => {
             const key = `${li.sku}-${li.warehouse}-${li.location}`;
             if (stockMap.has(key)) {
-              const entry = stockMap.get(key) as any;
+              const entry = stockMap.get(key)!;
               entry.reserved += li.pickingQty || 0;
               if (list.order_number) entry.reservingOrders.add(list.order_number);
             }
@@ -512,7 +556,7 @@ export const usePickingActions = ({
         const myQty = myItem.pickingQty || 0;
 
         if (myQty > availableAcrossSystem) {
-          const orders = Array.from((entry as any).reservingOrders).join(', ');
+          const orders = Array.from(entry.reservingOrders).join(', ');
           const reservedInfo = orders ? `is reserved in ${orders}.` : 'is reserved.';
           const availabilityInfo =
             availableAcrossSystem > 0
@@ -557,39 +601,39 @@ export const usePickingActions = ({
       }
 
       // bug-004 fix: UPDATE existing record when returning from double-check, INSERT only for new sessions
-      let data: any;
-      let error: any;
+      let data: { id: string; user_id: string } | null;
+      let error: { message: string; code?: string } | null;
 
       if (activeListId) {
         // Reuse existing picking_list record (user returned from double-check to correct items)
         const result = await supabase
           .from('picking_lists')
           .update({
-            items: cartItems as any,
+            items: cartItems as unknown as Json,
             status: 'active',
             order_number: orderNumber,
             customer_id: customerId,
             load_number: loadNumber,
-          } as any)
+          })
           .eq('id', activeListId)
           .select()
           .single();
-        data = result.data;
+        data = result.data as { id: string; user_id: string } | null;
         error = result.error;
       } else {
         const result = await supabase
           .from('picking_lists')
           .insert({
-            user_id: user.id || user.user_id,
-            items: cartItems as any,
+            user_id: user.id,
+            items: cartItems as unknown as Json,
             status: 'active',
             order_number: orderNumber,
             customer_id: customerId,
             load_number: loadNumber,
-          } as any)
+          })
           .select()
           .single();
-        data = result.data;
+        data = result.data as { id: string; user_id: string } | null;
         error = result.error;
       }
 
@@ -597,9 +641,9 @@ export const usePickingActions = ({
 
       if (data) {
         setActiveListId(data.id);
-        const ownerId = (data as any).user_id;
+        const resolvedOwnerId = data.user_id;
         setListStatus('active');
-        setOwnerId(ownerId);
+        setOwnerId(resolvedOwnerId);
         setSessionMode('picking');
 
         // CRITICAL FIX: Update local customer state with the RESOLVED ID so the UI knows it's real
@@ -628,6 +672,7 @@ export const usePickingActions = ({
     cartItems,
     orderNumber,
     customer,
+    loadNumber,
     setCustomer,
     setActiveListId,
     setListStatus,
@@ -681,7 +726,7 @@ export const usePickingActions = ({
       // Claim: update user_id to the current user
       const { error } = await supabase
         .from('picking_lists')
-        .update({ user_id: user.id } as any)
+        .update({ user_id: user.id })
         .eq('id', targetId);
 
       if (error) {
@@ -704,7 +749,7 @@ export const usePickingActions = ({
           .update({
             user_id: user.id,
             last_activity_at: new Date().toISOString(),
-          } as any)
+          })
           .eq('id', listId);
 
         if (error) throw error;

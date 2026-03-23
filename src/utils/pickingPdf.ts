@@ -2,20 +2,32 @@
  * Generates a Picking List PDF based on a pre-ordered sequence.
  */
 export const generatePickingPdf = async (
-  finalSequence: any[],
+  finalSequence: {
+    sku: string;
+    location: string | null;
+    warehouse?: string;
+    palletId?: number;
+    pickingQty?: number;
+    isPicked?: boolean;
+    key?: string;
+  }[],
   orderNumber?: string,
   totalPallets: number = 0
 ) => {
   const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
     import('jspdf'),
-    import('jspdf-autotable')
+    import('jspdf-autotable'),
   ]);
 
   const doc = new jsPDF('l', 'mm', 'a4');
   const todayRaw = new Date();
   const today = new Intl.DateTimeFormat('en-US', {
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', hour12: false,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
   }).format(todayRaw);
 
   // Title
@@ -69,7 +81,7 @@ export const generatePickingPdf = async (
         lineWidth: 1.1,
         fillColor: [255, 255, 255],
         textColor: [0, 0, 0],
-        valign: 'middle'
+        valign: 'middle',
       },
       columnStyles: {
         0: { cellWidth: 15, halign: 'center', fontSize: 16 },
@@ -105,10 +117,10 @@ export const generatePickingPdf = async (
         doc.setFontSize(14);
         doc.setTextColor(0, 0, 0);
         doc.text(metadataLine, 292, 205, { align: 'right' });
-      }
+      },
     });
 
-    startY = (doc as any).lastAutoTable.finalY + 15;
+    startY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 15;
   }
 
   // Optional: Group by pallets if needed, but the user asked for "filament by filament" based on finalSequence.

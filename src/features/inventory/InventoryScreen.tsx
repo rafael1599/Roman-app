@@ -13,6 +13,11 @@ import { CapacityBar } from '../../components/ui/CapacityBar.tsx';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+
+/** jspdf-autotable extends jsPDF instances with lastAutoTable after calling autoTable() */
+interface JsPDFWithAutoTable extends jsPDF {
+  lastAutoTable?: { finalY: number };
+}
 import FileDown from 'lucide-react/dist/esm/icons/file-down';
 
 import { usePickingSession } from '../../context/PickingContext.tsx';
@@ -22,8 +27,17 @@ import LocationEditorModal from '../warehouse-management/components/LocationEdit
 import { useError } from '../../context/ErrorContext.tsx';
 import { useConfirmation } from '../../context/ConfirmationContext.tsx';
 import { SessionInitializationModal } from '../picking/components/SessionInitializationModal.tsx';
-import { InventoryItemWithMetadata } from '../../schemas/inventory.schema.ts';
-import { Location } from '../../schemas/location.schema.ts';
+import { InventoryItemWithMetadata, InventoryItemInput } from '../../schemas/inventory.schema.ts';
+import { Location, LocationInput } from '../../schemas/location.schema.ts';
+/** Represents a "ghost" location that exists only as text on inventory items, not in the locations table */
+interface NewLocationStub {
+  warehouse: string;
+  location: string;
+  max_capacity: number;
+  zone: string;
+  picking_order: number;
+  isNew: true;
+}
 
 const SEARCHING_MESSAGE = (
   <div className="py-20 text-center text-muted font-bold uppercase tracking-widest animate-pulse">
@@ -90,7 +104,7 @@ export const InventoryScreen = () => {
         (item.warehouse || '').toLowerCase().includes(s)
       );
     });
-  }, [inventoryData, debouncedSearch]);
+  }, [inventoryData, debouncedSearch, showInactive]);
 
   const isLoading = loading;
 
@@ -135,8 +149,8 @@ export const InventoryScreen = () => {
 
             // Prefer a 'real' ID over an optimistic one if both exist,
             // but keep the local flag if either is local.
-            const existingId = existing.id as any;
-            const itemId = item.id as any;
+            const existingId = existing.id as string | number;
+            const itemId = item.id as string | number;
             const isExistingTemp =
               (typeof existingId === 'string' &&
                 (existingId.startsWith('add-') || existingId.startsWith('move-'))) ||
@@ -157,16 +171,16 @@ export const InventoryScreen = () => {
             }
 
             // Sync metadata if missing
-            if (!(existing as any).sku_metadata && (item as any).sku_metadata) {
-              (existing as any).sku_metadata = (item as any).sku_metadata;
+            if (!existing.sku_metadata && item.sku_metadata) {
+              existing.sku_metadata = item.sku_metadata;
             }
 
             // Preservation of flags
-            if ((item as any)._lastUpdateSource === 'local') {
-              (existing as any)._lastUpdateSource = 'local';
-              (existing as any)._lastLocalUpdateAt = Math.max(
-                (existing as any)._lastLocalUpdateAt || 0,
-                (item as any)._lastLocalUpdateAt || 0
+            if (item._lastUpdateSource === 'local') {
+              existing._lastUpdateSource = 'local';
+              existing._lastLocalUpdateAt = Math.max(
+                existing._lastLocalUpdateAt || 0,
+                item._lastLocalUpdateAt || 0
               );
             }
           }
@@ -239,7 +253,9 @@ export const InventoryScreen = () => {
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   const [selectedWarehouseForAdd, setSelectedWarehouseForAdd] = useState('LUDLOW');
   const [isMovementModalOpen, setIsMovementModalOpen] = useState(false);
-  const [locationBeingEdited, setLocationBeingEdited] = useState<Location | any>(null);
+  const [locationBeingEdited, setLocationBeingEdited] = useState<Location | NewLocationStub | null>(
+    null
+  );
 
   const { isAdmin, user: authUser, profile } = useAuth();
   const { showError } = useError();
@@ -359,11 +375,11 @@ export const InventoryScreen = () => {
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(14);
             doc.text(metadataLine, 292, 205, { align: 'right' });
-            currentY = (doc as any).lastAutoTable?.finalY || 15;
+            currentY = (doc as JsPDFWithAutoTable).lastAutoTable?.finalY || 15;
           },
         });
 
-        currentY = (doc as any).lastAutoTable.finalY + 15;
+        currentY = ((doc as JsPDFWithAutoTable).lastAutoTable?.finalY ?? 15) + 15;
       });
 
       const blob = doc.output('bloburl');
@@ -375,7 +391,7 @@ export const InventoryScreen = () => {
     } finally {
       setIsGeneratingPDF(false);
     }
-  }, [allLocationBlocks, profile, authUser, localSearch, showInactive, filteredStats]);
+  }, [allLocationBlocks, profile, authUser]);  
 
   // Picking Mode State
   const { cartItems, addToCart, getAvailableStock, onStartSession, sessionMode } =
@@ -402,7 +418,9 @@ export const InventoryScreen = () => {
   }, [editingItem, deleteItem]);
 
   const saveItem = useCallback(
-    async (formData: any) => {
+    async (
+      formData: InventoryItemInput & { length_in?: number; width_in?: number; height_in?: number }
+    ) => {
       const targetWarehouse = formData.warehouse;
       if (modalMode === 'add') {
         return await addItem(targetWarehouse, formData);
@@ -416,7 +434,7 @@ export const InventoryScreen = () => {
   const handleMoveStock = useCallback(
     async (moveData: {
       sourceItem: InventoryItemWithMetadata;
-      targetWarehouse: 'LUDLOW' | 'ATS';
+      targetWarehouse: string;
       targetLocation: string;
       quantity: number;
     }) => {
@@ -428,9 +446,9 @@ export const InventoryScreen = () => {
           moveData.quantity
         );
         toast.success('Stock successfully moved!');
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error moving stock:', err);
-        showError('Move failed', err.message);
+        showError('Move failed', err instanceof Error ? err.message : String(err));
       }
     },
     [moveItem, showError]
@@ -471,13 +489,20 @@ export const InventoryScreen = () => {
   );
 
   const handleSaveLocation = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     async (formData: any) => {
       let result;
-      if (locationBeingEdited?.isNew) {
+      if (
+        locationBeingEdited &&
+        'isNew' in locationBeingEdited &&
+        (locationBeingEdited as NewLocationStub).isNew
+      ) {
         const { isNew: _IsNew, ...dataToCreate } = formData;
-        result = await createLocation(dataToCreate);
-      } else {
+        result = await createLocation(dataToCreate as LocationInput);
+      } else if (locationBeingEdited && 'id' in locationBeingEdited) {
         result = await updateLocation(locationBeingEdited.id, formData);
+      } else {
+        return;
       }
 
       if (result.success) {
@@ -492,7 +517,11 @@ export const InventoryScreen = () => {
 
   const handleDeleteLocation = useCallback(
     async (id: string) => {
-      if (locationBeingEdited?.isNew) {
+      if (
+        locationBeingEdited &&
+        'isNew' in locationBeingEdited &&
+        (locationBeingEdited as NewLocationStub).isNew
+      ) {
         const totalUnits = inventoryData
           .filter(
             (i) =>
@@ -545,7 +574,7 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
         addToCart(item);
       }
     },
-    [viewMode, handleEditItem, addToCart]
+    [viewMode, handleEditItem, addToCart, onStartSession]
   );
 
   // REMOVED EARLY LOADING RETURN TO PREVENT KEYBOARD DISMISSAL
@@ -714,9 +743,9 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
                             reservedByOthers={stockInfo?.reservedByOthers || 0}
                             available={stockInfo?.available}
                             sku_metadata={item.sku_metadata}
-                            internal_note={(item as any).internal_note}
-                            distribution={(item as any).distribution}
-                            lastUpdateSource={(item as any)._lastUpdateSource}
+                            internal_note={item.internal_note}
+                            distribution={item.distribution}
+                            lastUpdateSource={item._lastUpdateSource}
                             is_active={item.is_active}
                           />
                         </div>
@@ -779,7 +808,7 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
 
       {locationBeingEdited ? (
         <LocationEditorModal
-          location={locationBeingEdited}
+          location={locationBeingEdited as Location}
           onSave={handleSaveLocation}
           onDelete={handleDeleteLocation}
           onCancel={() => setLocationBeingEdited(null)}

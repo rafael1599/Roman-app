@@ -170,7 +170,7 @@ export const UserManagement = () => {
                 </div>
                 <div className="flex items-center gap-2 text-muted mt-1">
                   <div
-                    className={`w-1.5 h-1.5 rounded-full ${u.last_seen_at && (new Date().getTime() - new Date(u.last_seen_at).getTime()) < 300000 ? 'bg-emerald-500 animate-pulse' : 'bg-subtle'}`}
+                    className={`w-1.5 h-1.5 rounded-full ${u.last_seen_at && new Date().getTime() - new Date(u.last_seen_at).getTime() < 300000 ? 'bg-emerald-500 animate-pulse' : 'bg-subtle'}`}
                   />
                   <span className="text-[9px] font-black uppercase tracking-widest opacity-60">
                     {u.last_seen_at
@@ -193,10 +193,11 @@ export const UserManagement = () => {
                 </button>
                 <button
                   onClick={() => toggleUserStatus(u)}
-                  className={`px-3 flex items-center justify-center rounded-xl transition-all ${u.is_active
-                    ? 'bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white'
-                    : 'bg-emerald-500/10 hover:bg-emerald-500 text-emerald-500 hover:text-white'
-                    }`}
+                  className={`px-3 flex items-center justify-center rounded-xl transition-all ${
+                    u.is_active
+                      ? 'bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white'
+                      : 'bg-emerald-500/10 hover:bg-emerald-500 text-emerald-500 hover:text-white'
+                  }`}
                   title={u.is_active ? 'Deactivate User' : 'Activate User'}
                 >
                   {u.is_active ? <ShieldOff size={14} /> : <ShieldCheck size={14} />}
@@ -258,9 +259,9 @@ const UserModal = ({ user, onClose, onSuccess }: UserModalProps) => {
 
       toast.success(isEditing ? 'User updated successfully' : 'User created successfully');
       onSuccess();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Submit error:', err);
-      toast.error(err.message || 'Action failed');
+      toast.error(err instanceof Error ? err.message : 'Action failed');
     } finally {
       setIsSaving(false);
     }
@@ -358,10 +359,11 @@ const UserModal = ({ user, onClose, onSuccess }: UserModalProps) => {
                     key={r}
                     type="button"
                     onClick={() => setFormData((p) => ({ ...p, role: r }))}
-                    className={`py-4 rounded-2xl border-2 font-black uppercase tracking-widest text-[10px] transition-all ${formData.role === r
-                      ? 'bg-accent/10 border-accent text-accent'
-                      : 'bg-main border-subtle text-muted hover:border-muted'
-                      }`}
+                    className={`py-4 rounded-2xl border-2 font-black uppercase tracking-widest text-[10px] transition-all ${
+                      formData.role === r
+                        ? 'bg-accent/10 border-accent text-accent'
+                        : 'bg-main border-subtle text-muted hover:border-muted'
+                    }`}
                   >
                     {r}
                   </button>

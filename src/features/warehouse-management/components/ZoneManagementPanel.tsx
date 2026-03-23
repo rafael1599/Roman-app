@@ -42,7 +42,8 @@ export const ZoneManagementPanel = ({
     }
 
     return result;
-  }, [locations, searchTerm, filterZone, getZone, zones]); // Re-calc when zones changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- zones included to re-calc when zone assignments change (getZone is not referentially stable)
+  }, [locations, searchTerm, filterZone, getZone, zones]);
 
   const handleAutoAssign = async () => {
     showConfirmation(
@@ -53,13 +54,13 @@ export const ZoneManagementPanel = ({
         try {
           await autoAssignZones();
           toast.success('Zones auto-assigned successfully');
-        } catch (err: any) {
-          showError('Auto-assign failed', err.message || 'Unknown error');
+        } catch (err: unknown) {
+          showError('Auto-assign failed', err instanceof Error ? err.message : 'Unknown error');
         } finally {
           setIsAutoAssigning(false);
         }
       },
-      () => { },
+      () => {},
       'Assign zones',
       'Cancel'
     );
@@ -166,10 +167,11 @@ const LocationRow = ({ warehouse, location, zone, onUpdate }: LocationRowProps) 
             onClick={() => onUpdate(z)}
             className={`
                             text-[10px] font-black uppercase px-3 py-1.5 rounded-md border transition-all
-                            ${zone === z
-                ? getZoneColor(z) + ' ring-1 ring-inset ring-content/10'
-                : 'bg-transparent border-transparent text-muted hover:bg-surface'
-              }
+                            ${
+                              zone === z
+                                ? getZoneColor(z) + ' ring-1 ring-inset ring-content/10'
+                                : 'bg-transparent border-transparent text-muted hover:bg-surface'
+                            }
                         `}
           >
             {z}

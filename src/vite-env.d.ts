@@ -12,6 +12,6 @@ interface ImportMeta {
 }
 
 declare module 'papaparse' {
-  export function parse<T>(input: string, config: any): any;
+  export function parse<T>(input: string, config: Record<string, unknown>): { data: T[] };
   // Add minimal needed types
 }

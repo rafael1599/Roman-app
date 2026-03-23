@@ -18,6 +18,38 @@ import { FloatingActionButtons } from '../../components/orders/FloatingActionBut
 import { PickingSummaryModal } from '../../components/orders/PickingSummaryModal.tsx';
 import { SplitOrderModal } from '../../components/orders/SplitOrderModal.tsx';
 import { SearchInput } from '../../components/ui/SearchInput.tsx';
+import type { PickingListItem, CombineMeta } from '../../schemas/picking.schema';
+
+interface CustomerDetails {
+  id: string;
+  name: string;
+  street: string;
+  city: string;
+  state: string;
+  zip_code: string;
+}
+
+interface OrderWithRelations {
+  id: string;
+  order_number: string | null;
+  user_id: string | null;
+  customer_id: string | null;
+  pallets_qty: number | null;
+  total_units: number | null;
+  load_number: string | null;
+  status: string;
+  items: PickingListItem[] | null;
+  correction_notes: string | null;
+  checked_by: string | null;
+  combine_meta: CombineMeta;
+  created_at: string;
+  updated_at: string;
+  customer: CustomerDetails | null;
+  customer_details: CustomerDetails | Record<string, never>;
+  user: { full_name: string | null } | null;
+  checker: { full_name: string | null } | null;
+  presence: { last_seen_at: string | null } | null;
+}
 
 export const OrdersScreen = () => {
   const { user } = useAuth();
@@ -28,9 +60,9 @@ export const OrdersScreen = () => {
     externalShowPickingSummary,
     setExternalShowPickingSummary,
   } = useViewMode();
-  const [orders, setOrders] = useState<any[]>([]);
+  const [orders, setOrders] = useState<OrderWithRelations[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [selectedOrder, setSelectedOrder] = useState<OrderWithRelations | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [timeFilter, setTimeFilter] = useState('ALL');
   const navigate = useNavigate();
@@ -38,7 +70,7 @@ export const OrdersScreen = () => {
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isMobileOrderListOpen, setIsMobileOrderListOpen] = useState(false);
-  const filterRef = useRef(null);
+  const filterRef = useRef<HTMLDivElement>(null);
   const mobileDropdownRef = useRef<HTMLDivElement>(null);
   const searchQueryRef = useRef(searchQuery);
 
@@ -48,10 +80,10 @@ export const OrdersScreen = () => {
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (filterRef.current && !(filterRef.current as any).contains(event.target)) {
+      if (filterRef.current && !filterRef.current.contains(event.target as Node)) {
         setIsFilterOpen(false);
       }
-      if (mobileDropdownRef.current && !(mobileDropdownRef.current as any).contains(event.target)) {
+      if (mobileDropdownRef.current && !mobileDropdownRef.current.contains(event.target as Node)) {
         setIsMobileOrderListOpen(false);
       }
     };
@@ -83,8 +115,8 @@ export const OrdersScreen = () => {
     city: '',
     state: '',
     zip: '',
-    pallets: '1' as string | number,
-    units: '0' as string | number,
+    pallets: '1',
+    units: '0',
     loadNumber: '',
   });
 
@@ -99,7 +131,7 @@ export const OrdersScreen = () => {
       setSkuWeights({});
       return;
     }
-    const skus = [...new Set(selectedOrder.items.map((i: any) => i.sku))] as string[];
+    const skus = [...new Set(selectedOrder.items.map((i: PickingListItem) => i.sku))] as string[];
     if (skus.length === 0) return;
 
     supabase
@@ -111,7 +143,7 @@ export const OrdersScreen = () => {
         skus.forEach((s) => {
           map[s] = null;
         });
-        data?.forEach((row: any) => {
+        (data as unknown as { sku: string; weight_lbs: number | null }[] | null)?.forEach((row) => {
           map[row.sku] = row.weight_lbs;
         });
         setSkuWeights(map);
@@ -124,7 +156,7 @@ export const OrdersScreen = () => {
     const items = selectedOrder?.items;
     if (!Array.isArray(items) || Object.keys(skuWeights).length === 0) return [];
     const seen = new Set<string>();
-    return items.filter((item: any) => {
+    return items.filter((item: PickingListItem) => {
       if (seen.has(item.sku)) return false;
       seen.add(item.sku);
       return skuWeights[item.sku] == null;
@@ -145,7 +177,7 @@ export const OrdersScreen = () => {
     const items = selectedOrder?.items;
     if (!Array.isArray(items)) return 0;
     return Math.round(
-      items.reduce((sum: number, item: any) => {
+      items.reduce((sum: number, item: PickingListItem) => {
         const weight = skuWeights[item.sku] ?? 0;
         const qty = item.pickingQty ?? 0;
         return sum + weight * qty;
@@ -156,7 +188,9 @@ export const OrdersScreen = () => {
   // Track the selected customer ID to link/unlink
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   // Track original params to detect changes (Name vs Address)
-  const [originalCustomerParams, setOriginalCustomerParams] = useState<any>(null);
+  const [originalCustomerParams, setOriginalCustomerParams] = useState<CustomerDetails | null>(
+    null
+  );
 
   const fetchOrders = useCallback(async () => {
     if (!user) return;
@@ -198,7 +232,7 @@ export const OrdersScreen = () => {
 
       if (error) throw error;
 
-      const mappedData = (data || []).map((order: any) => ({
+      const mappedData = ((data || []) as unknown as OrderWithRelations[]).map((order) => ({
         ...order,
         customer_details: order.customer || {},
       }));
@@ -633,7 +667,9 @@ export const OrdersScreen = () => {
         <OrderSidebar
           formData={formData}
           setFormData={setFormData}
-          selectedOrder={selectedOrder}
+          selectedOrder={
+            selectedOrder as React.ComponentProps<typeof OrderSidebar>['selectedOrder']
+          }
           user={user}
           takeOverOrder={takeOverOrder}
           onRefresh={fetchOrders}
@@ -748,10 +784,10 @@ export const OrdersScreen = () => {
                         className="shrink-0"
                       >
                         <OrderChip
-                          orderNumber={order.order_number}
+                          orderNumber={order.order_number || ''}
                           status={order.status}
                           isSelected={isSelected}
-                          isCombined={!!(order as any).combine_meta?.is_combined}
+                          isCombined={!!order.combine_meta?.is_combined}
                           onClick={() => setSelectedOrder(order)}
                         />
                       </div>
@@ -770,7 +806,9 @@ export const OrdersScreen = () => {
                 <OrderSidebar
                   formData={formData}
                   setFormData={setFormData}
-                  selectedOrder={selectedOrder}
+                  selectedOrder={
+                    selectedOrder as React.ComponentProps<typeof OrderSidebar>['selectedOrder']
+                  }
                   user={user}
                   takeOverOrder={takeOverOrder}
                   onRefresh={fetchOrders}
@@ -803,7 +841,7 @@ export const OrdersScreen = () => {
                     </span>
                   </div>
                   <div className="space-y-2">
-                    {itemsMissingWeight.map((item: any) => (
+                    {itemsMissingWeight.map((item: PickingListItem) => (
                       <div
                         key={item.sku}
                         className="flex items-center gap-3 bg-amber-100 rounded-xl px-3 py-2 border border-amber-300"
@@ -812,9 +850,9 @@ export const OrdersScreen = () => {
                           <span className="font-mono text-xs font-bold text-amber-900">
                             {item.sku}
                           </span>
-                          {item.description && (
+                          {item.item_name && (
                             <span className="ml-2 text-xs text-amber-700 truncate">
-                              {item.description}
+                              {item.item_name}
                             </span>
                           )}
                         </div>
@@ -856,7 +894,7 @@ export const OrdersScreen = () => {
               )}
 
               <LivePrintPreview
-                orderNumber={selectedOrder.order_number}
+                orderNumber={selectedOrder.order_number ?? undefined}
                 customerName={formData.customerName}
                 street={formData.street}
                 city={formData.city}
@@ -941,11 +979,11 @@ export const OrdersScreen = () => {
       {/* Picking Summary Modal */}
       {isShowingPickingSummary && selectedOrder && (
         <PickingSummaryModal
-          orderNumber={selectedOrder.order_number}
-          items={selectedOrder.items}
+          orderNumber={selectedOrder.order_number || ''}
+          items={selectedOrder.items || []}
           completedAt={selectedOrder.updated_at}
-          pickedBy={selectedOrder.user?.full_name}
-          checkedBy={selectedOrder.checker?.full_name}
+          pickedBy={selectedOrder.user?.full_name ?? undefined}
+          checkedBy={selectedOrder.checker?.full_name ?? undefined}
           onClose={() => setIsShowingPickingSummary(false)}
         />
       )}
@@ -953,7 +991,7 @@ export const OrdersScreen = () => {
       {/* Split Order Modal */}
       {isShowingSplitModal && selectedOrder && (
         <SplitOrderModal
-          order={selectedOrder}
+          order={selectedOrder as React.ComponentProps<typeof SplitOrderModal>['order']}
           onClose={() => setIsShowingSplitModal(false)}
           onSplitComplete={() => {
             setIsShowingSplitModal(false);

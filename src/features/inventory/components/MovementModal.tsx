@@ -22,7 +22,12 @@ import { InventoryItem } from '../../../schemas/inventory.schema.ts';
 interface MovementModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onMove: (data: any) => void;
+  onMove: (data: {
+    sourceItem: InventoryItem;
+    targetWarehouse: string;
+    targetLocation: string;
+    quantity: number;
+  }) => void;
   initialSourceItem?: InventoryItem | null;
 }
 
@@ -319,7 +324,7 @@ export const MovementModal: React.FC<MovementModalProps> = ({
                 )}
                 placeholder="Scan or type location (e.g. '9')"
                 initialKeyboardMode="numeric"
-                renderItem={(suggestion: any) => (
+                renderItem={(suggestion) => (
                   <div className="py-2.5 px-1">
                     <div className="flex justify-between items-center mb-1.5">
                       <div className="flex items-center gap-2">

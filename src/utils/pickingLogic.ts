@@ -1,8 +1,22 @@
 import { type Location } from '../schemas/location.schema';
 
+export interface PickingItem {
+  sku: string;
+  location: string | null;
+  warehouse?: string;
+  pickingQty: number;
+  quantity?: string | number;
+  item_name?: string | null;
+  isPicked?: boolean;
+  palletId?: number;
+  sku_not_found?: boolean;
+  insufficient_stock?: boolean;
+  description?: string | null;
+}
+
 export interface Pallet {
   id: number;
-  items: any[];
+  items: PickingItem[];
   totalUnits: number;
   footprint_in2: number;
   limitPerPallet: number; // Added for UI display
@@ -12,7 +26,7 @@ export interface Pallet {
  * Sorts items based on the picking_order defined in the locations table.
  * Fallback to alphanumeric sort if no order is defined.
  */
-export const getOptimizedPickingPath = (items: any[], locations: Location[]) => {
+export const getOptimizedPickingPath = (items: PickingItem[], locations: Location[]) => {
   // Create a map for quick lookup of picking order
   const orderMap = new Map<string, number>();
   locations.forEach((loc) => {
@@ -30,7 +44,10 @@ export const getOptimizedPickingPath = (items: any[], locations: Location[]) => 
     if (orderA !== orderB) return orderA - orderB;
 
     // Fallback to alphanumeric - ensure null safety
-    return (a.location || '').localeCompare(b.location || '', undefined, { numeric: true, sensitivity: 'base' });
+    return (a.location || '').localeCompare(b.location || '', undefined, {
+      numeric: true,
+      sensitivity: 'base',
+    });
   });
 };
 
@@ -39,14 +56,14 @@ export const getOptimizedPickingPath = (items: any[], locations: Location[]) => 
  * - Pallet of 8
  * - Pallet of 10
  * - Pallet of 12
- * 
+ *
  * Logic:
  * 1. Calculate total units.
  * 2. Evaluate all 3 capacities (8, 10, 12).
  * 3. Choose the capacity that minimizes the total pallet count.
  * 4. If counts are tied, prefer the smallest/standard capacity (8 or 10) to avoid overloading.
  */
-export const calculatePallets = (items: any[]): Pallet[] => {
+export const calculatePallets = (items: PickingItem[]): Pallet[] => {
   const totalUnits = items.reduce((sum, item) => sum + (item.pickingQty || 0), 0);
   if (totalUnits === 0) return [];
 
@@ -74,7 +91,7 @@ export const calculatePallets = (items: any[]): Pallet[] => {
     items: [],
     totalUnits: 0,
     footprint_in2: 0,
-    limitPerPallet
+    limitPerPallet,
   };
 
   items.forEach((item) => {
@@ -87,7 +104,9 @@ export const calculatePallets = (items: any[]): Pallet[] => {
       if (take > 0) {
         // Merge if same SKU/Location in current pallet
         const existing = currentPallet.items.find(
-          (i) => i.sku === item.sku && (i.location || '').trim().toUpperCase() === (item.location || '').trim().toUpperCase()
+          (i) =>
+            i.sku === item.sku &&
+            (i.location || '').trim().toUpperCase() === (item.location || '').trim().toUpperCase()
         );
         if (existing) {
           existing.pickingQty += take;
@@ -106,7 +125,7 @@ export const calculatePallets = (items: any[]): Pallet[] => {
           items: [],
           totalUnits: 0,
           footprint_in2: 0,
-          limitPerPallet
+          limitPerPallet,
         };
       }
     }

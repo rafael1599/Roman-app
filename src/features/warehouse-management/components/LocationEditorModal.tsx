@@ -16,19 +16,31 @@ import { DEFAULT_MAX_CAPACITY } from '../../../utils/capacityUtils';
 import { useAutoSelect } from '../../../hooks/useAutoSelect';
 import { type Location } from '../../../schemas/location.schema';
 
+interface LocationFormData extends Location {
+  max_capacity: number | null;
+  zone: string;
+  picking_order: number | null;
+  notes: string;
+}
+
 interface LocationEditorModalProps {
   location: Location;
-  onSave: (data: any) => void;
+  onSave: (data: LocationFormData) => void;
   onCancel: () => void;
   onDelete?: (id: string) => void;
 }
 
-export default function LocationEditorModal({ location, onSave, onCancel, onDelete }: LocationEditorModalProps) {
+export default function LocationEditorModal({
+  location,
+  onSave,
+  onCancel,
+  onDelete,
+}: LocationEditorModalProps) {
   const { ludlowData, atsData } = useInventory();
   const { showConfirmation } = useConfirmation();
   const autoSelect = useAutoSelect();
 
-  const [formData, setFormData] = useState<any>({
+  const [formData, setFormData] = useState<LocationFormData>({
     ...location,
     max_capacity: location?.max_capacity ?? DEFAULT_MAX_CAPACITY,
     zone: location?.zone ?? 'UNASSIGNED',
@@ -42,12 +54,11 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
   });
   const [overrideWarnings, setOverrideWarnings] = useState(false);
 
-
   // Effect to calculate the impact of all changes made
   useEffect(() => {
-    const changes: any = {};
-    if (parseInt(formData.max_capacity as any) !== parseInt(location?.max_capacity as any)) {
-      changes.max_capacity = parseInt(formData.max_capacity as any);
+    const changes: Record<string, string | number | null> = {};
+    if (Number(formData.max_capacity) !== Number(location?.max_capacity)) {
+      changes.max_capacity = Number(formData.max_capacity);
     }
     if (formData.location !== location?.location) {
       changes.location = formData.location;
@@ -55,9 +66,9 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
 
     // 1. Validate Capacity (Errors & Warnings)
     const capacityValidation = validateCapacityChange(
-      parseInt(formData.max_capacity as any) || 0,
-      [], // We pass empty array as we don't have access to ALL inventory items in format needed or relies on specific filtering. 
-      // Actually, validateCapacityChange expects InventoryItem[]. 
+      Number(formData.max_capacity) || 0,
+      [], // We pass empty array as we don't have access to ALL inventory items in format needed or relies on specific filtering.
+      // Actually, validateCapacityChange expects InventoryItem[].
       // Let's defer strict inventory check vs existing items if complex, or pass flat list.
       // For now, let's pass empty to avoid type issues, focusing on basic capacity limits.
       // Better: Use location.max_capacity as original
@@ -65,28 +76,26 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
     );
 
     const newErrors = [...capacityValidation.errors];
-    const newWarnings = [...capacityValidation.warnings.map(w => w.message)];
+    const newWarnings = [...capacityValidation.warnings.map((w) => w.message)];
 
     // 2. Calculate Impact (Warnings)
     if (location?.warehouse && location?.location) {
-      const impact = calculateLocationChangeImpact(
-        location.warehouse,
-        location.location,
-        changes,
-        [...ludlowData, ...atsData]
-      );
+      const impact = calculateLocationChangeImpact(location.warehouse, location.location, changes, [
+        ...ludlowData,
+        ...atsData,
+      ]);
 
       // Add impacts as warnings
       if (impact.impacts.length > 0) {
-        newWarnings.push(...impact.impacts.map(i => i.message));
+        newWarnings.push(...impact.impacts.map((i) => i.message));
       }
     }
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Validation derived from props, computed in effect intentionally
     setValidation({
       errors: newErrors,
-      warnings: newWarnings
+      warnings: newWarnings,
     });
-
   }, [formData, location, ludlowData, atsData]);
 
   const handleSubmit = (e?: FormEvent) => {
@@ -106,7 +115,7 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
       'Delete Location?',
       `Are you sure you want to delete location ${location.location}? This cannot be undone and may affect inventory.`,
       () => onDelete(location.id),
-      () => { },
+      () => {},
       'Delete Forever',
       'Cancel'
     );
@@ -151,16 +160,24 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
         {(validation.errors.length > 0 || validation.warnings.length > 0) && (
           <div className="px-6 pt-6 pb-0 flex flex-col gap-2">
             {validation.errors.map((err, idx) => (
-              <div key={`err-${idx}`} className="p-3 bg-danger/10 text-danger border border-danger/20 rounded-xl text-xs font-bold flex items-center gap-2">
+              <div
+                key={`err-${idx}`}
+                className="p-3 bg-danger/10 text-danger border border-danger/20 rounded-xl text-xs font-bold flex items-center gap-2"
+              >
                 <AlertCircle size={16} />
                 {err}
               </div>
             ))}
             {validation.warnings.map((warn, idx) => (
-              <div key={`warn-${idx}`} className="p-3 bg-orange-500/10 text-orange-500 border border-orange-500/20 rounded-xl text-xs font-bold flex items-center gap-2">
+              <div
+                key={`warn-${idx}`}
+                className="p-3 bg-orange-500/10 text-orange-500 border border-orange-500/20 rounded-xl text-xs font-bold flex items-center gap-2"
+              >
                 <AlertTriangle size={16} />
                 {warn}
-                {!overrideWarnings && <span className="ml-auto text-[10px] opacity-70">CONFIRM TO PROCEED</span>}
+                {!overrideWarnings && (
+                  <span className="ml-auto text-[10px] opacity-70">CONFIRM TO PROCEED</span>
+                )}
               </div>
             ))}
           </div>
@@ -168,7 +185,6 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-6 overflow-y-auto custom-scrollbar">
-
           {/* Max Capacity */}
           <div>
             <label className="block text-sm font-semibold text-muted mb-2">
@@ -178,12 +194,13 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
             <input
               type="number"
               value={formData.max_capacity || ''}
-              onChange={(e) => setFormData((prev: any) => ({ ...prev, max_capacity: parseInt(e.target.value) || 0 }))}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, max_capacity: parseInt(e.target.value) || 0 }))
+              }
               {...autoSelect}
               className="w-full px-4 py-3 bg-main border border-subtle rounded-lg text-content focus:border-accent focus:outline-none transition-colors font-mono"
             />
           </div>
-
 
           {/* Picking Order */}
           <div>
@@ -195,7 +212,7 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
               type="number"
               value={formData.picking_order || ''}
               onChange={(e) =>
-                setFormData((prev: any) => ({
+                setFormData((prev) => ({
                   ...prev,
                   picking_order: parseInt(e.target.value) || 0,
                 }))
@@ -210,7 +227,7 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
             <label className="block text-sm font-semibold text-muted mb-2">Notes (optional)</label>
             <textarea
               value={formData.notes || ''}
-              onChange={(e) => setFormData((prev: any) => ({ ...prev, notes: e.target.value }))}
+              onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))}
               className="w-full px-4 py-3 bg-main border border-subtle rounded-lg text-content focus:border-accent focus:outline-none transition-colors resize-none"
               rows={3}
               placeholder="Additional information about this location..."
@@ -232,12 +249,13 @@ export default function LocationEditorModal({ location, onSave, onCancel, onDele
             disabled={
               validation.errors.length > 0 || (validation.warnings.length > 0 && !overrideWarnings)
             }
-            className={`flex-[2] h-14 rounded-2xl font-black uppercase tracking-widest text-xs transition-all flex items-center justify-center gap-2 ${validation.errors.length > 0
-              ? 'bg-surface text-muted cursor-not-allowed border border-subtle'
-              : validation.warnings.length > 0 && !overrideWarnings
-                ? 'bg-orange-500 text-white cursor-pointer hover:opacity-90 shadow-lg shadow-orange-500/20'
-                : 'bg-accent hover:opacity-90 text-main shadow-lg shadow-accent/20'
-              }`}
+            className={`flex-[2] h-14 rounded-2xl font-black uppercase tracking-widest text-xs transition-all flex items-center justify-center gap-2 ${
+              validation.errors.length > 0
+                ? 'bg-surface text-muted cursor-not-allowed border border-subtle'
+                : validation.warnings.length > 0 && !overrideWarnings
+                  ? 'bg-orange-500 text-white cursor-pointer hover:opacity-90 shadow-lg shadow-orange-500/20'
+                  : 'bg-accent hover:opacity-90 text-main shadow-lg shadow-accent/20'
+            }`}
           >
             <Save size={20} />
             {validation.warnings.length > 0 && !overrideWarnings ? 'Confirm Risks' : 'Save Changes'}

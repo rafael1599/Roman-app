@@ -33,12 +33,13 @@ export const useInventoryLogs = () => {
     mutationKey: ['inventory', 'trackLog'],
     networkMode: 'offlineFirst',
     // Infinite retry for network errors, immediate fail for logical errors
-    retry: (failureCount, error: any) => {
+    retry: (failureCount, error: Error & { code?: string; originalError?: { code?: string } }) => {
       const code = error?.code || error?.originalError?.code;
       const message = error?.message || '';
 
       // Don't retry logical errors (auth, validation, ambiguity, etc)
-      if (code === 'PGRST301' || code === '42501' || code === '23505' || code === '42725') return false;
+      if (code === 'PGRST301' || code === '42501' || code === '23505' || code === '42725')
+        return false;
 
       // Infinite retry for network errors
       if (message.includes('fetch') || message.includes('network') || !navigator.onLine) {
@@ -52,7 +53,7 @@ export const useInventoryLogs = () => {
     mutationFn: async ({
       logData,
       userInfo = {},
-      candidateLogId = null
+      candidateLogId = null,
     }: {
       logData: InventoryLogInput;
       userInfo?: UserInfo;
@@ -132,7 +133,8 @@ export const useInventoryLogs = () => {
             (targetLog.action_type === 'DEDUCT' && logData.action_type === 'ADD');
 
           if (sameType) {
-            const newTotalChange = (targetLog.quantity_change || 0) + (logData.quantity_change || 0);
+            const newTotalChange =
+              (targetLog.quantity_change || 0) + (logData.quantity_change || 0);
 
             console.log(
               `[FORENSIC][DB][LOG_MERGE] Status: SUCCESS - Action: ${logData.action_type}, Delta: ${targetLog.quantity_change} + ${logData.quantity_change} = ${newTotalChange}`
@@ -151,11 +153,15 @@ export const useInventoryLogs = () => {
             const netChange = (targetLog.quantity_change || 0) + (logData.quantity_change || 0);
 
             if (netChange === 0) {
-              console.log(`[FORENSIC][DB][LOG_CANCEL] Status: SUCCESS - SKU: ${logData.sku} - Net change is 0, deleting log.`);
+              console.log(
+                `[FORENSIC][DB][LOG_CANCEL] Status: SUCCESS - SKU: ${logData.sku} - Net change is 0, deleting log.`
+              );
               await supabase.from('inventory_logs').delete().eq('id', targetLog.id);
               return null;
             } else {
-              console.log(`[FORENSIC][DB][LOG_INVERSE_MERGE] Status: SUCCESS - SKU: ${logData.sku} - Net change: ${netChange}`);
+              console.log(
+                `[FORENSIC][DB][LOG_INVERSE_MERGE] Status: SUCCESS - SKU: ${logData.sku} - Net change: ${netChange}`
+              );
               await supabase
                 .from('inventory_logs')
                 .update({
@@ -170,20 +176,34 @@ export const useInventoryLogs = () => {
         }
 
         // --- INSERT NEW LOG (Default) ---
-        console.log(`[FORENSIC][DB][INSERT_START] ${new Date().toISOString()} - SKU: ${logData.sku}`);
+        console.log(
+          `[FORENSIC][DB][INSERT_START] ${new Date().toISOString()} - SKU: ${logData.sku}`
+        );
         const { data: newLog, error } = await supabase
           .from('inventory_logs')
           .insert([
             {
-              ...logData,
-              item_id: logData.item_id,
+              sku: logData.sku,
+              action_type: logData.action_type,
+              quantity_change: logData.quantity_change,
+              item_id: logData.item_id != null ? Number(logData.item_id) : null,
+              from_warehouse: logData.from_warehouse ?? null,
+              from_location: logData.from_location ?? null,
+              to_warehouse: logData.to_warehouse ?? null,
+              to_location: logData.to_location ?? null,
               prev_quantity: logData.prev_quantity ?? null,
               new_quantity: logData.new_quantity ?? null,
               is_reversed: logData.is_reversed || false,
+              previous_sku: logData.previous_sku ?? null,
+              location_id: logData.location_id ?? null,
+              to_location_id: logData.to_location_id ?? null,
+              snapshot_before: logData.snapshot_before ?? null,
+              list_id: logData.list_id ?? null,
+              order_number: logData.order_number ?? null,
               performed_by: userName,
-              user_id: userInfo.user_id,
+              user_id: userInfo.user_id ?? null,
               created_at: new Date().toISOString(),
-            } as any,
+            },
           ])
           .select()
           .single();
@@ -193,8 +213,10 @@ export const useInventoryLogs = () => {
           throw error;
         }
 
-        const newId = (newLog as any)?.id;
-        console.log(`[FORENSIC][DB][INSERT_SUCCESS] ${new Date().toISOString()} - New ID: ${newId}`);
+        const newId = newLog?.id;
+        console.log(
+          `[FORENSIC][DB][INSERT_SUCCESS] ${new Date().toISOString()} - New ID: ${newId}`
+        );
         return newId;
       } catch (err) {
         console.error(`[FORENSIC][DB][TRACK_FAILED] ${new Date().toISOString()}`, err);
@@ -205,16 +227,19 @@ export const useInventoryLogs = () => {
       if (logId) {
         queryClient.invalidateQueries({ queryKey: ['inventory_logs'] });
       }
-    }
+    },
   });
 
-  const trackLog = useCallback(async (
-    logData: InventoryLogInput,
-    userInfo: UserInfo = {},
-    candidateLogId: string | null = null
-  ) => {
-    return trackLogMutation.mutateAsync({ logData, userInfo, candidateLogId });
-  }, [trackLogMutation]);
+  const trackLog = useCallback(
+    async (
+      logData: InventoryLogInput,
+      userInfo: UserInfo = {},
+      candidateLogId: string | null = null
+    ) => {
+      return trackLogMutation.mutateAsync({ logData, userInfo, candidateLogId });
+    },
+    [trackLogMutation]
+  );
 
   /**
    * Fetches the last 100 activity logs
@@ -251,7 +276,7 @@ export const useInventoryLogs = () => {
     mutationKey: ['inventory', 'undo'],
     networkMode: 'offlineFirst',
     // Infinite retry for network errors to ensure undo completes
-    retry: (failureCount, error: any) => {
+    retry: (failureCount, error: Error & { code?: string; originalError?: { code?: string } }) => {
       const code = error?.code || error?.originalError?.code;
       const message = error?.message || '';
 
@@ -281,9 +306,7 @@ export const useInventoryLogs = () => {
         throw new Error('Actions associated with an order cannot be undone from the history.');
       }
 
-      // @ts-ignore - RPC function added manually
-      const { data, error } = await (supabase as any)
-        .rpc('undo_inventory_action', { target_log_id: logId });
+      const { data, error } = await supabase.rpc('undo_inventory_action', { target_log_id: logId });
 
       if (error) throw error;
 
@@ -294,7 +317,9 @@ export const useInventoryLogs = () => {
       return result;
     },
     onMutate: async (logId) => {
-      console.log(`[FORENSIC][MUTATION][UNDO_START] ${new Date().toISOString()} - Target Log ID: ${logId}`);
+      console.log(
+        `[FORENSIC][MUTATION][UNDO_START] ${new Date().toISOString()} - Target Log ID: ${logId}`
+      );
       // Cancel refetches
       await queryClient.cancelQueries({ queryKey: ['inventory_logs'] });
 
@@ -303,28 +328,36 @@ export const useInventoryLogs = () => {
 
       // Optimistically update the UI: mark the log as reversed
       if (previousLogs) {
-        queryClient.setQueryData(['inventory_logs', 'TODAY'], (old: any) => {
+        queryClient.setQueryData(['inventory_logs', 'TODAY'], (old: InventoryLog[] | undefined) => {
           return Array.isArray(old)
-            ? old.map((l: any) => l.id === logId ? { ...l, is_reversed: true, isOptimistic: true } : l)
+            ? old.map((l: InventoryLog) =>
+                l.id === logId ? { ...l, is_reversed: true, isOptimistic: true } : l
+              )
             : old;
         });
       }
 
       return { previousLogs };
     },
-    onError: (err, logId, context: any) => {
-      console.error(`[FORENSIC][MUTATION][UNDO_ERROR] ${new Date().toISOString()} - Log ID: ${logId}`, err);
+    onError: (err, logId, context) => {
+      console.error(
+        `[FORENSIC][MUTATION][UNDO_ERROR] ${new Date().toISOString()} - Log ID: ${logId}`,
+        err
+      );
       // Rollback on failure
       if (context?.previousLogs) {
         queryClient.setQueryData(['inventory_logs', 'TODAY'], context.previousLogs);
       }
     },
     onSuccess: (data, logId) => {
-      console.log(`[FORENSIC][MUTATION][UNDO_SUCCESS] ${new Date().toISOString()} - Log ID: ${logId}`, data);
+      console.log(
+        `[FORENSIC][MUTATION][UNDO_SUCCESS] ${new Date().toISOString()} - Log ID: ${logId}`,
+        data
+      );
       // Invalidate both inventory and logs to get fresh data
       queryClient.invalidateQueries({ queryKey: ['inventory_logs'] });
       queryClient.invalidateQueries({ queryKey: ['inventory', 'lists'] });
-    }
+    },
   });
 
   return useMemo(
