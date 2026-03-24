@@ -1,0 +1,15 @@
+Progress Update — March 24, 2026 at HH:MM PM
+
+WIN OF THE DAY:
+Three new features shipped today that make order processing faster and more accurate.
+
+WHAT'S BETTER NOW:
+- Pallet weight is now included in total order weight on labels — each pallet adds 40 lbs automatically, so labels reflect the real shipping weight
+- Pasting a full address (like "123 Main St, Miami, FL 33101") into the street field now auto-fills city, state, and zip — no more typing each field by hand
+- During double-check, you can now override the item count on any pallet and the rest will redistribute automatically across the remaining pallets
+
+COMING UP NEXT:
+- Notes on items will carry over when moving stock between locations — no more lost notes
+- Drag-and-drop order merging for FedEx shipments
+
+4 done today / 15 in the queue

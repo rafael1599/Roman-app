@@ -1,7 +1,7 @@
 # PickD — Backlog de Mejoras
 
 > Mejoras pendientes ordenadas por impacto en el usuario final.
-> Actualizado: 2026-03-23
+> Actualizado: 2026-03-24
 >
 > **Formato:** cada item incluye `[fecha hora]` de creación para trazabilidad y `<!-- id: xxx -->` para tracking.
 > **Single source of truth** — no editar BACKLOG.md en la raíz del proyecto (es un puntero a este archivo).
@@ -56,27 +56,27 @@
   - **Move con merge** (location destino ya tiene el mismo SKU): mostrar un diálogo al usuario donde elija cuál nota conservar (la del origen, la del destino, o ambas).
 - **Archivos estimados:** RPC `move_inventory_stock`, componente de Stock View que maneja el move, nuevo diálogo de selección de nota para caso merge.
 
-### 8. Override de cantidad de items por pallet (Double Check View) <!-- id: idea-018 -->
+### ~~8. Override de cantidad de items por pallet (Double Check View)~~ — COMPLETADO <!-- id: idea-018 -->
 
-- **Creado:** `[2026-03-24 10:00]`
-- **Estado:** Por hacer.
+- **Creado:** `[2026-03-24 10:00]` · **Completado:** `[2026-03-24]`
+- **Estado:** En producción.
 - Permitir al usuario editar manualmente la cantidad de items en una pallet específica durante double-check. Es un override local para esa orden, no persiste para futuras órdenes.
 - **Comportamiento esperado:**
   - El usuario cambia la cantidad en una pallet → los items sobrantes o faltantes se redistribuyen automáticamente en las demás pallets siguiendo la lógica original de distribución.
   - Una pallet cuya cantidad fue editada manualmente por el usuario queda "bloqueada" — la redistribución automática nunca modifica pallets con override del usuario.
 - **Archivos estimados:** `DoubleCheckView.tsx`, lógica de distribución de pallets.
 
-### 9. Sumar peso de pallets al peso total de la orden en label (Orders View) <!-- id: idea-019 -->
+### ~~9. Sumar peso de pallets al peso total de la orden en label (Orders View)~~ — COMPLETADO <!-- id: idea-019 -->
 
-- **Creado:** `[2026-03-24 10:00]`
-- **Estado:** Por hacer.
+- **Creado:** `[2026-03-24 10:00]` · **Completado:** `[2026-03-24]`
+- **Estado:** En producción.
 - El peso total de la orden actualmente solo suma el peso de los items. Falta sumar el peso de las pallets: `peso total = peso items + (número de pallets × 40 lbs)`.
 - **Archivos estimados:** `PalletLabelsPrinter.tsx` o componente de label de orden donde se calcula el peso total.
 
-### 10. Auto-parse de dirección completa en campo address (Orders View) <!-- id: idea-020 -->
+### ~~10. Auto-parse de dirección completa en campo address (Orders View)~~ — COMPLETADO <!-- id: idea-020 -->
 
-- **Creado:** `[2026-03-24 10:00]`
-- **Estado:** Por hacer.
+- **Creado:** `[2026-03-24 10:00]` · **Completado:** `[2026-03-24]`
+- **Estado:** En producción.
 - Cuando el usuario pega una dirección completa (ej: "123 Main St, Miami, FL 33101") en el campo `address`, el sistema debe parsear automáticamente y llenar `city`, `state`, `zip`.
 - **Restricciones:**
   - Solo formato US.
@@ -137,6 +137,9 @@
 | Fix: watcher asigna location con qty=0 (bug-003 + bug-005)  | `[2026-03-21]` | `[2026-03-23]`       | Completado — filtro qty>0 en `_to_cart_items()`                      |
 | Fix: órdenes duplicadas al volver de double-check (bug-004) | `[2026-03-21]` | `[2026-03-23]`       | Completado — preservar activeListId + UPDATE en vez de INSERT        |
 | Fix: orden completada reaparece (bug-006)                   | `[2026-03-21]` | `[2026-03-23]`       | Completado — misma raíz que bug-004, watcher ya tenía protección     |
+| Peso de pallets en peso total de label (idea-019)           | `[2026-03-24]` | `[2026-03-24]`       | Completado — +40 lbs por pallet al peso total                        |
+| Auto-parse de dirección US (idea-020)                       | `[2026-03-24]` | `[2026-03-24]`       | Completado — pegar dirección completa auto-llena city/state/zip      |
+| Override cantidad por pallet en double-check (idea-018)     | `[2026-03-24]` | `[2026-03-24]`       | Completado — override manual + redistribución automática             |
 | Order number en label de pallets                            | `[2026-03-11]` | `[2026-03-11 14:28]` | Completado                                                           |
 | Barra de capacidad de locations                             | `[2026-03-11]` | `[2026-03-18 10:00]` | Resuelto (fix de performance)                                        |
 | Takeover muestra picker real                                | `[2026-03-11]` | `[2026-03-13 13:12]` | Completado                                                           |
