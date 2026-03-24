@@ -56,6 +56,24 @@ export const OrderSidebar: React.FC<OrderSidebarProps> = ({
 
   if (!selectedOrder) return null;
 
+  // Auto-parse full US address pasted into street field
+  // Supports: "123 Main St, Miami, FL 33101" or "123 Main St, Miami FL 33101"
+  const handleStreetChange = (value: string) => {
+    // Match: street, city, state zip (with optional comma before state)
+    const match = value.match(/^(.+?),\s*(.+?)[,\s]+([A-Z]{2})\s+(\d{5}(?:-\d{4})?)$/i);
+    if (match) {
+      setFormData({
+        ...formData,
+        street: match[1].trim(),
+        city: match[2].trim(),
+        state: match[3].toUpperCase(),
+        zip: match[4],
+      });
+    } else {
+      setFormData({ ...formData, street: value });
+    }
+  };
+
   const handleDelete = () => {
     showConfirmation(
       'Delete Order',
@@ -144,7 +162,7 @@ export const OrderSidebar: React.FC<OrderSidebarProps> = ({
           <input
             type="text"
             value={formData.street}
-            onChange={(e) => setFormData({ ...formData, street: e.target.value })}
+            onChange={(e) => handleStreetChange(e.target.value)}
             placeholder="Street address..."
             className="w-full bg-main border border-subtle rounded-3xl px-5 py-3.5 text-lg text-content ios-transition font-medium focus:border-accent focus:bg-surface shadow-sm"
           />
