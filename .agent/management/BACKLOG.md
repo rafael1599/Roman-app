@@ -46,6 +46,43 @@
 - **Estado:** Por hacer.
 - Address flashes in quantity updates.
 
+### 7. Preservar `internal_note` al mover item entre locations (Stock View) <!-- id: idea-017 -->
+
+- **Creado:** `[2026-03-24 10:00]`
+- **Estado:** Por hacer.
+- Al mover un item a una nueva location, el campo `internal_note` se guarda vacío en el destino, perdiendo la nota original. Si el usuario no la recuerda, se pierde para siempre.
+- **Comportamiento esperado:**
+  - **Move sin merge** (location destino no tiene el mismo SKU): la nueva location hereda `internal_note` automáticamente.
+  - **Move con merge** (location destino ya tiene el mismo SKU): mostrar un diálogo al usuario donde elija cuál nota conservar (la del origen, la del destino, o ambas).
+- **Archivos estimados:** RPC `move_inventory_stock`, componente de Stock View que maneja el move, nuevo diálogo de selección de nota para caso merge.
+
+### 8. Override de cantidad de items por pallet (Double Check View) <!-- id: idea-018 -->
+
+- **Creado:** `[2026-03-24 10:00]`
+- **Estado:** Por hacer.
+- Permitir al usuario editar manualmente la cantidad de items en una pallet específica durante double-check. Es un override local para esa orden, no persiste para futuras órdenes.
+- **Comportamiento esperado:**
+  - El usuario cambia la cantidad en una pallet → los items sobrantes o faltantes se redistribuyen automáticamente en las demás pallets siguiendo la lógica original de distribución.
+  - Una pallet cuya cantidad fue editada manualmente por el usuario queda "bloqueada" — la redistribución automática nunca modifica pallets con override del usuario.
+- **Archivos estimados:** `DoubleCheckView.tsx`, lógica de distribución de pallets.
+
+### 9. Sumar peso de pallets al peso total de la orden en label (Orders View) <!-- id: idea-019 -->
+
+- **Creado:** `[2026-03-24 10:00]`
+- **Estado:** Por hacer.
+- El peso total de la orden actualmente solo suma el peso de los items. Falta sumar el peso de las pallets: `peso total = peso items + (número de pallets × 40 lbs)`.
+- **Archivos estimados:** `PalletLabelsPrinter.tsx` o componente de label de orden donde se calcula el peso total.
+
+### 10. Auto-parse de dirección completa en campo address (Orders View) <!-- id: idea-020 -->
+
+- **Creado:** `[2026-03-24 10:00]`
+- **Estado:** Por hacer.
+- Cuando el usuario pega una dirección completa (ej: "123 Main St, Miami, FL 33101") en el campo `address`, el sistema debe parsear automáticamente y llenar `city`, `state`, `zip`.
+- **Restricciones:**
+  - Solo formato US.
+  - Si los campos destino ya tienen valores, se sobreescriben al pegar.
+- **Archivos estimados:** Componente de edición de orden en Orders View, nueva utilidad de parsing de dirección US.
+
 ---
 
 ## Prioridad 2 — Impacto Medio (mejoras de conveniencia)

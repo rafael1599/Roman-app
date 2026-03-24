@@ -5,8 +5,8 @@ import { InventoryItemSchema } from './inventory.schema';
  * Zod schema for Picking List items (items column in picking_lists)
  */
 export const PickingListItemSchema = InventoryItemSchema.extend({
-    pickingQty: z.number().int().positive(),
-    checked: z.boolean().optional(),
+  pickingQty: z.number().int().positive(),
+  checked: z.boolean().optional(),
 });
 
 export type PickingListItem = z.infer<typeof PickingListItemSchema>;
@@ -14,16 +14,21 @@ export type PickingListItem = z.infer<typeof PickingListItemSchema>;
 /**
  * Zod schema for combine_meta (auto-combined orders provenance)
  */
-export const CombineMetaSchema = z.object({
+export const CombineMetaSchema = z
+  .object({
     is_combined: z.boolean(),
-    source_orders: z.array(z.object({
+    source_orders: z.array(
+      z.object({
         order_number: z.string(),
         added_at: z.string(),
         item_count: z.number().optional(),
         pdf_hash: z.string().optional(),
         file_name: z.string().optional(),
-    })),
-}).nullable().optional();
+      })
+    ),
+  })
+  .nullable()
+  .optional();
 
 export type CombineMeta = z.infer<typeof CombineMetaSchema>;
 
@@ -31,18 +36,25 @@ export type CombineMeta = z.infer<typeof CombineMetaSchema>;
  * Zod schema for the picking_lists table
  */
 export const PickingListSchema = z.object({
-    id: z.string().uuid(),
-    user_id: z.string().uuid().nullable(),
-    customer_id: z.string().uuid().nullable(),
-    order_number: z.string().nullable(),
-    pallets_qty: z.number().int().nonnegative().nullable(),
-    status: z.enum(['active', 'ready_to_double_check', 'double_checking', 'needs_correction', 'completed']),
-    items: z.array(PickingListItemSchema).nullable(),
-    correction_notes: z.string().nullable(),
-    checked_by: z.string().uuid().nullable(),
-    combine_meta: CombineMetaSchema,
-    created_at: z.string(),
-    updated_at: z.string(),
+  id: z.string().uuid(),
+  user_id: z.string().uuid().nullable(),
+  customer_id: z.string().uuid().nullable(),
+  order_number: z.string().nullable(),
+  pallets_qty: z.number().int().nonnegative().nullable(),
+  status: z.enum([
+    'active',
+    'ready_to_double_check',
+    'double_checking',
+    'needs_correction',
+    'completed',
+  ]),
+  items: z.array(PickingListItemSchema).nullable(),
+  correction_notes: z.string().nullable(),
+  checked_by: z.string().uuid().nullable(),
+  combine_meta: CombineMetaSchema,
+  total_weight_lbs: z.number().nonnegative().nullable().optional(),
+  created_at: z.string(),
+  updated_at: z.string(),
 });
 
 export type PickingList = z.infer<typeof PickingListSchema>;

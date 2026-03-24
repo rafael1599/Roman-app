@@ -172,18 +172,19 @@ export const OrdersScreen = () => {
     return () => clearTimeout(timer);
   }, [weightsReady, itemsMissingWeight.length, selectedOrder?.id]);
 
-  // Calculate total weight from sku_metadata weights
+  // Calculate total weight from sku_metadata weights + pallet weight (40 lbs each)
   const totalWeight = useMemo(() => {
     const items = selectedOrder?.items;
     if (!Array.isArray(items)) return 0;
-    return Math.round(
-      items.reduce((sum: number, item: PickingListItem) => {
-        const weight = skuWeights[item.sku] ?? 0;
-        const qty = item.pickingQty ?? 0;
-        return sum + weight * qty;
-      }, 0)
-    );
-  }, [selectedOrder?.items, skuWeights]);
+    const productWeight = items.reduce((sum: number, item: PickingListItem) => {
+      const weight = skuWeights[item.sku] ?? 0;
+      const qty = item.pickingQty ?? 0;
+      return sum + weight * qty;
+    }, 0);
+    const palletCount = parseInt(formData.pallets, 10) || 0;
+    const palletWeight = palletCount * 40;
+    return Math.round(productWeight + palletWeight);
+  }, [selectedOrder?.items, skuWeights, formData.pallets]);
 
   // Track the selected customer ID to link/unlink
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
@@ -475,6 +476,7 @@ export const OrdersScreen = () => {
         .update({
           pallets_qty: palletsNum,
           total_units: unitsNum,
+          total_weight_lbs: totalWeight || null,
           load_number: formData.loadNumber || null,
           customer_id: finalCustomerId, // Link to the customer (new or existing)
         })
