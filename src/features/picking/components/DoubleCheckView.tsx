@@ -36,6 +36,7 @@ export interface PickingItem {
   insufficient_stock?: boolean;
   item_name?: string | null;
   description?: string | null;
+  source_order?: string;
 }
 
 interface DoubleCheckViewProps {

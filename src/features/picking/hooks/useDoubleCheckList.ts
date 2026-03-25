@@ -14,6 +14,11 @@ export interface Profile {
   full_name: string | null;
 }
 
+export interface OrderGroup {
+  id: string;
+  group_type: string;
+}
+
 export interface PickingList {
   id: string;
   order_number: string;
@@ -32,6 +37,8 @@ export interface PickingList {
   customer?: { name: string } | null;
   source?: string;
   is_addon?: boolean;
+  group_id?: string | null;
+  order_group?: OrderGroup | null;
 }
 
 export const useDoubleCheckList = () => {
@@ -57,7 +64,9 @@ export const useDoubleCheckList = () => {
             checker_profile:profiles!checked_by (full_name),
             customer:customers(name),
             source,
-            is_addon
+            is_addon,
+            group_id,
+            order_group:order_groups(id, group_type)
           `
         )
         .in('status', ['ready_to_double_check', 'double_checking', 'needs_correction'])
@@ -91,7 +100,9 @@ export const useDoubleCheckList = () => {
             checker_profile:profiles!checked_by (full_name),
             customer:customers(name),
             source,
-            is_addon
+            is_addon,
+            group_id,
+            order_group:order_groups(id, group_type)
           `
         )
         .eq('status', 'completed')

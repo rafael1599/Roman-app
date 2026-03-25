@@ -315,6 +315,7 @@ export const usePickingActions = ({
 
       if (releaseError) console.error('Error releasing previous locks:', releaseError);
 
+      // Lock the main order
       const { error } = await supabase
         .from('picking_lists')
         .update({
@@ -324,12 +325,39 @@ export const usePickingActions = ({
         .eq('id', listId)
         .neq('status', 'completed');
       if (error) throw error;
+
+      // If order belongs to a group, also lock all siblings
+      const { data: order } = await supabase
+        .from('picking_lists')
+        .select('group_id')
+        .eq('id', listId)
+        .single();
+
+      if (order?.group_id) {
+        await supabase
+          .from('picking_lists')
+          .update({
+            status: 'double_checking',
+            checked_by: user.id,
+          })
+          .eq('group_id', order.group_id)
+          .neq('id', listId)
+          .neq('status', 'completed')
+          .neq('status', 'cancelled');
+      }
     },
     [user]
   );
 
   const releaseCheck = useCallback(
     async (listId: string) => {
+      // Check if order belongs to a group — release all siblings too
+      const { data: order } = await supabase
+        .from('picking_lists')
+        .select('group_id')
+        .eq('id', listId)
+        .single();
+
       const { error } = await supabase
         .from('picking_lists')
         .update({
@@ -339,6 +367,19 @@ export const usePickingActions = ({
         .eq('id', listId)
         .neq('status', 'completed');
       if (error) throw error;
+
+      if (order?.group_id) {
+        await supabase
+          .from('picking_lists')
+          .update({
+            status: 'ready_to_double_check',
+            checked_by: null,
+          })
+          .eq('group_id', order.group_id)
+          .neq('id', listId)
+          .neq('status', 'completed')
+          .neq('status', 'cancelled');
+      }
 
       resetSession();
     },
@@ -365,7 +406,27 @@ export const usePickingActions = ({
 
         if (listError) throw listError;
 
-        // 2. Add to historical notes timeline
+        // 2. Release group siblings so they go back to the queue
+        const { data: order } = await supabase
+          .from('picking_lists')
+          .select('group_id')
+          .eq('id', listId)
+          .single();
+
+        if (order?.group_id) {
+          await supabase
+            .from('picking_lists')
+            .update({
+              status: 'ready_to_double_check',
+              checked_by: null,
+            })
+            .eq('group_id', order.group_id)
+            .neq('id', listId)
+            .neq('status', 'completed')
+            .neq('status', 'cancelled');
+        }
+
+        // 3. Add to historical notes timeline
         const { error: noteError } = await supabase.from('picking_list_notes').insert({
           list_id: listId,
           user_id: user.id,
@@ -423,7 +484,7 @@ export const usePickingActions = ({
       try {
         const { data: currentList } = await supabase
           .from('picking_lists')
-          .select('status')
+          .select('status, group_id')
           .eq('id', listId)
           .maybeSingle();
 
@@ -456,11 +517,53 @@ export const usePickingActions = ({
 
           if (cancelError) throw cancelError;
 
+          // Cleanup group if order belonged to one
+          if (currentList.group_id) {
+            const { data: remaining } = await supabase
+              .from('picking_lists')
+              .select('id')
+              .eq('group_id', currentList.group_id)
+              .neq('status', 'cancelled')
+              .neq('id', listId)
+              .limit(2);
+
+            if (remaining && remaining.length <= 1) {
+              // Dissolve group: unlink last remaining order and delete group
+              if (remaining.length === 1) {
+                await supabase
+                  .from('picking_lists')
+                  .update({ group_id: null })
+                  .eq('id', remaining[0].id);
+              }
+              await supabase.from('order_groups').delete().eq('id', currentList.group_id);
+            }
+          }
+
           if (listId === activeListId && !keepLocalState) {
             resetSession();
           }
           toast.success('Order cancelled and moved to history');
           return;
+        }
+
+        // Cleanup group before hard delete
+        if (currentList?.group_id) {
+          const { data: remaining } = await supabase
+            .from('picking_lists')
+            .select('id')
+            .eq('group_id', currentList.group_id)
+            .neq('id', listId)
+            .limit(2);
+
+          if (remaining && remaining.length <= 1) {
+            if (remaining.length === 1) {
+              await supabase
+                .from('picking_lists')
+                .update({ group_id: null })
+                .eq('id', remaining[0].id);
+            }
+            await supabase.from('order_groups').delete().eq('id', currentList.group_id);
+          }
         }
 
         const { error: logsError } = await supabase

@@ -10,6 +10,7 @@ import { useViewMode } from '../../../context/ViewModeContext';
 import { useInventory } from '../../inventory/hooks/InventoryProvider';
 import { getOptimizedPickingPath, calculatePallets } from '../../../utils/pickingLogic';
 import type { Location } from '../../../schemas/location.schema';
+import { supabase } from '../../../lib/supabase';
 import toast from 'react-hot-toast';
 
 export const PickingCartDrawer: React.FC = () => {
@@ -99,13 +100,33 @@ export const PickingCartDrawer: React.FC = () => {
           console.log('📋 [PickingCartDrawer] List loaded:', list?.id, 'User:', user?.id);
 
           if (list && user) {
-            // Check for takeover
-            if (list.checked_by && list.checked_by !== user.id) {
-              console.log('⚠️ [PickingCartDrawer] Takeover required for list:', list.id);
+            // Check for takeover — also check group siblings
+            const listData = list as {
+              id?: string;
+              checked_by?: string | null;
+              group_id?: string | null;
+            };
+            let needsTakeover = !!(listData.checked_by && listData.checked_by !== user.id);
+
+            if (!needsTakeover && listData.group_id) {
+              const { data: groupSiblings } = await supabase
+                .from('picking_lists')
+                .select('checked_by')
+                .eq('group_id', listData.group_id)
+                .neq('id', String(externalDoubleCheckId))
+                .not('checked_by', 'is', null);
+
+              needsTakeover = groupSiblings?.some((s) => s.checked_by !== user.id) || false;
+            }
+
+            if (needsTakeover) {
+              console.log('⚠️ [PickingCartDrawer] Takeover required for list:', listData.id);
               isConfirmingRef.current = true;
               showConfirmation(
                 'Takeover Order',
-                `This order is currently being checked by another user. Do you want to take over?`,
+                listData.group_id
+                  ? 'This order group is currently being checked by another user. Do you want to take over the entire group?'
+                  : 'This order is currently being checked by another user. Do you want to take over?',
                 async () => {
                   console.log('⚔️ [PickingCartDrawer] confirmed takeover');
                   await lockForCheck(String(externalDoubleCheckId));
@@ -264,18 +285,34 @@ export const PickingCartDrawer: React.FC = () => {
         return true;
       }
 
-      // Calculate final metrics before completing
-      const totalUnits = items.reduce(
-        (acc: number, item: PickingItem) => acc + (item.pickingQty || 0),
-        0
-      );
+      // Check if this order belongs to a group
+      const { data: mainOrder } = await supabase
+        .from('picking_lists')
+        .select('group_id, items, order_group:order_groups(group_type)')
+        .eq('id', activeListId!)
+        .single();
 
-      // Use overridden pallet count if user edited pallets in double-check,
-      // otherwise recalculate from items
+      const isFedexGroup =
+        (mainOrder?.order_group as { group_type: string } | null)?.group_type === 'fedex';
+
+      // Calculate metrics from the MAIN ORDER's DB items only (not the merged cart)
+      const mainDbItems = Array.isArray(mainOrder?.items)
+        ? (mainOrder.items as Array<{ pickingQty?: number }>)
+        : [];
+      const mainUnits = mainDbItems.reduce((acc, item) => acc + (Number(item.pickingQty) || 0), 0);
+
+      // FedEx orders don't use pallets — set to 0
       let pallets_qty: number;
-      if (overriddenPalletCountRef.current !== null) {
+      if (isFedexGroup) {
+        pallets_qty = 0;
+      } else if (overriddenPalletCountRef.current !== null && !mainOrder?.group_id) {
         pallets_qty = overriddenPalletCountRef.current;
       } else {
+        const mainCartItems = mainOrder?.group_id
+          ? items.filter(
+              (i) => !i.source_order || i.source_order === (orderNumber?.split(' / ')[0] || '')
+            )
+          : items;
         const allLocations: Location[] = inventoryData.map((i) => ({
           id: i.location_id || '',
           location: i.location || '',
@@ -288,12 +325,70 @@ export const PickingCartDrawer: React.FC = () => {
           length_ft: null,
           bike_line: null,
         }));
-        const optimizedPath = getOptimizedPickingPath(items, allLocations);
+        const optimizedPath = getOptimizedPickingPath(mainCartItems, allLocations);
         const calculatedPallets = calculatePallets(optimizedPath);
         pallets_qty = calculatedPallets.length;
       }
 
-      await processPickingList(activeListId!, pallets_qty, totalUnits);
+      // Complete main order with its own metrics
+      await processPickingList(activeListId!, pallets_qty, mainUnits);
+
+      // Batch completion: complete sibling orders in the same group
+      if (mainOrder?.group_id) {
+        try {
+          const COMPLETABLE_STATUSES = [
+            'ready_to_double_check',
+            'double_checking',
+            'needs_correction',
+          ];
+          const { data: siblings } = await supabase
+            .from('picking_lists')
+            .select('id, items, status')
+            .eq('group_id', mainOrder.group_id)
+            .neq('id', activeListId!)
+            .in('status', COMPLETABLE_STATUSES);
+
+          if (siblings && siblings.length > 0) {
+            for (const sibling of siblings) {
+              const siblingItems = Array.isArray(sibling.items)
+                ? (sibling.items as Array<{ pickingQty?: number }>)
+                : [];
+              const siblingUnits = siblingItems.reduce(
+                (acc, item) => acc + (Number(item.pickingQty) || 0),
+                0
+              );
+
+              // FedEx = 0 pallets, otherwise calculate per-order
+              let sibPalletsQty = 0;
+              if (!isFedexGroup) {
+                const siblingCartItems = siblingItems as unknown as PickingItem[];
+                const sibLocations: Location[] = inventoryData.map((i) => ({
+                  id: i.location_id || '',
+                  location: i.location || '',
+                  warehouse: i.warehouse as Location['warehouse'],
+                  zone: null,
+                  max_capacity: null,
+                  picking_order: null,
+                  is_active: true,
+                  created_at: '',
+                  length_ft: null,
+                  bike_line: null,
+                }));
+                const sibPath = getOptimizedPickingPath(siblingCartItems, sibLocations);
+                sibPalletsQty = calculatePallets(sibPath).length;
+              }
+
+              await processPickingList(sibling.id, sibPalletsQty, siblingUnits);
+            }
+            toast.success(`Group completed (${siblings.length + 1} orders)`, {
+              duration: 4000,
+            });
+          }
+        } catch (groupErr) {
+          console.error('Batch completion warning:', groupErr);
+          toast.error('Some orders in the group could not be completed');
+        }
+      }
 
       resetSession();
       setIsOpen(false);

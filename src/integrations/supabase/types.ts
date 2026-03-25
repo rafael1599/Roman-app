@@ -366,6 +366,24 @@ export type Database = {
         };
         Relationships: [];
       };
+      order_groups: {
+        Row: {
+          id: string;
+          group_type: string;
+          created_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          group_type?: string;
+          created_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          group_type?: string;
+          created_at?: string | null;
+        };
+        Relationships: [];
+      };
       optimization_reports: {
         Row: {
           applied_count: number | null;
@@ -501,6 +519,7 @@ export type Database = {
           total_weight_lbs: number | null;
           updated_at: string | null;
           user_id: string;
+          group_id: string | null;
         };
         Insert: {
           checked_by?: string | null;
@@ -523,6 +542,7 @@ export type Database = {
           total_weight_lbs?: number | null;
           updated_at?: string | null;
           user_id: string;
+          group_id?: string | null;
         };
         Update: {
           checked_by?: string | null;
@@ -545,6 +565,7 @@ export type Database = {
           total_weight_lbs?: number | null;
           updated_at?: string | null;
           user_id?: string;
+          group_id?: string | null;
         };
         Relationships: [
           {
@@ -573,6 +594,13 @@ export type Database = {
             columns: ['user_id'];
             isOneToOne: false;
             referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'picking_lists_group_id_fkey';
+            columns: ['group_id'];
+            isOneToOne: false;
+            referencedRelation: 'order_groups';
             referencedColumns: ['id'];
           },
         ];

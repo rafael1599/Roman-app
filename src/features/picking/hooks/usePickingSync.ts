@@ -455,9 +455,42 @@ export const usePickingSync = ({
           .single();
         if (error) throw error;
         if (data) {
-          setCartItems((data.items as unknown as CartItem[]) || []);
+          let allItems = (data.items as unknown as CartItem[]) || [];
+          let combinedOrderNumber = data.order_number || null;
+
+          // If order belongs to a group, merge items from all sibling orders
+          if (data.group_id) {
+            const { data: siblings } = await supabase
+              .from('picking_lists')
+              .select('items, order_number')
+              .eq('group_id', data.group_id)
+              .neq('id', listId)
+              .neq('status', 'completed')
+              .neq('status', 'cancelled');
+
+            if (siblings && siblings.length > 0) {
+              const orderNumbers = [data.order_number];
+              for (const sibling of siblings) {
+                const siblingItems = (sibling.items as unknown as CartItem[]) || [];
+                // Tag each item with source_order for traceability
+                const taggedItems = siblingItems.map((item) => ({
+                  ...item,
+                  source_order: sibling.order_number || 'unknown',
+                }));
+                allItems = [...allItems, ...taggedItems];
+                if (sibling.order_number) orderNumbers.push(sibling.order_number);
+              }
+              // Tag original order items too
+              allItems = allItems.map((item) =>
+                item.source_order ? item : { ...item, source_order: data.order_number || 'unknown' }
+              );
+              combinedOrderNumber = orderNumbers.filter(Boolean).join(' / ');
+            }
+          }
+
+          setCartItems(allItems);
           setActiveListId(data.id as string);
-          setOrderNumber(data.order_number || null);
+          setOrderNumber(combinedOrderNumber);
           setCustomer((data.customer as Customer) || null);
           setLoadNumber(data.load_number || null);
           setListStatus(data.status as string);
@@ -473,7 +506,6 @@ export const usePickingSync = ({
       } finally {
         setIsSaving(false);
       }
-       
     },
     [user, showError]
   );
