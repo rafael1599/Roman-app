@@ -847,11 +847,13 @@ export const usePickingActions = ({
       if (!user) return;
       setIsSaving(true);
       try {
+        const now = new Date().toISOString();
         const { error } = await supabase
           .from('picking_lists')
           .update({
             user_id: user.id,
-            last_activity_at: new Date().toISOString(),
+            last_activity_at: now,
+            updated_at: now,
           })
           .eq('id', listId);
 
