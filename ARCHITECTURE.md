@@ -1,6 +1,6 @@
 # Project Architecture
 
-> Last updated: 2026-03-20
+> Last updated: 2026-03-25
 
 ## Overview
 
@@ -44,6 +44,7 @@ Zod validation schemas. **Must match DB columns exactly.**
 ### `src/utils/`
 
 - `pickingLogic.ts` — Path optimization algorithm and palletization (max 13 items, footprint calculation)
+- `distributionCalculator.ts` — Smart bike SKU distribution (`isBikeSku()`, `calculateBikeDistribution()`): TOWER×30, LINE×5, LINE×remainder
 
 ### `supabase/`
 
@@ -119,3 +120,7 @@ Four RPCs referenced a renamed column. **Rule**: Before any column rename, audit
 ### Z-Index on Mobile
 
 Order dropdown hidden by `overflow-hidden` header. Fixed by removing overflow constraint and boosting z-index to 110.
+
+### Function Overload Ambiguity (2026-03-25)
+
+`CREATE OR REPLACE FUNCTION` with a new parameter creates a **second** function (overload) instead of replacing. **Rule**: Always `DROP FUNCTION IF EXISTS` with the old signature before `CREATE OR REPLACE` when adding/removing parameters to an RPC.

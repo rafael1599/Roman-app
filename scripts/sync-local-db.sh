@@ -3,13 +3,13 @@
 # Usage: bash scripts/sync-local-db.sh
 #
 # Prerequisites:
-#   - Docker running + `npx supabase start` (container: supabase_db_Roman-app)
+#   - Docker running + `npx supabase start` (container: supabase_db_pickd)
 #   - PROD_DB_URL in .env (production connection string)
 #   - Network access from Docker to production DB
 #   - Local schema must match prod (if not, run: npx supabase db pull && npx supabase db reset)
 set -euo pipefail
 
-CONTAINER="supabase_db_Roman-app"
+CONTAINER="supabase_db_pickd"
 SU="supabase_admin"
 DUMP_PUBLIC="/tmp/prod_public.sql"
 DUMP_AUTH="/tmp/prod_auth.sql"

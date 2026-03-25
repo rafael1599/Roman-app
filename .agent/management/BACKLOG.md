@@ -1,7 +1,7 @@
 # PickD — Backlog de Mejoras
 
 > Mejoras pendientes ordenadas por impacto en el usuario final.
-> Actualizado: 2026-03-24
+> Actualizado: 2026-03-25
 >
 > **Formato:** cada item incluye `[fecha hora]` de creación para trazabilidad y `<!-- id: xxx -->` para tracking.
 > **Single source of truth** — no editar BACKLOG.md en la raíz del proyecto (es un puntero a este archivo).
@@ -24,11 +24,13 @@
 - **Consideración clave:** integridad de datos para auditoría futura — cada item debe conservar trazabilidad a su orden original (`source_order`), y el merge debe ser reversible (split). Evaluar si reusar `combine_meta` o crear un campo separado para distinguir combines automáticos (mismo cliente) de merges manuales (FedEx).
 - **Archivos estimados:** `DoubleCheckView.tsx` (drag-and-drop), nuevo `MergeOrderModal.tsx`, `picking.schema.ts` (nuevo tipo), posible migración para `order_type` o similar.
 
-### 3. 📦 Distribución física inteligente <!-- id: idea-015 -->
+### ~~3. 📦 Distribución física inteligente~~ — COMPLETADO <!-- id: idea-015 -->
 
-- **Creado:** `[2026-03-18 17:00]`
-- **Estado:** Por hacer — pendiente análisis a fondo.
-- Hacer más inteligente la distribución de inventario entre locations (LINE, PALLET, ROW). Definir alcance y enfoque en una sesión futura.
+- **Creado:** `[2026-03-18 17:00]` · **Completado:** `[2026-03-25]`
+- **Estado:** Implementado — auto-distribución inteligente para SKUs de bicicleta.
+- SKUs de bicicleta (formato `NN-NNNNWW+`, ej: `03-4703GY`) se distribuyen automáticamente: TOWER×30, LINE×5, LINE×residuo. Non-bike SKUs mantienen el default anterior (1 TOWER×qty).
+- **Triggers:** INSERT (trigger DB), move sin merge (trigger DB), move con merge (recálculo en `move_inventory_stock`). Frontend auto-fill en InventoryModal (add mode) y preview en MovementModal.
+- **Archivos:** migración `20260325000002_smart_bike_distribution.sql`, `src/utils/distributionCalculator.ts`, `InventoryModal.tsx`, `MovementModal.tsx`
 
 ### 4. Vista de reporte diario por usuario de almacén <!-- id: idea-016 -->
 
@@ -46,15 +48,14 @@
 - **Estado:** Por hacer.
 - Address flashes in quantity updates.
 
-### 7. Preservar `internal_note` al mover item entre locations (Stock View) <!-- id: idea-017 -->
+### ~~7. Preservar `internal_note` al mover item entre locations (Stock View)~~ — COMPLETADO <!-- id: idea-017 -->
 
-- **Creado:** `[2026-03-24 10:00]`
-- **Estado:** Por hacer.
-- Al mover un item a una nueva location, el campo `internal_note` se guarda vacío en el destino, perdiendo la nota original. Si el usuario no la recuerda, se pierde para siempre.
-- **Comportamiento esperado:**
-  - **Move sin merge** (location destino no tiene el mismo SKU): la nueva location hereda `internal_note` automáticamente.
-  - **Move con merge** (location destino ya tiene el mismo SKU): mostrar un diálogo al usuario donde elija cuál nota conservar (la del origen, la del destino, o ambas).
-- **Archivos estimados:** RPC `move_inventory_stock`, componente de Stock View que maneja el move, nuevo diálogo de selección de nota para caso merge.
+- **Creado:** `[2026-03-24 10:00]` · **Completado:** `[2026-03-25]`
+- **Estado:** Implementado — nota interna se preserva en moves y se restaura en undo.
+- **Move sin merge:** destino hereda `internal_note` automáticamente vía `move_inventory_stock` (parámetro `p_internal_note`).
+- **Move con merge:** `NoteResolutionDialog` en MovementModal permite elegir nota origen, destino, o combinar ambas.
+- **Undo:** `undo_inventory_action` restaura `internal_note` desde `snapshot_before`.
+- **Archivos:** migración `20260325000001_preserve_internal_note_on_move.sql`, `MovementModal.tsx`, `InventoryScreen.tsx`, `useInventoryData.ts`, `useInventoryMutations.ts`, `inventory.service.ts`, `supabase/types.ts`
 
 ### ~~8. Override de cantidad de items por pallet (Double Check View)~~ — COMPLETADO <!-- id: idea-018 -->
 
@@ -140,6 +141,8 @@
 | Peso de pallets en peso total de label (idea-019)           | `[2026-03-24]` | `[2026-03-24]`       | Completado — +40 lbs por pallet al peso total                        |
 | Auto-parse de dirección US (idea-020)                       | `[2026-03-24]` | `[2026-03-24]`       | Completado — pegar dirección completa auto-llena city/state/zip      |
 | Override cantidad por pallet en double-check (idea-018)     | `[2026-03-24]` | `[2026-03-24]`       | Completado — override manual + redistribución automática             |
+| Preservar internal_note en moves (idea-017)                 | `[2026-03-24]` | `[2026-03-25]`       | Completado — herencia auto, diálogo merge, undo restore              |
+| Distribución física inteligente para bikes (idea-015)       | `[2026-03-18]` | `[2026-03-25]`       | Completado — TOWER×30, LINE×5, LINE×residuo; trigger + frontend      |
 | Order number en label de pallets                            | `[2026-03-11]` | `[2026-03-11 14:28]` | Completado                                                           |
 | Barra de capacidad de locations                             | `[2026-03-11]` | `[2026-03-18 10:00]` | Resuelto (fix de performance)                                        |
 | Takeover muestra picker real                                | `[2026-03-11]` | `[2026-03-13 13:12]` | Completado                                                           |
