@@ -5,6 +5,7 @@ import HandMetal from 'lucide-react/dist/esm/icons/hand-metal';
 import ChevronLeft from 'lucide-react/dist/esm/icons/chevron-left';
 import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
 import Scissors from 'lucide-react/dist/esm/icons/scissors';
+import Wand2 from 'lucide-react/dist/esm/icons/wand-2';
 import { CustomerAutocomplete } from '../../features/picking/components/CustomerAutocomplete';
 import { usePickingSession } from '../../context/PickingContext';
 import { useConfirmation } from '../../context/ConfirmationContext';
@@ -151,13 +152,23 @@ export const OrderSidebar: React.FC<OrderSidebarProps> = ({
           <label className="text-xs uppercase text-text-muted font-black tracking-[0.2em] flex items-center gap-1 group-focus-within:text-accent">
             <MapPin size={10} /> Shipping Address
           </label>
-          <input
-            type="text"
-            value={formData.street}
-            onChange={(e) => handleStreetChange(e.target.value)}
-            placeholder="Street address..."
-            className="w-full bg-main border border-subtle rounded-3xl px-5 py-3.5 text-lg text-content ios-transition font-medium focus:border-accent focus:bg-surface shadow-sm"
-          />
+          <div className="relative flex items-center">
+            <input
+              type="text"
+              value={formData.street}
+              onChange={(e) => handleStreetChange(e.target.value)}
+              placeholder="Paste full address to auto-fill..."
+              className="w-full bg-main border border-subtle rounded-3xl px-5 py-3.5 pr-12 text-lg text-content ios-transition font-medium focus:border-accent focus:bg-surface shadow-sm"
+            />
+            <button
+              type="button"
+              onClick={() => handleStreetChange(formData.street)}
+              title="Parse address"
+              className="absolute right-2 w-8 h-8 flex items-center justify-center rounded-full text-muted hover:text-accent hover:bg-accent/10 transition-all active:scale-90"
+            >
+              <Wand2 size={16} />
+            </button>
+          </div>
         </div>
 
         <div className="space-y-2 group">
