@@ -5,6 +5,7 @@ import { SearchInput } from '../../components/ui/SearchInput.tsx';
 import { useDebounce } from '../../hooks/useDebounce.ts';
 import { InventoryCard } from './components/InventoryCard.tsx';
 import { InventoryModal } from './components/InventoryModal.tsx';
+import { ItemDetailView } from './components/ItemDetailView';
 import { naturalSort } from '../../utils/sortUtils.ts';
 import Plus from 'lucide-react/dist/esm/icons/plus';
 import Warehouse from 'lucide-react/dist/esm/icons/warehouse';
@@ -817,7 +818,7 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
         </div>
       ) : null}
 
-      <InventoryModal
+      <ItemDetailView
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSave={saveItem}
