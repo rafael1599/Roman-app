@@ -359,7 +359,6 @@ export const PickingSessionView: React.FC<PickingSessionViewProps> = ({
                     if (onDelete) {
                       await onDelete(activeListId ?? null);
                     }
-                    onClose();
                   },
                   undefined,
                   'Delete Draft',
@@ -469,7 +468,6 @@ export const PickingSessionView: React.FC<PickingSessionViewProps> = ({
                 if (onDelete) {
                   await onDelete(activeListId ?? null);
                 }
-                onClose();
               },
               undefined,
               'Yes, Cancel',

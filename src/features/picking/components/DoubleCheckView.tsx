@@ -614,13 +614,24 @@ export const DoubleCheckView: React.FC<DoubleCheckViewProps> = ({
 
                         {item.sku_metadata?.image_url && (
                           <img
-                            src={item.sku_metadata.image_url}
+                            src={
+                              item.sku_metadata.image_url.includes('/catalog/')
+                                ? item.sku_metadata.image_url
+                                    .replace('/catalog/', '/catalog/thumbs/')
+                                    .replace('.png', '.webp')
+                                : item.sku_metadata.image_url.includes('/photos/')
+                                  ? item.sku_metadata.image_url.replace(
+                                      '/photos/',
+                                      '/photos/thumbs/'
+                                    )
+                                  : item.sku_metadata.image_url
+                            }
                             alt={item.sku}
                             loading="lazy"
                             onError={(e) => {
                               (e.target as HTMLImageElement).style.display = 'none';
                             }}
-                            className="w-9 h-9 object-cover rounded flex-shrink-0 border border-white/20"
+                            className="w-9 h-9 object-contain rounded flex-shrink-0 border border-white/20"
                           />
                         )}
                         <div className="flex flex-col gap-1 min-w-0">

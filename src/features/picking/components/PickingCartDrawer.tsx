@@ -81,13 +81,20 @@ export const PickingCartDrawer: React.FC = () => {
     }
   }, [sessionMode, activeListId]);
 
-  // 1. Auto-close if completed from elsewhere
+  // 1. Auto-close if completed or session reset (idle with no items)
   useEffect(() => {
     if (listStatus === 'completed' && isOpen) {
       setIsOpen(false);
       resetSession();
     }
   }, [listStatus, isOpen, resetSession]);
+
+  // Auto-close drawer when session is reset (e.g. after delete/cancel)
+  useEffect(() => {
+    if (sessionMode === 'idle' && totalItems === 0 && isOpen) {
+      setIsOpen(false);
+    }
+  }, [sessionMode, totalItems, isOpen]);
 
   // 1. Handle External Trigger (from Header)
   useEffect(() => {

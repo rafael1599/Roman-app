@@ -1,4 +1,4 @@
-Progress Update — March 26, 2026 at 8:30 PM
+Progress Update — March 26, 2026 at 11:00 PM
 
 WIN OF THE DAY:
 New mobile-first Item Detail View replaces the old modal — tapping any item now opens a full-screen view with photo, distribution, and edit controls designed for warehouse use on phones and tablets.
@@ -16,6 +16,10 @@ WHAT'S BETTER NOW:
 - All modals now close with the phone's back button or swipe-back gesture — no more getting stuck
 - Undo protection: the system now enforces LIFO order — you must undo the most recent action first, preventing out-of-order reversals that could corrupt inventory
 - E2E test infrastructure: test users and local dev scripts consolidated so any developer can clone the repo and run tests immediately
+- Inventory cards now show item thumbnails at 25% width, image scales to fit without cropping
+- Verification screen (double check) now uses optimized thumbnails instead of full-size images
+- Fixed: deleting an order from Build Your Order now properly clears the screen — no more ghost sessions
+- Fixed: nested modals (like delete confirmation inside the order drawer) no longer close the parent behind them — each modal tracks its own browser history entry
 
 PLANNED AND DESIGNED:
 - Sub-locations: each shelf row gets letter subdivisions (A, B, C…) so pickers know exactly where to look — no code changes needed to existing features
@@ -25,4 +29,4 @@ COMING UP NEXT:
 - Sub-locations implementation (new column on inventory table + UI updates)
 - Multi-address customer support
 
-9 done today / 8 in the queue
+13 done today / 8 in the queue

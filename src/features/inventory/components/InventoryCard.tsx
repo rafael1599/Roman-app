@@ -34,6 +34,8 @@ export const InventoryCard = memo(
     onMove,
     detail,
     onClick,
+    /* warehouse is received but unused (needed for prop-spreading from parent) */
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     warehouse,
     mode = 'stock',
     reservedByOthers = 0,
@@ -64,17 +66,6 @@ export const InventoryCard = memo(
       }
     }, [quantity, lastUpdateSource]);
 
-    const getWarehouseColor = (wh: string | null | undefined) => {
-      switch (wh?.toUpperCase()) {
-        case 'LUDLOW':
-          return 'bg-green-500/10 text-green-500 border-green-500/30';
-        case 'ATS':
-          return 'bg-blue-500/10 text-blue-500 border-blue-500/30';
-        default:
-          return 'bg-surface text-muted border-subtle';
-      }
-    };
-
     const isPicking = mode === 'picking';
     const isBuilding = mode === 'building';
 
@@ -94,94 +85,108 @@ export const InventoryCard = memo(
     return (
       <div
         onClick={isDisabled ? undefined : onClick}
-        className={`bg-card border rounded-xl p-3 mb-2 flex flex-col shadow-sm transition-premium origin-center ${
+        className={`bg-card border rounded-xl p-1.5 mb-2 flex flex-col shadow-sm transition-premium origin-center ${
           isDisabled
             ? 'opacity-50 cursor-not-allowed border-red-500/30'
             : `border-subtle active:scale-[0.98] active:bg-main/50 cursor-pointer ${isZeroStock ? 'opacity-70 border-dashed bg-main/20' : ''} ${flash ? 'animate-flash-update scale-[1.02] border-accent/50 z-10' : ''}`
         }`}
       >
-        <div className="flex justify-between items-center mb-1">
-          <div className="flex items-center gap-3">
-            <div className="flex flex-col">
-              {location && (
-                <div className="flex items-center gap-1.5">
+        <div className={`flex gap-3 ${sku_metadata?.image_url ? 'h-[120px]' : ''} overflow-hidden`}>
+          {sku_metadata?.image_url && (
+            <img
+              src={
+                sku_metadata.image_url.includes('/catalog/')
+                  ? sku_metadata.image_url
+                      .replace('/catalog/', '/catalog/thumbs/')
+                      .replace('.png', '.webp')
+                  : sku_metadata.image_url.includes('/photos/')
+                    ? sku_metadata.image_url.replace('/photos/', '/photos/thumbs/')
+                    : sku_metadata.image_url
+              }
+              alt={sku}
+              loading="lazy"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+              className="w-1/4 object-contain rounded flex-shrink-0 bg-white/10 dark:bg-white/5 p-1"
+            />
+          )}
+
+          <div className="flex-1 min-w-0 flex flex-col">
+            <div className="flex justify-between items-center">
+              <div className="flex flex-col">
+                {location && (
+                  <div className="flex items-center gap-1.5">
+                    <div
+                      className="text-[10px] text-accent font-extrabold uppercase tracking-tighter"
+                      style={{ fontFamily: 'var(--font-heading)' }}
+                    >
+                      {location}
+                    </div>
+                    {internal_note && (
+                      <span
+                        className="text-[8px] text-muted font-bold uppercase tracking-tight bg-white/5 px-1 py-0.5 rounded border border-white/5 max-w-[120px] truncate"
+                        title={internal_note}
+                      >
+                        📍 {internal_note}
+                      </span>
+                    )}
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
                   <div
-                    className="text-[10px] text-accent font-extrabold uppercase tracking-tighter"
+                    className={`text-xl font-extrabold text-content tracking-tighter leading-tight ${!is_active ? 'line-through opacity-60' : ''}`}
                     style={{ fontFamily: 'var(--font-heading)' }}
                   >
-                    {location}
+                    {sku}
                   </div>
-                  {internal_note && (
-                    <span
-                      className="text-[8px] text-muted font-bold uppercase tracking-tight bg-white/5 px-1 py-0.5 rounded border border-white/5 max-w-[120px] truncate"
-                      title={internal_note}
-                    >
-                      📍 {internal_note}
+                  {!is_active && (
+                    <span className="text-[8px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-red-500/10 text-red-500 border border-red-500/20">
+                      Del
                     </span>
                   )}
                 </div>
-              )}
-              <div className="flex items-center gap-2">
-                {sku_metadata?.image_url && (
-                  <img
-                    src={sku_metadata.image_url}
-                    alt={sku}
-                    loading="lazy"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = 'none';
-                    }}
-                    className="w-8 h-8 object-cover rounded flex-shrink-0"
-                  />
-                )}
-                <div
-                  className={`text-xl font-extrabold text-content tracking-tighter leading-tight ${!is_active ? 'line-through opacity-60' : ''}`}
-                  style={{ fontFamily: 'var(--font-heading)' }}
-                >
-                  {sku}
+              </div>
+
+              <div className="flex flex-col items-end gap-0.5">
+                <span className="text-[9px] text-muted uppercase font-bold tracking-widest leading-none">
+                  Stock
+                </span>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-2xl font-black text-accent tabular-nums tracking-tighter leading-none">
+                    {quantity}
+                  </span>
                 </div>
-                {!is_active && (
-                  <span className="text-[8px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-red-500/10 text-red-500 border border-red-500/20">
-                    Del
+                {distribution && distribution.length > 0 && (
+                  <span className="hidden md:inline-flex text-[8px] font-black text-white/40 uppercase tracking-widest leading-none">
+                    {distribution
+                      .map((d) => `${d.count}${STORAGE_TYPE_LABELS[d.type]?.short || '?'}`)
+                      .join(' | ')}
                   </span>
                 )}
               </div>
             </div>
-          </div>
 
-          <div className="flex flex-col items-end gap-0.5">
-            <span className="text-[9px] text-muted uppercase font-bold tracking-widest leading-none">
-              Stock
-            </span>
-            <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-black text-accent tabular-nums tracking-tighter leading-none">
-                {quantity}
-              </span>
-            </div>
-            {distribution && distribution.length > 0 && (
-              <span className="hidden md:inline-flex text-[8px] font-black text-white/40 uppercase tracking-widest leading-none">
-                {distribution
-                  .map((d) => `${d.count}${STORAGE_TYPE_LABELS[d.type]?.short || '?'}`)
-                  .join(' | ')}
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div className="flex justify-between items-center mt-1">
-          <div className="flex items-center gap-2">
-            {warehouse && (
-              <span
-                className={`px-1.5 py-0.5 rounded-[4px] text-[9px] font-extrabold uppercase tracking-tighter border ${getWarehouseColor(warehouse)}`}
-              >
-                {warehouse}
-              </span>
-            )}
-            {detail && (
+            <div className="flex justify-between items-center">
               <div className="flex items-center gap-2">
-                <div className="px-1.5 py-0.5 rounded-[4px] bg-main text-muted text-[9px] font-bold uppercase tracking-tight inline-flex items-center border border-subtle">
-                  {detail}
-                </div>
-                {sku_metadata &&
+                {detail && (
+                  <div className="flex items-center gap-2">
+                    <div className="px-1.5 py-0.5 rounded-[4px] bg-main text-muted text-[9px] font-bold uppercase tracking-tight inline-flex items-center border border-subtle">
+                      {detail}
+                    </div>
+                    {sku_metadata &&
+                      (sku_metadata.length_in ||
+                        sku_metadata.width_in ||
+                        sku_metadata.height_in) && (
+                        <div className="hidden md:inline-flex px-1.5 py-0.5 rounded-[4px] bg-accent/5 text-accent/70 text-[9px] font-black uppercase tracking-widest border border-accent/10 whitespace-nowrap">
+                          {sku_metadata.length_in || 0} x {sku_metadata.width_in || 0} x{' '}
+                          {sku_metadata.height_in || 0} in
+                        </div>
+                      )}
+                  </div>
+                )}
+                {!detail &&
+                  sku_metadata &&
                   (sku_metadata.length_in || sku_metadata.width_in || sku_metadata.height_in) && (
                     <div className="hidden md:inline-flex px-1.5 py-0.5 rounded-[4px] bg-accent/5 text-accent/70 text-[9px] font-black uppercase tracking-widest border border-accent/10 whitespace-nowrap">
                       {sku_metadata.length_in || 0} x {sku_metadata.width_in || 0} x{' '}
@@ -189,81 +194,71 @@ export const InventoryCard = memo(
                     </div>
                   )}
               </div>
-            )}
-            {!detail &&
-              sku_metadata &&
-              (sku_metadata.length_in || sku_metadata.width_in || sku_metadata.height_in) && (
-                <div className="hidden md:inline-flex px-1.5 py-0.5 rounded-[4px] bg-accent/5 text-accent/70 text-[9px] font-black uppercase tracking-widest border border-accent/10 whitespace-nowrap">
-                  {sku_metadata.length_in || 0} x {sku_metadata.width_in || 0} x{' '}
-                  {sku_metadata.height_in || 0} in
+
+              {isPicking && available !== null && (
+                <div className="flex items-center gap-2">
+                  {available <= 0 ? (
+                    <span className="text-[9px] font-black uppercase tracking-widest text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded border border-red-500/20">
+                      🚫 Fully Reserved
+                    </span>
+                  ) : (
+                    <>
+                      {hasReservations && (
+                        <span className="text-[9px] font-black uppercase tracking-widest text-orange-500 bg-orange-500/10 px-1.5 py-0.5 rounded border border-orange-500/20">
+                          {reservedByOthers} Res
+                        </span>
+                      )}
+                      <span className="text-[9px] font-black uppercase tracking-widest text-green-600 bg-green-500/10 px-1.5 py-0.5 rounded border border-green-500/20">
+                        {available} Avail
+                      </span>
+                    </>
+                  )}
                 </div>
               )}
-          </div>
 
-          {/* Picking Mode: Show Available vs Reserved */}
-          {isPicking && available !== null && (
-            <div className="flex items-center gap-2">
-              {available <= 0 ? (
-                <span className="text-[9px] font-black uppercase tracking-widest text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded border border-red-500/20">
-                  🚫 Fully Reserved
+              {isBuilding && quantity <= 0 && (
+                <span className="text-[9px] font-black uppercase tracking-widest text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded border border-red-500/20 mt-1">
+                  Out of Stock
                 </span>
-              ) : (
-                <>
-                  {hasReservations && (
-                    <span className="text-[9px] font-black uppercase tracking-widest text-orange-500 bg-orange-500/10 px-1.5 py-0.5 rounded border border-orange-500/20">
-                      {reservedByOthers} Res
-                    </span>
-                  )}
-                  <span className="text-[9px] font-black uppercase tracking-widest text-green-600 bg-green-500/10 px-1.5 py-0.5 rounded border border-green-500/20">
-                    {available} Avail
-                  </span>
-                </>
               )}
             </div>
-          )}
 
-          {/* Building Mode: Simple Out of Stock Indicator */}
-          {isBuilding && quantity <= 0 && (
-            <span className="text-[9px] font-black uppercase tracking-widest text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded border border-red-500/20 mt-1">
-              Out of Stock
-            </span>
-          )}
-        </div>
-
-        {mode === 'stock' && (
-          <div className="flex gap-3 mt-auto">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onDecrement();
-              }}
-              className="bg-main text-accent-red flex-1 h-12 rounded-lg flex items-center justify-center active:scale-90 transition-transform"
-              aria-label="Decrease quantity"
-            >
-              <Minus size={18} strokeWidth={3} />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onMove();
-              }}
-              className="bg-main text-accent-blue flex-1 h-12 rounded-lg flex items-center justify-center active:scale-90 transition-transform"
-              aria-label="Move item"
-            >
-              <ArrowRightLeft size={18} strokeWidth={3} />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onIncrement();
-              }}
-              className="bg-accent text-white flex-1 h-12 rounded-lg flex items-center justify-center active:scale-90 transition-transform shadow-lg shadow-accent/20"
-              aria-label="Increase quantity"
-            >
-              <Plus size={18} strokeWidth={3} />
-            </button>
+            {mode === 'stock' && (
+              <div className="flex gap-3 mt-1">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDecrement();
+                  }}
+                  className="bg-main text-accent-red flex-1 h-12 rounded-lg flex items-center justify-center active:scale-90 transition-transform"
+                  aria-label="Decrease quantity"
+                >
+                  <Minus size={18} strokeWidth={3} />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onMove();
+                  }}
+                  className="bg-main text-accent-blue flex-1 h-12 rounded-lg flex items-center justify-center active:scale-90 transition-transform"
+                  aria-label="Move item"
+                >
+                  <ArrowRightLeft size={18} strokeWidth={3} />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onIncrement();
+                  }}
+                  className="bg-accent text-white flex-1 h-12 rounded-lg flex items-center justify-center active:scale-90 transition-transform shadow-lg shadow-accent/20"
+                  aria-label="Increase quantity"
+                >
+                  <Plus size={18} strokeWidth={3} />
+                </button>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
     );
   }

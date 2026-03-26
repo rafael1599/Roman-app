@@ -30,18 +30,27 @@ export const useScrollLock = (isLocked: boolean, onBack?: () => void) => {
   }, [isLocked]);
 
   // Back button / swipe-back closes the modal
+  const tagRef = useRef('');
+
   useEffect(() => {
     if (!isLocked || !onBack) return;
 
-    const tag = `modal-${lockCount}`;
+    const tag = `modal-${Date.now()}-${Math.random()}`;
+    tagRef.current = tag;
     history.pushState({ modal: tag }, '');
     pushedRef.current = true;
 
-    const handlePopState = () => {
-      if (pushedRef.current) {
-        pushedRef.current = false;
-        onBackRef.current?.();
-      }
+    const handlePopState = (e: PopStateEvent) => {
+      // Only respond if we're the topmost modal (our entry was just popped)
+      // or if the state no longer contains our tag (meaning we were popped)
+      if (!pushedRef.current) return;
+
+      // Check if current state still has a modal tag that's newer than ours
+      const currentState = e.state as { modal?: string } | null;
+      if (currentState?.modal && currentState.modal !== tag) return;
+
+      pushedRef.current = false;
+      onBackRef.current?.();
     };
 
     window.addEventListener('popstate', handlePopState);
