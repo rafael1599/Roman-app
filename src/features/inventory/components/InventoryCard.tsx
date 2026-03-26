@@ -52,6 +52,7 @@ export const InventoryCard = memo(
         // Only flash if the update came from a remote source
         // Local updates (done by the user themselves) should be silent/smooth
         if (lastUpdateSource === 'remote') {
+          // eslint-disable-next-line react-hooks/set-state-in-effect -- flash animation requires synchronous setState
           setFlash(true);
           const timer = setTimeout(() => setFlash(false), 800);
           prevQuantityRef.current = quantity;

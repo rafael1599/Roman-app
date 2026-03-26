@@ -18,6 +18,7 @@ export const useMovementForm = (initialSourceItem: InventoryItem | null | undefi
 
   useEffect(() => {
     if (initialSourceItem) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing form from prop
       setFormData((prev) => ({
         ...prev,
         quantity: Number(initialSourceItem.quantity) || 0,

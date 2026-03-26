@@ -81,7 +81,10 @@ export const getWarehouseButtonStyle = (warehouse: string | null, isActive: bool
 /**
  * Sort locations by zone order, then alphabetically
  */
-export const sortByZoneThenAlpha = (locations: string[], getZone: (wh: string, loc: string) => string) => {
+export const sortByZoneThenAlpha = (
+  locations: string[],
+  getZone: (wh: string, loc: string) => string
+) => {
   return [...locations].sort((a, b) => {
     const parsedA = parseLocationKey(a);
     const parsedB = parseLocationKey(b);
@@ -98,7 +101,8 @@ export const sortByZoneThenAlpha = (locations: string[], getZone: (wh: string, l
 /**
  * Calculate the zone based on index and total count (1/3 division)
  */
-export const calculateZoneFromIndex = (_index?: number, _total?: number): Zone => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export const calculateZoneFromIndex = (index?: number, total?: number): Zone => {
   // Temporarily disabled: Route all to UNASSIGNED until full logic is complete
   return 'UNASSIGNED';
 };
@@ -135,7 +139,17 @@ export const extractWarehouses = (locations: string[]) => {
  */
 export const filterLocations = (
   locations: string[],
-  { warehouse, searchTerm, zone, getZone }: { warehouse?: string, searchTerm?: string, zone?: string, getZone: (wh: string, loc: string) => string }
+  {
+    warehouse,
+    searchTerm,
+    zone,
+    getZone,
+  }: {
+    warehouse?: string;
+    searchTerm?: string;
+    zone?: string;
+    getZone: (wh: string, loc: string) => string;
+  }
 ) => {
   let result = locations;
 

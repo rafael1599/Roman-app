@@ -13,10 +13,11 @@ import { SearchInput } from '../../../components/ui/SearchInput';
  * Displays all locations from the new locations table
  */
 export const LocationList = () => {
-  const { locations, loading, updateLocation, refresh, deactivateLocation } = useLocationManagement();
+  const { locations, loading, updateLocation, refresh, deactivateLocation } =
+    useLocationManagement();
   const { ludlowData, atsData } = useInventory();
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedWarehouse, setSelectedWarehouse] = useState<"LUDLOW" | "ATS">('LUDLOW');
+  const [selectedWarehouse, setSelectedWarehouse] = useState<'LUDLOW' | 'ATS'>('LUDLOW');
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
 
@@ -26,15 +27,21 @@ export const LocationList = () => {
   // Get unique warehouses from locations (only shows warehouses that have locations)
   const warehouses = useMemo(() => {
     const unique = new Set(locations.map((l) => l.warehouse));
-    return Array.from(unique).filter(wh => wh !== 'ATS').sort();
+    return Array.from(unique)
+      .filter((wh) => wh !== 'ATS')
+      .sort();
   }, [locations]);
 
   // Update selected warehouse if it no longer exists in the list or on initial load
   useEffect(() => {
     if (warehouses.length > 0) {
       if (!(warehouses as string[]).includes(selectedWarehouse)) {
-        // If current selection doesn't exist, default to LUDLOW or first available
-        setSelectedWarehouse((warehouses as string[]).includes('LUDLOW') ? 'LUDLOW' : warehouses[0] as "LUDLOW" | "ATS");
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing derived state from prop
+        setSelectedWarehouse(
+          (warehouses as string[]).includes('LUDLOW')
+            ? 'LUDLOW'
+            : (warehouses[0] as 'LUDLOW' | 'ATS')
+        );
       }
     }
   }, [warehouses, selectedWarehouse]);
@@ -50,8 +57,10 @@ export const LocationList = () => {
       })
       .sort((a, b) => {
         // Treat null or 999 as "no order" — push to the end
-        const aOrder = (a.picking_order === null || a.picking_order === 999) ? -Infinity : a.picking_order;
-        const bOrder = (b.picking_order === null || b.picking_order === 999) ? -Infinity : b.picking_order;
+        const aOrder =
+          a.picking_order === null || a.picking_order === 999 ? -Infinity : a.picking_order;
+        const bOrder =
+          b.picking_order === null || b.picking_order === 999 ? -Infinity : b.picking_order;
         return bOrder - aOrder; // Descending: highest row number first
       });
   }, [locations, searchTerm, selectedWarehouse]);
@@ -68,7 +77,7 @@ export const LocationList = () => {
     return { skuCount: items.length, totalQty };
   };
 
-  const handleSaveLocation = async (formData: any) => {
+  const handleSaveLocation = async (formData: Record<string, unknown>) => {
     if (!selectedLocation) return;
     const result = await updateLocation(selectedLocation.id, formData);
     if (result.success) {
@@ -86,8 +95,6 @@ export const LocationList = () => {
       refresh();
     }
   };
-
-
 
   if (loading) {
     return <div className="p-12 text-center text-muted animate-pulse">Loading Locations...</div>;
@@ -117,10 +124,11 @@ export const LocationList = () => {
                 <button
                   key={wh}
                   onClick={() => setSelectedWarehouse(wh)}
-                  className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${selectedWarehouse === wh
-                    ? 'bg-accent text-main shadow-lg shadow-accent/20'
-                    : 'bg-surface text-muted border border-subtle hover:bg-main'
-                    }`}
+                  className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                    selectedWarehouse === wh
+                      ? 'bg-accent text-main shadow-lg shadow-accent/20'
+                      : 'bg-surface text-muted border border-subtle hover:bg-main'
+                  }`}
                 >
                   {wh}
                 </button>
@@ -181,8 +189,6 @@ export const LocationList = () => {
                 </div>
                 <span className="text-muted">{invInfo.totalQty} units</span>
               </div>
-
-
             </button>
           );
         })}
@@ -190,9 +196,7 @@ export const LocationList = () => {
 
       {/* Empty State */}
       {filteredLocations.length === 0 && (
-        <div className="text-center py-12 text-muted">
-          No locations found with current filters.
-        </div>
+        <div className="text-center py-12 text-muted">No locations found with current filters.</div>
       )}
 
       {/* Edit Modal */}

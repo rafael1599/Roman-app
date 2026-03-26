@@ -85,10 +85,8 @@ export const SLOTTING_CONFIG: SlottingConfig = {
 /**
  * Fallback: Infer zone by location name/order when not explicitly set
  */
-export const inferZoneByAlphabetical = (
-  _allLocations: string[],
-  _targetLocation: string
-): string => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export const inferZoneByAlphabetical = (allLocations: string[], targetLocation: string): string => {
   // Temporarily disabled: Route all to UNASSIGNED until full logic is complete
   return 'UNASSIGNED';
 };

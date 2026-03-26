@@ -32,15 +32,23 @@ export const ConfirmationProvider = ({ children }: { children: ReactNode }) => {
     isOpen: false,
     title: '',
     message: '',
-    onConfirm: () => { },
-    onClose: () => { },
+    onConfirm: () => {},
+    onClose: () => {},
     confirmText: 'Confirm',
     cancelText: 'Cancel',
     variant: 'danger',
   });
 
   const showConfirmation = useCallback(
-    (title: string, message: string, onConfirm: () => void, onClose?: () => void, confirmText?: string, cancelText?: string, variant?: 'danger' | 'warning' | 'info') => {
+    (
+      title: string,
+      message: string,
+      onConfirm: () => void,
+      onClose?: () => void,
+      confirmText?: string,
+      cancelText?: string,
+      variant?: 'danger' | 'warning' | 'info'
+    ) => {
       setConfirmationState({
         isOpen: true,
         title,
@@ -50,7 +58,7 @@ export const ConfirmationProvider = ({ children }: { children: ReactNode }) => {
           setConfirmationState((prev) => ({ ...prev, isOpen: false }));
         },
         onClose: () => {
-          onClose && onClose();
+          onClose?.();
           setConfirmationState((prev) => ({ ...prev, isOpen: false }));
         },
         confirmText,
