@@ -1,7 +1,7 @@
-Progress Update — March 26, 2026 at 3:45 PM
+Progress Update — March 26, 2026 at 8:30 PM
 
 WIN OF THE DAY:
-Full system hardening — fixed a race condition that could send two pickers to the same spot, plus a deep backlog cleanup that cut 7 stale items and defined the next two big features.
+New mobile-first Item Detail View replaces the old modal — tapping any item now opens a full-screen view with photo, distribution, and edit controls designed for warehouse use on phones and tablets.
 
 WHAT'S BETTER NOW:
 - Snap a photo of any item and it shows up everywhere: Stock View, picking screen, and verification screen
@@ -12,6 +12,10 @@ WHAT'S BETTER NOW:
 - Behind the scenes: 39 code quality fixes to prevent future issues
 - The watcher now checks what's already reserved before assigning stock — no more double-assignments when two orders hit at the same time
 - Full backlog audit: 7 items discarded (already done or no longer relevant), 2 new features defined
+- New ItemDetailView: full-screen mobile-first view for inventory items, replacing the old popup modal
+- All modals now close with the phone's back button or swipe-back gesture — no more getting stuck
+- Undo protection: the system now enforces LIFO order — you must undo the most recent action first, preventing out-of-order reversals that could corrupt inventory
+- E2E test infrastructure: test users and local dev scripts consolidated so any developer can clone the repo and run tests immediately
 
 PLANNED AND DESIGNED:
 - Sub-locations: each shelf row gets letter subdivisions (A, B, C…) so pickers know exactly where to look — no code changes needed to existing features
@@ -21,4 +25,4 @@ COMING UP NEXT:
 - Sub-locations implementation (new column on inventory table + UI updates)
 - Multi-address customer support
 
-5 done today / 8 in the queue
+9 done today / 8 in the queue
