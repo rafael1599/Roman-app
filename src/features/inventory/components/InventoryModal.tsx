@@ -32,6 +32,7 @@ import { predictLocation } from '../../../utils/locationPredictor.ts';
 import { isBikeSku, calculateBikeDistribution } from '../../../utils/distributionCalculator.ts';
 import { inventoryService } from '../api/inventory.service.ts';
 import { uploadPhoto, deletePhoto } from '../../../services/photoUpload.service';
+import { useScrollLock } from '../../../hooks/useScrollLock';
 
 interface InventoryModalProps {
   isOpen: boolean;
@@ -56,6 +57,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
   mode = 'add',
   screenType,
 }) => {
+  useScrollLock(isOpen);
   const { ludlowData, atsData, isAdmin, updateSKUMetadata } = useInventory();
   const { locations } = useLocationManagement();
   const { setIsNavHidden } = useViewMode();

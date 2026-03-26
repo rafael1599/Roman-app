@@ -23,6 +23,7 @@ import { useAutoSelect } from '../../../hooks/useAutoSelect.ts';
 import toast from 'react-hot-toast';
 import { InventoryItem, STORAGE_TYPE_LABELS } from '../../../schemas/inventory.schema.ts';
 import { isBikeSku, calculateBikeDistribution } from '../../../utils/distributionCalculator.ts';
+import { useScrollLock } from '../../../hooks/useScrollLock';
 
 interface MovementModalProps {
   isOpen: boolean;
@@ -45,6 +46,7 @@ export const MovementModal: React.FC<MovementModalProps> = ({
   onMove,
   initialSourceItem,
 }) => {
+  useScrollLock(isOpen);
   const { formData, setField, validate } = useMovementForm(initialSourceItem);
   const { locations } = useLocationManagement();
   const { locationCapacities, inventoryData } = useInventory();

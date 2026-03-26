@@ -7,6 +7,7 @@ import type { Customer } from '../../../types/schema';
 import { useAuth } from '../../../context/AuthContext';
 import { supabase } from '../../../lib/supabase';
 import toast from 'react-hot-toast';
+import { useScrollLock } from '../../../hooks/useScrollLock';
 
 // SessionInitializationModal - handles manual session start
 export const SessionInitializationModal = () => {
@@ -17,6 +18,8 @@ export const SessionInitializationModal = () => {
   const [manualOrder, setManualOrder] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [isChecking, setIsChecking] = useState(false);
+
+  useScrollLock(isInitializing);
 
   // Reset state when modal opens
   useEffect(() => {

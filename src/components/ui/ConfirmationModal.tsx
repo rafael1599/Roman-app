@@ -1,5 +1,6 @@
 import { createPortal } from 'react-dom';
 import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle';
+import { useScrollLock } from '../../hooks/useScrollLock';
 
 interface ConfirmationModalProps {
   isOpen: boolean;
@@ -22,6 +23,7 @@ export function ConfirmationModal({
   cancelText = 'Cancel',
   variant = 'danger',
 }: ConfirmationModalProps) {
+  useScrollLock(isOpen);
   if (!isOpen) return null;
 
   return createPortal(
@@ -29,14 +31,24 @@ export function ConfirmationModal({
       <div className="bg-card border border-subtle rounded-xl max-w-sm w-full p-6 shadow-2xl animate-in zoom-in-95 duration-200">
         <div className="flex items-start gap-4">
           <div className="flex-shrink-0">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${variant === 'danger' ? 'bg-red-500/20' :
-                variant === 'warning' ? 'bg-amber-500/20' :
-                  'bg-blue-500/20'
-              }`}>
-              <AlertTriangle className={`w-5 h-5 ${variant === 'danger' ? 'text-red-500' :
-                  variant === 'warning' ? 'text-amber-500' :
-                    'text-blue-500'
-                }`} />
+            <div
+              className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                variant === 'danger'
+                  ? 'bg-red-500/20'
+                  : variant === 'warning'
+                    ? 'bg-amber-500/20'
+                    : 'bg-blue-500/20'
+              }`}
+            >
+              <AlertTriangle
+                className={`w-5 h-5 ${
+                  variant === 'danger'
+                    ? 'text-red-500'
+                    : variant === 'warning'
+                      ? 'text-amber-500'
+                      : 'text-blue-500'
+                }`}
+              />
             </div>
           </div>
           <div className="flex-1">
@@ -53,10 +65,13 @@ export function ConfirmationModal({
           </button>
           <button
             onClick={onConfirm}
-            className={`px-4 py-2 text-white rounded-lg transition-colors font-semibold ${variant === 'danger' ? 'bg-red-500 hover:bg-red-600' :
-                variant === 'warning' ? 'bg-amber-500 hover:bg-amber-600 text-main' :
-                  'bg-blue-500 hover:bg-blue-600'
-              }`}
+            className={`px-4 py-2 text-white rounded-lg transition-colors font-semibold ${
+              variant === 'danger'
+                ? 'bg-red-500 hover:bg-red-600'
+                : variant === 'warning'
+                  ? 'bg-amber-500 hover:bg-amber-600 text-main'
+                  : 'bg-blue-500 hover:bg-blue-600'
+            }`}
           >
             {confirmText}
           </button>

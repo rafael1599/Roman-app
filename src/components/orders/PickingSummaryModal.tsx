@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useScrollLock } from '../../hooks/useScrollLock';
 import X from 'lucide-react/dist/esm/icons/x';
 import { useLocationManagement } from '../../features/inventory/hooks/useLocationManagement';
 import { getOptimizedPickingPath, calculatePallets } from '../../utils/pickingLogic';
@@ -21,6 +22,7 @@ export const PickingSummaryModal: React.FC<PickingSummaryModalProps> = ({
   checkedBy,
   onClose,
 }) => {
+  useScrollLock(true);
   const { locations } = useLocationManagement();
 
   // Group items into pallets using the same logic as the Picking flow

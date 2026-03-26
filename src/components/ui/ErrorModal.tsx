@@ -1,4 +1,5 @@
 import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle';
+import { useScrollLock } from '../../hooks/useScrollLock';
 
 interface ErrorModalProps {
   isOpen: boolean;
@@ -19,6 +20,7 @@ export function ErrorModal({
   message,
   details,
 }: ErrorModalProps) {
+  useScrollLock(isOpen);
   if (!isOpen) return null;
 
   // Log technical details to console

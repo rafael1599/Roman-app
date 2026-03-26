@@ -9,6 +9,7 @@ import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
 import { useInventorySnapshot, type SnapshotItem } from '../hooks/useInventorySnapshot';
 import { toast } from 'react-hot-toast';
 import { SearchInput } from '../../../components/ui/SearchInput';
+import { useScrollLock } from '../../../hooks/useScrollLock';
 
 const naturalSort = (a: string, b: string) =>
   a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
@@ -20,6 +21,7 @@ export const InventorySnapshotModal = ({
   isOpen: boolean;
   onClose: () => void;
 }) => {
+  useScrollLock(isOpen);
   const { loading, data, fetchSnapshot } = useInventorySnapshot();
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [searchQuery, setSearchQuery] = useState('');

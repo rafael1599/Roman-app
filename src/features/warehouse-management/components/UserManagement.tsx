@@ -12,6 +12,7 @@ import ShieldCheck from 'lucide-react/dist/esm/icons/shield-check';
 import ShieldOff from 'lucide-react/dist/esm/icons/shield-off';
 import toast from 'react-hot-toast';
 import { useConfirmation } from '../../../context/ConfirmationContext';
+import { useScrollLock } from '../../../hooks/useScrollLock';
 
 interface Profile {
   id: string;
@@ -42,6 +43,7 @@ export const UserManagement = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
   const { showConfirmation } = useConfirmation();
+  useScrollLock(isModalOpen);
 
   const fetchUsers = async () => {
     try {

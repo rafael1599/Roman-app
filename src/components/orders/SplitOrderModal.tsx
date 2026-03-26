@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useScrollLock } from '../../hooks/useScrollLock';
 import X from 'lucide-react/dist/esm/icons/x';
 import Scissors from 'lucide-react/dist/esm/icons/scissors';
 import toast from 'react-hot-toast';
@@ -21,6 +22,7 @@ export const SplitOrderModal: React.FC<SplitOrderModalProps> = ({
   onClose,
   onSplitComplete,
 }) => {
+  useScrollLock(true);
   const [isSplitting, setIsSplitting] = useState(false);
 
   const combineMeta: CombineMeta = order.combine_meta;

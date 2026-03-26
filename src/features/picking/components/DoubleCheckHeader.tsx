@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
+import { useScrollLock } from '../../../hooks/useScrollLock';
 import {
   DndContext,
   DragOverlay,
@@ -241,6 +242,7 @@ export const DoubleCheckHeader = () => {
   const { cartItems, sessionMode, deleteList } = usePickingSession();
   const { showConfirmation } = useConfirmation();
   const [isOpen, setIsOpen] = useState(false);
+  useScrollLock(isOpen);
   const [activeOrder, setActiveOrder] = useState<PickingList | null>(null);
   const [pendingMerge, setPendingMerge] = useState<{
     source: PickingList;

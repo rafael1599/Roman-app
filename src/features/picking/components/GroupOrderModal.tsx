@@ -4,6 +4,7 @@ import Truck from 'lucide-react/dist/esm/icons/truck';
 import Package from 'lucide-react/dist/esm/icons/package';
 import type { PickingList } from '../hooks/useDoubleCheckList';
 import type { GroupType } from '../hooks/useOrderGroups';
+import { useScrollLock } from '../../../hooks/useScrollLock';
 
 interface GroupOrderModalProps {
   sourceOrder: PickingList;
@@ -18,6 +19,7 @@ export const GroupOrderModal: React.FC<GroupOrderModalProps> = ({
   onConfirm,
   onCancel,
 }) => {
+  useScrollLock(true);
   const formatOrderNumber = (order: PickingList) =>
     `#${order.order_number || order.id.slice(-6).toUpperCase()}`;
 

@@ -77,7 +77,7 @@ export const LocationList = () => {
     return { skuCount: items.length, totalQty };
   };
 
-  const handleSaveLocation = async (formData: Record<string, unknown>) => {
+  const handleSaveLocation = async (formData: Location & { notes?: string }) => {
     if (!selectedLocation) return;
     const result = await updateLocation(selectedLocation.id, formData);
     if (result.success) {

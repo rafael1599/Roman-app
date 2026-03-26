@@ -15,6 +15,7 @@ import {
 import { DEFAULT_MAX_CAPACITY } from '../../../utils/capacityUtils';
 import { useAutoSelect } from '../../../hooks/useAutoSelect';
 import { type Location } from '../../../schemas/location.schema';
+import { useScrollLock } from '../../../hooks/useScrollLock';
 
 interface LocationFormData extends Location {
   max_capacity: number | null;
@@ -36,6 +37,7 @@ export default function LocationEditorModal({
   onCancel,
   onDelete,
 }: LocationEditorModalProps) {
+  useScrollLock(true);
   const { ludlowData, atsData } = useInventory();
   const { showConfirmation } = useConfirmation();
   const autoSelect = useAutoSelect();

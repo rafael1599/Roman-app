@@ -14,6 +14,7 @@ import History from 'lucide-react/dist/esm/icons/history';
 import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw';
 import ClipboardList from 'lucide-react/dist/esm/icons/clipboard-list';
 import { InventorySnapshotModal } from '../../features/inventory/components/InventorySnapshotModal';
+import { useScrollLock } from '../../hooks/useScrollLock';
 
 interface UserMenuProps {
   isOpen: boolean;
@@ -37,6 +38,7 @@ export const UserMenu = ({ isOpen, onClose, onExport, navigate }: UserMenuProps)
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSnapshotOpen, setIsSnapshotOpen] = useState(false);
+  useScrollLock(isOpen);
 
   if (!isOpen) return null;
 
@@ -52,7 +54,7 @@ export const UserMenu = ({ isOpen, onClose, onExport, navigate }: UserMenuProps)
 
   const handleSyncRepair = async () => {
     if (window.confirm('Are you sure? This will remove all pending offline actions.')) {
-      console.log("🟡 PROCEEDING WITH SYNC REPAIR...");
+      console.log('🟡 PROCEEDING WITH SYNC REPAIR...');
       const dbs = ['query-cache', 'REACT_QUERY_OFFLINE_CACHE'];
       dbs.forEach((dbName) => {
         try {
@@ -205,9 +207,7 @@ export const UserMenu = ({ isOpen, onClose, onExport, navigate }: UserMenuProps)
                     </p>
                   </div>
                 </div>
-                <div className="text-accent group-hover:translate-x-1 transition-transform">
-                  →
-                </div>
+                <div className="text-accent group-hover:translate-x-1 transition-transform">→</div>
               </button>
 
               <div className="h-px bg-subtle my-2" />
@@ -232,9 +232,7 @@ export const UserMenu = ({ isOpen, onClose, onExport, navigate }: UserMenuProps)
                     </p>
                   </div>
                 </div>
-                <div className="text-accent group-hover:translate-x-1 transition-transform">
-                  →
-                </div>
+                <div className="text-accent group-hover:translate-x-1 transition-transform">→</div>
               </button>
             </div>
 
@@ -269,10 +267,11 @@ export const UserMenu = ({ isOpen, onClose, onExport, navigate }: UserMenuProps)
                     toggleAdminView();
                     onClose();
                   }}
-                  className={`ios-btn w-full h-14 border transition-all font-black uppercase tracking-[0.2em] text-[10px] ${viewAsUser
-                    ? 'bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/10 text-emerald-500'
-                    : 'bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/10 text-amber-500'
-                    }`}
+                  className={`ios-btn w-full h-14 border transition-all font-black uppercase tracking-[0.2em] text-[10px] ${
+                    viewAsUser
+                      ? 'bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/10 text-emerald-500'
+                      : 'bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/10 text-amber-500'
+                  }`}
                 >
                   {viewAsUser ? <ShieldCheck size={16} /> : <Eye size={16} />}
                   {viewAsUser ? 'Switch to Admin View' : 'View as Normal User'}
@@ -299,15 +298,16 @@ export const UserMenu = ({ isOpen, onClose, onExport, navigate }: UserMenuProps)
               {profile?.role?.toUpperCase()} ACCOUNT
             </p>
           </div>
-          <img src="/PickD.png" alt="PickD" className="w-6 h-6 grayscale opacity-30 hover:grayscale-0 hover:opacity-100 transition-all" />
+          <img
+            src="/PickD.png"
+            alt="PickD"
+            className="w-6 h-6 grayscale opacity-30 hover:grayscale-0 hover:opacity-100 transition-all"
+          />
         </div>
       </div>
 
-      <InventorySnapshotModal
-        isOpen={isSnapshotOpen}
-        onClose={() => setIsSnapshotOpen(false)}
-      />
-    </div >,
+      <InventorySnapshotModal isOpen={isSnapshotOpen} onClose={() => setIsSnapshotOpen(false)} />
+    </div>,
     document.body
   );
 };
