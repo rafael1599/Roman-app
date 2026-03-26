@@ -53,26 +53,12 @@
 
 - **Creado:** `[2026-03-26 10:00]` · **Completado:** `[2026-03-26]`
 - **Estado:** Implementado — checkbox "Show bike bins" en Stock View, desactivado por defecto.
-- **Problema:** Items en locations tipo D17, D13 (bike bins) se mezclan con las ROW N (warehouse rows generales). Los usuarios que no trabajan con bicicletas ven ruido innecesario; los que sí trabajan con bikes no pueden aislar esos bins fácilmente.
-- **Clasificación (solo por nombre):** location que matchea `^ROW \d+$` = warehouse row (siempre visible). Todo lo demás (D17, D13, etc.) = bike bin (oculto por defecto).
-- **Solución:**
-  1. Nuevo checkbox en Stock View junto a "Show deleted items" y "Qty with 0 stock": **"Show bike bins"** (o similar).
-  2. Por defecto desactivado → solo se ven items en locations tipo ROW N (y items sin location asignada).
-  3. Al activar → se muestran también los items en bike bins.
-  4. **La búsqueda siempre es global** — si el usuario busca un SKU o location específico, los resultados incluyen bike bins aunque el checkbox esté desactivado.
-  5. **Las ROW siempre son visibles** — no debe existir ninguna opción que oculte las warehouse rows.
-- **Archivos:** `src/features/inventory/components/InventoryScreen.tsx` (UI checkbox + lógica de filtrado), `src/features/inventory/hooks/useInventoryData.ts` (filtrado por tipo de location)
-- **Criterios de aceptación:**
-  - Por defecto solo se ven items en ROW N y sin location
-  - Checkbox "Show bike bins" muestra/oculta items en D17, D13, etc.
-  - Búsqueda siempre incluye todos los items independientemente del checkbox
-  - No existe opción para ocultar las ROW — siempre visibles
-  - Estado del checkbox es de sesión (no persiste en DB)
+- **Archivos:** `src/features/inventory/InventoryScreen.tsx`
 
 ### ~~6. Fotos de items (SKU metadata)~~ — COMPLETADO (Fase 1+2) <!-- id: idea-023 -->
 
 - **Creado:** `[2026-03-26 10:00]` · **Completado:** `[2026-03-26]`
-- **Estado:** Implementado — Fases 1 (captura) y 2 (visualización) en producción. Fase 3 (bulk upload) pendiente.
+- **Estado:** Implementado — Fases 1 (captura) y 2 (visualización) en producción. Fase 3 (bulk upload) en P2.
 - **Infraestructura:** Cloudflare R2 bucket `inventory-jamisbikes`, path `photos/{sku}.webp`. Edge function `upload-photo` maneja POST (upload) y DELETE. Compresión client-side: max 1200px, WebP 80%.
 - **Archivos:**
   - Migración `20260326000001_add_image_url_to_sku_metadata.sql` — columna `image_url` en `sku_metadata`
@@ -80,74 +66,127 @@
   - `src/services/photoUpload.service.ts` — compresión + upload/delete desde frontend
   - `src/features/inventory/components/InventoryModal.tsx` — botón cámara, preview, upload en add/edit
   - `src/features/inventory/components/InventoryCard.tsx` — thumbnail 32x32 en Stock View
-  - `src/features/picking/components/PickingSessionView.tsx` — thumbnail 40x40 reemplaza icono Package
-  - `src/features/picking/components/DoubleCheckView.tsx` — thumbnail 36x36 en double check
-  - `supabase/.env.local` — R2 credentials para edge functions locales
 
 ### ~~7. Warehouse Selection Refinement~~ <!-- id: task-005 --> — COMPLETADO
 
 - **Estado:** Completado. `processOrder()` ya acepta `warehousePreferences` como segundo parámetro.
 
-### 9. Optimistic UI Fixes <!-- id: task-006 -->
+### 8. Sub-locations alfabéticas por ROW <!-- id: idea-024 -->
 
+- **Creado:** `[2026-03-26 17:00]`
 - **Estado:** Por hacer.
-- Address flashes in quantity updates.
+- **Problema:** Las ROWs son un espacio largo sin subdivisiones. Un picker que busca un SKU en "ROW 5" tiene que recorrer toda la fila. Con 30+ bikes por ROW, encontrar un item específico es lento e impreciso.
+- **Solución:** Nueva columna `sublocation` (varchar, nullable) en la tabla `inventory`. Representa una sección alfabética dentro del ROW: A, B, C, etc.
+  - `inventory.location = "ROW 5"` (no cambia)
+  - `inventory.sublocation = "A"` (nuevo campo)
+  - Display combinado en UI: `ROW 5A`
+  - Items sin sublocation (`NULL`) siguen funcionando — backward compatible
+- **Diseño técnico:**
+  1. Migración: `ALTER TABLE inventory ADD COLUMN sublocation varchar(2)` — nullable, sin default
+  2. Schema Zod: agregar `sublocation: z.string().max(2).optional()` a `inventory.schema.ts`
+  3. Frontend display: concatenar `{location}{sublocation}` en InventoryCard, PickingSessionView, DoubleCheckView
+  4. InventoryModal: nuevo campo input para sublocation (1-2 chars uppercase, validación client-side)
+  5. AutocompleteInput: al seleccionar location "ROW 5", ofrecer sub-locations existentes (A, B, C...)
+  6. Picking path: ordenar por location (ROW number) → sublocation (A, B, C) para ruta óptima
+  7. `locationUtils.ts`: smart mapping `"5A"` → location=`"ROW 5"`, sublocation=`"A"`
+  8. Realtime: `useInventoryRealtime.ts` ya escucha `inventory.*` — sublocation se propaga automáticamente
+  9. Watcher: `_to_cart_items()` ya lee `location` de inventory — agregar `sublocation` al cart item
+- **No requiere cambios en:**
+  - Tabla `locations` (master config) — zone/capacity son por ROW, no por sublocation
+  - Bike bins filter — regex `^ROW \d+$` matchea el `location` field que no cambia
+  - Optimistic updates — sublocation es solo un campo más en el spread
+- **Archivos:**
+  - Migración SQL: `ALTER TABLE inventory ADD COLUMN sublocation varchar(2)`
+  - `src/schemas/inventory.schema.ts` — agregar campo
+  - `src/features/inventory/components/InventoryCard.tsx` — display `{location}{sublocation}`
+  - `src/features/inventory/components/InventoryModal.tsx` — input sublocation
+  - `src/features/inventory/InventoryScreen.tsx` — sorting por sublocation dentro de ROW
+  - `src/utils/locationUtils.ts` — smart mapping
+  - `src/features/picking/components/PickingSessionView.tsx` — display sublocation
+  - `src/features/picking/components/DoubleCheckView.tsx` — display sublocation
+  - `watchdog-pickd/supabase_client.py` — incluir sublocation en cart items
+- **Criterios de aceptación:**
+  - Se puede asignar sublocation A-Z a cualquier item en un ROW
+  - Display muestra `ROW 5A` en todos los contextos (Stock View, Picking, Double Check, Labels)
+  - Items sin sublocation muestran solo `ROW 5` — no se rompe nada existente
+  - Picking path ordena por ROW → sublocation (A antes que B)
+  - AutocompleteInput sugiere sub-locations existentes del ROW seleccionado
+  - El watcher propaga sublocation al asignar locations
+
+### 9. Multi-Address Customers <!-- id: idea-012 -->
+
+- **Creado:** `[2026-03-26 17:00]` (promovido de P2)
+- **Estado:** Por hacer.
+- **Problema:** Cada customer tiene una sola dirección en la tabla `customers`. Si un cliente envía a Miami y después a NYC, hay que editar la dirección o crear un duplicado "Cliente (NYC)". No hay historial de direcciones anteriores.
+- **Solución:** Nueva tabla `customer_addresses` con FK a `customers`. Cada customer puede tener N direcciones con un label descriptivo.
+- **Diseño técnico:**
+  1. Nueva tabla `customer_addresses`:
+     - `id` (uuid PK), `customer_id` (FK → customers), `label` (text — "Main Warehouse", "Miami Office")
+     - `street`, `city`, `state`, `zip_code` (text)
+     - `is_default` (boolean — una sola default por customer)
+     - `created_at` (timestamp)
+  2. Migración de datos: copiar direcciones de `customers` → `customer_addresses` con `is_default = true`
+  3. Nueva columna `shipping_address_id` en `picking_lists` (FK → `customer_addresses`)
+  4. Columnas legacy en `customers` (street, city, state, zip_code) se mantienen temporalmente como fallback
+- **Impacto en frontend:**
+  - CustomerAutocomplete: al seleccionar customer con >1 dirección → selector de dirección
+  - OrderSidebar: dropdown de direcciones del customer + botón "New address"
+  - OrdersScreen save flow: guardar `shipping_address_id` en picking_list
+  - Crear nueva dirección inline sin salir del flujo de orden
+- **Impacto en watcher:**
+  - `_resolve_customer()` usa la dirección `is_default` al crear órdenes desde PDF
+  - No requiere cambios si el PDF no trae dirección (la default se usa)
+- **Archivos:**
+  - Migración SQL: crear `customer_addresses`, migrar datos, agregar `shipping_address_id`
+  - `src/schemas/` — nuevo schema Zod para `customer_addresses`
+  - `src/features/picking/components/CustomerAutocomplete.tsx` — address selector
+  - `src/components/orders/OrderSidebar.tsx` — address dropdown + "New address"
+  - `src/features/picking/OrdersScreen.tsx` — save flow con `shipping_address_id`
+  - `watchdog-pickd/supabase_client.py` — usar default address
+- **Criterios de aceptación:**
+  - Un customer puede tener múltiples direcciones con labels
+  - Al seleccionar customer en una orden, se puede elegir qué dirección usar
+  - Hay una dirección default (`is_default`)
+  - Direcciones existentes se migran automáticamente como default
+  - Editar dirección en OrderSidebar actualiza `customer_addresses`, no `customers`
+  - El watcher usa la dirección default al crear órdenes automáticamente
+  - El label aparece en el dropdown para diferenciar direcciones
 
 ### ~~10. Preservar `internal_note` al mover item entre locations (Stock View)~~ — COMPLETADO <!-- id: idea-017 -->
 
 - **Creado:** `[2026-03-24 10:00]` · **Completado:** `[2026-03-25]`
 - **Estado:** Implementado — nota interna se preserva en moves y se restaura en undo.
-- **Move sin merge:** destino hereda `internal_note` automáticamente vía `move_inventory_stock` (parámetro `p_internal_note`).
-- **Move con merge:** `NoteResolutionDialog` en MovementModal permite elegir nota origen, destino, o combinar ambas.
-- **Undo:** `undo_inventory_action` restaura `internal_note` desde `snapshot_before`.
 - **Archivos:** migración `20260325000001_preserve_internal_note_on_move.sql`, `MovementModal.tsx`, `InventoryScreen.tsx`, `useInventoryData.ts`, `useInventoryMutations.ts`, `inventory.service.ts`, `supabase/types.ts`
 
 ### ~~11. Override de cantidad de items por pallet (Double Check View)~~ — COMPLETADO <!-- id: idea-018 -->
 
 - **Creado:** `[2026-03-24 10:00]` · **Completado:** `[2026-03-24]`
 - **Estado:** En producción.
-- Permitir al usuario editar manualmente la cantidad de items en una pallet específica durante double-check. Es un override local para esa orden, no persiste para futuras órdenes.
-- **Comportamiento esperado:**
-  - El usuario cambia la cantidad en una pallet → los items sobrantes o faltantes se redistribuyen automáticamente en las demás pallets siguiendo la lógica original de distribución.
-  - Una pallet cuya cantidad fue editada manualmente por el usuario queda "bloqueada" — la redistribución automática nunca modifica pallets con override del usuario.
-- **Archivos estimados:** `DoubleCheckView.tsx`, lógica de distribución de pallets.
 
 ### ~~12. Sumar peso de pallets al peso total de la orden en label (Orders View)~~ — COMPLETADO <!-- id: idea-019 -->
 
 - **Creado:** `[2026-03-24 10:00]` · **Completado:** `[2026-03-24]`
 - **Estado:** En producción.
-- El peso total de la orden actualmente solo suma el peso de los items. Falta sumar el peso de las pallets: `peso total = peso items + (número de pallets × 40 lbs)`.
-- **Archivos estimados:** `PalletLabelsPrinter.tsx` o componente de label de orden donde se calcula el peso total.
 
 ### ~~13. Auto-parse de dirección completa en campo address (Orders View)~~ — COMPLETADO <!-- id: idea-020 -->
 
 - **Creado:** `[2026-03-24 10:00]` · **Completado:** `[2026-03-24]`
 - **Estado:** En producción.
-- Cuando el usuario pega una dirección completa (ej: "123 Main St, Miami, FL 33101") en el campo `address`, el sistema debe parsear automáticamente y llenar `city`, `state`, `zip`.
-- **Restricciones:**
-  - Solo formato US.
-  - Si los campos destino ya tienen valores, se sobreescriben al pegar.
-- **Archivos estimados:** Componente de edición de orden en Orders View, nueva utilidad de parsing de dirección US.
 
 ---
 
 ## Prioridad 2 — Impacto Medio (mejoras de conveniencia)
 
-- [ ] **Barcode/QR Integration**: Scan items directly. <!-- id: idea-001 -->
 - [ ] **Order List View**: When reviewing orders, show the picking list first with an option to print. <!-- id: idea-006 -->
-- [ ] **Automatic Inventory Email**: Send full inventory table to Jamis's email. Plain list only, NO links. <!-- id: idea-007 -->
-- [x] ~~**Order Merging**: Combine 2 separate orders into one picking session.~~ — Cubierto por task-007 (auto-combine same shop) + idea-010b (drag-and-drop grouping). <!-- id: idea-010 -->
-- [ ] **Multi-Address Customers**: Handle multiple shipping/billing addresses per client. <!-- id: idea-012 -->
-- [ ] **Inventory Heatmaps**: Visualize picking frequency. <!-- id: idea-002 -->
-- [ ] **Advanced Analytics**: Dashboard for warehouse efficiency. <!-- id: idea-003 -->
-- [ ] **Smart Rebalancing**: Suggestions to move stock between warehouses. <!-- id: idea-004 -->
-- [ ] **Persistent Preferences**: Remember user warehouse choices. <!-- id: idea-005 -->
+- [ ] **Automatic Inventory Email**: Send full inventory table to Jamis's email. Plain list only, NO links. Edge function `send-daily-report` ya existe — falta query + formato + cron. <!-- id: idea-007 -->
+- [ ] **Fotos Fase 3 — Bulk Upload**: Multi-file picker con batching concurrency (3-5), progress bar, mapeo SKU↔archivo por nombre o CSV. Reusar `uploadPhoto()` existente. <!-- id: idea-023-p3 -->
+- [x] ~~**Order Merging**: Combine 2 separate orders into one picking session.~~ — Cubierto por task-007 + idea-010b. <!-- id: idea-010 -->
 
 ---
 
 ## 🐛 Bug Tracker
 
-### Bugs confirmados en producción (actualizado 2026-03-23)
+### Bugs confirmados en producción (actualizado 2026-03-26)
 
 - [x] **[bug-002] Undo borra en vez de mover** — `[2026-03-21]` · **Fix:** `[2026-03-23]`
       Dos bugs encadenados: (1) `move_inventory_stock` construía el snapshot manualmente con `jsonb_build_object` usando qty post-move (=0) y sin distribution/item_name/is_active/location_id. (2) `undo_inventory_action` no restauraba la columna `distribution`. Fix: snapshot ahora usa `row_to_json(inventory.*)` pre-move, y undo restaura distribution con fallback para logs legacy.
@@ -162,18 +201,14 @@
       **Archivos:** `PickingContext.tsx` → `returnToBuilding()`, `usePickingActions.ts` → `generatePickingPath()`.
 
 - [x] **[bug-005] Items con qty=0 aparecen en double-check sin advertencia** — `[2026-03-21]` · **Fix:** `[2026-03-23]`
-      La causa raíz era bug-003: el watcher asignaba locations con qty=0 y los flags `insufficient_stock` no se propagaban correctamente. El DoubleCheckView ya tenía el indicador rojo ("No inventory") — el problema era que los datos llegaban mal desde el watcher. Resuelto con el fix de bug-003.
-      **Archivos:** No requirió cambios en frontend — fix upstream en `watchdog-pickd/supabase_client.py`.
+      La causa raíz era bug-003. Resuelto con el fix de bug-003.
 
 - [x] **[bug-006] Orden completada reaparece desde estado original (watcher vs edición manual)** — `[2026-03-21]` · **Fix:** `[2026-03-23]`
-      Causa raíz compartida con bug-004: `returnToBuilding()` creaba registros zombie en `active` que sobrevivían post-completion. El fix de bug-004 (preservar `activeListId` + UPDATE en vez de INSERT) elimina la creación de zombies. Adicionalmente, el watcher ya tenía protección: hash SHA-256 para PDFs duplicados, lookup por `order_number` antes de insertar, y `reopen_completed_order()` que hace UPDATE (no INSERT). `usePickingSync` también purga IDs stale que apuntan a órdenes completadas al recargar la app.
-      **Archivos:** Mismo fix que bug-004 — no requirió cambios adicionales.
+      Causa raíz compartida con bug-004. Watcher ya tenía protección (hash SHA-256, lookup por order_number).
 
 - [x] **[bug-007] Verification list no muestra órdenes ready_to_double_check >24h** — `[2026-03-25]` · **Fix:** `[2026-03-25]`
-      El query de `useDoubleCheckList` tenía `.gt('updated_at', 24h)` que descartaba órdenes no tocadas en 24+ horas. También `takeOverOrder` no actualizaba `updated_at`, así que el takeover no "revivía" la orden. Fix: eliminar filtro de 24h (auto-cancel ya limpia stale orders), y takeover ahora actualiza `updated_at`.
+      Fix: eliminar filtro de 24h, takeover ahora actualiza `updated_at`.
       **Archivos:** `useDoubleCheckList.ts`, `usePickingActions.ts`
-
-- [ ] **Offline Sync Edge Cases**: Handle complex rollback scenarios in InventoryProvider. <!-- id: bug-001 -->
 
 ---
 
@@ -200,6 +235,7 @@
 | Fix: verification list no mostraba órdenes >24h (bug-007)   | `[2026-03-25]` | `[2026-03-25]`       | Completado — eliminado filtro 24h, takeover actualiza updated_at     |
 | Filtro de bike bins en Stock View (idea-022)                | `[2026-03-26]` | `[2026-03-26]`       | Completado — toggle "Show bike bins", búsqueda siempre global        |
 | Prevenir reserva duplicada en watcher (idea-021)            | `[2026-03-26]` | `[2026-03-26]`       | Completado — reservation-aware stock en \_to_cart_items()            |
+| 39 errores ESLint resueltos en 16 archivos                  | `[2026-03-26]` | `[2026-03-26]`       | Completado — React 19 purity rules, unused imports, proper typing    |
 | Order number en label de pallets                            | `[2026-03-11]` | `[2026-03-11 14:28]` | Completado                                                           |
 | Barra de capacidad de locations                             | `[2026-03-11]` | `[2026-03-18 10:00]` | Resuelto (fix de performance)                                        |
 | Takeover muestra picker real                                | `[2026-03-11]` | `[2026-03-13 13:12]` | Completado                                                           |
@@ -217,9 +253,15 @@
 
 ### Descartado
 
-| Item                                                       | Razón                                                             |
-| ---------------------------------------------------------- | ----------------------------------------------------------------- |
-| Sesión de warehouse: inactividad 5min + selector de perfil | No aplica — cada picker usa su propio dispositivo. `[2026-03-18]` |
+| Item                                                       | Razón                                                                                                       |
+| ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Sesión de warehouse: inactividad 5min + selector de perfil | No aplica — cada picker usa su propio dispositivo. `[2026-03-18]`                                           |
+| Barcode/QR Integration (idea-001)                          | PDFs ya llegan parseados automáticamente, scanning no agrega valor operacional. `[2026-03-26]`              |
+| Advanced Analytics Dashboard (idea-003)                    | Sin volumen suficiente para justificar dashboards complejos. `[2026-03-26]`                                 |
+| Smart Rebalancing automático (idea-004)                    | Ya existen sugerencias manuales en useOptimizationReports — ejecución auto es riesgosa. `[2026-03-26]`      |
+| Persistent Preferences (idea-005)                          | Solo LUDLOW activo, theme ya persiste en localStorage. `[2026-03-26]`                                       |
+| Optimistic UI Fixes (task-006)                             | Analizado: flash issue mitigado por staleTime:Infinity + refetchOnWindowFocus:false. `[2026-03-26]`         |
+| Offline Sync Edge Cases (bug-001)                          | Arquitectura ya maneja offline (TanStack persist + realtime). Sin reportes de fallos reales. `[2026-03-26]` |
 
 ### Verificado en código
 
