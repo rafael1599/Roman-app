@@ -111,7 +111,7 @@ const DraggableOrderCard: React.FC<OrderCardProps> = ({
       className={`flex items-center gap-1 pr-2 rounded-2xl ${hoverBg} transition-all duration-200 group ${borderClass} ${isDragging ? 'opacity-30 scale-95' : ''}`}
       {...attributes}
       {...listeners}
-      style={{ touchAction: 'none' }}
+      style={{ touchAction: isDragging ? 'none' : 'manipulation' }}
     >
       <button
         onClick={() => onSelect(order)}
