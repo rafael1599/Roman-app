@@ -75,6 +75,7 @@ export const InventoryScreen = () => {
   } = useInventory();
 
   const [localSearch, setLocalSearch] = useState('');
+  const [showBikeBins, setShowBikeBins] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Auto-scroll to top when searching to ensure results are visible
@@ -90,13 +91,20 @@ export const InventoryScreen = () => {
 
   const filteredInventory = useMemo(() => {
     const s = debouncedSearch.toLowerCase().trim();
+    const isSearching = s.length > 0;
     return inventoryData.filter((item) => {
       // Show only active items unless showInactive is true
       if (!showInactive && item.is_active === false) return false;
 
-      if (!s) return true;
+      // Bike bin filter: hide non-ROW locations unless searching or checkbox is on
+      if (!isSearching && !showBikeBins) {
+        const loc = (item.location || '').trim().toUpperCase();
+        if (loc && !/^ROW \d+$/.test(loc)) return false;
+      }
 
-      // Multi-field search
+      if (!isSearching) return true;
+
+      // Multi-field search (always global — includes bike bins)
       return (
         (item.sku || '').toLowerCase().includes(s) ||
         (item.location || '').toLowerCase().includes(s) ||
@@ -104,7 +112,7 @@ export const InventoryScreen = () => {
         (item.warehouse || '').toLowerCase().includes(s)
       );
     });
-  }, [inventoryData, debouncedSearch, showInactive]);
+  }, [inventoryData, debouncedSearch, showInactive, showBikeBins]);
 
   const isLoading = loading;
 
@@ -629,29 +637,46 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
 
       {(!isSearching || (allLocationBlocks.length === 0 && localSearch.trim() !== '')) && (
         <div
-          className={`px-4 pt-2 flex items-center gap-2 transition-all duration-300 ${allLocationBlocks.length === 0 && localSearch.trim() !== '' ? 'bg-blue-500/10 p-3 rounded-xl border border-blue-500/20 animate-in fade-in zoom-in-95 duration-500' : ''}`}
+          className={`px-4 pt-2 flex flex-col gap-2 transition-all duration-300 ${allLocationBlocks.length === 0 && localSearch.trim() !== '' ? 'bg-blue-500/10 p-3 rounded-xl border border-blue-500/20 animate-in fade-in zoom-in-95 duration-500' : ''}`}
         >
-          <input
-            type="checkbox"
-            id="show-inactive"
-            checked={showInactive}
-            onChange={(e) => setShowInactive(e.target.checked)}
-            className={`rounded transition-colors h-4 w-4 ${
-              allLocationBlocks.length === 0 && localSearch.trim() !== ''
-                ? 'border-blue-500 text-blue-500 focus:ring-blue-500'
-                : 'border-neutral-600 bg-surface text-accent focus:ring-accent focus:ring-offset-0'
-            }`}
-          />
-          <label
-            htmlFor="show-inactive"
-            className={`text-sm font-medium cursor-pointer select-none transition-colors ${
-              allLocationBlocks.length === 0 && localSearch.trim() !== ''
-                ? 'text-blue-500 font-black uppercase tracking-wider'
-                : 'text-muted'
-            }`}
-          >
-            Show Deleted Items & Qty 0 SKUs
-          </label>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="show-inactive"
+              checked={showInactive}
+              onChange={(e) => setShowInactive(e.target.checked)}
+              className={`rounded transition-colors h-4 w-4 ${
+                allLocationBlocks.length === 0 && localSearch.trim() !== ''
+                  ? 'border-blue-500 text-blue-500 focus:ring-blue-500'
+                  : 'border-neutral-600 bg-surface text-accent focus:ring-accent focus:ring-offset-0'
+              }`}
+            />
+            <label
+              htmlFor="show-inactive"
+              className={`text-sm font-medium cursor-pointer select-none transition-colors ${
+                allLocationBlocks.length === 0 && localSearch.trim() !== ''
+                  ? 'text-blue-500 font-black uppercase tracking-wider'
+                  : 'text-muted'
+              }`}
+            >
+              Show Deleted Items & Qty 0 SKUs
+            </label>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="show-bike-bins"
+              checked={showBikeBins}
+              onChange={(e) => setShowBikeBins(e.target.checked)}
+              className="rounded transition-colors h-4 w-4 border-neutral-600 bg-surface text-accent focus:ring-accent focus:ring-offset-0"
+            />
+            <label
+              htmlFor="show-bike-bins"
+              className="text-sm font-medium cursor-pointer select-none text-muted"
+            >
+              Show Bike Bins
+            </label>
+          </div>
         </div>
       )}
 

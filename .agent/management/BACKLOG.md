@@ -69,32 +69,22 @@
   - No existe opción para ocultar las ROW — siempre visibles
   - Estado del checkbox es de sesión (no persiste en DB)
 
-### 6. Fotos de items (SKU metadata) <!-- id: idea-023 -->
+### ~~6. Fotos de items (SKU metadata)~~ — COMPLETADO (Fase 1+2) <!-- id: idea-023 -->
 
-- **Creado:** `[2026-03-26 10:00]`
-- **Estado:** Por hacer.
-- **Problema:** No hay forma visual de confirmar que un item es el correcto durante picking o double-check. El campo `sku_metadata.image_url` existe pero no se usa en ninguna vista.
-- **Infraestructura:** Usar el bucket existente de Cloudflare R2 (mismo que snapshots diarios de inventario). Path: `photos/{sku}.webp`. Un archivo por SKU, se sobreescribe al actualizar.
-- **Solución:**
-  - **Fase 1 — Captura:** Botón de cámara en InventoryModal (add/edit). Compresión client-side (max 1200px, calidad 80%, WebP). Upload a Cloudflare R2 → guardar URL en `sku_metadata.image_url`.
-  - **Fase 2 — Visualización:** Thumbnail junto al SKU en Stock View (InventoryScreen). Foto del item en Picking Session (PickingSessionView) y Double Check (DoubleCheckView). Fallback: icono placeholder si no hay foto.
-  - **Fase 3 (futuro):** Bulk upload por CSV + zip de imágenes.
-- **Archivos:** Servicio existente de Cloudflare R2 (extender para fotos), `src/schemas/skuMetadata.schema.ts`, `src/features/inventory/components/InventoryModal.tsx`, `src/features/inventory/components/InventoryScreen.tsx`, `src/features/picking/components/PickingSessionView.tsx`, `src/features/picking/components/DoubleCheckView.tsx`
-- **Criterios de aceptación:**
-  - El usuario puede tomar/subir una foto desde InventoryModal y queda asociada al SKU
-  - La foto se muestra en Stock View, Picking Session, y Double Check
-  - Items sin foto muestran placeholder sin errores de layout
-  - Fotos comprimidas a <500KB típico antes de subir
-  - Un SKU compartido entre múltiples items de inventario muestra la misma foto (vive en `sku_metadata`)
+- **Creado:** `[2026-03-26 10:00]` · **Completado:** `[2026-03-26]`
+- **Estado:** Implementado — Fases 1 (captura) y 2 (visualización) en producción. Fase 3 (bulk upload) pendiente.
+- **Infraestructura:** Cloudflare R2 bucket `inventory-jamisbikes`, path `photos/{sku}.webp`. Edge function `upload-photo` maneja POST (upload) y DELETE. Compresión client-side: max 1200px, WebP 80%.
+- **Archivos:**
+  - Migración `20260326000001_add_image_url_to_sku_metadata.sql` — columna `image_url` en `sku_metadata`
+  - `supabase/functions/upload-photo/index.ts` — edge function (auth JWT, R2 upload/delete, upsert DB)
+  - `src/services/photoUpload.service.ts` — compresión + upload/delete desde frontend
+  - `src/features/inventory/components/InventoryModal.tsx` — botón cámara, preview, upload en add/edit
+  - `src/features/inventory/components/InventoryCard.tsx` — thumbnail 32x32 en Stock View
+  - `src/features/picking/components/PickingSessionView.tsx` — thumbnail 40x40 reemplaza icono Package
+  - `src/features/picking/components/DoubleCheckView.tsx` — thumbnail 36x36 en double check
+  - `supabase/.env.local` — R2 credentials para edge functions locales
 
-### 7. Vista de reporte diario por usuario de almacén <!-- id: idea-016 -->
-
-- **Creado:** `[2026-03-11 15:30]`
-- **Estado:** Por hacer.
-- Nueva vista tipo dashboard para un rol de supervisión/gerencia que muestre la actividad diaria de cada usuario del almacén: órdenes pickeadas, verificadas, items movidos, y cualquier otra métrica derivada de los movimientos registrados.
-- **Impacto:** visibilidad de productividad individual sin depender de reportes manuales; habilita un nuevo tipo de usuario (supervisor/manager).
-
-### ~~8. Warehouse Selection Refinement~~ <!-- id: task-005 --> — COMPLETADO
+### ~~7. Warehouse Selection Refinement~~ <!-- id: task-005 --> — COMPLETADO
 
 - **Estado:** Completado. `processOrder()` ya acepta `warehousePreferences` como segundo parámetro.
 
