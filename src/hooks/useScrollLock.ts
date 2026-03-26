@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 
 /**
  * Locks body scroll when active. Supports nested modals via a ref counter
@@ -11,7 +11,8 @@ let lockCount = 0;
 
 export const useScrollLock = (isLocked: boolean, onBack?: () => void) => {
   const pushedRef = useRef(false);
-  const stableOnBack = useCallback(() => onBack?.(), [onBack]);
+  const onBackRef = useRef(onBack);
+  onBackRef.current = onBack;
 
   useEffect(() => {
     if (!isLocked) return;
@@ -39,7 +40,7 @@ export const useScrollLock = (isLocked: boolean, onBack?: () => void) => {
     const handlePopState = () => {
       if (pushedRef.current) {
         pushedRef.current = false;
-        stableOnBack();
+        onBackRef.current?.();
       }
     };
 
@@ -53,5 +54,5 @@ export const useScrollLock = (isLocked: boolean, onBack?: () => void) => {
         history.back();
       }
     };
-  }, [isLocked, onBack, stableOnBack]);
+  }, [isLocked]); // eslint-disable-line react-hooks/exhaustive-deps
 };
