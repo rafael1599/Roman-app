@@ -33,7 +33,7 @@ interface PalletLabelsPrinterProps {
 }
 
 export const PalletLabelsPrinter = ({ onClose, order }: PalletLabelsPrinterProps) => {
-  useScrollLock(true);
+  useScrollLock(true, onClose);
   // Try to get context, but don't fail if we're just viewing history and not in a session
   // Actually, hooks can't be conditional. Assuming we are in a provider since this is a protected route.
   const {

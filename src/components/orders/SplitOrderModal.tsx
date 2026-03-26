@@ -22,7 +22,7 @@ export const SplitOrderModal: React.FC<SplitOrderModalProps> = ({
   onClose,
   onSplitComplete,
 }) => {
-  useScrollLock(true);
+  useScrollLock(true, onClose);
   const [isSplitting, setIsSplitting] = useState(false);
 
   const combineMeta: CombineMeta = order.combine_meta;

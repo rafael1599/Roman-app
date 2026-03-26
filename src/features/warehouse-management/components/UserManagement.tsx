@@ -43,7 +43,7 @@ export const UserManagement = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
   const { showConfirmation } = useConfirmation();
-  useScrollLock(isModalOpen);
+  useScrollLock(isModalOpen, () => setIsModalOpen(false));
 
   const fetchUsers = async () => {
     try {

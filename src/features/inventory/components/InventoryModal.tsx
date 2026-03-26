@@ -57,7 +57,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
   mode = 'add',
   screenType,
 }) => {
-  useScrollLock(isOpen);
+  useScrollLock(isOpen, onClose);
   const { ludlowData, atsData, isAdmin, updateSKUMetadata } = useInventory();
   const { locations } = useLocationManagement();
   const { setIsNavHidden } = useViewMode();

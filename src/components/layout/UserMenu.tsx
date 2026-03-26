@@ -38,7 +38,7 @@ export const UserMenu = ({ isOpen, onClose, onExport, navigate }: UserMenuProps)
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSnapshotOpen, setIsSnapshotOpen] = useState(false);
-  useScrollLock(isOpen);
+  useScrollLock(isOpen, onClose);
 
   if (!isOpen) return null;
 

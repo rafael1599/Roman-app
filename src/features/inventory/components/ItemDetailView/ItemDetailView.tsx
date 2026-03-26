@@ -61,22 +61,13 @@ export const ItemDetailView: React.FC<ItemDetailViewProps> = ({
   mode = 'add',
   screenType,
 }) => {
-  useScrollLock(isOpen);
-
-  // Back button closes the detail view instead of navigating away
-  useEffect(() => {
-    if (!isOpen) return;
-    history.pushState({ itemDetailView: true }, '');
-    const handlePop = () => onClose();
-    window.addEventListener('popstate', handlePop);
-    return () => window.removeEventListener('popstate', handlePop);
-  }, [isOpen, onClose]);
+  useScrollLock(isOpen, onClose);
 
   const { ludlowData, atsData, isAdmin, updateSKUMetadata } = useInventory();
   const { locations } = useLocationManagement();
   const { setIsNavHidden } = useViewMode();
   const { showConfirmation } = useConfirmation();
-  const { setActiveField, isActive } = useActiveField();
+  const { activeField, setActiveField, isActive } = useActiveField();
 
   // Distribution state
   const [distribution, setDistribution] = useState<DistributionItem[]>([]);
@@ -610,13 +601,10 @@ export const ItemDetailView: React.FC<ItemDetailViewProps> = ({
     setActiveField,
   ]);
 
-  // ─── Auto-save per field (edit mode) ───
+  // ─── Deactivate editing field (blur) ───
   const handleFieldBlur = useCallback(() => {
     setActiveField(null);
-    if (mode === 'edit' && hasChanges) {
-      handleSave();
-    }
-  }, [setActiveField, mode, hasChanges, handleSave]);
+  }, [setActiveField]);
 
   // ─── Delete handler ───
   const handleDelete = useCallback(() => {
@@ -671,7 +659,17 @@ export const ItemDetailView: React.FC<ItemDetailViewProps> = ({
     (isAddMode || hasChanges);
 
   return createPortal(
-    <div className="fixed inset-0 z-[100020] bg-main overflow-y-auto animate-in fade-in slide-in-from-right duration-200">
+    <div
+      className="fixed inset-0 z-[100020] bg-main overflow-y-auto animate-in fade-in slide-in-from-right duration-200"
+      onClick={(e) => {
+        const tag = (e.target as HTMLElement).tagName;
+        const isInteractive = ['INPUT', 'BUTTON', 'TEXTAREA', 'SELECT', 'A'].includes(tag);
+        const isInsideButton = (e.target as HTMLElement).closest('button');
+        if (!isInteractive && !isInsideButton && activeField) {
+          handleFieldBlur();
+        }
+      }}
+    >
       {/* Toolbar */}
       <DetailToolbar
         title={toolbarTitle}
@@ -820,10 +818,6 @@ export const ItemDetailView: React.FC<ItemDetailViewProps> = ({
             value={quantity || 0}
             onChange={(v) => {
               setValue('quantity', v, { shouldValidate: true });
-              if (mode === 'edit') {
-                // Auto-save quantity changes
-                setTimeout(() => handleSave(), 100);
-              }
             }}
             totalStock={totalStock}
           />
@@ -914,51 +908,33 @@ export const ItemDetailView: React.FC<ItemDetailViewProps> = ({
                 Dimensions
               </span>
               <div className="grid grid-cols-4 gap-2">
-                <input
-                  type="number"
-                  value={lengthIn ?? ''}
-                  onChange={(e) =>
-                    setValue('length_in', e.target.value ? Number(e.target.value) : null)
-                  }
-                  placeholder='L"'
-                  step="0.1"
-                  className="bg-main border border-subtle rounded-lg px-2 py-2 text-content text-center text-xs font-mono focus:border-accent focus:outline-none"
-                />
-                <input
-                  type="number"
-                  value={widthIn ?? ''}
-                  onChange={(e) =>
-                    setValue('width_in', e.target.value ? Number(e.target.value) : null)
-                  }
-                  placeholder='W"'
-                  step="0.1"
-                  className="bg-main border border-subtle rounded-lg px-2 py-2 text-content text-center text-xs font-mono focus:border-accent focus:outline-none"
-                />
-                <input
-                  type="number"
-                  value={heightIn ?? ''}
-                  onChange={(e) =>
-                    setValue('height_in', e.target.value ? Number(e.target.value) : null)
-                  }
-                  placeholder='H"'
-                  step="0.1"
-                  className="bg-main border border-subtle rounded-lg px-2 py-2 text-content text-center text-xs font-mono focus:border-accent focus:outline-none"
-                />
-                <input
-                  type="number"
-                  value={weightLbs ?? ''}
-                  onChange={(e) =>
-                    setValue('weight_lbs', e.target.value ? Number(e.target.value) : null)
-                  }
-                  placeholder="lbs"
-                  step="0.1"
-                  className="bg-main border border-subtle rounded-lg px-2 py-2 text-content text-center text-xs font-mono focus:border-accent focus:outline-none"
-                />
+                {[
+                  { field: 'length_in' as const, val: lengthIn, label: 'L' },
+                  { field: 'width_in' as const, val: widthIn, label: 'W' },
+                  { field: 'height_in' as const, val: heightIn, label: 'H' },
+                  { field: 'weight_lbs' as const, val: weightLbs, label: 'LBS' },
+                ].map(({ field, val, label }) => (
+                  <div key={field} className="flex flex-col items-center gap-1">
+                    <input
+                      type="number"
+                      value={val ?? ''}
+                      onChange={(e) =>
+                        setValue(field, e.target.value ? Number(e.target.value) : null)
+                      }
+                      placeholder="—"
+                      step="0.1"
+                      className="w-full bg-main border border-subtle rounded-lg px-2 py-2 text-content text-center text-xs font-mono focus:border-accent focus:outline-none"
+                    />
+                    <span className="text-[9px] font-black text-muted uppercase tracking-widest">
+                      {label}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
           ) : isAdmin ? (
             <TappableField
-              label="Dims"
+              label="Dimensions"
               value={dimensionsString}
               isActive={isActive('dimensions')}
               onTap={() => setActiveField('dimensions')}
@@ -966,52 +942,34 @@ export const ItemDetailView: React.FC<ItemDetailViewProps> = ({
               onChange={() => {}}
               renderEditor={() => (
                 <div className="grid grid-cols-4 gap-2">
-                  <input
-                    type="number"
-                    value={lengthIn ?? ''}
-                    onChange={(e) =>
-                      setValue('length_in', e.target.value ? Number(e.target.value) : null)
-                    }
-                    placeholder='L"'
-                    step="0.1"
-                    className="bg-main border border-subtle rounded-lg px-2 py-2 text-content text-center text-xs font-mono focus:border-accent focus:outline-none"
-                  />
-                  <input
-                    type="number"
-                    value={widthIn ?? ''}
-                    onChange={(e) =>
-                      setValue('width_in', e.target.value ? Number(e.target.value) : null)
-                    }
-                    placeholder='W"'
-                    step="0.1"
-                    className="bg-main border border-subtle rounded-lg px-2 py-2 text-content text-center text-xs font-mono focus:border-accent focus:outline-none"
-                  />
-                  <input
-                    type="number"
-                    value={heightIn ?? ''}
-                    onChange={(e) =>
-                      setValue('height_in', e.target.value ? Number(e.target.value) : null)
-                    }
-                    placeholder='H"'
-                    step="0.1"
-                    className="bg-main border border-subtle rounded-lg px-2 py-2 text-content text-center text-xs font-mono focus:border-accent focus:outline-none"
-                  />
-                  <input
-                    type="number"
-                    value={weightLbs ?? ''}
-                    onChange={(e) =>
-                      setValue('weight_lbs', e.target.value ? Number(e.target.value) : null)
-                    }
-                    placeholder="lbs"
-                    step="0.1"
-                    className="bg-main border border-subtle rounded-lg px-2 py-2 text-content text-center text-xs font-mono focus:border-accent focus:outline-none"
-                  />
+                  {[
+                    { field: 'length_in' as const, val: lengthIn, label: 'L' },
+                    { field: 'width_in' as const, val: widthIn, label: 'W' },
+                    { field: 'height_in' as const, val: heightIn, label: 'H' },
+                    { field: 'weight_lbs' as const, val: weightLbs, label: 'LBS' },
+                  ].map(({ field, val, label }) => (
+                    <div key={field} className="flex flex-col items-center gap-1">
+                      <input
+                        type="number"
+                        value={val ?? ''}
+                        onChange={(e) =>
+                          setValue(field, e.target.value ? Number(e.target.value) : null)
+                        }
+                        placeholder="—"
+                        step="0.1"
+                        className="w-full bg-main border border-subtle rounded-lg px-2 py-2 text-content text-center text-xs font-mono focus:border-accent focus:outline-none"
+                      />
+                      <span className="text-[9px] font-black text-muted uppercase tracking-widest">
+                        {label}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               )}
             />
           ) : (
             /* Non-admin: read-only dimensions */
-            <SectionRow label="Dims" value={dimensionsString || '—'} />
+            <SectionRow label="Dimensions" value={dimensionsString || '—'} />
           )}
         </div>
 
@@ -1036,23 +994,21 @@ export const ItemDetailView: React.FC<ItemDetailViewProps> = ({
           </div>
         )}
 
-        {/* Add mode: Create button */}
-        {isAddMode && (
-          <div className="mx-4 mt-6 mb-8">
-            <button
-              disabled={!canSave}
-              onClick={handleSave}
-              className={`w-full font-black uppercase tracking-widest h-14 rounded-2xl flex items-center justify-center gap-2 transition-transform shadow-lg ${
-                !canSave
-                  ? 'bg-neutral-800 text-neutral-500 border border-neutral-700 cursor-not-allowed opacity-50'
-                  : 'bg-accent hover:opacity-90 text-main active:scale-95 shadow-accent/20'
-              }`}
-            >
-              <Save className="w-5 h-5" />
-              Create
-            </button>
-          </div>
-        )}
+        {/* Save / Create button */}
+        <div className="mx-4 mt-6 mb-8">
+          <button
+            disabled={!canSave}
+            onClick={handleSave}
+            className={`w-full font-black uppercase tracking-widest h-14 rounded-2xl flex items-center justify-center gap-2 transition-transform shadow-lg ${
+              !canSave
+                ? 'bg-neutral-800 text-neutral-500 border border-neutral-700 cursor-not-allowed opacity-50'
+                : 'bg-accent hover:opacity-90 text-main active:scale-95 shadow-accent/20'
+            }`}
+          >
+            <Save className="w-5 h-5" />
+            {isAddMode ? 'Create' : 'Save'}
+          </button>
+        </div>
       </div>
 
       {/* Distribution Bottom Sheet */}

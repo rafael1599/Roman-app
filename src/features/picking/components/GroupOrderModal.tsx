@@ -19,7 +19,7 @@ export const GroupOrderModal: React.FC<GroupOrderModalProps> = ({
   onConfirm,
   onCancel,
 }) => {
-  useScrollLock(true);
+  useScrollLock(true, onCancel);
   const formatOrderNumber = (order: PickingList) =>
     `#${order.order_number || order.id.slice(-6).toUpperCase()}`;
 

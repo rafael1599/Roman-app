@@ -46,7 +46,7 @@ export const MovementModal: React.FC<MovementModalProps> = ({
   onMove,
   initialSourceItem,
 }) => {
-  useScrollLock(isOpen);
+  useScrollLock(isOpen, onClose);
   const { formData, setField, validate } = useMovementForm(initialSourceItem);
   const { locations } = useLocationManagement();
   const { locationCapacities, inventoryData } = useInventory();

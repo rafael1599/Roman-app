@@ -21,7 +21,7 @@ export const InventorySnapshotModal = ({
   isOpen: boolean;
   onClose: () => void;
 }) => {
-  useScrollLock(isOpen);
+  useScrollLock(isOpen, onClose);
   const { loading, data, fetchSnapshot } = useInventorySnapshot();
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [searchQuery, setSearchQuery] = useState('');

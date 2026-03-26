@@ -22,7 +22,7 @@ export const PickingSummaryModal: React.FC<PickingSummaryModalProps> = ({
   checkedBy,
   onClose,
 }) => {
-  useScrollLock(true);
+  useScrollLock(true, onClose);
   const { locations } = useLocationManagement();
 
   // Group items into pallets using the same logic as the Picking flow

@@ -20,7 +20,7 @@ export function ErrorModal({
   message,
   details,
 }: ErrorModalProps) {
-  useScrollLock(isOpen);
+  useScrollLock(isOpen, onClose);
   if (!isOpen) return null;
 
   // Log technical details to console

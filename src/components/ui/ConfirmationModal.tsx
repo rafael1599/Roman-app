@@ -23,7 +23,7 @@ export function ConfirmationModal({
   cancelText = 'Cancel',
   variant = 'danger',
 }: ConfirmationModalProps) {
-  useScrollLock(isOpen);
+  useScrollLock(isOpen, onClose);
   if (!isOpen) return null;
 
   return createPortal(

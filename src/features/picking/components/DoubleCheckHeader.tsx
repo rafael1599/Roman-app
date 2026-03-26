@@ -242,7 +242,7 @@ export const DoubleCheckHeader = () => {
   const { cartItems, sessionMode, deleteList } = usePickingSession();
   const { showConfirmation } = useConfirmation();
   const [isOpen, setIsOpen] = useState(false);
-  useScrollLock(isOpen);
+  useScrollLock(isOpen, () => setIsOpen(false));
   const [activeOrder, setActiveOrder] = useState<PickingList | null>(null);
   const [pendingMerge, setPendingMerge] = useState<{
     source: PickingList;

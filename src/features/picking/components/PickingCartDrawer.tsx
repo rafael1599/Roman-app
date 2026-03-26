@@ -56,7 +56,7 @@ export const PickingCartDrawer: React.FC = () => {
   const isConfirmingRef = React.useRef(false);
   const [isProcessingDeduction, setIsProcessingDeduction] = useState(false);
   const overriddenPalletCountRef = React.useRef<number | null>(null);
-  useScrollLock(isOpen);
+  useScrollLock(isOpen, () => setIsOpen(false));
 
   const totalItems = cartItems.length;
   const totalQty = cartItems.reduce((acc, item) => acc + (item.pickingQty || 0), 0);

@@ -19,7 +19,7 @@ export const SessionInitializationModal = () => {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [isChecking, setIsChecking] = useState(false);
 
-  useScrollLock(isInitializing);
+  useScrollLock(isInitializing, cancelInitialization);
 
   // Reset state when modal opens
   useEffect(() => {

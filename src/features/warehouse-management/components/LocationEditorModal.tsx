@@ -37,7 +37,7 @@ export default function LocationEditorModal({
   onCancel,
   onDelete,
 }: LocationEditorModalProps) {
-  useScrollLock(true);
+  useScrollLock(true, onCancel);
   const { ludlowData, atsData } = useInventory();
   const { showConfirmation } = useConfirmation();
   const autoSelect = useAutoSelect();
