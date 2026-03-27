@@ -456,7 +456,9 @@ export const ItemDetailView: React.FC<ItemDetailViewProps> = ({
       setIsUploadingPhoto(true);
       try {
         const url = await uploadPhoto(currentSku, file);
-        setPhotoPreview(url);
+        // Append cache-buster so browser/CDN fetches the new thumbnail
+        const bustUrl = `${url}?v=${Date.now()}`;
+        setPhotoPreview(bustUrl);
         // Update the cache so the photo persists after closing the view
         queryClient.setQueryData(
           INVENTORY_ROOT_KEY,
@@ -465,7 +467,10 @@ export const ItemDetailView: React.FC<ItemDetailViewProps> = ({
               item.sku === currentSku
                 ? {
                     ...item,
-                    sku_metadata: { ...(item.sku_metadata ?? { sku: currentSku }), image_url: url },
+                    sku_metadata: {
+                      ...(item.sku_metadata ?? { sku: currentSku }),
+                      image_url: bustUrl,
+                    },
                   }
                 : item
             )
