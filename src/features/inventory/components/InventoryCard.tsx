@@ -91,7 +91,7 @@ export const InventoryCard = memo(
             : `border-subtle active:scale-[0.98] active:bg-main/50 cursor-pointer ${isZeroStock ? 'opacity-70 border-dashed bg-main/20' : ''} ${flash ? 'animate-flash-update scale-[1.02] border-accent/50 z-10' : ''}`
         }`}
       >
-        <div className={`flex gap-3 ${sku_metadata?.image_url ? 'h-[120px]' : ''} overflow-hidden`}>
+        <div className={`flex gap-2 ${sku_metadata?.image_url ? 'h-[90px]' : ''} overflow-hidden`}>
           {sku_metadata?.image_url && (
             <img
               src={
@@ -108,7 +108,7 @@ export const InventoryCard = memo(
               onError={(e) => {
                 (e.target as HTMLImageElement).style.display = 'none';
               }}
-              className="w-1/4 object-contain rounded flex-shrink-0 bg-white/10 dark:bg-white/5 p-1"
+              className="w-[70px] object-contain rounded flex-shrink-0 bg-white/10 dark:bg-white/5 p-1"
             />
           )}
 
@@ -135,7 +135,7 @@ export const InventoryCard = memo(
                 )}
                 <div className="flex items-center gap-2">
                   <div
-                    className={`text-xl font-extrabold text-content tracking-tighter leading-tight ${!is_active ? 'line-through opacity-60' : ''}`}
+                    className={`text-base font-extrabold text-content tracking-tighter leading-tight ${!is_active ? 'line-through opacity-60' : ''}`}
                     style={{ fontFamily: 'var(--font-heading)' }}
                   >
                     {sku}
@@ -153,7 +153,7 @@ export const InventoryCard = memo(
                   Stock
                 </span>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-2xl font-black text-accent tabular-nums tracking-tighter leading-none">
+                  <span className="text-xl font-black text-accent tabular-nums tracking-tighter leading-none">
                     {quantity}
                   </span>
                 </div>
@@ -224,36 +224,36 @@ export const InventoryCard = memo(
             </div>
 
             {mode === 'stock' && (
-              <div className="flex gap-3 mt-1">
+              <div className="flex gap-2 mt-0.5">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     onDecrement();
                   }}
-                  className="bg-main text-accent-red flex-1 h-12 rounded-lg flex items-center justify-center active:scale-90 transition-transform"
+                  className="bg-main text-accent-red flex-1 h-9 rounded-lg flex items-center justify-center active:scale-90 transition-transform"
                   aria-label="Decrease quantity"
                 >
-                  <Minus size={18} strokeWidth={3} />
+                  <Minus size={16} strokeWidth={3} />
                 </button>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     onMove();
                   }}
-                  className="bg-main text-accent-blue flex-1 h-12 rounded-lg flex items-center justify-center active:scale-90 transition-transform"
+                  className="bg-main text-accent-blue flex-1 h-9 rounded-lg flex items-center justify-center active:scale-90 transition-transform"
                   aria-label="Move item"
                 >
-                  <ArrowRightLeft size={18} strokeWidth={3} />
+                  <ArrowRightLeft size={16} strokeWidth={3} />
                 </button>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     onIncrement();
                   }}
-                  className="bg-accent text-white flex-1 h-12 rounded-lg flex items-center justify-center active:scale-90 transition-transform shadow-lg shadow-accent/20"
+                  className="bg-accent text-white flex-1 h-9 rounded-lg flex items-center justify-center active:scale-90 transition-transform shadow-lg shadow-accent/20"
                   aria-label="Increase quantity"
                 >
-                  <Plus size={18} strokeWidth={3} />
+                  <Plus size={16} strokeWidth={3} />
                 </button>
               </div>
             )}

@@ -638,46 +638,42 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
 
       {(!isSearching || (allLocationBlocks.length === 0 && localSearch.trim() !== '')) && (
         <div
-          className={`px-4 pt-2 flex flex-col gap-2 transition-all duration-300 ${allLocationBlocks.length === 0 && localSearch.trim() !== '' ? 'bg-blue-500/10 p-3 rounded-xl border border-blue-500/20 animate-in fade-in zoom-in-95 duration-500' : ''}`}
+          className={`px-4 pt-2 flex flex-wrap items-center gap-x-4 gap-y-1 transition-all duration-300 ${allLocationBlocks.length === 0 && localSearch.trim() !== '' ? 'bg-blue-500/10 p-3 rounded-xl border border-blue-500/20 animate-in fade-in zoom-in-95 duration-500' : ''}`}
         >
-          <div className="flex items-center gap-2">
+          <label
+            htmlFor="show-inactive"
+            className={`flex items-center gap-1.5 text-xs font-medium cursor-pointer select-none transition-colors ${
+              allLocationBlocks.length === 0 && localSearch.trim() !== ''
+                ? 'text-blue-500 font-black uppercase tracking-wider'
+                : 'text-muted'
+            }`}
+          >
             <input
               type="checkbox"
               id="show-inactive"
               checked={showInactive}
               onChange={(e) => setShowInactive(e.target.checked)}
-              className={`rounded transition-colors h-4 w-4 ${
+              className={`rounded transition-colors h-3.5 w-3.5 ${
                 allLocationBlocks.length === 0 && localSearch.trim() !== ''
                   ? 'border-blue-500 text-blue-500 focus:ring-blue-500'
                   : 'border-neutral-600 bg-surface text-accent focus:ring-accent focus:ring-offset-0'
               }`}
             />
-            <label
-              htmlFor="show-inactive"
-              className={`text-sm font-medium cursor-pointer select-none transition-colors ${
-                allLocationBlocks.length === 0 && localSearch.trim() !== ''
-                  ? 'text-blue-500 font-black uppercase tracking-wider'
-                  : 'text-muted'
-              }`}
-            >
-              Show Deleted Items & Qty 0 SKUs
-            </label>
-          </div>
-          <div className="flex items-center gap-2">
+            Deleted & Qty 0
+          </label>
+          <label
+            htmlFor="show-bike-bins"
+            className="flex items-center gap-1.5 text-xs font-medium cursor-pointer select-none text-muted"
+          >
             <input
               type="checkbox"
               id="show-bike-bins"
               checked={showBikeBins}
               onChange={(e) => setShowBikeBins(e.target.checked)}
-              className="rounded transition-colors h-4 w-4 border-neutral-600 bg-surface text-accent focus:ring-accent focus:ring-offset-0"
+              className="rounded transition-colors h-3.5 w-3.5 border-neutral-600 bg-surface text-accent focus:ring-accent focus:ring-offset-0"
             />
-            <label
-              htmlFor="show-bike-bins"
-              className="text-sm font-medium cursor-pointer select-none text-muted"
-            >
-              Show Parts Bins
-            </label>
-          </div>
+            Parts Bins
+          </label>
         </div>
       )}
 
@@ -689,7 +685,7 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
 
               return (
                 <div key={`${wh}-${location}`} className="space-y-4">
-                  {isFirstInWarehouse && !isSearching && (
+                  {isFirstInWarehouse && !isSearching && wh !== 'LUDLOW' && (
                     <div className="flex items-center gap-4 pt-8 pb-2">
                       <div className="h-px flex-1 bg-subtle" />
                       <h2
