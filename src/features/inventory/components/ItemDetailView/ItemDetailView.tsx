@@ -455,26 +455,34 @@ export const ItemDetailView: React.FC<ItemDetailViewProps> = ({
 
       setIsUploadingPhoto(true);
       try {
-        const url = await uploadPhoto(currentSku, file);
-        // Append cache-buster so browser/CDN fetches the new thumbnail
+        // Optimistic: update cache with local thumbnail before upload finishes
+        const updateCache = (imageUrl: string) => {
+          queryClient.setQueryData(
+            INVENTORY_ROOT_KEY,
+            (old: InventoryItemWithMetadata[] | undefined) =>
+              old?.map((item) =>
+                item.sku === currentSku
+                  ? {
+                      ...item,
+                      sku_metadata: {
+                        ...(item.sku_metadata ?? { sku: currentSku }),
+                        image_url: imageUrl,
+                      },
+                    }
+                  : item
+              )
+          );
+        };
+
+        const url = await uploadPhoto(currentSku, file, (thumbBlobUrl) => {
+          // Instant: show local thumbnail in card before network roundtrip
+          updateCache(thumbBlobUrl);
+        });
+
+        // Final: swap local blob for real server URL with cache-buster
         const bustUrl = `${url}?v=${Date.now()}`;
         setPhotoPreview(bustUrl);
-        // Update the cache so the photo persists after closing the view
-        queryClient.setQueryData(
-          INVENTORY_ROOT_KEY,
-          (old: InventoryItemWithMetadata[] | undefined) =>
-            old?.map((item) =>
-              item.sku === currentSku
-                ? {
-                    ...item,
-                    sku_metadata: {
-                      ...(item.sku_metadata ?? { sku: currentSku }),
-                      image_url: bustUrl,
-                    },
-                  }
-                : item
-            )
-        );
+        updateCache(bustUrl);
         toast.success('Photo uploaded');
       } catch (err) {
         console.error('Photo upload failed:', err);

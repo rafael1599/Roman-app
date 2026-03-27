@@ -465,25 +465,31 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
 
       setIsUploadingPhoto(true);
       try {
-        const url = await uploadPhoto(currentSku, file);
+        const updateCache = (imageUrl: string) => {
+          queryClient.setQueryData(
+            INVENTORY_ROOT_KEY,
+            (old: InventoryItemWithMetadata[] | undefined) =>
+              old?.map((item) =>
+                item.sku === currentSku
+                  ? {
+                      ...item,
+                      sku_metadata: {
+                        ...(item.sku_metadata ?? { sku: currentSku }),
+                        image_url: imageUrl,
+                      },
+                    }
+                  : item
+              )
+          );
+        };
+
+        const url = await uploadPhoto(currentSku, file, (thumbBlobUrl) => {
+          updateCache(thumbBlobUrl);
+        });
+
         const bustUrl = `${url}?v=${Date.now()}`;
         setPhotoPreview(bustUrl);
-        // Update the cache so the photo persists after closing the modal
-        queryClient.setQueryData(
-          INVENTORY_ROOT_KEY,
-          (old: InventoryItemWithMetadata[] | undefined) =>
-            old?.map((item) =>
-              item.sku === currentSku
-                ? {
-                    ...item,
-                    sku_metadata: {
-                      ...(item.sku_metadata ?? { sku: currentSku }),
-                      image_url: bustUrl,
-                    },
-                  }
-                : item
-            )
-        );
+        updateCache(bustUrl);
         toast.success('Photo uploaded');
       } catch (err) {
         console.error('Photo upload failed:', err);

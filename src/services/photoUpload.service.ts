@@ -68,11 +68,32 @@ export async function compressImage(file: File): Promise<{ image: string; thumbn
 }
 
 /**
+ * Converts a base64 string to a blob URL for instant local preview.
+ */
+export function base64ToBlobUrl(base64: string, mime = 'image/webp'): string {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return URL.createObjectURL(new Blob([bytes], { type: mime }));
+}
+
+/**
  * Compresses the file and uploads it to the upload-photo edge function.
+ * Calls onThumbnailReady with a local blob URL as soon as the thumbnail
+ * is generated (before the network upload starts).
  * Returns the public URL of the uploaded photo.
  */
-export async function uploadPhoto(sku: string, file: File): Promise<string> {
+export async function uploadPhoto(
+  sku: string,
+  file: File,
+  onThumbnailReady?: (blobUrl: string) => void
+): Promise<string> {
   const { image, thumbnail } = await compressImage(file);
+
+  // Optimistic: give the caller a local thumbnail immediately
+  if (onThumbnailReady) {
+    onThumbnailReady(base64ToBlobUrl(thumbnail));
+  }
 
   const {
     data: { session },
