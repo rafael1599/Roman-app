@@ -91,7 +91,7 @@ export const InventoryCard = memo(
             : `border-subtle active:scale-[0.98] active:bg-main/50 cursor-pointer ${isZeroStock ? 'opacity-70 border-dashed bg-main/20' : ''} ${flash ? 'animate-flash-update scale-[1.02] border-accent/50 z-10' : ''}`
         }`}
       >
-        <div className={`flex gap-2 ${sku_metadata?.image_url ? 'h-[90px]' : ''} overflow-hidden`}>
+        <div className="flex gap-2">
           {sku_metadata?.image_url && (
             <img
               src={
@@ -108,7 +108,7 @@ export const InventoryCard = memo(
               onError={(e) => {
                 (e.target as HTMLImageElement).style.display = 'none';
               }}
-              className="w-[70px] object-contain rounded flex-shrink-0 bg-white/10 dark:bg-white/5 p-1"
+              className="w-[70px] max-h-[90px] object-contain rounded flex-shrink-0 bg-white/10 dark:bg-white/5 p-1 self-start"
             />
           )}
 

@@ -729,7 +729,7 @@ Do you want to PERMANENTLY DELETE all these products so the location disappears?
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 gap-1">
+                  <div className="grid grid-cols-1 gap-1 max-w-xl mx-auto w-full">
                     {items.map((item) => {
                       const isInCart = cartItems.some(
                         (c) =>
