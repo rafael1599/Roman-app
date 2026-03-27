@@ -11,9 +11,11 @@ import MapPin from 'lucide-react/dist/esm/icons/map-pin';
 import Camera from 'lucide-react/dist/esm/icons/camera';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 
 import { useInventory } from '../hooks/useInventoryData.ts';
+import { INVENTORY_ROOT_KEY } from '../hooks/useInventoryRealtime';
 import { useLocationManagement } from '../hooks/useLocationManagement.ts';
 import { useConfirmation } from '../../../context/ConfirmationContext.tsx';
 import { useViewMode } from '../../../context/ViewModeContext.tsx';
@@ -58,6 +60,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
   screenType,
 }) => {
   useScrollLock(isOpen, onClose);
+  const queryClient = useQueryClient();
   const { ludlowData, atsData, isAdmin, updateSKUMetadata } = useInventory();
   const { locations } = useLocationManagement();
   const { setIsNavHidden } = useViewMode();
@@ -220,7 +223,10 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
       num(weightLbs) !== num(meta?.weight_lbs);
     if (metaChanged) return true;
     const initDist = Array.isArray(initialData.distribution) ? initialData.distribution : [];
-    return JSON.stringify(distribution) !== JSON.stringify(initDist);
+    if (JSON.stringify(distribution) !== JSON.stringify(initDist)) return true;
+    // Photo change
+    const initialPhoto = initialData.sku_metadata?.image_url || null;
+    return photoPreview !== initialPhoto;
   }, [
     mode,
     initialData,
@@ -236,6 +242,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
     widthIn,
     heightIn,
     weightLbs,
+    photoPreview,
   ]);
 
   // 3. Location Predictions & Suggestions
@@ -460,6 +467,19 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
       try {
         const url = await uploadPhoto(currentSku, file);
         setPhotoPreview(url);
+        // Update the cache so the photo persists after closing the modal
+        queryClient.setQueryData(
+          INVENTORY_ROOT_KEY,
+          (old: InventoryItemWithMetadata[] | undefined) =>
+            old?.map((item) =>
+              item.sku === currentSku
+                ? {
+                    ...item,
+                    sku_metadata: { ...(item.sku_metadata ?? { sku: currentSku }), image_url: url },
+                  }
+                : item
+            )
+        );
         toast.success('Photo uploaded');
       } catch (err) {
         console.error('Photo upload failed:', err);
@@ -469,7 +489,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
         setIsUploadingPhoto(false);
       }
     },
-    [watch, initialData]
+    [watch, initialData, queryClient]
   );
 
   const handlePhotoRemove = useCallback(async () => {
@@ -480,6 +500,17 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
     try {
       await deletePhoto(currentSku);
       setPhotoPreview(null);
+      // Update the cache so the removal persists
+      queryClient.setQueryData(INVENTORY_ROOT_KEY, (old: InventoryItemWithMetadata[] | undefined) =>
+        old?.map((item) =>
+          item.sku === currentSku
+            ? {
+                ...item,
+                sku_metadata: { ...(item.sku_metadata ?? { sku: currentSku }), image_url: null },
+              }
+            : item
+        )
+      );
       toast.success('Photo removed');
     } catch (err) {
       console.error('Photo removal failed:', err);
@@ -487,7 +518,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
     } finally {
       setIsUploadingPhoto(false);
     }
-  }, [watch]);
+  }, [watch, queryClient]);
 
   // 4. Handlers
   const handleLocationBlur = (val: string) => {

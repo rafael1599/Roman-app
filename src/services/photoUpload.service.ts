@@ -3,14 +3,11 @@ import { supabase } from '../lib/supabase';
 const FUNCTION_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-photo`;
 
 /**
- * Compresses an image file: resizes to max 1200px longest side,
- * converts to WebP at 80% quality, returns base64 string (no data: prefix).
+ * Resizes an ImageBitmap to fit within maxSide, renders to WebP at given quality,
+ * and returns the base64 string (no data: prefix).
  */
-export async function compressImage(file: File): Promise<string> {
-  const bitmap = await createImageBitmap(file);
+function bitmapToBase64(bitmap: ImageBitmap, maxSide: number, quality: number): Promise<string> {
   const { width, height } = bitmap;
-
-  const maxSide = 1200;
   let targetWidth = width;
   let targetHeight = height;
 
@@ -34,28 +31,40 @@ export async function compressImage(file: File): Promise<string> {
   }
 
   ctx.drawImage(bitmap, 0, 0, targetWidth, targetHeight);
-  bitmap.close();
 
-  const blob = await new Promise<Blob>((resolve, reject) => {
+  return new Promise<string>((resolve, reject) => {
     canvas.toBlob(
       (b) => {
-        if (b) resolve(b);
-        else reject(new Error('Canvas toBlob returned null'));
+        if (!b) return reject(new Error('Canvas toBlob returned null'));
+        b.arrayBuffer().then((arrayBuffer) => {
+          const bytes = new Uint8Array(arrayBuffer);
+          let binary = '';
+          for (let i = 0; i < bytes.length; i++) {
+            binary += String.fromCharCode(bytes[i]);
+          }
+          resolve(btoa(binary));
+        });
       },
       'image/webp',
-      0.8
+      quality
     );
   });
+}
 
-  const arrayBuffer = await blob.arrayBuffer();
-  const bytes = new Uint8Array(arrayBuffer);
+/**
+ * Compresses an image file: returns full-size (max 1200px, 80% quality)
+ * and thumbnail (max 200px, 70% quality) as base64 strings.
+ */
+export async function compressImage(file: File): Promise<{ image: string; thumbnail: string }> {
+  const bitmap = await createImageBitmap(file);
 
-  let binary = '';
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
+  const [image, thumbnail] = await Promise.all([
+    bitmapToBase64(bitmap, 1200, 0.8),
+    bitmapToBase64(bitmap, 200, 0.7),
+  ]);
 
-  return btoa(binary);
+  bitmap.close();
+  return { image, thumbnail };
 }
 
 /**
@@ -63,7 +72,7 @@ export async function compressImage(file: File): Promise<string> {
  * Returns the public URL of the uploaded photo.
  */
 export async function uploadPhoto(sku: string, file: File): Promise<string> {
-  const image = await compressImage(file);
+  const { image, thumbnail } = await compressImage(file);
 
   const {
     data: { session },
@@ -77,7 +86,7 @@ export async function uploadPhoto(sku: string, file: File): Promise<string> {
   const response = await fetch(FUNCTION_URL, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ sku, image }),
+    body: JSON.stringify({ sku, image, thumbnail }),
   });
 
   if (!response.ok) {

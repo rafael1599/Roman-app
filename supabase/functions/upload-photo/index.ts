@@ -57,7 +57,7 @@ serve(async (req: Request) => {
     const publicDomain = Deno.env.get('R2_PUBLIC_DOMAIN')!;
 
     if (req.method === 'POST') {
-      const body: { sku: string; image: string } = await req.json();
+      const body: { sku: string; image: string; thumbnail?: string } = await req.json();
 
       if (!body.sku || !body.image) {
         return new Response(JSON.stringify({ error: 'sku and image are required' }), {
@@ -84,7 +84,19 @@ serve(async (req: Request) => {
       const encodedSku = encodeURIComponent(body.sku);
       const objectKey = `photos/${encodedSku}.webp`;
 
+      // Upload full-size image
       await s3.putObject(objectKey, bytes, { contentType: 'image/webp' });
+
+      // Upload thumbnail if provided
+      if (body.thumbnail) {
+        const thumbBinary = atob(body.thumbnail);
+        const thumbBytes = new Uint8Array(thumbBinary.length);
+        for (let i = 0; i < thumbBinary.length; i++) {
+          thumbBytes[i] = thumbBinary.charCodeAt(i);
+        }
+        const thumbKey = `photos/thumbs/${encodedSku}.webp`;
+        await s3.putObject(thumbKey, thumbBytes, { contentType: 'image/webp' });
+      }
 
       const publicUrl = `${publicDomain}/${objectKey}`;
 
@@ -115,9 +127,13 @@ serve(async (req: Request) => {
 
       const encodedSku = encodeURIComponent(body.sku);
       const objectKey = `photos/${encodedSku}.webp`;
+      const thumbKey = `photos/thumbs/${encodedSku}.webp`;
 
-      // Delete from R2
-      await s3.deleteObject(objectKey);
+      // Delete full-size and thumbnail from R2
+      await Promise.all([
+        s3.deleteObject(objectKey),
+        s3.deleteObject(thumbKey).catch(() => {}), // Thumbnail may not exist
+      ]);
 
       // Null out image_url in sku_metadata
       const { error: updateError } = await supabase
