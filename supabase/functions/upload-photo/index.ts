@@ -129,10 +129,10 @@ serve(async (req: Request) => {
       const objectKey = `photos/${encodedSku}.webp`;
       const thumbKey = `photos/thumbs/${encodedSku}.webp`;
 
-      // Delete full-size and thumbnail from R2
+      // Delete full-size and thumbnail from R2 (both may not exist)
       await Promise.all([
-        s3.deleteObject(objectKey),
-        s3.deleteObject(thumbKey).catch(() => {}), // Thumbnail may not exist
+        s3.deleteObject(objectKey).catch(() => {}),
+        s3.deleteObject(thumbKey).catch(() => {}),
       ]);
 
       // Null out image_url in sku_metadata
