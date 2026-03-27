@@ -22,7 +22,7 @@ export const DetailToolbar: React.FC<DetailToolbarProps> = ({
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <div className="sticky top-0 z-10 bg-surface border-b border-subtle">
+    <div className="sticky top-0 z-20 bg-surface border-b border-subtle">
       <div className="flex items-center justify-between px-4 py-3">
         {/* Menu (left side) */}
         {mode === 'edit' ? (
