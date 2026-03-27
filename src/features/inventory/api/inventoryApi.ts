@@ -37,7 +37,8 @@ export const inventoryApi = {
                 sku_metadata (*)
             `
       )
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(10000);
 
     if (!includeInactive) {
       query = query.eq('is_active', true);
