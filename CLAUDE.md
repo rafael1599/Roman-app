@@ -41,6 +41,14 @@ idle (UI) → building (UI-only, no DB) → active (DB)
 
 6 estados DB: `active`, `ready_to_double_check`, `double_checking`, `needs_correction`, `completed`, `cancelled`. Órdenes completadas tienen triple protección contra reversión.
 
+## Base de datos compartida
+
+Esta app comparte la misma DB Supabase con **pickd-2d** (dashboard de visualizacion 2D/3D).
+Ver `JAMIS/SHARED-DB-CONTRACT.md` para ownership de tablas, RPCs, y reglas de migracion.
+
+- pickd es owner de: `picking_lists`, `profiles`, `customers`, `order_groups`, `picking_list_notes`
+- pickd-2d lee: `inventory`, `sku_metadata`, `locations` y escribe solo via consolidation RPCs
+
 ## Known Issues
 
 - **`react-hook-form@7.71.1` TS error:** `tsc --noEmit` reports `Module '"react-hook-form"' has no exported member 'useForm'`. This is an upstream packaging bug — the `.d.ts` re-exports from `../src/useForm` but the `src/` directory isn't included in the npm package. **Vite builds fine, do not attempt to fix.**
